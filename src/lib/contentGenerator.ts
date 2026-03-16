@@ -19,7 +19,9 @@ export interface GeneratedContent {
 export async function generateMarketingContent(
   analysis: ProductAnalysis,
   platform: Platform,
-  customPrompt?: string
+  customPrompt?: string,
+  generateVideo = false,
+  generateImage = false,
 ): Promise<GeneratedContent> {
   const systemPrompt = MARKETING_SYSTEM[platform];
   if (!systemPrompt) {
@@ -46,7 +48,7 @@ export async function generateMarketingContent(
     videoJobId: null,
   };
 
-  if (isVideoContent) {
+  if (isVideoContent && generateVideo) {
     // Start video generation in the background (don't block on it)
     const jobId = `vid_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     createJob(jobId);
@@ -73,17 +75,18 @@ export async function generateMarketingContent(
     const schema = platform === 'instagram' ? InstagramContentSchema : TikTokContentSchema;
     result.content = parseAIResponse(response, schema) as Record<string, string>;
   } else {
-    // Google Ads: generate image + text in parallel (images are fast)
-    const [response, imageUrl] = await Promise.all([
-      chat(systemPrompt, userPrompt, { temperature: 0.8, maxTokens: 8192 }),
-      generateMarketingImage(analysis.name, analysis.description, platform, customPrompt),
-    ]);
-
-    if (typeof imageUrl === 'string') {
-      result.imageUrl = imageUrl;
+    // Google Ads: generate text, optionally image in parallel
+    if (generateImage) {
+      const [response, imageUrl] = await Promise.all([
+        chat(systemPrompt, userPrompt, { temperature: 0.8, maxTokens: 8192 }),
+        generateMarketingImage(analysis.name, analysis.description, platform, customPrompt),
+      ]);
+      if (typeof imageUrl === 'string') result.imageUrl = imageUrl;
+      result.content = parseAIResponse(response, GoogleAdsContentSchema) as Record<string, string>;
+    } else {
+      const response = await chat(systemPrompt, userPrompt, { temperature: 0.8, maxTokens: 8192 });
+      result.content = parseAIResponse(response, GoogleAdsContentSchema) as Record<string, string>;
     }
-
-    result.content = parseAIResponse(response, GoogleAdsContentSchema) as Record<string, string>;
   }
 
   return result;

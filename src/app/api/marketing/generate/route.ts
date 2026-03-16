@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     validateEnv();
     const body = await request.json();
-    const { projectId, platform, customPrompt } = body as { projectId: string; platform: Platform; customPrompt?: string };
+    const { projectId, platform, customPrompt, generateVideo, generateImage } = body as { projectId: string; platform: Platform; customPrompt?: string; generateVideo?: boolean; generateImage?: boolean };
 
     if (!projectId || !platform) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await generateMarketingContent(project.analysis, platform, customPrompt);
+    const result = await generateMarketingContent(project.analysis, platform, customPrompt, generateVideo ?? false, generateImage ?? false);
 
     // Save to project
     if (!project.marketingContent) {

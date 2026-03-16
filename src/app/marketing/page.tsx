@@ -39,6 +39,8 @@ export default function MarketingPage() {
   const [customPrompt, setCustomPrompt] = useState('');
   const [history, setHistory] = useState<MarketingHistoryItem[]>([]);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [generateVideo, setGenerateVideo] = useState(false);
+  const [generateImage, setGenerateImage] = useState(false);
 
   const loadProjects = () =>
     fetch('/api/projects')
@@ -101,7 +103,7 @@ export default function MarketingPage() {
       const res = await fetch('/api/marketing/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: selectedProject, platform: selectedPlatform, customPrompt }),
+        body: JSON.stringify({ projectId: selectedProject, platform: selectedPlatform, customPrompt, generateVideo, generateImage }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -191,6 +193,20 @@ export default function MarketingPage() {
               rows={3}
             />
           </div>
+
+          {/* Optional extras */}
+          {(selectedPlatform === 'instagram' || selectedPlatform === 'tiktok') && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={generateVideo} onChange={(e) => setGenerateVideo(e.target.checked)} />
+              Generate video <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>(uses Veo — costs extra API quota)</span>
+            </label>
+          )}
+          {selectedPlatform === 'google-ads' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer', fontSize: 14, color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={generateImage} onChange={(e) => setGenerateImage(e.target.checked)} />
+              Generate image <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>(uses Imagen — costs extra API quota)</span>
+            </label>
+          )}
 
           {/* Generate Button */}
           <button
