@@ -1,0 +1,38 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+let genAI: GoogleGenerativeAI | null = null;
+
+export function getGeminiClient(): GoogleGenerativeAI {
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY || '';
+    genAI = new GoogleGenerativeAI(apiKey);
+  }
+  return genAI;
+}
+
+export async function chat(
+  systemPrompt: string,
+  userPrompt: string,
+  options?: { temperature?: number; maxTokens?: number }
+): Promise<string> {
+  const client = getGeminiClient();
+  const model = client.getGenerativeModel({ 
+    model: 'gemini-2.5-flash',
+  });
+
+  const content = await model.generateContent({
+    contents: [
+      { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+    ],
+    generationConfig: {
+      temperature: options?.temperature ?? 0.7,
+      maxOutputTokens: options?.maxTokens ?? 2000,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const response = await content.response;
+  const text = response.text();
+  console.log('[Gemini Raw Response]:', text.substring(0, 500));
+  return text;
+}

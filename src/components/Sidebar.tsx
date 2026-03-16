@@ -1,0 +1,137 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useSession } from 'next-auth/react';
+import RecgonLogo from './RecgonLogo';
+
+const NAV_ITEMS = [
+  { 
+    href: '/', 
+    label: 'Overview', 
+    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+  },
+  { 
+    href: '/projects', 
+    label: 'Projects', 
+    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+  },
+  { 
+    href: '/marketing', 
+    label: 'Marketing', 
+    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><circle cx="12" cy="12" r="3"/></svg>
+  },
+  { 
+    href: '/feedback', 
+    label: 'Feedback', 
+    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  },
+];
+
+export default function Sidebar() {
+  const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    setMounted(true);
+    // Create the persistent overlay element once
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed; inset: 0; z-index: 99999;
+      pointer-events: none; opacity: 0;
+      will-change: opacity;
+      transform: translate3d(0,0,0);
+      backface-visibility: hidden;
+    `;
+    document.body.appendChild(overlay);
+    overlayRef.current = overlay;
+    return () => { overlay.remove(); };
+  }, []);
+
+  const handleThemeToggle = useCallback(() => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    const overlay = overlayRef.current;
+    
+    if (!overlay) {
+      setTheme(newTheme);
+      return;
+    }
+
+    // Get the current background color to use as the overlay
+    const currentBg = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep').trim();
+    overlay.style.background = currentBg;
+    
+    // Snap overlay to fully visible (blocks the old look)
+    overlay.style.transition = 'none';
+    overlay.style.opacity = '1';
+    
+    // Force a synchronous layout so the browser renders the overlay at opacity:1
+    overlay.offsetHeight;
+    
+    // Switch theme instantly underneath the overlay
+    setTheme(newTheme);
+    
+    // Next frame: fade the overlay out — this is ONE property (opacity) on ONE element = pure GPU compositor = 120fps
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+        overlay.style.opacity = '0';
+      });
+    });
+  }, [theme, setTheme]);
+
+  return (
+    <>
+      <div className="brand-logo">
+        <RecgonLogo size={42} uid="logo-sidebar" />
+      </div>
+
+      <nav className="top-nav">
+        {NAV_ITEMS.map((item) => {
+          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+          return (
+            <Link key={item.href} href={item.href} className={`nav-link ${isActive ? 'active' : ''}`}>
+              {item.icon}
+              {item.label}
+            </Link>
+          );
+        })}
+        {mounted && (
+          <button
+            className="theme-toggle"
+            onClick={handleThemeToggle}
+            title="Toggle theme"
+          >
+            {theme === 'dark' ? (
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            ) : (
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+            )}
+          </button>
+        )}
+
+      </nav>
+
+      {session?.user && (
+        <Link href="/account" style={{
+          position: 'fixed', top: '40px', right: '48px',
+          display: 'flex', alignItems: 'center', gap: '8px',
+          zIndex: 100, textDecoration: 'none',
+        }}>
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: 'var(--txt-muted)', flexShrink: 0 }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span style={{ fontSize: '0.8rem', color: 'var(--txt-muted)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {session.user.nickname || session.user.email}
+          </span>
+        </Link>
+      )}
+    </>
+  );
+}
