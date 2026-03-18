@@ -90,9 +90,9 @@ export default function Select({ value, onChange, options, placeholder, style }:
           textAlign: 'left',
           outline: 'none',
           boxShadow: open
-            ? '0 0 0 4px rgba(0, 122, 255, 0.1)'
+            ? '0 0 0 4px rgba(var(--signature-rgb), 0.12)'
             : 'inset 0 2px 4px rgba(0,0,0,0.03)',
-          borderColor: open ? 'rgba(0, 122, 255, 0.4)' : undefined,
+          borderColor: open ? 'rgba(var(--signature-rgb), 0.45)' : undefined,
           transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
         }}
       >
@@ -145,10 +145,11 @@ export default function Select({ value, onChange, options, placeholder, style }:
               style={{
                 width: '100%',
                 padding: '11px 20px',
-                background: opt.value === value ? 'var(--glass-active)' : 'transparent',
+                background: opt.value === value ? 'rgba(var(--signature-rgb), 0.07)' : 'transparent',
                 border: 'none',
                 borderTop: i > 0 ? '1px solid var(--btn-secondary-border)' : 'none',
-                color: opt.value === value ? 'var(--txt-pure)' : 'var(--txt-muted)',
+                borderLeft: opt.value === value ? '2px solid var(--signature)' : '2px solid transparent',
+                color: opt.value === value ? 'var(--signature)' : 'var(--txt-muted)',
                 fontFamily: 'inherit',
                 fontSize: 14,
                 fontWeight: opt.value === value ? 600 : 400,

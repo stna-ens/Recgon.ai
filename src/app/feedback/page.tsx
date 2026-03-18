@@ -182,7 +182,7 @@ Please add multi-language support, we have a global team`);
     <div>
       <div className="page-header">
         <h2>Feedback Center</h2>
-        <p>Connect your Instagram profile to get automatic AI-powered developer feedback from your audience</p>
+        <p>Recgon reads what your users are really saying and turns it into something you can act on</p>
       </div>
 
       {/* Mode toggle */}
@@ -255,7 +255,7 @@ Please add multi-language support, we have a global team`);
 
           {autoLoading && (
             <div style={{ marginTop: 16, fontSize: 13, color: 'var(--text-muted)' }}>
-              <p>Visiting your profile, collecting comments from recent posts, and running AI analysis. This may take up to a minute...</p>
+              <p>Recgon is visiting your profile, collecting comments from recent posts, and reading the room. This may take up to a minute...</p>
             </div>
           )}
 
@@ -345,7 +345,7 @@ Please add multi-language support, we have a global team`);
       {analyzing && (
         <div className="loader">
           <div className="loader-spinner" />
-          <div className="loader-text">AI is analyzing your user feedback...</div>
+          <div className="loader-text">Recgon is reading your feedback...</div>
         </div>
       )}
 
@@ -365,9 +365,7 @@ Please add multi-language support, we have a global team`);
       {/* ── History ── */}
       {history.length > 0 && (
         <div style={{ marginTop: 40 }}>
-          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 16 }}>
-            Saved Analyses
-          </h3>
+          <span className="recgon-label">Saved Analyses</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {history.map((entry) => {
               const isExpanded = expandedId === entry.id;

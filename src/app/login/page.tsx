@@ -101,20 +101,20 @@ export default function LoginPage() {
       <div style={{ width: '360px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '3.5rem' }}>
           <RecgonLogo size={28} uid="logo-login" />
-          <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--txt-pure)', letterSpacing: '-0.3px' }}>Recgon</span>
+          <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--signature)', letterSpacing: '-0.3px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>Recgon</span>
         </div>
 
         <h2 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--txt-pure)', lineHeight: 1.2, margin: '0 0 0.75rem', letterSpacing: '-0.5px' }}>
-          Your AI product<br />manager
+          The coach solo<br />founders don't have
         </h2>
         <p style={{ color: 'var(--txt-muted)', fontSize: '0.95rem', margin: '0 0 3rem', lineHeight: 1.6 }}>
-          Analyze code, generate marketing, and turn raw feedback into actionable insights — all in one place.
+          Part mentor, part cofounder — Recgon knows your product, tells you the truth, and keeps you moving.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {FEATURES.map((f) => (
             <div key={f.title} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{ flexShrink: 0, width: '38px', height: '38px', borderRadius: '10px', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--txt-pure)' }}>
+              <div style={{ flexShrink: 0, width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(var(--signature-rgb), 0.07)', border: '1px solid rgba(var(--signature-rgb), 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--signature)' }}>
                 {f.icon}
               </div>
               <div>

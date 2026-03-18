@@ -773,7 +773,7 @@ export default function MarketingPage() {
       <div>
         <div className="page-header">
           <h2>Marketing Agent</h2>
-          <p>Plan and execute full marketing campaigns powered by AI</p>
+          <p>Recgon plans your campaigns — you execute them</p>
         </div>
         <div className="empty-state animate-fade-up" style={{ marginTop: '8vh' }}>
           <span className="empty-state-icon">
@@ -790,7 +790,7 @@ export default function MarketingPage() {
     <div>
       <div className="page-header">
         <h2>Marketing Agent</h2>
-        <p>Plan and execute full marketing campaigns powered by AI</p>
+        <p>Recgon plans your campaigns — you execute them</p>
       </div>
 
       {renderSetup()}

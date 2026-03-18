@@ -67,11 +67,7 @@ const STAGE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 16 }}>
-      {children}
-    </h3>
-  );
+  return <span className="recgon-label">{children}</span>;
 }
 
 function BulletList({ items, accent }: { items: string[]; accent?: string }) {

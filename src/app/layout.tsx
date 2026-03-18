@@ -6,8 +6,8 @@ import { SessionProvider } from 'next-auth/react';
 import { auth } from '@/auth';
 
 export const metadata: Metadata = {
-  title: 'Recgon — AI Product Manager',
-  description: 'AI-powered product management: analyze codebases, generate marketing content, collect feedback, and get developer prompts.',
+  title: 'Recgon — The Coach Solo Founders Don\'t Have',
+  description: 'Recgon is the mentor and cofounder in your corner — analyzes your product, plans campaigns, reads your feedback, and tells you the truth.',
 };
 
 export default async function RootLayout({

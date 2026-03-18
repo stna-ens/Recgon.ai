@@ -56,7 +56,7 @@ export default function ProjectsPage() {
     <div>
       <div className="page-header">
         <h2 style={{ fontSize: 56, marginBottom: 16 }}>Project Center</h2>
-        <p style={{ fontSize: 18 }}>Manage your products and analyze their codebases</p>
+        <p style={{ fontSize: 18 }}>Add your products and let Recgon get to know them</p>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 64 }}>

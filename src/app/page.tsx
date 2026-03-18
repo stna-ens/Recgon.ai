@@ -185,7 +185,7 @@ export default function DashboardPage() {
           />
           <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Recgon</span>
           <span style={{ fontSize: 12, color: 'var(--txt-faint)' }}>—</span>
-          <span style={{ fontSize: 12, color: 'var(--txt-muted)' }}>AI entrepreneur advisor</span>
+          <span style={{ fontSize: 12, color: 'var(--txt-muted)' }}>mentor · cofounder</span>
           {hasProjects && (
             <span style={{ marginLeft: 'auto', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, color: 'var(--txt-faint)' }}>
               {projects.length} project{projects.length > 1 ? 's' : ''} loaded
@@ -222,9 +222,9 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--signature)' }}>
                     <RecgonLogo size={13} uid={`avatar-${i}`} />
-                    <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, fontWeight: 700, color: 'var(--txt-muted)', letterSpacing: '0.5px' }}>RECGON</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, fontWeight: 700, letterSpacing: '0.5px' }}>RECGON</span>
                   </div>
                   {msg.content ? <MarkdownText text={msg.content} /> : <span style={{ opacity: 0.35 }}>▌</span>}
                 </div>
