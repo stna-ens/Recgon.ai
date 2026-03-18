@@ -1,27 +1,20 @@
 import { chat } from './openai';
 import { ProductAnalysis } from './storage';
-import { generateMarketingImage } from './imageGenerator';
-import { generateMarketingVideo } from './videoGenerator';
-import { createJob, updateJob } from './videoJobs';
-import { MARKETING_SYSTEM, marketingUserPrompt } from './prompts';
-import { parseAIResponse, InstagramContentSchema, TikTokContentSchema, GoogleAdsContentSchema } from './schemas';
+import { MARKETING_SYSTEM, marketingUserPrompt, CAMPAIGN_SYSTEM, campaignUserPrompt, CampaignType } from './prompts';
+import { parseAIResponse, InstagramContentSchema, TikTokContentSchema, GoogleAdsContentSchema, CampaignPlanResponseSchema, CampaignPlanResponse } from './schemas';
 
 export type Platform = 'instagram' | 'tiktok' | 'google-ads';
+export type { CampaignType };
 
 export interface GeneratedContent {
   platform: Platform;
   content: Record<string, string>;
-  imageUrl?: string | null;
-  videoPath?: string | null;
-  videoJobId?: string | null;
 }
 
 export async function generateMarketingContent(
   analysis: ProductAnalysis,
   platform: Platform,
   customPrompt?: string,
-  generateVideo = false,
-  generateImage = false,
 ): Promise<GeneratedContent> {
   const systemPrompt = MARKETING_SYSTEM[platform];
   if (!systemPrompt) {
@@ -38,56 +31,40 @@ export async function generateMarketingContent(
     customPrompt,
   );
 
-  const isVideoContent = platform === 'instagram' || platform === 'tiktok';
+  const schema = (platform === 'instagram'
+    ? InstagramContentSchema
+    : platform === 'tiktok'
+    ? TikTokContentSchema
+    : GoogleAdsContentSchema) as import('zod').ZodType<Record<string, string>>;
 
-  const result: GeneratedContent = {
+  const response = await chat(systemPrompt, userPrompt, { temperature: 0.8, maxTokens: 8192 });
+  return {
     platform,
-    content: {},
-    imageUrl: null,
-    videoPath: null,
-    videoJobId: null,
+    content: parseAIResponse(response, schema) as Record<string, string>,
   };
+}
 
-  if (isVideoContent && generateVideo) {
-    // Start video generation in the background (don't block on it)
-    const jobId = `vid_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    createJob(jobId);
-    result.videoJobId = jobId;
+export async function generateCampaignPlan(
+  analysis: ProductAnalysis,
+  campaignType: CampaignType,
+  goal: string,
+  duration: string,
+): Promise<CampaignPlanResponse> {
+  const userPrompt = campaignUserPrompt(
+    analysis.name,
+    analysis.description,
+    analysis.techStack,
+    analysis.features,
+    analysis.targetAudience,
+    analysis.uniqueSellingPoints,
+    analysis.problemStatement,
+    analysis.gtmStrategy,
+    analysis.earlyAdopterChannels,
+    campaignType,
+    goal,
+    duration,
+  );
 
-    // Fire and forget — runs in the background
-    generateMarketingVideo(analysis, platform, customPrompt)
-      .then((videoResult) => {
-        updateJob(jobId, { status: 'done', videoPath: videoResult.videoPath });
-        console.log(`[VideoJob ${jobId}] Done! Path: ${videoResult.videoPath}`);
-      })
-      .catch((err) => {
-        const msg: string = err.message || 'Unknown error';
-        const isQuota = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota');
-        const userMessage = isQuota
-          ? 'Daily video generation quota exceeded. Please try again tomorrow or request a quota increase at console.cloud.google.com.'
-          : msg;
-        updateJob(jobId, { status: 'error', error: userMessage });
-        console.error(`[VideoJob ${jobId}] Failed:`, err);
-      });
-
-    // Only wait for text content
-    const response = await chat(systemPrompt, userPrompt, { temperature: 0.8, maxTokens: 8192 });
-    const schema = platform === 'instagram' ? InstagramContentSchema : TikTokContentSchema;
-    result.content = parseAIResponse(response, schema) as Record<string, string>;
-  } else {
-    // Google Ads: generate text, optionally image in parallel
-    if (generateImage) {
-      const [response, imageUrl] = await Promise.all([
-        chat(systemPrompt, userPrompt, { temperature: 0.8, maxTokens: 8192 }),
-        generateMarketingImage(analysis.name, analysis.description, platform, customPrompt),
-      ]);
-      if (typeof imageUrl === 'string') result.imageUrl = imageUrl;
-      result.content = parseAIResponse(response, GoogleAdsContentSchema) as Record<string, string>;
-    } else {
-      const response = await chat(systemPrompt, userPrompt, { temperature: 0.8, maxTokens: 8192 });
-      result.content = parseAIResponse(response, GoogleAdsContentSchema) as Record<string, string>;
-    }
-  }
-
-  return result;
+  const response = await chat(CAMPAIGN_SYSTEM, userPrompt, { temperature: 0.8, maxTokens: 16384 });
+  return parseAIResponse(response, CampaignPlanResponseSchema);
 }

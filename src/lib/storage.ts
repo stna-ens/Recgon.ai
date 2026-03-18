@@ -15,19 +15,52 @@ export interface Project {
   name: string;
   path: string;
   isGithub?: boolean;
+  githubUrl?: string;
+  lastAnalyzedCommitSha?: string;
   createdAt: string;
   analysis?: ProductAnalysis;
   marketingContent?: MarketingContent[];
   feedbackAnalyses?: FeedbackAnalysis[];
+  campaigns?: Campaign[];
 }
 
 export interface ProductAnalysis {
+  // Core identity
   name: string;
   description: string;
   techStack: string[];
   features: string[];
   targetAudience: string;
   uniqueSellingPoints: string[];
+
+  // Problem & market
+  problemStatement: string;
+  marketOpportunity: string;
+  competitors: { name: string; differentiator: string }[];
+
+  // Business model
+  businessModel: string;
+  revenueStreams: string[];
+  pricingSuggestion: string;
+
+  // Product maturity
+  currentStage: 'idea' | 'mvp' | 'beta' | 'growth' | 'mature';
+
+  // Strategic analysis
+  swot: {
+    strengths: string[];
+    weaknesses: string[];
+    opportunities: string[];
+    threats: string[];
+  };
+  topRisks: string[];
+
+  // Actionable guidance
+  prioritizedNextSteps: string[];
+  gtmStrategy: string;
+  earlyAdopterChannels: string[];
+  growthMetrics: string[];
+
   analyzedAt: string;
 }
 
@@ -38,15 +71,45 @@ export interface MarketingContent {
   generatedAt: string;
 }
 
+export interface Campaign {
+  id: string;
+  type: string;
+  goal: string;
+  duration: string;
+  name: string;
+  plan: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface FeedbackAnalysis {
   id: string;
   rawFeedback: string[];
   sentiment: string;
+  sentimentBreakdown: { positive: number; neutral: number; negative: number };
   themes: string[];
   featureRequests: string[];
   bugs: string[];
+  praises: string[];
   developerPrompts: string[];
   analyzedAt: string;
+}
+
+export function saveCampaignToProject(projectId: string, campaign: Campaign, userId?: string): boolean {
+  const project = getProject(projectId, userId);
+  if (!project) return false;
+  if (!project.campaigns) project.campaigns = [];
+  project.campaigns.unshift(campaign);
+  saveProject(project);
+  return true;
+}
+
+export function saveFeedbackToProject(projectId: string, analysis: FeedbackAnalysis, userId?: string): boolean {
+  const project = getProject(projectId, userId);
+  if (!project) return false;
+  if (!project.feedbackAnalyses) project.feedbackAnalyses = [];
+  project.feedbackAnalyses.unshift(analysis);
+  saveProject(project);
+  return true;
 }
 
 function getProjectsFile(): string {

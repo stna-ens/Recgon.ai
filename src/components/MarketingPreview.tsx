@@ -5,19 +5,13 @@ import { useState } from 'react';
 interface MarketingPreviewProps {
   platform: string;
   content: Record<string, string>;
-  imageUrl?: string | null;
-  videoPath?: string | null;
   productName?: string;
-  isGeneratingVideo?: boolean;
 }
 
 export default function MarketingPreview({
   platform,
   content,
-  imageUrl,
-  videoPath,
   productName,
-  isGeneratingVideo,
 }: MarketingPreviewProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [captionExpanded, setCaptionExpanded] = useState(false);
@@ -28,28 +22,7 @@ export default function MarketingPreview({
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // Download handlers
-  const handleDownloadImage = () => {
-    if (videoPath) {
-      const link = document.createElement('a');
-      link.href = `/api/marketing/video?path=${encodeURIComponent(videoPath)}`;
-      link.download = `${platform}-post-${Date.now()}.mp4`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else if (imageUrl) {
-      const link = document.createElement('a');
-      link.href = imageUrl;
-      link.download = `${platform}-post-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
-  const isVideo = platform === 'instagram' || platform === 'tiktok';
   const isTikTok = platform === 'tiktok';
-  const videoUrl = videoPath ? `/api/marketing/video?path=${encodeURIComponent(videoPath)}` : null;
   const caption = content.caption || '';
   const hashtags = content.hashtags || '';
   const brandName = productName || 'yourbrand';
@@ -63,47 +36,18 @@ export default function MarketingPreview({
   const shadow = 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))';
   const textShadow = '0 1px 4px rgba(0,0,0,0.6)';
 
-  // ── Shared: media background ──
-  const MediaBackground = () => {
-    if (isVideo && videoUrl) {
-      return (
-        <video src={videoUrl} autoPlay muted loop playsInline
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-      );
-    }
-    if (imageUrl) {
-      return (
-        <img src={imageUrl} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-      );
-    }
-    return (
-      <div style={{
-        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-        background: isTikTok
-          ? 'linear-gradient(145deg, #010101, #161823)'
-          : 'linear-gradient(145deg, #1a1a2e, #16213e, #0f3460)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
-        color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500,
-      }}>
-        {isGeneratingVideo ? (
-          <>
-            <svg className="loader-spinner" style={{width: 24, height: 24, borderRightColor: 'transparent', borderWidth: 2}}></svg>
-            Generating Video...
-          </>
-        ) : (
-          <span style={{ color: 'rgba(255,100,100,0.8)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            Video generation failed
-          </span>
-        )}
-      </div>
-    );
-  };
+  const MediaBackground = () => (
+    <div style={{
+      position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+      background: isTikTok
+        ? 'linear-gradient(145deg, #010101, #161823)'
+        : 'linear-gradient(145deg, #1a1a2e, #16213e, #0f3460)',
+    }} />
+  );
 
   // ── TikTok UI Chrome ──
   const TikTokChrome = () => (
     <>
-      {/* Top Bar */}
       <div style={{
         position: 'absolute', top: 50, left: 0, right: 0, padding: '0 16px',
         display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, zIndex: 10,
@@ -113,19 +57,16 @@ export default function MarketingPreview({
         <span style={{ color: 'white', fontSize: 15, fontWeight: 700, textShadow }}>For You</span>
       </div>
 
-      {/* Search icon top-right */}
       <div style={{ position: 'absolute', top: 50, right: 16, zIndex: 10 }}>
         <svg width="22" height="22" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24" style={{ filter: shadow }}>
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
       </div>
 
-      {/* Right Side Actions */}
       <div style={{
         position: 'absolute', right: 12, bottom: 160,
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, zIndex: 10,
       }}>
-        {/* Profile */}
         <div style={{ position: 'relative', marginBottom: 8 }}>
           <div style={{
             width: 44, height: 44, borderRadius: '50%', border: '2px solid white',
@@ -142,35 +83,30 @@ export default function MarketingPreview({
             <span style={{ color: 'white', fontSize: 14, fontWeight: 700, lineHeight: 1 }}>+</span>
           </div>
         </div>
-        {/* Like */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <svg width="30" height="30" fill="white" viewBox="0 0 24 24" style={{ filter: shadow }}>
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
           <span style={{ color: 'white', fontSize: 12, fontWeight: 600, textShadow }}>18.5K</span>
         </div>
-        {/* Comment */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <svg width="28" height="28" fill="white" viewBox="0 0 24 24" style={{ filter: shadow }}>
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
           <span style={{ color: 'white', fontSize: 12, fontWeight: 600, textShadow }}>342</span>
         </div>
-        {/* Bookmark */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <svg width="26" height="26" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24" style={{ filter: shadow }}>
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
           </svg>
           <span style={{ color: 'white', fontSize: 12, fontWeight: 600, textShadow }}>Save</span>
         </div>
-        {/* Share */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <svg width="26" height="26" fill="white" viewBox="0 0 24 24" style={{ filter: shadow }}>
             <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/>
           </svg>
           <span style={{ color: 'white', fontSize: 12, fontWeight: 600, textShadow }}>Share</span>
         </div>
-        {/* Spinning music disc */}
         <div style={{
           width: 36, height: 36, borderRadius: '50%',
           border: '3px solid rgba(255,255,255,0.3)',
@@ -181,7 +117,6 @@ export default function MarketingPreview({
         </div>
       </div>
 
-      {/* Bottom: Username + Caption */}
       <div style={{ position: 'absolute', bottom: 70, left: 0, right: 60, padding: '0 14px', zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <span style={{ color: 'white', fontWeight: 700, fontSize: 14, textShadow }}>{handle}</span>
@@ -199,14 +134,12 @@ export default function MarketingPreview({
             {hashtags}
           </p>
         )}
-        {/* Sound bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
           <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 18c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3zM21 16c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3z"/></svg>
           <span style={{ color: 'white', fontSize: 11, textShadow }}>Original Sound - {brandName}</span>
         </div>
       </div>
 
-      {/* TikTok Bottom Nav */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
         display: 'flex', alignItems: 'center', justifyContent: 'space-around', zIndex: 10,
@@ -221,7 +154,6 @@ export default function MarketingPreview({
           <svg width="22" height="22" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>Discover</span>
         </div>
-        {/* TikTok Create Button */}
         <div style={{
           width: 44, height: 30, borderRadius: 8, position: 'relative', overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -247,7 +179,6 @@ export default function MarketingPreview({
   // ── Instagram UI Chrome ──
   const InstagramChrome = () => (
     <>
-      {/* Top Bar */}
       <div style={{
         position: 'absolute', top: 50, left: 0, right: 0, padding: '0 16px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10,
@@ -259,7 +190,6 @@ export default function MarketingPreview({
         </svg>
       </div>
 
-      {/* Right Side Actions */}
       <div style={{
         position: 'absolute', right: 12, bottom: 160,
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, zIndex: 10,
@@ -291,7 +221,6 @@ export default function MarketingPreview({
         }} />
       </div>
 
-      {/* Bottom: Username + Caption */}
       <div style={{ position: 'absolute', bottom: 70, left: 0, right: 60, padding: '0 14px', zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, overflow: 'hidden' }}>
           <div style={{
@@ -340,7 +269,6 @@ export default function MarketingPreview({
         )}
       </div>
 
-      {/* IG Bottom Nav */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0, height: 64,
         display: 'flex', alignItems: 'flex-start', justifyContent: 'space-around', paddingTop: 10, zIndex: 10,
@@ -356,36 +284,23 @@ export default function MarketingPreview({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-      {/* iPhone Frame */}
       <div style={{
         width: 375, maxWidth: '100%', background: '#000', borderRadius: 40,
         overflow: 'hidden', boxShadow: '0 25px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)',
         position: 'relative', border: '4px solid #1a1a1a',
       }}>
-        {/* Dynamic Island */}
         <div style={{
           position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
           width: 126, height: 36, background: '#000', borderRadius: 20, zIndex: 30,
         }} />
-
-        {/* Screen */}
         <div style={{ position: 'relative', aspectRatio: '9/19.5', overflow: 'hidden', background: '#000' }}>
           <MediaBackground />
           {isTikTok ? <TikTokChrome /> : <InstagramChrome />}
         </div>
       </div>
 
-      {/* Action Buttons */}
       <div style={{ display: 'flex', gap: 12, width: 375, maxWidth: '100%' }}>
-        <button className="btn btn-primary" onClick={handleDownloadImage} disabled={!videoPath && !imageUrl}
-          style={{ flex: 1, justifyContent: 'center' }}>
-          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Download {isVideo ? 'Video' : 'Image'}
-        </button>
-        <button className="btn btn-secondary" onClick={() => handleCopy('caption', `${caption}\n\n${hashtags}`)}
+        <button className="btn btn-primary" onClick={() => handleCopy('caption', `${caption}\n\n${hashtags}`)}
           style={{ flex: 1, justifyContent: 'center' }}>
           {copiedKey === 'caption' ? '✓ Copied!' : 'Copy Caption + Tags'}
         </button>

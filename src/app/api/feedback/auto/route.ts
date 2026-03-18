@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchInstagramProfileComments } from '@/lib/instagramScraper';
 import { analyzeFeedback } from '@/lib/feedbackEngine';
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, FEEDBACK_LIMIT } from '@/lib/rateLimit';
@@ -7,31 +8,31 @@ import { auth } from '@/auth';
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') ?? 'local';
-  if (isRateLimited(`feedback:${ip}`, FEEDBACK_LIMIT)) {
+  if (isRateLimited(`feedback-auto:${ip}`, FEEDBACK_LIMIT)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
   try {
+    validateEnv();
     const body = await request.json();
-    const { feedback, projectId } = body as { feedback: string[]; projectId?: string };
+    const { profileUrl, projectId } = body as { profileUrl: string; projectId?: string };
 
-    if (!feedback || !Array.isArray(feedback) || feedback.length === 0) {
-      return NextResponse.json(
-        { error: 'feedback must be a non-empty array of strings' },
-        { status: 400 }
-      );
+    if (!profileUrl || !profileUrl.trim()) {
+      return NextResponse.json({ error: 'profileUrl is required' }, { status: 400 });
     }
 
-    validateEnv();
-    console.log(`[API Analyze] Analyzing ${feedback.length} items.`);
-    const result = await analyzeFeedback(feedback);
-    console.log(`[API Analyze] Analysis complete.`);
+    console.log(`[API Auto] Fetching comments for profile: ${profileUrl}`);
+    const comments = await fetchInstagramProfileComments(profileUrl);
+    console.log(`[API Auto] Retrieved ${comments.length} comments. Analyzing...`);
+
+    const result = await analyzeFeedback(comments);
+    console.log(`[API Auto] Analysis complete.`);
 
     if (projectId) {
       const session = await auth();
       const analysis = {
         id: generateId(),
-        rawFeedback: feedback,
+        rawFeedback: comments,
         sentiment: result.overallSentiment,
         sentimentBreakdown: result.sentimentBreakdown,
         themes: result.themes,
@@ -44,9 +45,9 @@ export async function POST(request: NextRequest) {
       saveFeedbackToProject(projectId, analysis, session?.user?.id);
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({ comments, analysis: result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Feedback analysis failed';
+    const message = error instanceof Error ? error.message : 'Auto feedback failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

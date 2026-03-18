@@ -24,7 +24,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Marketing Content',
-    desc: 'Generate copy, images, and video for Instagram, TikTok, and Google Ads.',
+    desc: 'Generate copy and images for Instagram, TikTok, and Google Ads.',
   },
   {
     icon: (

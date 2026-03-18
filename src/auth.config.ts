@@ -20,13 +20,10 @@ export const authConfig = {
       }
       return token;
     },
-    session({ session, token }: {
-      session: { user?: { id?: string; nickname?: string } };
-      token: Record<string, unknown>;
-    }) {
+    session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.nickname = token.nickname as string;
+        (session.user as { id?: string; nickname?: string }).id = token.id as string;
+        (session.user as { id?: string; nickname?: string }).nickname = token.nickname as string;
       }
       return session;
     },

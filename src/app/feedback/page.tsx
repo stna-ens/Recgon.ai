@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FeedbackPanel from '@/components/FeedbackPanel';
+import Select from '@/components/Select';
 
 interface FeedbackResult {
   overallSentiment: string;
@@ -13,42 +14,134 @@ interface FeedbackResult {
   developerPrompts: string[];
 }
 
+interface Project {
+  id: string;
+  name: string;
+}
+
+interface HistoryEntry {
+  id: string;
+  projectId: string;
+  projectName: string;
+  sentiment: string;
+  sentimentBreakdown: { positive: number; neutral: number; negative: number };
+  themes: string[];
+  featureRequests: string[];
+  bugs: string[];
+  praises: string[];
+  developerPrompts: string[];
+  rawFeedback: string[];
+  analyzedAt: string;
+}
+
+type Mode = 'auto' | 'manual';
+
+const SENTIMENT_COLOR: Record<string, string> = {
+  positive: '#10b981',
+  negative: '#ef4444',
+  mixed: '#f59e0b',
+  neutral: '#6b7280',
+};
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
 export default function FeedbackPage() {
-  const [activeTab, setActiveTab] = useState<'paste' | 'fetch'>('paste');
+  const [mode, setMode] = useState<Mode>('auto');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+
+  // Auto mode
+  const [profileUrl, setProfileUrl] = useState('');
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [fetchedComments, setFetchedComments] = useState<string[] | null>(null);
+
+  // Manual mode
   const [feedbackText, setFeedbackText] = useState('');
-  const [instagramUrl, setInstagramUrl] = useState('');
-  const [fetching, setFetching] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+
   const [result, setResult] = useState<FeedbackResult | null>(null);
   const [error, setError] = useState('');
+  const [savedToProject, setSavedToProject] = useState(false);
 
-  const handleAnalyze = async () => {
-    if (!feedbackText.trim()) return;
+  // History
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    // Split by newlines and filter empty
+  useEffect(() => {
+    fetch('/api/projects').then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
+    loadHistory();
+  }, []);
+
+  function loadHistory() {
+    fetch('/api/feedback/history').then((r) => r.ok ? r.json() : []).then(setHistory).catch(() => {});
+  }
+
+  // ── Auto mode ────────────────────────────────────────────────────────────────
+  const handleAutoAnalyze = async () => {
+    if (!profileUrl.trim()) return;
+    setAutoLoading(true);
+    setError('');
+    setResult(null);
+    setFetchedComments(null);
+    setSavedToProject(false);
+
+    try {
+      const res = await fetch('/api/feedback/auto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileUrl, projectId: selectedProjectId || undefined }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Auto analysis failed');
+      }
+      const data = await res.json();
+      setFetchedComments(data.comments);
+      setResult(data.analysis);
+      if (selectedProjectId) {
+        setSavedToProject(true);
+        loadHistory();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Auto analysis failed');
+    } finally {
+      setAutoLoading(false);
+    }
+  };
+
+  // ── Manual mode ───────────────────────────────────────────────────────────────
+  const handleManualAnalyze = async () => {
     const items = feedbackText
       .split('\n')
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
-
     if (items.length === 0) return;
 
     setAnalyzing(true);
     setError('');
     setResult(null);
+    setSavedToProject(false);
 
     try {
       const res = await fetch('/api/feedback/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedback: items }),
+        body: JSON.stringify({ feedback: items, projectId: selectedProjectId || undefined }),
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Analysis failed');
       }
-      const data = await res.json();
-      setResult(data);
+      setResult(await res.json());
+      if (selectedProjectId) {
+        setSavedToProject(true);
+        loadHistory();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed');
     } finally {
@@ -62,15 +155,11 @@ export default function FeedbackPage() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      // Parse CSV: split by newlines, strip quotes, skip header if it looks like one
       const lines = text.split(/\r?\n/).map((l) => l.replace(/^["']|["']$/g, '').trim()).filter(Boolean);
       const isHeader = lines[0] && /^(feedback|comment|review|text|message)$/i.test(lines[0]);
-      const items = isHeader ? lines.slice(1) : lines;
-      setFeedbackText(items.join('\n'));
-      setActiveTab('paste');
+      setFeedbackText((isHeader ? lines.slice(1) : lines).join('\n'));
     };
     reader.readAsText(file);
-    // Reset so the same file can be re-uploaded if needed
     e.target.value = '';
   };
 
@@ -87,136 +176,172 @@ The onboarding tutorial was super helpful
 Please add multi-language support, we have a global team`);
   };
 
-  const handleFetchComments = async () => {
-    if (!instagramUrl.trim()) return;
-    setFetching(true);
-    setError('');
-    
-    try {
-      const res = await fetch('/api/feedback/fetch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: instagramUrl, platform: 'instagram' }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to fetch comments');
-      }
-      const data = await res.json();
-      const commentsText = data.comments.join('\n');
-      setFeedbackText(commentsText);
-      setActiveTab('paste'); // switch to paste tab to show them and allow manual edit if needed
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch comments');
-    } finally {
-      setFetching(false);
-    }
-  };
+  const isLoading = autoLoading || analyzing;
 
   return (
     <div>
       <div className="page-header">
         <h2>Feedback Center</h2>
-        <p>Paste user feedback or fetch comments directly from Instagram</p>
+        <p>Connect your Instagram profile to get automatic AI-powered developer feedback from your audience</p>
       </div>
 
+      {/* Mode toggle */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
         <button
-          className={`btn ${activeTab === 'paste' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('paste')}
+          className={`btn ${mode === 'auto' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => { setMode('auto'); setResult(null); setError(''); }}
+          style={{ padding: '8px 16px', borderRadius: 'var(--radius-pill)', fontSize: 13, fontWeight: 500 }}
+        >
+          Instagram Auto-Fetch
+        </button>
+        <button
+          className={`btn ${mode === 'manual' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => { setMode('manual'); setResult(null); setError(''); }}
           style={{ padding: '8px 16px', borderRadius: 'var(--radius-pill)', fontSize: 13, fontWeight: 500 }}
         >
           Paste Manually
         </button>
-        <button
-          className={`btn ${activeTab === 'fetch' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => setActiveTab('fetch')}
-          style={{ padding: '8px 16px', borderRadius: 'var(--radius-pill)', fontSize: 13, fontWeight: 500 }}
-        >
-          Auto-Fetch URL
-        </button>
       </div>
 
-      {activeTab === 'fetch' && (
+      {/* Project selector */}
+      <div className="glass-card" style={{ marginBottom: 24, padding: '16px 20px' }}>
+        <label className="form-label" style={{ marginBottom: 8 }}>
+          Save to Project <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span>
+        </label>
+        <Select
+          value={selectedProjectId}
+          onChange={setSelectedProjectId}
+          placeholder="— Don't save —"
+          options={[
+            { value: '', label: "— Don't save —" },
+            ...projects.map((p) => ({ value: p.id, label: p.name })),
+          ]}
+          style={{ maxWidth: 400 }}
+        />
+      </div>
+
+      {/* ── Auto mode ── */}
+      {mode === 'auto' && (
         <div className="glass-card animate-fade-up" style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Fetch Instagram Comments</h3>
-          <div className="form-group">
-            <label className="form-label">Instagram Post or Reel URL</label>
+          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Your Instagram Profile</h3>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+            Paste your profile link below. The system will automatically scrape comments from your recent posts and generate developer feedback.
+          </p>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Instagram Profile URL</label>
             <div style={{ display: 'flex', gap: 12 }}>
               <input
                 type="text"
                 className="form-input"
-                placeholder="https://www.instagram.com/p/ABC123xyz/"
-                value={instagramUrl}
-                onChange={(e) => setInstagramUrl(e.target.value)}
+                placeholder="https://www.instagram.com/yourusername/"
+                value={profileUrl}
+                onChange={(e) => setProfileUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAutoAnalyze()}
               />
               <button
                 className="btn btn-primary"
-                onClick={handleFetchComments}
-                disabled={fetching || !instagramUrl.trim()}
+                onClick={handleAutoAnalyze}
+                disabled={autoLoading || !profileUrl.trim()}
                 style={{ whiteSpace: 'nowrap' }}
               >
-                {fetching ? <><svg className="loader-spinner" style={{width:16, height:16, borderRightColor:'transparent', borderWidth:2}}></svg> Fetching</> : 'Fetch'}
+                {autoLoading ? (
+                  <><svg className="loader-spinner" style={{ width: 16, height: 16, borderRightColor: 'transparent', borderWidth: 2 }} /> Analyzing...</>
+                ) : (
+                  'Fetch & Analyze'
+                )}
               </button>
             </div>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>
-              Provide a public Instagram post or reel URL to automatically extract user comments for feedback analysis.
-            </p>
           </div>
+
+          {autoLoading && (
+            <div style={{ marginTop: 16, fontSize: 13, color: 'var(--text-muted)' }}>
+              <p>Visiting your profile, collecting comments from recent posts, and running AI analysis. This may take up to a minute...</p>
+            </div>
+          )}
+
+          {fetchedComments && !autoLoading && (
+            <div style={{ marginTop: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                Collected <strong>{fetchedComments.length}</strong> comments from your recent posts.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="glass-card" style={{ marginBottom: 24, display: activeTab === 'paste' ? 'block' : 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <label className="form-label" style={{ margin: 0 }}>User Feedback</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-              Import CSV
-              <input type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleCSVUpload} />
-            </label>
-            <button className="btn btn-secondary btn-sm" onClick={loadSampleFeedback}>
-              Load Sample
-            </button>
+      {/* ── Manual mode ── */}
+      {mode === 'manual' && (
+        <>
+          <div className="glass-card" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <label className="form-label" style={{ margin: 0 }}>User Feedback</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  Import CSV
+                  <input type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleCSVUpload} />
+                </label>
+                <button className="btn btn-secondary btn-sm" onClick={loadSampleFeedback}>
+                  Load Sample
+                </button>
+              </div>
+            </div>
+            <textarea
+              className="form-textarea"
+              placeholder="Paste user feedback here, one per line...&#10;&#10;Example:&#10;Love the app but it crashes on large files&#10;Can you add CSV export?&#10;The search doesn't handle special characters"
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              style={{ minHeight: 200 }}
+            />
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+              Each line is treated as a separate feedback item.
+            </p>
           </div>
-        </div>
-        <textarea
-          className="form-textarea"
-          placeholder="Paste user feedback here, one per line...&#10;&#10;Example:&#10;Love the app but it crashes on large files&#10;Can you add CSV export?&#10;The search doesn't handle special characters"
-          value={feedbackText}
-          onChange={(e) => setFeedbackText(e.target.value)}
-          style={{ minHeight: 200 }}
-        />
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-          Each line is treated as a separate feedback item. Paste comments from social media, app reviews, forums, etc.
-        </p>
-      </div>
 
-      <button
-        className="btn btn-primary btn-lg"
-        onClick={handleAnalyze}
-        disabled={analyzing || !feedbackText.trim()}
-        style={{ width: '100%', justifyContent: 'center', marginBottom: 24, padding: '16px' }}
-      >
-        {analyzing ? (
-          <><svg className="loader-spinner" style={{width:16, height:16, borderRightColor:'transparent', borderWidth:2}}></svg> Analyzing...</>
-        ) : (
-          'Analyze & Generate Prompts'
-        )}
-      </button>
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={handleManualAnalyze}
+            disabled={analyzing || !feedbackText.trim()}
+            style={{ width: '100%', justifyContent: 'center', marginBottom: 24, padding: '16px' }}
+          >
+            {analyzing ? (
+              <><svg className="loader-spinner" style={{ width: 16, height: 16, borderRightColor: 'transparent', borderWidth: 2 }} /> Analyzing...</>
+            ) : (
+              'Analyze & Generate Prompts'
+            )}
+          </button>
+        </>
+      )}
 
+      {/* Error */}
       {error && (
         <div className="glass-card" style={{ borderColor: 'var(--danger)', marginBottom: 20 }}>
           <p style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
             {error}
           </p>
         </div>
       )}
 
+      {/* Saved confirmation */}
+      {savedToProject && !isLoading && (
+        <div className="glass-card" style={{ borderColor: 'var(--success)', marginBottom: 20 }}>
+          <p style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Analysis saved to <strong>{projects.find((p) => p.id === selectedProjectId)?.name}</strong>
+          </p>
+        </div>
+      )}
+
+      {/* Loading spinner (manual mode) */}
       {analyzing && (
         <div className="loader">
           <div className="loader-spinner" />
@@ -224,7 +349,8 @@ Please add multi-language support, we have a global team`);
         </div>
       )}
 
-      {result && !analyzing && (
+      {/* Result */}
+      {result && !isLoading && (
         <FeedbackPanel
           sentiment={result.overallSentiment}
           sentimentBreakdown={result.sentimentBreakdown}
@@ -234,6 +360,56 @@ Please add multi-language support, we have a global team`);
           praises={result.praises}
           developerPrompts={result.developerPrompts}
         />
+      )}
+
+      {/* ── History ── */}
+      {history.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 16 }}>
+            Saved Analyses
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {history.map((entry) => {
+              const isExpanded = expandedId === entry.id;
+              const sentimentColor = SENTIMENT_COLOR[entry.sentiment] ?? 'var(--text-muted)';
+              return (
+                <div key={entry.id} className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+                      padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer',
+                      textAlign: 'left', color: 'var(--text-primary)',
+                    }}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: sentimentColor + '22', color: sentimentColor, border: `1px solid ${sentimentColor}55`, textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                      {entry.sentiment}
+                    </span>
+                    <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{entry.projectName}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDate(entry.analyzedAt)}</span>
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+
+                  {isExpanded && (
+                    <div style={{ borderTop: '1px solid var(--border)', padding: '16px 20px' }}>
+                      <FeedbackPanel
+                        sentiment={entry.sentiment}
+                        sentimentBreakdown={entry.sentimentBreakdown}
+                        themes={entry.themes}
+                        featureRequests={entry.featureRequests}
+                        bugs={entry.bugs}
+                        praises={entry.praises}
+                        developerPrompts={entry.developerPrompts}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );

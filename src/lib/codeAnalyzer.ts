@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { chat } from './openai';
-import { ANALYZE_SYSTEM, analyzeUserPrompt } from './prompts';
+import { ANALYZE_SYSTEM, analyzeUserPrompt, ANALYZE_UPDATE_SYSTEM, analyzeUpdateUserPrompt } from './prompts';
 import { AnalysisResultSchema, parseAIResponse } from './schemas';
 
 const IGNORED_DIRS = new Set([
@@ -94,6 +94,21 @@ function readKeyFiles(dir: string): Record<string, string> {
 }
 
 export type { AnalysisResult } from './schemas';
+
+export async function analyzeCodebaseUpdate(
+  existingAnalysis: import('./schemas').AnalysisResult,
+  diffStr: string,
+  onProgress?: (message: string) => void,
+): Promise<import('./schemas').AnalysisResult> {
+  onProgress?.('Analyzing code changes...');
+  const response = await chat(
+    ANALYZE_UPDATE_SYSTEM,
+    analyzeUpdateUserPrompt(existingAnalysis, diffStr),
+    { temperature: 0.4, maxTokens: 8192 },
+  );
+  onProgress?.('Parsing and validating updated analysis...');
+  return parseAIResponse(response, AnalysisResultSchema);
+}
 
 export async function analyzeCodebase(
   projectPath: string,

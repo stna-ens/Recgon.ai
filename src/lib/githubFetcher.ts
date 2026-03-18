@@ -4,6 +4,78 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import os from 'os';
 
+export interface CommitInfo {
+  sha: string;
+  message: string;
+  date: string;
+  url: string;
+}
+
+export async function getLatestCommit(githubUrl: string): Promise<CommitInfo | null> {
+  try {
+    // Extract owner/repo from https://github.com/owner/repo or .../owner/repo.git
+    const match = githubUrl.match(/github\.com\/([^/]+\/[^/]+?)(?:\.git)?$/);
+    if (!match) return null;
+    const repo = match[1];
+
+    const res = await fetch(`https://api.github.com/repos/${repo}/commits/HEAD`, {
+      headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'PMAI-App' },
+      next: { revalidate: 0 },
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return {
+      sha: data.sha,
+      message: data.commit?.message?.split('\n')[0] ?? '',
+      date: data.commit?.committer?.date ?? data.commit?.author?.date ?? '',
+      url: data.html_url,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export interface CommitDiff {
+  files: Array<{ filename: string; status: string; patch?: string }>;
+  commits: Array<{ message: string }>;
+}
+
+export async function getCommitDiff(
+  githubUrl: string,
+  baseSha: string,
+  headSha: string,
+): Promise<CommitDiff | null> {
+  try {
+    const match = githubUrl.match(/github\.com\/([^/]+\/[^/]+?)(?:\.git)?$/);
+    if (!match) return null;
+    const repo = match[1];
+
+    const res = await fetch(
+      `https://api.github.com/repos/${repo}/compare/${baseSha}...${headSha}`,
+      {
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'PMAI-App' },
+        next: { revalidate: 0 },
+      },
+    );
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return {
+      files: (data.files ?? []).map((f: { filename: string; status: string; patch?: string }) => ({
+        filename: f.filename,
+        status: f.status,
+        patch: f.patch,
+      })),
+      commits: (data.commits ?? []).map((c: { commit: { message: string } }) => ({
+        message: c.commit?.message?.split('\n')[0] ?? '',
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
 const execAsync = promisify(exec);
 
 export async function cloneGitHubRepo(url: string, projectId: string): Promise<string> {

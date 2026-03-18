@@ -13,13 +13,10 @@ export async function POST(request: NextRequest) {
   try {
     validateEnv();
     const body = await request.json();
-    const { projectId, platform, customPrompt, generateVideo, generateImage } = body as { projectId: string; platform: Platform; customPrompt?: string; generateVideo?: boolean; generateImage?: boolean };
+    const { projectId, platform, customPrompt } = body as { projectId: string; platform: Platform; customPrompt?: string };
 
     if (!projectId || !platform) {
-      return NextResponse.json(
-        { error: 'projectId and platform are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'projectId and platform are required' }, { status: 400 });
     }
 
     const project = getProject(projectId);
@@ -28,18 +25,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (!project.analysis) {
-      return NextResponse.json(
-        { error: 'Project has not been analyzed yet. Analyze it first.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Project has not been analyzed yet. Analyze it first.' }, { status: 400 });
     }
 
-    const result = await generateMarketingContent(project.analysis, platform, customPrompt, generateVideo ?? false, generateImage ?? false);
+    const result = await generateMarketingContent(project.analysis, platform, customPrompt);
 
-    // Save to project
-    if (!project.marketingContent) {
-      project.marketingContent = [];
-    }
+    if (!project.marketingContent) project.marketingContent = [];
     project.marketingContent.push({
       id: generateId(),
       platform,

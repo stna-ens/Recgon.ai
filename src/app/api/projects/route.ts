@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       name,
       path: actualPath,
       isGithub,
+      ...(isGithub && { githubUrl: rawPath }),
       createdAt: new Date().toISOString(),
     };
 

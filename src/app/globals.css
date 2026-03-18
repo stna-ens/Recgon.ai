@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* === LIGHT MODE (DEFAULT) - APPLE WABI AESTHETIC === */
 :root {
@@ -9,6 +9,7 @@
   /* Mesh Aura Colors */
   --aura-1: rgba(0, 122, 255, 0.12); /* Soft iOS Blue */
   --aura-2: rgba(255, 45, 85, 0.10);  /* Soft iOS Pink */
+  --aura-3: transparent; /* Dark mode only */
   
   /* Liquid Glass (Light) */
   --glass-substrate: rgba(255, 255, 255, 0.75);
@@ -42,7 +43,11 @@
   --danger: #FF3B30;
   --text-secondary: #3d3d3f;
   --text-muted: #86868b;
-  --accent-secondary: rgba(0, 0, 0, 0.45);
+  --accent-secondary: var(--signature);
+
+  /* Signature */
+  --signature: #e8a8c4;
+  --signature-rgb: 232, 168, 196;
 
   /* Layout */
   --r-sm: 14px;
@@ -58,10 +63,10 @@
   --bg-deep: #000000;
   --bg-content: rgba(20, 20, 22, 0.4);
   
-  /* Mesh Aura Colors */
-  --aura-1: rgba(255, 255, 255, 0.04); 
-  --aura-2: rgba(255, 255, 255, 0.03);
-  
+  /* Signature */
+  --signature: #f0b8d0;
+  --signature-rgb: 240, 184, 208;
+
   /* Liquid Glass (Dark) */
   --glass-substrate: rgba(20, 20, 22, 0.6);
   --glass-hover: rgba(30, 30, 34, 0.8);
@@ -87,7 +92,7 @@
   --danger: #FF453A;
   --text-secondary: rgba(255, 255, 255, 0.85);
   --text-muted: #8e8e93;
-  --accent-secondary: rgba(255, 255, 255, 0.5);
+  --accent-secondary: var(--signature);
 
   /* Buttons */
   --btn-primary-bg: #ffffff;
@@ -130,35 +135,7 @@ body {
 
 }
 
-.mesh-blob {
-  position: absolute;
-  /* Removed filter: blur(120px) - this caps framerate at 60fps or lower during animation */
-  border-radius: 50%;
-  will-change: transform;
-  transform: translate3d(0,0,0); /* Hardware acceleration */
-  backface-visibility: hidden;
-  perspective: 1000px;
-  animation: breathe 20s infinite ease-in-out alternate;
-}
-
-/* Replaced heavy filter blurs with zero-cost radial-gradients to unlock 120Hz+ */
-.mesh-blob-1 { 
-  width: 60vw; height: 60vw; 
-  background: radial-gradient(circle, var(--aura-1) 0%, transparent 60%); 
-  top: 0%; left: 10%; 
-  animation-delay: 0s; 
-}
-.mesh-blob-2 { 
-  width: 70vw; height: 70vw; 
-  background: radial-gradient(circle, var(--aura-2) 0%, transparent 60%); 
-  bottom: -10%; right: 0%; 
-  animation-delay: -5s; 
-}
-
-@keyframes breathe {
-  0%   { transform: translate3d(0,0,0) scale(1); opacity: 0.8; }
-  100% { transform: translate3d(5%, 5%, 0) scale(1.1); opacity: 1; }
-}
+.mesh-blob { display: none; }
 
 /* Add subtle grain for premium material feel */
 .mesh-bg::after {
@@ -229,7 +206,8 @@ body {
 .nav-link.active {
   color: var(--txt-pure);
   background: var(--glass-hover);
-  box-shadow: var(--edge-highlight), var(--edge-shadow), var(--edge-rim);
+  box-shadow: var(--edge-highlight), var(--edge-shadow), var(--edge-rim),
+    inset 0 0 0 1px rgba(var(--signature-rgb), 0.15);
 }
 
 .nav-icon {
@@ -336,18 +314,20 @@ body {
 
 /* === CLEAN CARDS (The Liquid Glass Masterpiece) === */
 .glass-card {
-  background: var(--bg-content);
+  background: var(--bg-content) padding-box,
+    linear-gradient(135deg,
+      rgba(var(--signature-rgb), 0.35) 0%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(var(--signature-rgb), 0.15) 100%) border-box;
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid var(--btn-secondary-border);
+  border: 1px solid transparent;
   border-radius: var(--r-md);
   padding: 32px;
   box-shadow: var(--shadow-float), var(--edge-highlight), var(--edge-shadow);
   transform: translate3d(0,0,0);
   backface-visibility: hidden;
   isolation: isolate;
-  
-  /* Strictly separate composite layers and hint theme color changes */
   will-change: transform;
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
@@ -355,7 +335,11 @@ body {
 }
 
 .glass-card:hover {
-  background: var(--glass-hover);
+  background: var(--glass-hover) padding-box,
+    linear-gradient(135deg,
+      rgba(var(--signature-rgb), 0.55) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(var(--signature-rgb), 0.3) 100%) border-box;
   box-shadow: var(--shadow-deep), var(--edge-highlight), var(--edge-shadow);
   transform: translateY(-2px) translateZ(0);
 }
@@ -474,8 +458,8 @@ body {
 .form-input:focus, .form-textarea:focus, .form-select:focus {
   outline: none;
   background: var(--glass-active);
-  border-color: rgba(0, 122, 255, 0.4);
-  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1), inset 0 2px 4px rgba(0,0,0,0.02);
+  border-color: rgba(var(--signature-rgb), 0.5);
+  box-shadow: 0 0 0 4px rgba(var(--signature-rgb), 0.12), inset 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .form-input::placeholder, .form-textarea::placeholder { color: var(--txt-faint); }
@@ -486,6 +470,59 @@ body {
   background-position: right 16px center;
 }
 .form-select option { background: var(--bg-deep); color: var(--txt-pure); }
+
+/* === TERMINAL CHAT === */
+.chat-line-user {
+  padding: 10px 24px;
+  background: var(--btn-secondary-bg);
+  border-left: 2px solid var(--txt-pure);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--txt-pure);
+}
+
+.chat-line-assistant {
+  padding: 14px 24px;
+  font-size: 14px;
+  line-height: 1.75;
+  border-bottom: 1px solid var(--btn-secondary-border);
+}
+
+.chat-input-prefix {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 16px;
+  color: var(--txt-muted);
+  padding-right: 10px;
+  flex-shrink: 0;
+  user-select: none;
+  line-height: 1;
+}
+
+.chat-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  font-size: 13px;
+  color: var(--txt-muted);
+  cursor: pointer;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  transition: color 0.15s;
+  border-bottom: 1px solid var(--btn-secondary-border);
+  width: 100%;
+}
+.chat-suggestion:last-child { border-bottom: none; }
+.chat-suggestion:hover { color: var(--txt-pure); }
+.chat-suggestion-prefix {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--signature);
+  font-size: 12px;
+  flex-shrink: 0;
+}
 
 /* === DEVELOPER PROMPTS === */
 .dev-prompt {
@@ -547,7 +584,7 @@ body {
 .loader-spinner {
   width: 32px; height: 32px;
   border: 2px solid var(--btn-secondary-border);
-  border-top-color: var(--txt-pure);
+  border-top-color: var(--signature);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -563,9 +600,25 @@ body {
   color: var(--txt-pure);
 }
 
-@keyframes fadeIn { 
-  from { opacity: 0; transform: translate3d(0,0,0); } 
-  to { opacity: 1; transform: translate3d(0,0,0); } 
+@keyframes pinkBlink {
+  0%, 49.9% { background: var(--signature); box-shadow: 0 0 6px var(--signature); }
+  50%, 100% { background: transparent; box-shadow: none; }
+}
+.dot-streaming {
+  animation: pinkBlink 0.9s linear infinite;
+}
+.dot-typing {
+  background: var(--signature) !important;
+  box-shadow: 0 0 6px var(--signature) !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate3d(0,0,0); }
+  to { opacity: 1; transform: translate3d(0,0,0); }
+}
+@keyframes selectDropdownOpen {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes spin { 
   to { transform: rotate(360deg) translate3d(0,0,0); } 
@@ -590,6 +643,67 @@ body {
 
 .animate-fade-up {
   animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* === MARKETING AGENT PAGE === */
+.campaign-type-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+.campaign-type-card:hover {
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: var(--shadow-float), var(--edge-highlight);
+}
+.campaign-type-card:active {
+  transform: scale(0.97) translateZ(0);
+}
+
+.duration-pill {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s;
+  cursor: pointer;
+}
+.duration-pill:hover {
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+.duration-pill:active {
+  transform: scale(0.97) translateZ(0);
+}
+
+.campaign-tab-btn {
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  transition: color 0.15s, background 0.15s;
+}
+.campaign-tab-btn:hover {
+  background: var(--btn-secondary-hover);
+}
+
+.calendar-card {
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.calendar-card:hover {
+  background: var(--glass-hover);
+}
+
+.inline-btn {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s, opacity 0.15s;
+}
+.inline-btn:hover:not(:disabled) {
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+.inline-btn:active:not(:disabled) {
+  transform: scale(0.96) translateZ(0);
+}
+
+.history-campaign-btn {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s;
+  cursor: pointer;
+}
+.history-campaign-btn:hover {
+  transform: translateY(-1px) translateZ(0);
+  background: var(--glass-hover) !important;
 }
 
 /* Smooth Hardware-Accelerated View Transitions */

@@ -25,6 +25,7 @@ export default async function RootLayout({
             <div className="mesh-bg">
               <div className="mesh-blob mesh-blob-1"></div>
               <div className="mesh-blob mesh-blob-2"></div>
+              <div className="mesh-blob mesh-blob-3"></div>
             </div>
             <AppShell>{children}</AppShell>
           </ThemeProvider>

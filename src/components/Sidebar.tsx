@@ -87,9 +87,9 @@ export default function Sidebar() {
 
   return (
     <>
-      <div className="brand-logo">
+      <a href="/" className="brand-logo" style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}>
         <RecgonLogo size={42} uid="logo-sidebar" />
-      </div>
+      </a>
 
       <nav className="top-nav">
         {NAV_ITEMS.map((item) => {

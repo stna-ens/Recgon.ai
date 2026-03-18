@@ -9,6 +9,6 @@ export async function analyzeFeedback(feedbackItems: string[]): Promise<import('
     .map((item, i) => `[Feedback ${i + 1}]: ${item}`)
     .join('\n\n');
 
-  const response = await chat(FEEDBACK_SYSTEM, feedbackUserPrompt(feedbackStr), { temperature: 0.5, maxTokens: 2000 });
+  const response = await chat(FEEDBACK_SYSTEM, feedbackUserPrompt(feedbackStr), { temperature: 0.5, maxTokens: 8192 });
   return parseAIResponse(response, FeedbackResultSchema);
 }

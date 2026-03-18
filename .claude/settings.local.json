@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(python3 -m json.tool --no-ensure-ascii)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(list\\(d.keys\\(\\)\\)\\)\")",
+      "Bash(ls:*)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git stash:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(pkill -f \"next dev\")"
     ]
   }
 }
