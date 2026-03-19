@@ -147,6 +147,21 @@ export const CampaignPlanResponseSchema = z.object({
 
 export type CampaignPlanResponse = z.infer<typeof CampaignPlanResponseSchema>;
 
+// ── Analytics AI insights ─────────────────────────────────────────────────────
+
+export const AnalyticsInsightsSchema = z.object({
+  overallPerformance: z.enum(['growing', 'stable', 'declining', 'insufficient_data']),
+  summary: z.string(),
+  keyInsights: z.array(z.string()),
+  warnings: z.array(z.string()),
+  opportunities: z.array(z.string()),
+  recommendations: z.array(z.string()),
+  topWin: z.string(),
+  topConcern: z.string(),
+});
+
+export type AnalyticsInsights = z.infer<typeof AnalyticsInsightsSchema>;
+
 // ── Shared parse helper ───────────────────────────────────────────────────────
 
 /**

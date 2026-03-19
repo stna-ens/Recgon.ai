@@ -5,16 +5,8 @@ import { useSession, signOut } from 'next-auth/react';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{
-      background: 'var(--glass-substrate)',
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
-      borderRadius: 'var(--r-md)',
-      padding: '1.75rem 2rem',
-      boxShadow: 'var(--shadow-float)',
-      border: '1px solid rgba(128,128,128,0.1)',
-    }}>
-      <h2 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--txt-pure)', margin: '0 0 1.25rem' }}>{title}</h2>
+    <div className="glass-card">
+      <span className="recgon-label">{title}</span>
       {children}
     </div>
   );
@@ -115,8 +107,10 @@ export default function AccountPage() {
   return (
     <div style={{ maxWidth: '560px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ marginBottom: '0.5rem' }}>
-        <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.25rem' }}>Account</h1>
-        <p style={{ color: 'var(--txt-muted)', margin: 0, fontSize: '0.875rem' }}>{session?.user?.email}</p>
+        <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.25rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>Account</h1>
+        <p style={{ color: 'var(--txt-muted)', margin: 0, fontSize: '0.875rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+          <span style={{ color: 'var(--signature)', opacity: 0.7 }}>›</span> {session?.user?.email}
+        </p>
       </div>
 
       {/* Change Nickname */}
@@ -145,8 +139,8 @@ export default function AccountPage() {
           </button>
         </form>
         {nicknameStatus && (
-          <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: nicknameStatus.type === 'error' ? 'var(--danger)' : 'var(--success)' }}>
-            {nicknameStatus.msg}
+          <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: nicknameStatus.type === 'error' ? 'var(--danger)' : 'var(--success)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+            {nicknameStatus.type === 'error' ? '! ' : '› '}{nicknameStatus.msg}
           </p>
         )}
       </Section>
@@ -173,8 +167,8 @@ export default function AccountPage() {
             />
           </div>
           {emailStatus && (
-            <p style={{ margin: 0, fontSize: '0.85rem', color: emailStatus.type === 'error' ? 'var(--danger)' : 'var(--success)' }}>
-              {emailStatus.msg}
+            <p style={{ margin: 0, fontSize: '0.85rem', color: emailStatus.type === 'error' ? 'var(--danger)' : 'var(--success)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+              {emailStatus.type === 'error' ? '! ' : '› '}{emailStatus.msg}
             </p>
           )}
           <button type="submit" disabled={emailLoading} style={{
@@ -220,8 +214,8 @@ export default function AccountPage() {
             />
           </div>
           {passwordStatus && (
-            <p style={{ margin: 0, fontSize: '0.85rem', color: passwordStatus.type === 'error' ? 'var(--danger)' : 'var(--success)' }}>
-              {passwordStatus.msg}
+            <p style={{ margin: 0, fontSize: '0.85rem', color: passwordStatus.type === 'error' ? 'var(--danger)' : 'var(--success)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+              {passwordStatus.type === 'error' ? '! ' : '› '}{passwordStatus.msg}
             </p>
           )}
           <button type="submit" disabled={passwordLoading} style={{

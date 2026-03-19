@@ -223,7 +223,7 @@ Please add multi-language support, we have a global team`);
       {/* ── Auto mode ── */}
       {mode === 'auto' && (
         <div className="glass-card animate-fade-up" style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Your Instagram Profile</h3>
+          <span className="recgon-label">Your Instagram Profile</span>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
             Paste your profile link below. The system will automatically scrape comments from your recent posts and generate developer feedback.
           </p>
@@ -254,15 +254,17 @@ Please add multi-language support, we have a global team`);
           </div>
 
           {autoLoading && (
-            <div style={{ marginTop: 16, fontSize: 13, color: 'var(--text-muted)' }}>
-              <p>Recgon is visiting your profile, collecting comments from recent posts, and reading the room. This may take up to a minute...</p>
+            <div style={{ marginTop: 16 }}>
+              <p style={{ fontSize: 12, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                <span style={{ color: 'var(--signature)', opacity: 0.7 }}>›</span> scraping profile... this may take up to a minute
+              </p>
             </div>
           )}
 
           {fetchedComments && !autoLoading && (
             <div style={{ marginTop: 16 }}>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                Collected <strong>{fetchedComments.length}</strong> comments from your recent posts.
+              <p style={{ fontSize: 12, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                <span style={{ color: 'var(--success)' }}>›</span> {fetchedComments.length} comments fetched
               </p>
             </div>
           )}
@@ -384,7 +386,7 @@ Please add multi-language support, we have a global team`);
                       {entry.sentiment}
                     </span>
                     <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{entry.projectName}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatDate(entry.analyzedAt)}</span>
+                    <span style={{ fontSize: 12, color: 'var(--txt-muted)', whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{formatDate(entry.analyzedAt)}</span>
                     <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>

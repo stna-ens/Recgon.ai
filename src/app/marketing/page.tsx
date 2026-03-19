@@ -542,7 +542,7 @@ export default function MarketingPage() {
             ))}
 
             <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 10 }}>Campaign Phases</div>
+              <span className="recgon-label" style={{ marginBottom: 10 }}>Campaign Phases</span>
               {plan.phases.map((phase, i) => (
                 <div key={i} className="glass-card" style={{ marginBottom: 10, padding: '18px 22px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -581,7 +581,7 @@ export default function MarketingPage() {
               return (
                 <div key={week} style={{ marginBottom: 22 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Week {week}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '0.04em' }}>week_{week}</div>
                     <div style={{ flex: 1, height: 1, background: 'var(--btn-secondary-border)' }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -700,7 +700,7 @@ export default function MarketingPage() {
                 <div key={i} style={{ marginBottom: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt-pure)' }}>{b.channel}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: ct.color }}>{b.percentage}%</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: ct.color, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{b.percentage}%</span>
                   </div>
                   <div style={{ height: 4, background: 'var(--btn-secondary-border)', borderRadius: 999, marginBottom: 4, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${b.percentage}%`, background: ct.color, borderRadius: 999, transition: 'width 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }} />
@@ -729,7 +729,7 @@ export default function MarketingPage() {
             style={{ transform: historyExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s cubic-bezier(0.16,1,0.3,1)' }}>
             <polyline points="9 18 15 12 9 6"/>
           </svg>
-          Past campaigns ({campaigns.length})
+          <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>// past_campaigns ({campaigns.length})</span>
         </button>
         {historyExpanded && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -753,7 +753,7 @@ export default function MarketingPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt-pure)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.2px' }}>{c.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--txt-muted)', marginTop: 1 }}>{ctConf?.label} · {c.duration} · {new Date(c.createdAt).toLocaleDateString()}</div>
+                      <div style={{ fontSize: 11, color: 'var(--txt-muted)', marginTop: 1, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{ctConf?.label} · {c.duration} · {new Date(c.createdAt).toLocaleDateString()}</div>
                     </div>
                     <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: 'var(--txt-muted)', flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
                   </div>

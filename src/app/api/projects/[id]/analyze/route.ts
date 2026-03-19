@@ -7,15 +7,31 @@ import { isRateLimited, ANALYZE_LIMIT } from '@/lib/rateLimit';
 import { auth } from '@/auth';
 
 function formatDiff(diff: import('@/lib/githubFetcher').CommitDiff): string {
-  const MAX_PATCH_CHARS = 1500;
-  const MAX_FILES = 20;
+  const MAX_PATCH_CHARS = 3000;
+  const MAX_FILES = 25;
 
-  const lines: string[] = [
-    `Changed files (${diff.files.length} total, showing up to ${MAX_FILES}):`,
-    '',
-  ];
+  const lines: string[] = [];
 
-  for (const file of diff.files.slice(0, MAX_FILES)) {
+  if (diff.commits.length > 0) {
+    lines.push('Commit messages:');
+    diff.commits.forEach(c => lines.push(`  - ${c.message}`));
+    lines.push('');
+  }
+
+  // Separate deleted files so they're always included and clearly labeled
+  const deletedFiles = diff.files.filter(f => f.status === 'removed');
+  const otherFiles = diff.files.filter(f => f.status !== 'removed');
+
+  if (deletedFiles.length > 0) {
+    lines.push(`DELETED FILES (${deletedFiles.length}) — remove any features/technologies that were only in these files:`);
+    deletedFiles.forEach(f => lines.push(`  ✕ ${f.filename}`));
+    lines.push('');
+  }
+
+  lines.push(`Modified/added files (${otherFiles.length} total, showing up to ${MAX_FILES}):`);
+  lines.push('');
+
+  for (const file of otherFiles.slice(0, MAX_FILES)) {
     lines.push(`--- ${file.filename} (${file.status}) ---`);
     if (file.patch) {
       lines.push(file.patch.substring(0, MAX_PATCH_CHARS));

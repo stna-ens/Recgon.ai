@@ -58,12 +58,18 @@ ${filesStr}`;
 
 export const ANALYZE_UPDATE_SYSTEM = `You are a senior product manager and startup mentor. You have previously analyzed a codebase and produced a product analysis. You are now given a git diff showing what has changed since your last analysis.
 
-Update the analysis to reflect the new code changes. Only modify fields genuinely affected by the diff — do not change fields the diff doesn't warrant.
+Update the analysis to reflect the new code changes. Follow these rules strictly:
+- DELETED FILES: If a file is listed as deleted, remove any technologies, features, or capabilities that were provided exclusively by that file. For example, if a video generation file is deleted, remove "video generation" from features and remove the relevant API/SDK from techStack.
+- MODIFIED FILES: If a feature or integration is removed from a file (lines starting with "-"), update the analysis to no longer mention it if it no longer exists anywhere.
+- ADDED FILES/CODE: If new functionality is added, update features and techStack accordingly.
+- Only modify fields genuinely affected by the diff — do not change fields the diff doesn't warrant.
 
 Respond with valid JSON only, no markdown, no code fences. Return the complete updated analysis using the exact same JSON structure as before.`;
 
 export function analyzeUpdateUserPrompt(existingAnalysis: object, diffStr: string): string {
-  return `Below is the current product analysis and a git diff showing recent changes to the codebase. Update the analysis to reflect those changes and return the complete updated JSON.
+  return `Below is the current product analysis and a git diff showing recent changes to the codebase. Update the analysis to accurately reflect the current state of the codebase after these changes, and return the complete updated JSON.
+
+Pay special attention to DELETED FILES — if a whole file is removed, the features/technologies it provided must be removed from the analysis unless they exist elsewhere.
 
 CURRENT ANALYSIS:
 ${JSON.stringify(existingAnalysis, null, 2)}
@@ -353,6 +359,32 @@ Goal: ${goal}
 Duration: ${duration}
 
 Create a comprehensive, product-specific campaign plan.`;
+}
+
+// ── Analytics insights ────────────────────────────────────────────────────────
+
+export const ANALYTICS_SYSTEM = `You are a growth analyst and product strategist specializing in web analytics. You receive Google Analytics 4 data and give sharp, actionable insights for indie developers and small startup founders.
+
+Respond with valid JSON only, no markdown, no code fences. Use this exact structure:
+
+{
+  "overallPerformance": "one of: growing | stable | declining | insufficient_data",
+  "summary": "2-3 sentence plain-language summary of how the product is performing — be direct, not corporate",
+  "keyInsights": ["3-5 specific data-backed observations — mention actual numbers from the data"],
+  "warnings": ["1-3 red flags that need attention — be honest about problems"],
+  "opportunities": ["2-4 specific growth opportunities based on what the data reveals"],
+  "recommendations": ["4-6 concrete next actions, prioritized by impact — specific enough to act on this week"],
+  "topWin": "The single most positive thing the data shows — one sentence",
+  "topConcern": "The single most urgent problem the data reveals — one sentence"
+}
+
+Be direct and honest. Mention real numbers. Do not give generic marketing advice. Every insight should be tied to specific data points in what you see.`;
+
+export function analyticsUserPrompt(data: object, days: number): string {
+  return `Analyze this Google Analytics 4 data for the last ${days} days and give me sharp product insights.
+
+DATA:
+${JSON.stringify(data, null, 2)}`;
 }
 
 // ── Image / Video generation ──────────────────────────────────────────────────
