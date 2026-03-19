@@ -51,19 +51,17 @@ export interface AnalyticsData {
   fetchedAt: string;
 }
 
-function makeClient(): BetaAnalyticsDataClient {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON env var is not set');
-  const credentials = JSON.parse(raw);
-  return new BetaAnalyticsDataClient({ credentials });
-}
-
 function num(val: string | null | undefined): number {
   return parseFloat(val ?? '0') || 0;
 }
 
-export async function fetchAnalyticsData(propertyId: string, days = 30): Promise<AnalyticsData> {
-  const client = makeClient();
+export async function fetchAnalyticsData(
+  propertyId: string,
+  serviceAccountJson: string,
+  days = 30,
+): Promise<AnalyticsData> {
+  const credentials = JSON.parse(serviceAccountJson);
+  const client = new BetaAnalyticsDataClient({ credentials });
   const property = `properties/${propertyId}`;
   const startDate = `${days}daysAgo`;
 

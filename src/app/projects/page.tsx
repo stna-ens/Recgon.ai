@@ -8,6 +8,8 @@ interface Project {
   id: string;
   name: string;
   path: string;
+  isGithub?: boolean;
+  lastAnalyzedCommitSha?: string;
   analysis?: {
     description: string;
     techStack: string[];
@@ -16,6 +18,7 @@ interface Project {
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [updateStatuses, setUpdateStatuses] = useState<Record<string, boolean>>({});
   const [showModal, setShowModal] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [projectPath, setProjectPath] = useState('');
@@ -24,13 +27,30 @@ export default function ProjectsPage() {
   const fetchProjects = () => {
     fetch('/api/projects')
       .then((r) => r.json())
-      .then(setProjects)
+      .then((ps: Project[]) => {
+        setProjects(ps);
+        // Check for new commits on analyzed GitHub projects
+        const githubProjects = ps.filter((p) => p.isGithub && p.analysis && p.lastAnalyzedCommitSha);
+        if (githubProjects.length === 0) return;
+        Promise.all(
+          githubProjects.map((p) =>
+            fetch(`/api/projects/${p.id}/check-updates`)
+              .then((r) => r.ok ? r.json() : { hasUpdates: false })
+              .then((data) => ({ id: p.id, hasUpdates: data.hasUpdates as boolean }))
+              .catch(() => ({ id: p.id, hasUpdates: false }))
+          )
+        ).then((results) => {
+          const statuses: Record<string, boolean> = {};
+          for (const r of results) statuses[r.id] = r.hasUpdates;
+          setUpdateStatuses(statuses);
+        });
+      })
       .catch(() => setProjects([]));
   };
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateProject = async () => {
     if (!projectName.trim() || !projectPath.trim()) return;
@@ -89,6 +109,7 @@ export default function ProjectsPage() {
               description={project.analysis?.description}
               techStack={project.analysis?.techStack}
               analyzed={!!project.analysis}
+              hasUpdates={updateStatuses[project.id]}
             />
           ))}
         </div>

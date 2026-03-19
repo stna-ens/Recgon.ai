@@ -8,6 +8,7 @@ interface ProjectCardProps {
   description?: string;
   techStack?: string[];
   analyzed: boolean;
+  hasUpdates?: boolean;
 }
 
 export default function ProjectCard({
@@ -16,21 +17,29 @@ export default function ProjectCard({
   description,
   techStack,
   analyzed,
+  hasUpdates,
 }: ProjectCardProps) {
   return (
     <Link href={`/projects/${id}`} style={{ textDecoration: 'none' }}>
       <div className="glass-card" style={{ cursor: 'pointer' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--txt-pure)' }}>{name}</h3>
-          {analyzed ? (
-            <span className="tag" style={{ color: 'var(--signature)', borderColor: 'rgba(var(--signature-rgb), 0.3)', background: 'rgba(var(--signature-rgb), 0.05)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12 }}>
-              › analyzed
-            </span>
-          ) : (
-            <span className="tag" style={{ color: 'var(--txt-faint)', fontSize: 12, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
-              pending
-            </span>
-          )}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {hasUpdates && (
+              <span className="tag" style={{ color: 'var(--warning)', borderColor: 'rgba(255,159,10,0.3)', background: 'rgba(255,159,10,0.06)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12 }}>
+                ! new commits
+              </span>
+            )}
+            {analyzed ? (
+              <span className="tag" style={{ color: 'var(--signature)', borderColor: 'rgba(var(--signature-rgb), 0.3)', background: 'rgba(var(--signature-rgb), 0.05)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12 }}>
+                › analyzed
+              </span>
+            ) : (
+              <span className="tag" style={{ color: 'var(--txt-faint)', fontSize: 12, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                pending
+              </span>
+            )}
+          </div>
         </div>
 
         {description && (

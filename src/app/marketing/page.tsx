@@ -79,7 +79,6 @@ interface Project {
 
 interface GeneratedContentEntry {
   content: Record<string, string>;
-  imageUrl: string | null;
   platform: Platform;
 }
 
@@ -258,7 +257,7 @@ export default function MarketingPage() {
       if (!res.ok) throw new Error(data.error || 'Content generation failed');
       setGeneratedContents((prev) => ({
         ...prev,
-        [itemKey]: { content: data.content, imageUrl: data.imageUrl ?? null, platform },
+        [itemKey]: { content: data.content, platform },
       }));
     } catch {
       // silent — user can retry

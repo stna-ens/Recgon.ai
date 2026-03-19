@@ -4,8 +4,9 @@ import path from 'path';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const FILE = path.join(DATA_DIR, 'analytics.json');
 
-interface AnalyticsConfig {
+export interface AnalyticsConfig {
   propertyId: string;
+  serviceAccountJson: string; // raw JSON string of the service account key
   updatedAt: string;
 }
 
@@ -26,8 +27,8 @@ export function getAnalyticsConfig(userId: string): AnalyticsConfig | undefined 
   return load()[userId];
 }
 
-export function setAnalyticsConfig(userId: string, propertyId: string): void {
+export function setAnalyticsConfig(userId: string, propertyId: string, serviceAccountJson: string): void {
   const store = load();
-  store[userId] = { propertyId, updatedAt: new Date().toISOString() };
+  store[userId] = { propertyId, serviceAccountJson, updatedAt: new Date().toISOString() };
   save(store);
 }

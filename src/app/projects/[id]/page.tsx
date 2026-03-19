@@ -100,6 +100,7 @@ export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
+  const [hasUpdates, setHasUpdates] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [progressMessage, setProgressMessage] = useState('');
   const [error, setError] = useState('');
@@ -110,7 +111,15 @@ export default function ProjectDetailPage() {
         if (!r.ok) throw new Error('Not found');
         return r.json();
       })
-      .then(setProject)
+      .then((p: Project) => {
+        setProject(p);
+        if (p.isGithub && p.analysis && p.lastAnalyzedCommitSha) {
+          fetch(`/api/projects/${params.id}/check-updates`)
+            .then((r) => r.ok ? r.json() : { hasUpdates: false })
+            .then((data) => setHasUpdates(data.hasUpdates))
+            .catch(() => {});
+        }
+      })
       .catch(() => router.push('/projects'));
   }, [params.id, router]);
 
@@ -141,7 +150,7 @@ export default function ProjectDetailPage() {
           try {
             const event = JSON.parse(dataLine);
             if (event.type === 'progress') setProgressMessage(event.message);
-            else if (event.type === 'done') setProject(event.project);
+            else if (event.type === 'done') { setProject(event.project); setHasUpdates(false); }
             else if (event.type === 'error') throw new Error(event.message);
           } catch (parseErr) {
             if (parseErr instanceof SyntaxError) continue;
@@ -184,6 +193,11 @@ export default function ProjectDetailPage() {
             {stage && (
               <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: stage.color + '22', color: stage.color, border: `1px solid ${stage.color}55`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 {stage.label}
+              </span>
+            )}
+            {hasUpdates && (
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,159,10,0.08)', color: 'var(--warning)', border: '1px solid rgba(255,159,10,0.3)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                ! new commits
               </span>
             )}
           </div>

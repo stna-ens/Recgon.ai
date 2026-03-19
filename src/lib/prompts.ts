@@ -387,22 +387,3 @@ DATA:
 ${JSON.stringify(data, null, 2)}`;
 }
 
-// ── Image / Video generation ──────────────────────────────────────────────────
-
-export function imageGenerationPrompt(
-  productName: string,
-  productDescription: string,
-  format: string,
-  customPrompt?: string,
-): string {
-  return `Create a stunning social media marketing post image for "${productName}".
-The product is: ${productDescription}.
-Format: ${format}
-Style: ADAPT THE VIBE. The visual aesthetic MUST perfectly match the vibe of the product itself. Do not force a "clean, premium, or classy" look if the product is playful, retro, or chaotic. If the product is a retro pixel art app, make the image look like high-quality pixel art. If it's a sleek finance tool, make it look minimalist and professional.
-The image should visually represent what this product does using creative, stylized illustrations or photography — NOT code, NOT screenshots, NOT terminal windows.
-Think conceptual and artistic: use visual metaphors, icons, or stylized graphics that instantly communicate the product's purpose and vibe at a glance.
-Include the product name "${productName}" as clean, fitting typography that is organically part of the design.
-Make it look like a highly-converting, viral social media ad.
-No placeholder text, no lorem ipsum, no garbled text.
-${customPrompt ? `\nUSER SPECIFIC INSTRUCTIONS: ${customPrompt}\nMAKE SURE TO FOLLOW THESE INSTRUCTIONS.` : ''}`;
-}
