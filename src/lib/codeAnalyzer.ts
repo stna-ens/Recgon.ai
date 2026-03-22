@@ -104,7 +104,7 @@ export async function analyzeCodebaseUpdate(
   const response = await chat(
     ANALYZE_UPDATE_SYSTEM,
     analyzeUpdateUserPrompt(existingAnalysis, diffStr),
-    { temperature: 0.4, maxTokens: 8192 },
+    { temperature: 0.4, maxTokens: 16384 },
   );
   onProgress?.('Parsing and validating updated analysis...');
   return parseAIResponse(response, AnalysisResultSchema);
@@ -130,7 +130,7 @@ export async function analyzeCodebase(
     .join('\n\n');
 
   onProgress?.('Sending to Gemini AI for analysis...');
-  const response = await chat(ANALYZE_SYSTEM, analyzeUserPrompt(treeStr, filesStr), { temperature: 0.4, maxTokens: 8192 });
+  const response = await chat(ANALYZE_SYSTEM, analyzeUserPrompt(treeStr, filesStr), { temperature: 0.4, maxTokens: 16384 });
 
   onProgress?.('Parsing and validating response...');
   return parseAIResponse(response, AnalysisResultSchema);

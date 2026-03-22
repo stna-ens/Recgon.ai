@@ -38,6 +38,8 @@ interface ProductAnalysis {
   gtmStrategy?: string;
   earlyAdopterChannels?: string[];
   growthMetrics?: string[];
+  improvements?: string[];
+  nextStepsTaken?: { step: string; taken: boolean; evidence: string }[];
 }
 
 interface CommitInfo {
@@ -189,7 +191,7 @@ export default function ProjectDetailPage() {
       <div className="page-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h2 style={{ fontSize: '32px', fontWeight: 700, letterSpacing: '-1px' }}>{project.name}</h2>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.5px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>{project.name.toLowerCase()}</h2>
             {stage && (
               <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: stage.color + '22', color: stage.color, border: `1px solid ${stage.color}55`, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 {stage.label}
@@ -245,19 +247,19 @@ export default function ProjectDetailPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 16 }}>
               <div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target Audience</span>
+                <span className="recgon-label">Target Audience</span>
                 <p style={{ fontSize: 14, marginTop: 6, lineHeight: 1.6 }}>{a.targetAudience}</p>
               </div>
               {a.problemStatement && (
                 <div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>The Problem It Solves</span>
+                  <span className="recgon-label">The Problem It Solves</span>
                   <p style={{ fontSize: 14, marginTop: 6, lineHeight: 1.6 }}>{a.problemStatement}</p>
                 </div>
               )}
             </div>
 
             <div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, display: 'block' }}>Tech Stack</span>
+              <span className="recgon-label">Tech Stack</span>
               <div className="tags-row">
                 {a.techStack.map((tech) => (
                   <span key={tech} className="tag">{tech}</span>
@@ -287,7 +289,7 @@ export default function ProjectDetailPage() {
             )}
             {(a.competitors?.length ?? 0) > 0 && (
               <>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12, display: 'block' }}>Competitive Landscape</span>
+                <span className="recgon-label">Competitive Landscape</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {a.competitors?.map((c, i) => (
                     <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 8 }}>
@@ -311,13 +313,13 @@ export default function ProjectDetailPage() {
             <div className="grid-2">
               {(a.revenueStreams?.length ?? 0) > 0 && (
                 <div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, display: 'block' }}>Revenue Streams</span>
+                  <span className="recgon-label">Revenue Streams</span>
                   <BulletList items={a.revenueStreams ?? []} />
                 </div>
               )}
               {a.pricingSuggestion && (
                 <div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, display: 'block' }}>Pricing Suggestion</span>
+                  <span className="recgon-label">Pricing Suggestion</span>
                   <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{a.pricingSuggestion}</p>
                 </div>
               )}
@@ -330,25 +332,68 @@ export default function ProjectDetailPage() {
           <div className="glass-card">
             <SectionTitle>SWOT Analysis</SectionTitle>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div style={{ padding: '14px 16px', background: '#10b98115', borderRadius: 8, border: '1px solid #10b98130' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981', display: 'block', marginBottom: 10 }}>STRENGTHS</span>
-                <BulletList items={a.swot.strengths ?? []} accent="#10b981" />
+              <div style={{ padding: '14px 16px', background: 'var(--btn-secondary-bg)', borderRadius: 8, border: '1px solid var(--btn-secondary-border)', borderLeft: '3px solid var(--success)' }}>
+                <span className="recgon-label" style={{ color: 'var(--success)' }}>strengths</span>
+                <BulletList items={a.swot.strengths ?? []} accent="var(--success)" />
               </div>
-              <div style={{ padding: '14px 16px', background: '#ef444415', borderRadius: 8, border: '1px solid #ef444430' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', display: 'block', marginBottom: 10 }}>WEAKNESSES</span>
-                <BulletList items={a.swot.weaknesses ?? []} accent="#ef4444" />
+              <div style={{ padding: '14px 16px', background: 'var(--btn-secondary-bg)', borderRadius: 8, border: '1px solid var(--btn-secondary-border)', borderLeft: '3px solid var(--danger)' }}>
+                <span className="recgon-label" style={{ color: 'var(--danger)' }}>weaknesses</span>
+                <BulletList items={a.swot.weaknesses ?? []} accent="var(--danger)" />
               </div>
-              <div style={{ padding: '14px 16px', background: '#3b82f615', borderRadius: 8, border: '1px solid #3b82f630' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', display: 'block', marginBottom: 10 }}>OPPORTUNITIES</span>
-                <BulletList items={a.swot.opportunities ?? []} accent="#3b82f6" />
+              <div style={{ padding: '14px 16px', background: 'var(--btn-secondary-bg)', borderRadius: 8, border: '1px solid var(--btn-secondary-border)', borderLeft: '3px solid var(--signature)' }}>
+                <span className="recgon-label" style={{ color: 'var(--signature)' }}>opportunities</span>
+                <BulletList items={a.swot.opportunities ?? []} accent="var(--signature)" />
               </div>
-              <div style={{ padding: '14px 16px', background: '#f59e0b15', borderRadius: 8, border: '1px solid #f59e0b30' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', display: 'block', marginBottom: 10 }}>THREATS</span>
-                <BulletList items={a.swot.threats ?? []} accent="#f59e0b" />
+              <div style={{ padding: '14px 16px', background: 'var(--btn-secondary-bg)', borderRadius: 8, border: '1px solid var(--btn-secondary-border)', borderLeft: '3px solid var(--warning)' }}>
+                <span className="recgon-label" style={{ color: 'var(--warning)' }}>threats</span>
+                <BulletList items={a.swot.threats ?? []} accent="var(--warning)" />
               </div>
             </div>
           </div>
           )}
+
+          {/* ── What improved since last push ───────────────────────── */}
+          {(a.improvements?.length ?? 0) > 0 && (
+          <div className="glass-card">
+            <SectionTitle>What Improved Since Last Push</SectionTitle>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {a.improvements!.map((item, i) => (
+                <li key={i} style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 10, paddingLeft: 24, position: 'relative', lineHeight: 1.6 }}>
+                  <span style={{ position: 'absolute', left: 0, color: 'var(--success)', fontWeight: 700 }}>✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          )}
+
+          {/* ── Recommendations feedback loop ────────────────────────── */}
+          {(a.nextStepsTaken?.length ?? 0) > 0 && (() => {
+            const taken = a.nextStepsTaken!.filter(s => s.taken).length;
+            const total = a.nextStepsTaken!.length;
+            const pct = Math.round((taken / total) * 100);
+            return (
+              <div className="glass-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <SectionTitle>Previous Recommendations — Acted On</SectionTitle>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: pct >= 60 ? 'var(--success)' : pct >= 30 ? 'var(--warning)' : 'var(--danger)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                    {taken}/{total} ({pct}%)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {a.nextStepsTaken!.map((s, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 8, borderLeft: `3px solid ${s.taken ? 'var(--success)' : 'var(--btn-secondary-border)'}` }}>
+                      <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{s.taken ? '✓' : '○'}</span>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: s.taken ? 'var(--text-primary)' : 'var(--text-secondary)', margin: 0, marginBottom: 4 }}>{s.step}</p>
+                        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>{s.evidence}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Action Plan ──────────────────────────────────────────── */}
           {((a.prioritizedNextSteps?.length ?? 0) > 0 || (a.topRisks?.length ?? 0) > 0) && (
@@ -378,13 +423,13 @@ export default function ProjectDetailPage() {
             <div className="grid-2">
               {(a.earlyAdopterChannels?.length ?? 0) > 0 && (
                 <div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, display: 'block' }}>Early Adopter Channels</span>
+                  <span className="recgon-label">Early Adopter Channels</span>
                   <BulletList items={a.earlyAdopterChannels ?? []} />
                 </div>
               )}
               {(a.growthMetrics?.length ?? 0) > 0 && (
                 <div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, display: 'block' }}>Growth Metrics to Track</span>
+                  <span className="recgon-label">Growth Metrics to Track</span>
                   <BulletList items={a.growthMetrics ?? []} />
                 </div>
               )}

@@ -4,12 +4,13 @@ import { auth } from '@/auth';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const project = getProject(params.id, session.user.id);
+  const project = getProject(id, session.user.id);
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
@@ -18,16 +19,17 @@ export async function GET(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const project = getProject(params.id, session.user.id);
+  const project = getProject(id, session.user.id);
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
 
-  deleteProject(params.id);
+  deleteProject(id);
   return NextResponse.json({ success: true });
 }

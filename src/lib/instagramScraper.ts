@@ -1,10 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
-// Since Instagram aggressively blocks free/unauthenticated scraping, a production app
-// would use a paid API (like Apify, Phantombuster, or RapidAPI) or an authenticated Puppeteer script.
-// For this MVP, we will try a lightweight fetch approach using a public proxy/API if possible,
-// and gracefully fallback to simulated, realistic comments if fetching fails, so the user experiences the flow.
+// Instagram aggressively blocks unauthenticated scraping. If Puppeteer fails,
+// we throw a clear error so the user knows to switch to manual mode.
 
 const CACHE_FILE = path.join(process.cwd(), 'data/feedback_cache.json');
 
@@ -85,8 +83,7 @@ export async function fetchInstagramComments(postUrl: string): Promise<string[]>
 
   let puppeteer;
   try { puppeteer = require('puppeteer'); } catch {
-    console.log('[Scraper] Puppeteer not found, falling back to mock data');
-    return getMockComments();
+    throw new Error('Puppeteer is not installed. Instagram scraping is unavailable. Please use Manual mode instead.');
   }
 
   let browser;
@@ -102,10 +99,11 @@ export async function fetchInstagramComments(postUrl: string): Promise<string[]>
       saveToCache(shortcode, comments);
       return comments;
     }
-    return getMockComments();
+    throw new Error('Instagram blocked the request or the post has no accessible comments. Instagram increasingly restricts automated access — try Manual mode instead.');
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Instagram')) throw error;
     console.error('[Scraper] Puppeteer error:', error);
-    return getMockComments();
+    throw new Error('Failed to scrape Instagram. Instagram actively blocks automated access. Please use Manual mode to paste feedback instead.');
   } finally {
     if (browser) await browser.close();
   }
@@ -134,8 +132,7 @@ export async function fetchInstagramProfileComments(profileUrl: string): Promise
 
   let puppeteer;
   try { puppeteer = require('puppeteer'); } catch {
-    console.log('[Scraper] Puppeteer not found, falling back to mock data');
-    return getMockComments();
+    throw new Error('Puppeteer is not installed. Instagram scraping is unavailable. Please use Manual mode instead.');
   }
 
   let browser;
@@ -159,8 +156,7 @@ export async function fetchInstagramProfileComments(profileUrl: string): Promise
     console.log(`[Scraper] Found ${postLinks.length} post links on profile.`);
 
     if (postLinks.length === 0) {
-      console.log('[Scraper] No post links found, falling back to mock data.');
-      return getMockComments();
+      throw new Error('No posts found on this profile. Instagram may have blocked access or the profile is private. Please use Manual mode instead.');
     }
 
     const allComments: string[] = [];
@@ -184,26 +180,12 @@ export async function fetchInstagramProfileComments(profileUrl: string): Promise
       return unique;
     }
 
-    return getMockComments();
+    throw new Error('Could not extract any comments from this profile. Instagram actively blocks automated access. Please use Manual mode to paste feedback instead.');
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Instagram')) throw error;
     console.error('[Scraper] Puppeteer error:', error);
-    return getMockComments();
+    throw new Error('Failed to scrape Instagram profile. Instagram actively blocks automated access. Please use Manual mode to paste feedback instead.');
   } finally {
     if (browser) await browser.close();
   }
-}
-
-function getMockComments(): string[] {
-  return [
-    "This looks incredible! When is it releasing?",
-    "The new iOS 26 liquid glass design is stunning 🔥",
-    "I found a bug when trying to connect my data source on mobile.",
-    "Can we get a dark mode alternative? It's too bright at night.",
-    "Wow, honestly the best product I've seen in this space.",
-    "Does it support GitHub private repos?",
-    "I keep getting an error 500 when I upload a CSV file.",
-    "Please add an auto-save feature, I lost 10 mins of work!",
-    "I love how fast the AI responds. Great job team.",
-    "Any plans for an Android version soon?",
-  ];
 }

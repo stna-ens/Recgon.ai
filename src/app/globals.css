@@ -294,25 +294,26 @@ body {
 /* === TYPOGRAPHY === */
 .page-header {
   margin-bottom: 48px;
-  text-align: center;
+  text-align: left;
 }
 
 .page-header h2 {
-  font-size: 48px;
-  font-weight: 600;
-  letter-spacing: -2px;
-  line-height: 1.1;
-  margin-bottom: 12px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  margin-bottom: 6px;
   color: var(--txt-pure);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 .page-header p {
-  font-size: 18px;
+  font-size: 0.875rem;
   color: var(--txt-muted);
   font-weight: 400;
-  letter-spacing: -0.3px;
+  letter-spacing: 0;
   max-width: 500px;
-  margin: 0 auto;
+  margin: 0;
 }
 
 /* === CLEAN CARDS (The Liquid Glass Masterpiece) === */

@@ -17,7 +17,7 @@ No test suite is configured. There is a scratch file `test-scraper.js` and `src/
 The app requires these env vars (create a `.env.local`):
 
 ```
-GEMINI_API_KEY=   # Used for all AI: text (gemini-2.5-flash), images (imagen-4.0-fast), video (veo-3.1)
+GEMINI_API_KEY=   # Used for all AI: text (gemini-2.5-flash)
 AUTH_SECRET=      # NextAuth secret — generate with: openssl rand -base64 32
 ```
 
@@ -37,16 +37,13 @@ All persistence is flat-file JSON at `data/projects.json` and `data/users.json` 
 
 ### AI layer (`src/lib/`)
 - `openai.ts` — Gemini chat wrapper (`gemini-2.5-flash`, always returns JSON via `responseMimeType: 'application/json'`)
-- `imageGenerator.ts` — Gemini Imagen (`imagen-4.0-fast-generate-001`), returns base64 data URI
-- `videoGenerator.ts` — Gemini Veo (`veo-2.0-generate-001`), polls until done (up to 5 min), saves to OS temp dir
-- `videoJobs.ts` — In-memory job map for async video status tracking (lost on server restart)
 - `schemas.ts` — All Zod schemas for AI response validation; `parseAIResponse()` handles Gemini's occasional markdown-wrapped JSON
 - `prompts.ts` — All system/user prompt strings (single source for prompt engineering)
 
 ### Feature modules (`src/lib/`)
 - `codeAnalyzer.ts` — Walks local/cloned directory (max depth 4, ignores `node_modules` etc.), reads key files + first 5 code files, sends to Gemini
 - `githubFetcher.ts` — `git clone --depth 1` into OS temp dir; strips `.git` before analysis
-- `contentGenerator.ts` — Orchestrates marketing generation: video starts fire-and-forget (returns a `videoJobId`), text content is awaited; Google Ads also generates an image in parallel
+- `contentGenerator.ts` — Generates marketing content (text) for Instagram, TikTok, and Google Ads via Gemini
 - `feedbackEngine.ts` — Takes an array of feedback strings, returns structured sentiment + developer prompts
 - `instagramScraper.ts` — Puppeteer-based scraper for Instagram comments
 
@@ -59,15 +56,11 @@ All persistence is flat-file JSON at `data/projects.json` and `data/users.json` 
 | `DELETE /api/projects/[id]` | Delete project |
 | `POST /api/projects/[id]/analyze` | Run codebase analysis, stores result in project |
 | `POST /api/marketing/generate` | Generate marketing content for a platform |
-| `GET /api/marketing/video-status` | Poll video job status by `jobId` |
 | `POST /api/feedback/fetch` | Scrape feedback (Instagram or manual input) |
 | `POST /api/feedback/analyze` | Run feedback analysis |
 
 ### Key data flow
 1. User adds a project (local path or GitHub URL → cloned to temp)
 2. `/analyze` walks the codebase → Gemini → `ProductAnalysis` stored on the project
-3. Marketing generation uses the stored `ProductAnalysis` → Gemini text + optional image/video
+3. Marketing generation uses the stored `ProductAnalysis` → Gemini text content
 4. Feedback flow is independent of projects: fetch comments → analyze → get developer prompts
-
-### Video job lifecycle
-Video generation is always async. `POST /api/marketing/generate` for Instagram/TikTok returns a `videoJobId` immediately. The client polls `GET /api/marketing/video-status?jobId=...` until `status === 'done'`. Jobs are in-memory only — they are lost if the Next.js server restarts.

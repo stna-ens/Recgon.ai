@@ -130,7 +130,7 @@ export default function FeedbackPanel({
       <div style={{ marginTop: 24 }}>
         <span className="recgon-label">Developer Prompts</span>
         <p style={{ fontSize: 13, color: 'var(--txt-muted)', marginBottom: 16, marginTop: -8 }}>
-          Click any prompt to copy — paste directly into your AI coding agent.
+          Click any prompt to copy — paste directly into your coding agent.
         </p>
         {developerPrompts.map((prompt, i) => (
           <DevPrompt key={i} prompt={prompt} index={i} />

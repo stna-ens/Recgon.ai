@@ -26,9 +26,13 @@ export async function chat(
     ],
     generationConfig: {
       temperature: options?.temperature ?? 0.7,
-      maxOutputTokens: options?.maxTokens ?? 2000,
+      maxOutputTokens: options?.maxTokens ?? 8192,
       responseMimeType: 'application/json',
-    },
+      // Disable thinking for structured JSON tasks — thinking tokens eat into
+      // the output budget and can truncate the response before it closes.
+      thinkingConfig: { thinkingBudget: 0 },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any,
   });
 
   const response = await content.response;

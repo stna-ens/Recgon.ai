@@ -93,10 +93,10 @@ export async function cloneGitHubRepo(url: string, projectId: string): Promise<s
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
-  // Clone with depth=1 to save time and bandwidth
+  // Clone with depth=1 to save time and bandwidth; 60s timeout to prevent hanging
   try {
     const command = `git clone --depth 1 ${cleanUrl} ${tmpDir}`;
-    await execAsync(command);
+    await execAsync(command, { timeout: 60_000 });
     
     // Remove the .git folder so we don't analyze git history/objects
     const gitFolder = path.join(tmpDir, '.git');

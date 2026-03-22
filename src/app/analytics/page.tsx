@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 
@@ -54,8 +54,18 @@ const DAYS_OPTIONS = [
   { label: '90 days', value: 90 },
 ];
 
-const DEVICE_COLORS = ['#007AFF', '#e8a8c4', '#34C759', '#FF9F0A', '#AF52DE'];
-const CHANNEL_COLORS = ['#007AFF', '#e8a8c4', '#34C759', '#FF9F0A', '#AF52DE', '#FF453A', '#64D2FF', '#FFD60A'];
+const GLASS = [
+  { base: '#a855f7', hi: '#f3e8ff', lo: '#5b21b6' },
+  { base: '#22d3ee', hi: '#ecfeff', lo: '#0e7490' },
+  { base: '#4ade80', hi: '#dcfce7', lo: '#15803d' },
+  { base: '#fb923c', hi: '#fff7ed', lo: '#c2410c' },
+  { base: '#f472b6', hi: '#fdf2f8', lo: '#9d174d' },
+  { base: '#60a5fa', hi: '#eff6ff', lo: '#1d4ed8' },
+  { base: '#facc15', hi: '#fefce8', lo: '#a16207' },
+  { base: '#34d399', hi: '#ecfdf5', lo: '#065f46' },
+];
+const DEVICE_COLORS = GLASS.slice(0, 5).map(g => g.base);
+const CHANNEL_COLORS = GLASS.map(g => g.base);
 
 const PERF_COLOR: Record<string, string> = {
   growing: '#34C759',
@@ -70,6 +80,52 @@ const PERF_LABEL: Record<string, string> = {
   declining: 'Declining',
   insufficient_data: 'Insufficient Data',
 };
+
+// ─── Error parser ────────────────────────────────────────────────────────────
+
+function parseAnalyticsError(raw: string): { title: string; steps: string[] } {
+  if (raw.includes('has not been used') || (raw.includes('PERMISSION_DENIED') && raw.includes('disabled'))) {
+    return {
+      title: 'Google Analytics Data API is not enabled',
+      steps: [
+        'Go to Google Cloud Console → APIs & Services → Library',
+        'Search for "Google Analytics Data API" and click Enable',
+        'Wait 1–2 minutes for it to propagate, then refresh',
+      ],
+    };
+  }
+  if (raw.includes('PERMISSION_DENIED')) {
+    return {
+      title: "Service account doesn't have access to this property",
+      steps: [
+        'In Google Analytics → Admin → Property Access Management',
+        'Click + and add your service account email (the client_email from your JSON key)',
+        'Set the role to Viewer, save, then refresh',
+      ],
+    };
+  }
+  if (raw.includes('NOT_FOUND') || raw.includes('not found')) {
+    return {
+      title: 'Property not found',
+      steps: [
+        'Double-check the Property ID — it should be a plain number like 123456789',
+        'Do not use the Measurement ID (G-XXXXXXXX)',
+        'Click "Change property" and re-enter the correct ID',
+      ],
+    };
+  }
+  if (raw.includes('UNAUTHENTICATED') || raw.includes('invalid_grant') || raw.includes('Could not load')) {
+    return {
+      title: 'Service account credentials are invalid',
+      steps: [
+        'The JSON key may be malformed or revoked',
+        'Click "Change property" to re-enter your credentials',
+        'Make sure you pasted the full contents of the downloaded .json key file',
+      ],
+    };
+  }
+  return { title: 'Failed to load analytics data', steps: [raw] };
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -92,42 +148,22 @@ function fmtDate(iso: string): string {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function MetricCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
   return (
-    <div style={{
-      background: 'var(--glass-substrate)',
-      border: '1px solid rgba(128,128,128,0.12)',
-      borderRadius: 'var(--r-md)',
-      padding: '20px 24px',
-      backdropFilter: 'blur(20px)',
-      display: 'flex', flexDirection: 'column', gap: 4,
-      boxShadow: 'var(--shadow-float)',
-    }}>
-      <span style={{ fontSize: '0.72rem', color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500 }}>
-        {label}
-      </span>
-      <span style={{ fontSize: '1.7rem', fontWeight: 600, color: 'var(--txt-pure)', lineHeight: 1.2 }}>
+    <div className="glass-card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <span className="recgon-label" style={{ marginBottom: 6 }}>{label}</span>
+      <span style={{ fontSize: '1.7rem', fontWeight: 600, color, lineHeight: 1.2, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
         {value}
       </span>
-      {sub && <span style={{ fontSize: '0.75rem', color: 'var(--txt-faint)' }}>{sub}</span>}
+      {sub && <span style={{ fontSize: '0.75rem', color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{sub}</span>}
     </div>
   );
 }
 
 function SectionCard({ title, children, style }: { title: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{
-      background: 'var(--glass-substrate)',
-      border: '1px solid rgba(128,128,128,0.12)',
-      borderRadius: 'var(--r-md)',
-      padding: '24px',
-      backdropFilter: 'blur(20px)',
-      boxShadow: 'var(--shadow-float)',
-      ...style,
-    }}>
-      <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 20 }}>
-        {title}
-      </h3>
+    <div className="glass-card" style={{ padding: '24px', ...style }}>
+      <span className="recgon-label">{title}</span>
       {children}
     </div>
   );
@@ -137,15 +173,7 @@ function SectionCard({ title, children, style }: { title: string; children: Reac
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{
-      background: 'var(--glass-substrate)',
-      border: '1px solid rgba(128,128,128,0.15)',
-      borderRadius: 12,
-      padding: '10px 14px',
-      backdropFilter: 'blur(20px)',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-      fontSize: '0.8rem',
-    }}>
+    <div className="glass-card" style={{ padding: '10px 14px', fontSize: '0.8rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
       {label && <div style={{ color: 'var(--txt-muted)', marginBottom: 6, fontWeight: 500 }}>{label}</div>}
       {payload.map((p) => (
         <div key={p.name} style={{ display: 'flex', gap: 8, alignItems: 'center', color: 'var(--txt-pure)' }}>
@@ -158,19 +186,22 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   );
 }
 
-// ─── Setup screen (no service account or no property) ─────────────────────────
+// ─── Setup screen ─────────────────────────────────────────────────────────────
 
-function SetupScreen({ hasServiceAccount, onSave }: { hasServiceAccount: boolean; onSave: (id: string) => Promise<void> }) {
+function SetupScreen({ onSave }: { onSave: (propertyId: string, serviceAccountJson: string) => Promise<void> }) {
   const [id, setId] = useState('');
+  const [json, setJson] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
+  const canSave = id.trim() && json.trim();
+
   async function handleSave() {
-    if (!id.trim()) return;
+    if (!canSave) return;
     setSaving(true);
     setErr('');
     try {
-      await onSave(id.trim());
+      await onSave(id.trim(), json.trim());
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : 'Failed to save');
     } finally {
@@ -179,84 +210,61 @@ function SetupScreen({ hasServiceAccount, onSave }: { hasServiceAccount: boolean
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: '60px 24px' }}>
-      <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8 }}>Connect Google Analytics</h1>
+    <div style={{ maxWidth: 620, margin: '0 auto', padding: '60px 24px' }}>
+      <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8, fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '-0.5px' }}>
+        <span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>connect google-analytics
+      </h1>
       <p style={{ color: 'var(--txt-muted)', marginBottom: 40, lineHeight: 1.6 }}>
-        Recgon reads your GA4 data to surface insights and AI-powered recommendations.
+        Recgon reads your GA4 data to surface insights and recommendations.
       </p>
 
-      {!hasServiceAccount && (
-        <div style={{
-          background: 'rgba(255,59,48,0.08)',
-          border: '1px solid rgba(255,59,48,0.2)',
-          borderRadius: 'var(--r-sm)',
-          padding: '16px 20px',
-          marginBottom: 32,
-        }}>
-          <p style={{ fontWeight: 600, color: '#FF3B30', marginBottom: 8, fontSize: '0.9rem' }}>
-            Service account not configured
-          </p>
-          <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', lineHeight: 1.6 }}>
-            Add your Google service account JSON to <code style={{ background: 'rgba(0,0,0,0.06)', padding: '1px 6px', borderRadius: 4, fontFamily: 'JetBrains Mono, monospace', fontSize: '0.82rem' }}>.env.local</code>:
-          </p>
-          <pre style={{
-            marginTop: 12,
-            padding: '12px 16px',
-            background: 'rgba(0,0,0,0.06)',
-            borderRadius: 8,
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '0.78rem',
-            color: 'var(--txt-pure)',
-            overflowX: 'auto',
-            lineHeight: 1.5,
-          }}>{`GOOGLE_SERVICE_ACCOUNT_JSON='{"type":"service_account","project_id":"...","private_key":"...","client_email":"...",...}'`}</pre>
-          <p style={{ marginTop: 12, color: 'var(--txt-faint)', fontSize: '0.8rem', lineHeight: 1.5 }}>
-            1. Go to Google Cloud Console → IAM → Service Accounts → Create<br />
-            2. Grant the service account <strong>&quot;Viewer&quot;</strong> role in your GA4 property<br />
-            3. Download the JSON key and paste the contents (minified) as the env value
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+        {/* Service account JSON */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Service Account Key (JSON)</label>
+          <textarea
+            value={json}
+            onChange={(e) => setJson(e.target.value)}
+            placeholder={'{\n  "type": "service_account",\n  "project_id": "...",\n  "client_email": "...",\n  "private_key": "..."\n}'}
+            rows={8}
+            className="form-textarea"
+            style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: '0.78rem', resize: 'vertical', lineHeight: 1.5 }}
+          />
+          <div style={{ color: 'var(--txt-faint)', fontSize: '0.78rem', lineHeight: 1.8 }}>
+            <strong style={{ color: 'var(--txt-muted)' }}>How to get this:</strong><br />
+            1. In <strong>Google Cloud Console</strong>, search for <em>Google Analytics Data API</em> and enable it<br />
+            2. Go to <strong>IAM &amp; Admin</strong> → Service Accounts → Create Service Account (skip role grants)<br />
+            3. Open the created service account → <strong>Keys</strong> tab → Add Key → Create new key → <strong>JSON</strong> → download<br />
+            4. Open the downloaded file and paste its full contents into the field above<br />
+            5. In <strong>Google Analytics</strong> → Admin → <strong>Property Access Management</strong> → click + → add the service account&apos;s email (<code style={{ background: 'rgba(128,128,128,0.1)', padding: '1px 5px', borderRadius: 3 }}>client_email</code> in the JSON) with <strong>Viewer</strong> role
+          </div>
+        </div>
+
+        {/* Property ID */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">GA4 Property ID</label>
+          <input
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            placeholder="e.g. 123456789"
+            className="form-input"
+            style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+          />
+          <p style={{ color: 'var(--txt-faint)', fontSize: '0.78rem', lineHeight: 1.8, marginTop: 8 }}>
+            In <strong style={{ color: 'var(--txt-muted)' }}>Google Analytics</strong>, click <strong style={{ color: 'var(--txt-muted)' }}>Admin</strong> (bottom-left gear icon) → under the <em>Property</em> column click <strong style={{ color: 'var(--txt-muted)' }}>Property details</strong> → the <strong style={{ color: 'var(--txt-muted)' }}>Property ID</strong> is the number in the top-right (e.g. <code style={{ background: 'rgba(128,128,128,0.1)', padding: '1px 5px', borderRadius: 3 }}>123456789</code>). Do not use the Measurement ID (G-XXXXXXXX).
           </p>
         </div>
-      )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <label style={{ fontWeight: 500, fontSize: '0.9rem' }}>GA4 Property ID</label>
-        <input
-          value={id}
-          onChange={(e) => setId(e.target.value)}
-          placeholder="e.g. 123456789"
-          style={{
-            padding: '12px 16px',
-            background: 'var(--glass-substrate)',
-            border: '1px solid rgba(128,128,128,0.2)',
-            borderRadius: 'var(--r-sm)',
-            color: 'var(--txt-pure)',
-            fontSize: '0.95rem',
-            outline: 'none',
-            fontFamily: 'JetBrains Mono, monospace',
-          }}
-          onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-        />
-        <p style={{ color: 'var(--txt-muted)', fontSize: '0.8rem', marginTop: -8 }}>
-          Find it in GA4 → Admin → Property Settings → Property ID
-        </p>
-        {err && <p style={{ color: '#FF3B30', fontSize: '0.85rem' }}>{err}</p>}
+        {err && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{err}</p>}
+
         <button
           onClick={handleSave}
-          disabled={saving || !id.trim() || !hasServiceAccount}
-          style={{
-            padding: '12px 24px',
-            background: 'var(--btn-primary-bg)',
-            color: 'var(--btn-primary-txt)',
-            border: 'none',
-            borderRadius: 'var(--r-sm)',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            cursor: saving || !id.trim() || !hasServiceAccount ? 'not-allowed' : 'pointer',
-            opacity: saving || !id.trim() || !hasServiceAccount ? 0.5 : 1,
-            alignSelf: 'flex-start',
-          }}
+          disabled={saving || !canSave}
+          className="btn btn-primary btn-sm"
+          style={{ alignSelf: 'flex-start', opacity: saving || !canSave ? 0.5 : 1, cursor: saving || !canSave ? 'not-allowed' : 'pointer' }}
         >
-          {saving ? 'Saving…' : 'Connect Property'}
+          {saving ? 'Connecting…' : 'Connect Property'}
         </button>
       </div>
     </div>
@@ -272,12 +280,10 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
 }) {
   if (loading) {
     return (
-      <SectionCard title="AI Insights">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--txt-muted)', padding: '20px 0' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }}>
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-          </svg>
-          Recgon is analyzing your data…
+      <SectionCard title="Recgon Insights">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 0' }}>
+          <div className="loader-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+          <span style={{ color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: '0.85rem' }}>analyzing your data…</span>
         </div>
       </SectionCard>
     );
@@ -285,23 +291,11 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
 
   if (!insights) {
     return (
-      <SectionCard title="AI Insights">
+      <SectionCard title="Recgon Insights">
         <p style={{ color: 'var(--txt-muted)', fontSize: '0.9rem', marginBottom: 16 }}>
           Let Recgon analyze your analytics data and surface actionable insights.
         </p>
-        <button
-          onClick={onAnalyze}
-          style={{
-            padding: '10px 20px',
-            background: 'var(--btn-primary-bg)',
-            color: 'var(--btn-primary-txt)',
-            border: 'none',
-            borderRadius: 'var(--r-sm)',
-            fontWeight: 600,
-            fontSize: '0.85rem',
-            cursor: 'pointer',
-          }}
-        >
+        <button onClick={onAnalyze} className="btn btn-primary btn-sm">
           Analyze with Recgon
         </button>
       </SectionCard>
@@ -312,7 +306,7 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
   const perfLabel = PERF_LABEL[insights.overallPerformance] ?? insights.overallPerformance;
 
   return (
-    <SectionCard title="AI Insights">
+    <SectionCard title="Recgon Insights">
       {/* Performance badge + summary */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
         <span style={{
@@ -320,12 +314,13 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
           background: `${perfColor}18`,
           color: perfColor,
           borderRadius: 'var(--r-pill)',
-          fontSize: '0.75rem',
+          fontSize: '0.72rem',
           fontWeight: 700,
           textTransform: 'uppercase',
-          letterSpacing: '0.05em',
+          letterSpacing: '0.08em',
           flexShrink: 0,
           border: `1px solid ${perfColor}30`,
+          fontFamily: "'JetBrains Mono', ui-monospace, monospace",
         }}>
           {perfLabel}
         </span>
@@ -334,12 +329,12 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
 
       {/* Top win + concern */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-        <div style={{ background: 'rgba(52,199,89,0.08)', border: '1px solid rgba(52,199,89,0.2)', borderRadius: 12, padding: '12px 16px' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#34C759', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Top Win</div>
+        <div style={{ background: 'rgba(52,199,89,0.06)', border: '1px solid rgba(52,199,89,0.2)', borderRadius: 'var(--r-sm)', padding: '12px 16px' }}>
+          <span className="recgon-label" style={{ color: 'var(--success)', marginBottom: 8 }}>top win</span>
           <p style={{ fontSize: '0.85rem', color: 'var(--txt-pure)', lineHeight: 1.5 }}>{insights.topWin}</p>
         </div>
-        <div style={{ background: 'rgba(255,59,48,0.08)', border: '1px solid rgba(255,59,48,0.2)', borderRadius: 12, padding: '12px 16px' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#FF3B30', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Top Concern</div>
+        <div style={{ background: 'rgba(255,59,48,0.06)', border: '1px solid rgba(255,59,48,0.2)', borderRadius: 'var(--r-sm)', padding: '12px 16px' }}>
+          <span className="recgon-label" style={{ color: 'var(--danger)', marginBottom: 8 }}>top concern</span>
           <p style={{ fontSize: '0.85rem', color: 'var(--txt-pure)', lineHeight: 1.5 }}>{insights.topConcern}</p>
         </div>
       </div>
@@ -347,11 +342,11 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
       {/* Key insights */}
       {insights.keyInsights.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <h4 style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Key Insights</h4>
+          <span className="recgon-label">key insights</span>
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {insights.keyInsights.map((ins, i) => (
               <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: '0.88rem', color: 'var(--txt-pure)', lineHeight: 1.5 }}>
-                <span style={{ color: '#007AFF', fontWeight: 700, flexShrink: 0, marginTop: 1 }}>•</span>
+                <span style={{ color: 'var(--signature)', fontWeight: 700, flexShrink: 0, marginTop: 1, fontFamily: "'JetBrains Mono', monospace" }}>›</span>
                 {ins}
               </li>
             ))}
@@ -362,11 +357,11 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
       {/* Warnings */}
       {insights.warnings.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <h4 style={{ fontSize: '0.78rem', fontWeight: 600, color: '#FF9F0A', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Warnings</h4>
+          <span className="recgon-label" style={{ color: 'var(--danger)' }}>warnings</span>
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {insights.warnings.map((w, i) => (
               <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: '0.88rem', color: 'var(--txt-pure)', lineHeight: 1.5 }}>
-                <span style={{ color: '#FF9F0A', fontWeight: 700, flexShrink: 0, marginTop: 1 }}>⚠</span>
+                <span style={{ color: 'var(--danger)', fontWeight: 700, flexShrink: 0, marginTop: 1, fontFamily: "'JetBrains Mono', monospace" }}>!</span>
                 {w}
               </li>
             ))}
@@ -377,11 +372,11 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
       {/* Opportunities */}
       {insights.opportunities.length > 0 && (
         <div style={{ marginBottom: 20 }}>
-          <h4 style={{ fontSize: '0.78rem', fontWeight: 600, color: '#34C759', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Opportunities</h4>
+          <span className="recgon-label" style={{ color: 'var(--success)' }}>opportunities</span>
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {insights.opportunities.map((o, i) => (
               <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: '0.88rem', color: 'var(--txt-pure)', lineHeight: 1.5 }}>
-                <span style={{ color: '#34C759', fontWeight: 700, flexShrink: 0, marginTop: 1 }}>↑</span>
+                <span style={{ color: 'var(--success)', fontWeight: 700, flexShrink: 0, marginTop: 1, fontFamily: "'JetBrains Mono', monospace" }}>↑</span>
                 {o}
               </li>
             ))}
@@ -392,20 +387,17 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
       {/* Recommendations */}
       {insights.recommendations.length > 0 && (
         <div>
-          <h4 style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Recommendations</h4>
+          <span className="recgon-label">recommendations</span>
           <ol style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {insights.recommendations.map((r, i) => (
               <li key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: '0.88rem', color: 'var(--txt-pure)', lineHeight: 1.5 }}>
                 <span style={{
-                  background: 'var(--btn-primary-bg)',
-                  color: 'var(--btn-primary-txt)',
-                  width: 20, height: 20,
-                  borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.7rem', fontWeight: 700,
-                  flexShrink: 0, marginTop: 1,
+                  color: 'var(--signature)',
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                  fontSize: '0.75rem', fontWeight: 700,
+                  flexShrink: 0, marginTop: 2,
                 }}>
-                  {i + 1}
+                  {String(i + 1).padStart(2, '0')}.
                 </span>
                 {r}
               </li>
@@ -414,20 +406,7 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
         </div>
       )}
 
-      <button
-        onClick={onAnalyze}
-        style={{
-          marginTop: 20,
-          padding: '8px 16px',
-          background: 'var(--btn-secondary-bg)',
-          color: 'var(--txt-muted)',
-          border: '1px solid var(--btn-secondary-border)',
-          borderRadius: 'var(--r-sm)',
-          fontWeight: 500,
-          fontSize: '0.8rem',
-          cursor: 'pointer',
-        }}
-      >
+      <button onClick={onAnalyze} className="btn btn-secondary btn-sm" style={{ marginTop: 20 }}>
         Re-analyze
       </button>
     </SectionCard>
@@ -437,7 +416,6 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
-  const [hasServiceAccount, setHasServiceAccount] = useState(false);
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [days, setDays] = useState(30);
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -447,17 +425,23 @@ export default function AnalyticsPage() {
   const [error, setError] = useState('');
   const [configLoaded, setConfigLoaded] = useState(false);
 
+  const insightsKey = propertyId ? `analytics_insights_${propertyId}_${days}` : null;
+
+  // Load cached insights from localStorage when property/days are known
+  useEffect(() => {
+    if (!insightsKey) return;
+    try {
+      const cached = localStorage.getItem(insightsKey);
+      if (cached) setInsights(JSON.parse(cached));
+    } catch { /* ignore */ }
+  }, [insightsKey]);
+
   // Check config on mount
   useEffect(() => {
     async function checkConfig() {
-      const [propRes, envRes] = await Promise.all([
-        fetch('/api/analytics/property').then((r) => r.ok ? r.json() : { propertyId: null }),
-        // Check env by pinging data endpoint with no property — it'll fail with specific error
-        fetch('/api/analytics/data?days=1').then((r) => r.json()),
-      ]);
-      setPropertyId(propRes.propertyId ?? null);
-      // If error is about service account specifically, mark not configured
-      setHasServiceAccount(!envRes.error?.includes('GOOGLE_SERVICE_ACCOUNT_JSON'));
+      const res = await fetch('/api/analytics/property').then((r) => r.ok ? r.json() : { propertyId: null, hasCredentials: false });
+      // Only consider configured if both propertyId and credentials are stored
+      setPropertyId(res.hasCredentials && res.propertyId ? res.propertyId : null);
       setConfigLoaded(true);
     }
     checkConfig();
@@ -466,7 +450,6 @@ export default function AnalyticsPage() {
   const fetchData = useCallback(async (selectedDays: number) => {
     setLoadingData(true);
     setError('');
-    setInsights(null);
     try {
       const res = await fetch(`/api/analytics/data?days=${selectedDays}`);
       const json = await res.json();
@@ -486,11 +469,11 @@ export default function AnalyticsPage() {
     }
   }, [configLoaded, propertyId, fetchData, days]);
 
-  async function handleSaveProperty(id: string) {
+  async function handleSaveProperty(id: string, serviceAccountJson: string) {
     const res = await fetch('/api/analytics/property', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ propertyId: id }),
+      body: JSON.stringify({ propertyId: id, serviceAccountJson }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Failed to save');
@@ -500,6 +483,8 @@ export default function AnalyticsPage() {
   async function handleAnalyze() {
     if (!data) return;
     setLoadingInsights(true);
+    setInsights(null);
+    if (insightsKey) localStorage.removeItem(insightsKey);
     try {
       const res = await fetch('/api/analytics/analyze', {
         method: 'POST',
@@ -509,6 +494,7 @@ export default function AnalyticsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Analysis failed');
       setInsights(json);
+      if (insightsKey) localStorage.setItem(insightsKey, JSON.stringify(json));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Analysis failed');
     } finally {
@@ -529,9 +515,9 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Show setup screen if no service account or no property
-  if (!hasServiceAccount || !propertyId) {
-    return <SetupScreen hasServiceAccount={hasServiceAccount} onSave={handleSaveProperty} />;
+  // Show setup screen if credentials or property not configured
+  if (!propertyId) {
+    return <SetupScreen onSave={handleSaveProperty} />;
   }
 
   return (
@@ -539,15 +525,17 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 4 }}>Analytics</h1>
-          <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem' }}>
-            Property <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.8rem', background: 'rgba(128,128,128,0.1)', padding: '1px 6px', borderRadius: 4 }}>{propertyId}</code>
-            {data && <> · Last fetched {new Date(data.fetchedAt).toLocaleTimeString()}</>}
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 4, fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '-0.5px' }}>
+            <span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>analytics
+          </h1>
+          <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+            property <code style={{ color: 'var(--signature)', fontSize: '0.8rem' }}>{propertyId}</code>
+            {data && <> · fetched {new Date(data.fetchedAt).toLocaleTimeString()}</>}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Days selector */}
-          <div style={{ display: 'flex', gap: 4, background: 'var(--glass-substrate)', border: '1px solid rgba(128,128,128,0.12)', borderRadius: 'var(--r-sm)', padding: 4 }}>
+          <div style={{ display: 'flex', gap: 4, background: 'var(--glass-substrate)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', padding: 4 }}>
             {DAYS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -559,6 +547,7 @@ export default function AnalyticsPage() {
                   fontSize: '0.8rem',
                   fontWeight: 500,
                   cursor: 'pointer',
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
                   background: days === opt.value ? 'var(--btn-primary-bg)' : 'transparent',
                   color: days === opt.value ? 'var(--btn-primary-txt)' : 'var(--txt-muted)',
                   transition: 'all 0.15s',
@@ -572,18 +561,8 @@ export default function AnalyticsPage() {
           <button
             onClick={() => fetchData(days)}
             disabled={loadingData}
-            style={{
-              padding: '8px 16px',
-              background: 'var(--btn-secondary-bg)',
-              color: 'var(--txt-muted)',
-              border: '1px solid var(--btn-secondary-border)',
-              borderRadius: 'var(--r-sm)',
-              fontSize: '0.8rem',
-              fontWeight: 500,
-              cursor: loadingData ? 'not-allowed' : 'pointer',
-              opacity: loadingData ? 0.5 : 1,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}
+            className="btn btn-secondary btn-sm"
+            style={{ opacity: loadingData ? 0.5 : 1, cursor: loadingData ? 'not-allowed' : 'pointer' }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={loadingData ? { animation: 'spin 1s linear infinite' } : {}}>
               <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.45"/>
@@ -593,14 +572,8 @@ export default function AnalyticsPage() {
           {/* Change property */}
           <button
             onClick={() => setPropertyId(null)}
+            className="btn btn-secondary btn-sm"
             style={{
-              padding: '8px 16px',
-              background: 'transparent',
-              color: 'var(--txt-faint)',
-              border: '1px solid rgba(128,128,128,0.15)',
-              borderRadius: 'var(--r-sm)',
-              fontSize: '0.8rem',
-              cursor: 'pointer',
             }}
           >
             Change property
@@ -609,27 +582,32 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Error */}
-      {error && (
-        <div style={{
-          background: 'rgba(255,59,48,0.08)',
-          border: '1px solid rgba(255,59,48,0.2)',
-          borderRadius: 'var(--r-sm)',
-          padding: '12px 16px',
-          marginBottom: 24,
-          color: '#FF3B30',
-          fontSize: '0.88rem',
-        }}>
-          {error}
-        </div>
-      )}
+      {error && (() => {
+        const { title, steps } = parseAnalyticsError(error);
+        return (
+          <div className="glass-card" style={{ borderColor: 'rgba(255,59,48,0.3)', background: 'rgba(255,59,48,0.04)', marginBottom: 24, padding: '16px 20px' }}>
+            <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: '0.9rem', marginBottom: steps.length > 1 ? 10 : 0, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+              ! {title}
+            </p>
+            {steps.length > 1 && (
+              <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {steps.map((s, i) => (
+                  <li key={i} style={{ color: 'var(--txt-muted)', fontSize: '0.83rem', lineHeight: 1.6 }}>{s}</li>
+                ))}
+              </ol>
+            )}
+            {steps.length === 1 && (
+              <p style={{ color: 'var(--txt-muted)', fontSize: '0.83rem', margin: 0 }}>{steps[0]}</p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Loading skeleton */}
       {loadingData && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--txt-muted)', padding: '60px 0', justifyContent: 'center' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }}>
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-          </svg>
-          Fetching analytics data…
+        <div className="loader">
+          <div className="loader-spinner" />
+          <div className="loader-text" style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>fetching analytics data…</div>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
@@ -643,96 +621,92 @@ export default function AnalyticsPage() {
             gap: 16,
             marginBottom: 24,
           }}>
-            <MetricCard label="Sessions" value={fmtNum(data.overview.sessions)} />
-            <MetricCard label="Active Users" value={fmtNum(data.overview.activeUsers)} sub={`${fmtNum(data.overview.newUsers)} new`} />
-            <MetricCard label="Page Views" value={fmtNum(data.overview.screenPageViews)} />
-            <MetricCard label="Bounce Rate" value={`${data.overview.bounceRate.toFixed(1)}%`} />
-            <MetricCard label="Avg Session" value={fmtDuration(data.overview.averageSessionDuration)} />
+            <MetricCard label="Sessions"    value={fmtNum(data.overview.sessions)}                             color="#a855f7" />
+            <MetricCard label="Active Users" value={fmtNum(data.overview.activeUsers)} sub={`${fmtNum(data.overview.newUsers)} new`} color="#22d3ee" />
+            <MetricCard label="Page Views"  value={fmtNum(data.overview.screenPageViews)}                     color="#4ade80" />
+            <MetricCard label="Bounce Rate" value={`${data.overview.bounceRate.toFixed(1)}%`}                 color="#fb923c" />
+            <MetricCard label="Avg Session" value={fmtDuration(data.overview.averageSessionDuration)}         color="#f472b6" />
           </div>
+
+          {/* Area fill gradients */}
+          <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
+            <defs>
+              <linearGradient id="gradSessions" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#a855f7" stopOpacity={0.7} />
+                <stop offset="70%"  stopColor="#a855f7" stopOpacity={0.15} />
+                <stop offset="100%" stopColor="#a855f7" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradUsers" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#22d3ee" stopOpacity={0.6} />
+                <stop offset="70%"  stopColor="#22d3ee" stopOpacity={0.12} />
+                <stop offset="100%" stopColor="#22d3ee" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gradPageViews" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#4ade80" stopOpacity={0.55} />
+                <stop offset="70%"  stopColor="#4ade80" stopOpacity={0.1} />
+                <stop offset="100%" stopColor="#4ade80" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+          </svg>
 
           {/* Trend chart */}
           <SectionCard title={`Sessions & Users — Last ${days} Days`} style={{ marginBottom: 24 }}>
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={data.trend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={fmtDate}
-                  tick={{ fontSize: 11, fill: 'var(--txt-faint)' }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: 'var(--txt-faint)' }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={fmtNum}
-                />
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={data.trend} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.07)" vertical={false} />
+                <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 11, fill: 'var(--txt-faint)' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--txt-faint)' }} axisLine={false} tickLine={false} tickFormatter={fmtNum} />
                 <Tooltip content={<ChartTooltip />} />
                 <Legend wrapperStyle={{ fontSize: '0.78rem', paddingTop: 12 }} />
-                <Line type="monotone" dataKey="sessions" stroke="#007AFF" strokeWidth={2} dot={false} name="Sessions" />
-                <Line type="monotone" dataKey="users" stroke="#e8a8c4" strokeWidth={2} dot={false} name="Users" />
-                <Line type="monotone" dataKey="pageViews" stroke="#34C759" strokeWidth={2} dot={false} name="Page Views" strokeDasharray="4 2" />
-              </LineChart>
+                <Area type="monotone" dataKey="sessions"  stroke="#a855f7" strokeWidth={2} strokeOpacity={0.8} fill="url(#gradSessions)"  dot={false} name="Sessions" />
+                <Area type="monotone" dataKey="users"     stroke="#22d3ee" strokeWidth={2} strokeOpacity={0.8} fill="url(#gradUsers)"     dot={false} name="Users" />
+                <Area type="monotone" dataKey="pageViews" stroke="#4ade80" strokeWidth={2} strokeOpacity={0.7} fill="url(#gradPageViews)" dot={false} name="Page Views" />
+              </AreaChart>
             </ResponsiveContainer>
           </SectionCard>
 
           {/* Row: Channels + Devices */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
-            {/* Traffic channels */}
             <SectionCard title="Traffic Channels">
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={data.channels} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--txt-faint)' }} axisLine={false} tickLine={false} tickFormatter={fmtNum} />
-                  <YAxis
-                    type="category"
-                    dataKey="channel"
-                    width={100}
-                    tick={{ fontSize: 11, fill: 'var(--txt-muted)' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
+                  <YAxis type="category" dataKey="channel" width={100} tick={{ fontSize: 11, fill: 'var(--txt-muted)' }} axisLine={false} tickLine={false} />
                   <Tooltip content={<ChartTooltip />} />
-                  <Bar dataKey="sessions" name="Sessions" radius={[0, 4, 4, 0]}>
-                    {data.channels.map((_, idx) => (
-                      <Cell key={idx} fill={CHANNEL_COLORS[idx % CHANNEL_COLORS.length]} />
-                    ))}
+                  <Bar dataKey="sessions" name="Sessions" radius={[0, 8, 8, 0]} background={{ fill: 'rgba(128,128,128,0.06)', radius: 8 }}>
+                    {data.channels.map((_, idx) => {
+                      const g = GLASS[idx % GLASS.length];
+                      return <Cell key={idx} fill={g.base} fillOpacity={0.7} stroke="none" />;
+                    })}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </SectionCard>
 
-            {/* Device breakdown */}
             <SectionCard title="Devices">
               <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
                 <ResponsiveContainer width="50%" height={200}>
                   <PieChart>
-                    <Pie
-                      data={data.devices}
-                      dataKey="sessions"
-                      nameKey="device"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      strokeWidth={0}
-                    >
-                      {data.devices.map((_, idx) => (
-                        <Cell key={idx} fill={DEVICE_COLORS[idx % DEVICE_COLORS.length]} />
-                      ))}
+                    <Pie data={data.devices} dataKey="sessions" nameKey="device" cx="50%" cy="50%" innerRadius={50} outerRadius={84} paddingAngle={5} stroke="none">
+                      {data.devices.map((_, idx) => {
+                        const g = GLASS[idx % GLASS.length];
+                        return <Cell key={idx} fill={g.base} fillOpacity={0.72} />;
+                      })}
                     </Pie>
                     <Tooltip content={<ChartTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-                  {data.devices.map((d, idx) => (
-                    <div key={d.device} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.83rem' }}>
-                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: DEVICE_COLORS[idx % DEVICE_COLORS.length], flexShrink: 0 }} />
-                      <span style={{ color: 'var(--txt-muted)', textTransform: 'capitalize', flex: 1 }}>{d.device}</span>
-                      <span style={{ color: 'var(--txt-pure)', fontWeight: 600 }}>{d.percentage}%</span>
-                    </div>
-                  ))}
+                  {data.devices.map((d, idx) => {
+                    const g = GLASS[idx % GLASS.length];
+                    return (
+                      <div key={d.device} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.83rem' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: g.base, flexShrink: 0, boxShadow: `0 0 6px ${g.base}` }} />
+                        <span style={{ color: 'var(--txt-muted)', textTransform: 'capitalize', flex: 1 }}>{d.device}</span>
+                        <span style={{ color: 'var(--txt-pure)', fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{d.percentage}%</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </SectionCard>
@@ -740,27 +714,24 @@ export default function AnalyticsPage() {
 
           {/* Row: Top pages + Top countries */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
-            {/* Top pages */}
             <SectionCard title="Top Pages">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {data.topPages.slice(0, 8).map((page, i) => {
                   const maxViews = data.topPages[0]?.views || 1;
                   const pct = (page.views / maxViews) * 100;
+                  const g = GLASS[i % GLASS.length];
                   return (
-                    <div key={i} style={{
-                      padding: '9px 0',
-                      borderBottom: i < data.topPages.length - 1 ? '1px solid rgba(128,128,128,0.08)' : 'none',
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'center' }}>
+                    <div key={i} style={{ padding: '9px 0', borderBottom: i < data.topPages.length - 1 ? '1px solid rgba(128,128,128,0.08)' : 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, alignItems: 'center' }}>
                         <span style={{ fontSize: '0.82rem', color: 'var(--txt-pure)', fontFamily: 'JetBrains Mono, monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
                           {page.page}
                         </span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--txt-muted)', fontWeight: 500, flexShrink: 0 }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--txt-muted)', fontWeight: 500, flexShrink: 0, fontFamily: "'JetBrains Mono', monospace" }}>
                           {fmtNum(page.views)}
                         </span>
                       </div>
-                      <div style={{ height: 3, background: 'rgba(128,128,128,0.1)', borderRadius: 2 }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: '#007AFF', borderRadius: 2 }} />
+                      <div style={{ height: 7, background: 'rgba(128,128,128,0.06)', borderRadius: 99 }}>
+                        <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: g.base, opacity: 0.7 }} />
                       </div>
                     </div>
                   );
@@ -768,21 +739,18 @@ export default function AnalyticsPage() {
               </div>
             </SectionCard>
 
-            {/* Top countries */}
             <SectionCard title="Top Countries">
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={data.countries.slice(0, 8)} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--txt-faint)' }} axisLine={false} tickLine={false} tickFormatter={fmtNum} />
-                  <YAxis
-                    type="category"
-                    dataKey="country"
-                    width={90}
-                    tick={{ fontSize: 11, fill: 'var(--txt-muted)' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
+                  <YAxis type="category" dataKey="country" width={90} tick={{ fontSize: 11, fill: 'var(--txt-muted)' }} axisLine={false} tickLine={false} />
                   <Tooltip content={<ChartTooltip />} />
-                  <Bar dataKey="sessions" name="Sessions" fill="#007AFF" radius={[0, 4, 4, 0]} opacity={0.85} />
+                  <Bar dataKey="sessions" name="Sessions" radius={[0, 8, 8, 0]} background={{ fill: 'rgba(128,128,128,0.06)', radius: 8 }}>
+                    {data.countries.slice(0, 8).map((_, idx) => {
+                      const g = GLASS[idx % GLASS.length];
+                      return <Cell key={idx} fill={g.base} fillOpacity={0.7} stroke="none" />;
+                    })}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </SectionCard>

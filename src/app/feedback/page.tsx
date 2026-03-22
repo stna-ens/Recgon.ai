@@ -152,6 +152,11 @@ export default function FeedbackPage() {
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File too large. Maximum size is 5 MB.');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
@@ -181,26 +186,35 @@ Please add multi-language support, we have a global team`);
   return (
     <div>
       <div className="page-header">
-        <h2>Feedback Center</h2>
+        <h2><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>feedback center</h2>
         <p>Recgon reads what your users are really saying and turns it into something you can act on</p>
       </div>
 
       {/* Mode toggle */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-        <button
-          className={`btn ${mode === 'auto' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => { setMode('auto'); setResult(null); setError(''); }}
-          style={{ padding: '8px 16px', borderRadius: 'var(--radius-pill)', fontSize: 13, fontWeight: 500 }}
-        >
-          Instagram Auto-Fetch
-        </button>
-        <button
-          className={`btn ${mode === 'manual' ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={() => { setMode('manual'); setResult(null); setError(''); }}
-          style={{ padding: '8px 16px', borderRadius: 'var(--radius-pill)', fontSize: 13, fontWeight: 500 }}
-        >
-          Paste Manually
-        </button>
+      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--btn-secondary-border)', marginBottom: 24 }}>
+        {([
+          { id: 'auto', label: 'Instagram Auto-Fetch' },
+          { id: 'manual', label: 'Paste Manually' },
+        ] as const).map((m) => (
+          <button
+            key={m.id}
+            className="campaign-tab-btn"
+            onClick={() => { setMode(m.id); setResult(null); setError(''); }}
+            style={{
+              background: 'none',
+              border: 'none',
+              borderBottom: `2px solid ${mode === m.id ? 'var(--signature)' : 'transparent'}`,
+              color: mode === m.id ? 'var(--signature)' : 'var(--txt-muted)',
+              fontWeight: mode === m.id ? 600 : 400,
+              fontSize: 13,
+              padding: '10px 14px',
+              marginBottom: -1,
+              cursor: 'pointer',
+            }}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
 
       {/* Project selector */}

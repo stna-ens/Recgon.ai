@@ -36,6 +36,6 @@ export function isRateLimited(key: string, options: RateLimitOptions): boolean {
 }
 
 // Default limits for the expensive Gemini-backed routes
-export const ANALYZE_LIMIT: RateLimitOptions = { limit: 10, windowMs: 60_000 };
+export const ANALYZE_LIMIT: RateLimitOptions = { limit: 5, windowMs: 60_000 };
 export const GENERATE_LIMIT: RateLimitOptions = { limit: 10, windowMs: 60_000 };
 export const FEEDBACK_LIMIT: RateLimitOptions = { limit: 15, windowMs: 60_000 };

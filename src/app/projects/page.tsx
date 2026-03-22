@@ -23,6 +23,7 @@ export default function ProjectsPage() {
   const [projectName, setProjectName] = useState('');
   const [projectPath, setProjectPath] = useState('');
   const [loading, setLoading] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   const fetchProjects = () => {
     fetch('/api/projects')
@@ -55,18 +56,24 @@ export default function ProjectsPage() {
   const handleCreateProject = async () => {
     if (!projectName.trim() || !projectPath.trim()) return;
     setLoading(true);
+    setCreateError('');
     try {
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: projectName, path: projectPath }),
       });
+      const data = await res.json();
       if (res.ok) {
         setProjectName('');
         setProjectPath('');
         setShowModal(false);
         fetchProjects();
+      } else {
+        setCreateError(data.error || 'Failed to create project');
       }
+    } catch {
+      setCreateError('Network error — please try again');
     } finally {
       setLoading(false);
     }
@@ -75,8 +82,8 @@ export default function ProjectsPage() {
   return (
     <div>
       <div className="page-header">
-        <h2 style={{ fontSize: 56, marginBottom: 16 }}>Project Center</h2>
-        <p style={{ fontSize: 18 }}>Add your products and let Recgon get to know them</p>
+        <h2><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>project center</h2>
+        <p>Add your products and let Recgon get to know them</p>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 64 }}>
@@ -115,7 +122,7 @@ export default function ProjectsPage() {
         </div>
       )}
       {showModal && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay" onClick={() => { setShowModal(false); setCreateError(''); }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Add New Project</h3>
             <div className="form-group">
@@ -141,7 +148,10 @@ export default function ProjectsPage() {
                 Paste a link to a public GitHub repo, or an absolute path to a local directory.
               </p>
             </div>
-            <div className="modal-actions" style={{ marginTop: 40 }}>
+            {createError && (
+              <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 12, marginBottom: 0 }}>{createError}</p>
+            )}
+            <div className="modal-actions" style={{ marginTop: 20 }}>
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
                 Cancel
               </button>

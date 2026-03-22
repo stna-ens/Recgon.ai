@@ -1,7 +1,8 @@
+import fs from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
 import { getProject, saveProject } from '@/lib/storage';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '@/lib/codeAnalyzer';
-import { getLatestCommit, getCommitDiff } from '@/lib/githubFetcher';
+import { getLatestCommit, getCommitDiff, cloneGitHubRepo } from '@/lib/githubFetcher';
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, ANALYZE_LIMIT } from '@/lib/rateLimit';
 import { auth } from '@/auth';
@@ -24,8 +25,14 @@ function formatDiff(diff: import('@/lib/githubFetcher').CommitDiff): string {
 
   if (deletedFiles.length > 0) {
     lines.push(`DELETED FILES (${deletedFiles.length}) — remove any features/technologies that were only in these files:`);
-    deletedFiles.forEach(f => lines.push(`  ✕ ${f.filename}`));
-    lines.push('');
+    for (const f of deletedFiles) {
+      lines.push(`--- ${f.filename} (removed) ---`);
+      if (f.patch) {
+        lines.push(f.patch.substring(0, MAX_PATCH_CHARS));
+        if (f.patch.length > MAX_PATCH_CHARS) lines.push('... (truncated)');
+      }
+      lines.push('');
+    }
   }
 
   lines.push(`Modified/added files (${otherFiles.length} total, showing up to ${MAX_FILES}):`);
@@ -43,10 +50,21 @@ function formatDiff(diff: import('@/lib/githubFetcher').CommitDiff): string {
   return lines.join('\n');
 }
 
+/** For GitHub projects, ensure we have a fresh local clone to analyze. */
+async function ensureFreshClone(
+  projectId: string,
+  githubUrl: string,
+  send: (data: object) => void,
+): Promise<string> {
+  send({ type: 'progress', message: 'Cloning repository...' });
+  return cloneGitHubRepo(githubUrl, projectId);
+}
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -61,7 +79,7 @@ export async function POST(
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 
-  const project = getProject(params.id, session.user.id);
+  const project = getProject(id, session.user.id);
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
@@ -104,21 +122,32 @@ export async function POST(
               });
               project.lastAnalyzedCommitSha = latestCommit.sha;
             } else {
-              // Diff unavailable — fall back to full re-analysis
-              analysis = await analyzeCodebase(project.path, (message) => {
+              // Diff unavailable — re-clone and do full re-analysis
+              const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send);
+              project.path = clonePath;
+              analysis = await analyzeCodebase(clonePath, (message) => {
                 send({ type: 'progress', message });
               });
               project.lastAnalyzedCommitSha = latestCommit.sha;
             }
           } else {
-            // No new commits — still do a full analysis (user explicitly requested it)
-            analysis = await analyzeCodebase(project.path, (message) => {
+            // No new commits — re-clone and do full re-analysis with latest code
+            const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send);
+            project.path = clonePath;
+            analysis = await analyzeCodebase(clonePath, (message) => {
               send({ type: 'progress', message });
             });
             if (latestCommit) project.lastAnalyzedCommitSha = latestCommit.sha;
           }
         } else {
-          analysis = await analyzeCodebase(project.path, (message) => {
+          // First analysis or local project
+          let analyzePath = project.path;
+          if (project.isGithub && project.githubUrl && !fs.existsSync(project.path)) {
+            const clonePath = await ensureFreshClone(project.id, project.githubUrl, send);
+            project.path = clonePath;
+            analyzePath = clonePath;
+          }
+          analysis = await analyzeCodebase(analyzePath, (message) => {
             send({ type: 'progress', message });
           });
 

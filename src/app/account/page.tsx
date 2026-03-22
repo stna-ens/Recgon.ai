@@ -107,7 +107,7 @@ export default function AccountPage() {
   return (
     <div style={{ maxWidth: '560px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ marginBottom: '0.5rem' }}>
-        <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.25rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>Account</h1>
+        <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.25rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>account</h1>
         <p style={{ color: 'var(--txt-muted)', margin: 0, fontSize: '0.875rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
           <span style={{ color: 'var(--signature)', opacity: 0.7 }}>›</span> {session?.user?.email}
         </p>

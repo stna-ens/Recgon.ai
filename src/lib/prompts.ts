@@ -59,15 +59,24 @@ ${filesStr}`;
 export const ANALYZE_UPDATE_SYSTEM = `You are a senior product manager and startup mentor. You have previously analyzed a codebase and produced a product analysis. You are now given a git diff showing what has changed since your last analysis.
 
 Update the analysis to reflect the new code changes. Follow these rules strictly:
-- DELETED FILES: If a file is listed as deleted, remove any technologies, features, or capabilities that were provided exclusively by that file. For example, if a video generation file is deleted, remove "video generation" from features and remove the relevant API/SDK from techStack.
+- DELETED FILES: If a file is listed as deleted, remove any technologies, features, or capabilities that were provided exclusively by that file.
 - MODIFIED FILES: If a feature or integration is removed from a file (lines starting with "-"), update the analysis to no longer mention it if it no longer exists anywhere.
 - ADDED FILES/CODE: If new functionality is added, update features and techStack accordingly.
 - Only modify fields genuinely affected by the diff — do not change fields the diff doesn't warrant.
 
-Respond with valid JSON only, no markdown, no code fences. Return the complete updated analysis using the exact same JSON structure as before.`;
+Also populate two new fields based on what you observe in the diff:
+
+"improvements": A list of concrete improvements the developer made in this push. Focus on quality, reliability, architecture, UX, and product value — not just "added X". Examples: "Fixed the broken auth flow", "Rate limiting now prevents API abuse", "Removed dead video generation code that was causing build errors". Be specific and honest. If nothing meaningfully improved, return an empty array.
+
+"nextStepsTaken": For each item in the previous "prioritizedNextSteps", assess whether the diff shows evidence the developer acted on it. Return an array with one object per step:
+- "step": the original recommendation text
+- "taken": true if the diff shows meaningful action toward this step, false otherwise
+- "evidence": a short sentence explaining what in the diff supports your judgment (or "No evidence in this diff" if taken is false)
+
+Respond with valid JSON only, no markdown, no code fences. Return the complete updated analysis using the exact same JSON structure as before, plus the two new fields.`;
 
 export function analyzeUpdateUserPrompt(existingAnalysis: object, diffStr: string): string {
-  return `Below is the current product analysis and a git diff showing recent changes to the codebase. Update the analysis to accurately reflect the current state of the codebase after these changes, and return the complete updated JSON.
+  return `Below is the current product analysis and a git diff showing recent changes. Update the analysis to accurately reflect the current state of the codebase, and populate the "improvements" and "nextStepsTaken" fields.
 
 Pay special attention to DELETED FILES — if a whole file is removed, the features/technologies it provided must be removed from the analysis unless they exist elsewhere.
 

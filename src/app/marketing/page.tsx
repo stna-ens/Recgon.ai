@@ -196,6 +196,7 @@ export default function MarketingPage() {
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [generatingContent, setGeneratingContent] = useState<string | null>(null);
   const [generatedContents, setGeneratedContents] = useState<Record<string, GeneratedContentEntry>>({});
+  const [contentErrors, setContentErrors] = useState<Record<string, string>>({});
   const [previewEntry, setPreviewEntry] = useState<GeneratedContentEntry | null>(null);
   const planRef = useRef<HTMLDivElement>(null);
 
@@ -233,6 +234,7 @@ export default function MarketingPage() {
       setActiveCampaign(data.campaign);
       setActiveTab('overview');
       setGeneratedContents({});
+      setContentErrors({});
       loadProjects();
       setTimeout(() => planRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch (err) {
@@ -246,6 +248,7 @@ export default function MarketingPage() {
     const platform = getPlatformKey(item.platform);
     if (!platform || !selectedProjectId) return;
     setGeneratingContent(itemKey);
+    setContentErrors((prev) => { const next = { ...prev }; delete next[itemKey]; return next; });
     try {
       const customPrompt = `Topic: ${item.topic}. Angle: ${item.angle}. Format: ${item.suggestedFormat}. CTA: ${item.cta}.`;
       const res = await fetch('/api/marketing/generate', {
@@ -259,8 +262,11 @@ export default function MarketingPage() {
         ...prev,
         [itemKey]: { content: data.content, platform },
       }));
-    } catch {
-      // silent — user can retry
+    } catch (err) {
+      setContentErrors((prev) => ({
+        ...prev,
+        [itemKey]: err instanceof Error ? err.message : 'Content generation failed',
+      }));
     } finally {
       setGeneratingContent(null);
     }
@@ -371,7 +377,7 @@ export default function MarketingPage() {
       {planError && (
         <div style={{ background: 'rgba(255,59,48,0.08)', border: '1px solid rgba(255,59,48,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="14" height="14" fill="none" stroke="var(--danger)" strokeWidth="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span style={{ color: 'var(--danger)', fontSize: 13 }}>{planError}</span>
+          <span style={{ color: 'var(--danger)', fontSize: 13, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>! {planError}</span>
         </div>
       )}
 
@@ -419,8 +425,8 @@ export default function MarketingPage() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: ct.color }}>{ct.label}</span>
-                  <span style={{ fontSize: 11, color: 'var(--txt-muted)', background: 'var(--btn-secondary-bg)', padding: '1px 7px', borderRadius: 4, border: '1px solid var(--btn-secondary-border)' }}>{campaign.duration}</span>
+                  <span className="recgon-label" style={{ color: ct.color, marginBottom: 0 }}>{ct.label.toLowerCase()}</span>
+                  <span style={{ fontSize: 11, color: 'var(--txt-muted)', background: 'var(--btn-secondary-bg)', padding: '1px 7px', borderRadius: 4, border: '1px solid var(--btn-secondary-border)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{campaign.duration}</span>
                 </div>
                 <h3 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: 'var(--txt-pure)', marginBottom: 5, letterSpacing: '-0.5px' }}>
                   {plan.campaignName}
@@ -467,12 +473,12 @@ export default function MarketingPage() {
         {activeTab === 'overview' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div className="glass-card">
-              <div style={{ fontSize: 11, fontWeight: 700, color: ct.color, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 12 }}>Target Audience</div>
+              <span className="recgon-label" style={{ color: ct.color, marginBottom: 12 }}>target_audience</span>
               <p style={{ margin: '0 0 3px', fontSize: 13, color: 'var(--txt-pure)', fontWeight: 600 }}>{plan.targetAudience.primary}</p>
               <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--text-secondary)' }}>{plan.targetAudience.secondary}</p>
 
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 6, letterSpacing: '0.04em' }}>Pain Points</div>
+                <span className="recgon-label" style={{ color: 'var(--txt-muted)', marginBottom: 6 }}>pain_points</span>
                 {plan.targetAudience.painPoints.map((p, i) => (
                   <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', marginBottom: 5 }}>
                     <svg width="12" height="12" fill="none" stroke="#ef4444" strokeWidth="2.5" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: 1 }}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -482,7 +488,7 @@ export default function MarketingPage() {
               </div>
 
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 6, letterSpacing: '0.04em' }}>Motivations</div>
+                <span className="recgon-label" style={{ color: 'var(--txt-muted)', marginBottom: 6 }}>motivations</span>
                 {plan.targetAudience.motivations.map((m, i) => (
                   <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', marginBottom: 5 }}>
                     <svg width="12" height="12" fill="none" stroke="#22c55e" strokeWidth="2.5" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: 1 }}><polyline points="20 6 9 17 4 12"/></svg>
@@ -494,7 +500,7 @@ export default function MarketingPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="glass-card">
-                <div style={{ fontSize: 11, fontWeight: 700, color: ct.color, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 12 }}>Key Messages</div>
+                <span className="recgon-label" style={{ color: ct.color, marginBottom: 12 }}>key_messages</span>
                 {plan.keyMessages.map((m, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: ct.color, background: `${ct.color}20`, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
@@ -506,7 +512,7 @@ export default function MarketingPage() {
               <div className="glass-card" style={{ background: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.25)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
                   <svg width="13" height="13" fill="none" stroke="#f59e0b" strokeWidth="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Quick Wins (48h)</div>
+                  <span className="recgon-label" style={{ color: '#f59e0b', marginBottom: 0 }}>quick_wins &lt;48h</span>
                 </div>
                 {plan.quickWins.map((w, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 7 }}>
@@ -529,7 +535,7 @@ export default function MarketingPage() {
                     <span style={{ background: platformBadgeColor(ch.platform), color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 5 }}>{ch.platform}</span>
                     <span style={{ fontSize: 11, color: 'var(--txt-muted)', background: 'var(--btn-secondary-bg)', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--btn-secondary-border)' }}>{ch.frequency}</span>
                   </div>
-                  <span style={{ fontSize: 11, color: 'var(--txt-muted)' }}>~{ch.estimatedReach}</span>
+                  <span style={{ fontSize: 11, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>~{ch.estimatedReach}</span>
                 </div>
                 <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{ch.strategy}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -551,13 +557,13 @@ export default function MarketingPage() {
                   <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--text-secondary)' }}>{phase.objective}</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 6 }}>Tactics</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 6, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>tactics</div>
                       {phase.tactics.map((tactic, j) => (
                         <div key={j} style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, paddingLeft: 10, borderLeft: `2px solid ${ct.color}50` }}>{tactic}</div>
                       ))}
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 6 }}>Deliverables</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 6, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>deliverables</div>
                       {phase.keyDeliverables.map((d, j) => (
                         <div key={j} style={{ display: 'flex', gap: 5, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
                           <svg width="10" height="10" fill="none" stroke={ct.color} strokeWidth="2.5" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: 2 }}><polyline points="20 6 9 17 4 12"/></svg>
@@ -589,6 +595,7 @@ export default function MarketingPage() {
                       const supportedPlatform = getPlatformKey(item.platform);
                       const generated = generatedContents[itemKey];
                       const isGenerating = generatingContent === itemKey;
+                      const contentError = contentErrors[itemKey];
 
                       return (
                         <div key={itemKey} className="glass-card calendar-card" style={{ padding: '12px 16px' }}>
@@ -601,7 +608,7 @@ export default function MarketingPage() {
                               </div>
                               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt-pure)', marginBottom: 2, letterSpacing: '-0.2px' }}>{item.topic}</div>
                               <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: 2 }}>{item.angle}</div>
-                              <div style={{ fontSize: 11, color: 'var(--txt-muted)' }}>CTA: {item.cta}</div>
+                              <div style={{ fontSize: 11, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}><span style={{ opacity: 0.6 }}>cta:</span> {item.cta}</div>
                             </div>
                             <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
                               {generated && (
@@ -650,10 +657,16 @@ export default function MarketingPage() {
                                   )}
                                 </button>
                               ) : (
-                                <span style={{ fontSize: 11, color: 'var(--txt-muted)', fontStyle: 'italic' }}>Manual</span>
+                                <span style={{ fontSize: 11, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>manual</span>
                               )}
                             </div>
                           </div>
+                          {contentError && (
+                            <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <svg width="11" height="11" fill="none" stroke="var(--danger)" strokeWidth="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                              <span style={{ fontSize: 11, color: 'var(--danger)' }}>{contentError}</span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -668,13 +681,13 @@ export default function MarketingPage() {
         {activeTab === 'metrics' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="glass-card">
-              <div style={{ fontSize: 11, fontWeight: 700, color: ct.color, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 14 }}>KPIs</div>
+              <span className="recgon-label" style={{ color: ct.color, marginBottom: 14 }}>kpis</span>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--btn-secondary-border)' }}>
                       {['Metric', 'Target', 'Platform', 'Timeframe'].map((h) => (
-                        <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--txt-muted)', fontWeight: 600, fontSize: 11, letterSpacing: '0.04em' }}>{h}</th>
+                        <th key={h} style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--txt-muted)', fontWeight: 600, fontSize: 11, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{h.toLowerCase()}</th>
                       ))}
                     </tr>
                   </thead>
@@ -682,9 +695,9 @@ export default function MarketingPage() {
                     {plan.kpis.map((kpi, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid var(--btn-secondary-border)' }}>
                         <td style={{ padding: '9px 10px', color: 'var(--txt-pure)', fontWeight: 500 }}>{kpi.metric}</td>
-                        <td style={{ padding: '9px 10px', color: ct.color, fontWeight: 700 }}>{kpi.target}</td>
+                        <td style={{ padding: '9px 10px', color: ct.color, fontWeight: 700, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{kpi.target}</td>
                         <td style={{ padding: '9px 10px', color: 'var(--text-secondary)' }}>{kpi.platform}</td>
-                        <td style={{ padding: '9px 10px', color: 'var(--txt-muted)' }}>{kpi.timeframe}</td>
+                        <td style={{ padding: '9px 10px', color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{kpi.timeframe}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -693,8 +706,8 @@ export default function MarketingPage() {
             </div>
 
             <div className="glass-card">
-              <div style={{ fontSize: 11, fontWeight: 700, color: ct.color, textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 4 }}>Budget Guidance</div>
-              <p style={{ margin: '0 0 18px', fontSize: 22, fontWeight: 700, color: 'var(--txt-pure)', letterSpacing: '-0.5px' }}>{plan.budgetGuidance.totalRecommendation}</p>
+              <span className="recgon-label" style={{ color: ct.color, marginBottom: 4 }}>budget_guidance</span>
+              <p style={{ margin: '0 0 18px', fontSize: 22, fontWeight: 700, color: 'var(--txt-pure)', letterSpacing: '-0.5px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{plan.budgetGuidance.totalRecommendation}</p>
               {plan.budgetGuidance.breakdown.map((b, i) => (
                 <div key={i} style={{ marginBottom: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
@@ -771,7 +784,7 @@ export default function MarketingPage() {
     return (
       <div>
         <div className="page-header">
-          <h2>Marketing Agent</h2>
+          <h2><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>marketing agent</h2>
           <p>Recgon plans your campaigns — you execute them</p>
         </div>
         <div className="empty-state animate-fade-up" style={{ marginTop: '8vh' }}>
@@ -788,7 +801,7 @@ export default function MarketingPage() {
   return (
     <div>
       <div className="page-header">
-        <h2>Marketing Agent</h2>
+        <h2><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>marketing agent</h2>
         <p>Recgon plans your campaigns — you execute them</p>
       </div>
 

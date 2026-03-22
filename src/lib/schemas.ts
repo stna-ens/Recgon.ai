@@ -41,6 +41,14 @@ export const AnalysisResultSchema = z.object({
   gtmStrategy: z.string(),
   earlyAdopterChannels: z.array(z.string()),
   growthMetrics: z.array(z.string()),
+
+  // Update-only: populated when re-analyzing after a push (not present on first analysis)
+  improvements: z.array(z.string()).optional(),
+  nextStepsTaken: z.array(z.object({
+    step: z.string(),
+    taken: z.boolean(),
+    evidence: z.string(),
+  })).optional(),
 });
 
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
@@ -174,9 +182,16 @@ export function parseAIResponse<T>(raw: string, schema: z.ZodType<T>): T {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error(`No JSON found in AI response: ${raw.substring(0, 200)}`);
-    parsed = JSON.parse(match[0]);
+    // Strip markdown code fences (```json ... ``` or ``` ... ```) then retry
+    const stripped = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    try {
+      parsed = JSON.parse(stripped);
+    } catch {
+      // Last resort: extract first JSON object
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error(`No JSON found in AI response: ${raw.substring(0, 200)}`);
+      parsed = JSON.parse(match[0]);
+    }
   }
   return schema.parse(parsed);
 }
