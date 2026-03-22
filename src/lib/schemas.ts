@@ -128,7 +128,7 @@ export const CampaignPlanResponseSchema = z.object({
     keyDeliverables: z.array(z.string()),
   })),
   contentCalendar: z.array(z.object({
-    week: z.number(),
+    week: z.coerce.number(),
     platform: z.string(),
     contentType: z.string(),
     topic: z.string(),
@@ -146,7 +146,7 @@ export const CampaignPlanResponseSchema = z.object({
     totalRecommendation: z.string(),
     breakdown: z.array(z.object({
       channel: z.string(),
-      percentage: z.number(),
+      percentage: z.coerce.number(),
       rationale: z.string(),
     })),
   }),

@@ -142,14 +142,13 @@ const CAMPAIGN_TYPES: Array<{
   id: CampaignType;
   label: string;
   description: string;
-  color: string;
 }> = [
-  { id: 'product-launch',    label: 'Product Launch',    description: 'Announce and drive adoption of a new product or feature', color: '#dc2626' },
-  { id: 'brand-awareness',   label: 'Brand Awareness',   description: 'Build recognition and trust in your target market',        color: '#2563eb' },
-  { id: 'lead-generation',   label: 'Lead Generation',   description: 'Capture qualified leads and grow your pipeline',           color: '#d97706' },
-  { id: 'community-growth',  label: 'Community Growth',  description: 'Build and engage a loyal community around your product',   color: '#059669' },
-  { id: 're-engagement',     label: 'Re-engagement',     description: 'Win back churned users or reactivate dormant leads',       color: '#7c3aed' },
-  { id: 'content-marketing', label: 'Content Marketing', description: 'Establish thought leadership and drive organic growth',    color: '#0891b2' },
+  { id: 'product-launch',    label: 'Product Launch',    description: 'Announce and drive adoption of a new product or feature' },
+  { id: 'brand-awareness',   label: 'Brand Awareness',   description: 'Build recognition and trust in your target market'        },
+  { id: 'lead-generation',   label: 'Lead Generation',   description: 'Capture qualified leads and grow your pipeline'           },
+  { id: 'community-growth',  label: 'Community Growth',  description: 'Build and engage a loyal community around your product'   },
+  { id: 're-engagement',     label: 'Re-engagement',     description: 'Win back churned users or reactivate dormant leads'       },
+  { id: 'content-marketing', label: 'Content Marketing', description: 'Establish thought leadership and drive organic growth'    },
 ];
 
 const DURATIONS = [
@@ -219,7 +218,11 @@ export default function MarketingPage() {
   const typeConfig = CAMPAIGN_TYPES.find((t) => t.id === campaignType) ?? null;;
 
   const handlePlan = async () => {
-    if (!selectedProjectId || !campaignGoal.trim()) return;
+    if (!selectedProjectId) return;
+    if (!campaignGoal.trim()) {
+      setPlanError('A campaign goal is required. What do you want this campaign to achieve?');
+      return;
+    }
     setIsPlanning(true);
     setPlanError('');
     setActiveCampaign(null);
@@ -296,9 +299,9 @@ export default function MarketingPage() {
                 onClick={() => setCampaignType(t.id)}
                 className="campaign-type-card"
                 style={{
-                  background: selected ? `${t.color}14` : 'var(--bg-content)',
-                  border: `1.5px solid ${selected ? t.color : 'var(--btn-secondary-border)'}`,
-                  boxShadow: selected ? `0 0 0 3px ${t.color}18` : 'none',
+                  background: selected ? 'rgba(var(--signature-rgb), 0.08)' : 'var(--bg-content)',
+                  border: `1.5px solid ${selected ? 'var(--signature)' : 'var(--btn-secondary-border)'}`,
+                  boxShadow: selected ? '0 0 0 3px rgba(var(--signature-rgb), 0.12)' : 'none',
                   borderRadius: 12,
                   padding: '14px 12px',
                   textAlign: 'left',
@@ -309,13 +312,13 @@ export default function MarketingPage() {
                   width: 34,
                   height: 34,
                   borderRadius: 8,
-                  background: selected ? `${t.color}22` : 'var(--btn-secondary-bg)',
-                  border: `1px solid ${selected ? `${t.color}40` : 'var(--btn-secondary-border)'}`,
+                  background: selected ? 'rgba(var(--signature-rgb), 0.12)' : 'var(--btn-secondary-bg)',
+                  border: `1px solid ${selected ? 'rgba(var(--signature-rgb), 0.35)' : 'var(--btn-secondary-border)'}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 10,
-                  color: selected ? t.color : 'var(--txt-muted)',
+                  color: selected ? 'var(--signature)' : 'var(--txt-muted)',
                   transition: 'color 0.15s, background 0.15s, border-color 0.15s',
                 }}>
                   <CampaignIcon type={t.id} size={17} />
@@ -323,7 +326,7 @@ export default function MarketingPage() {
                 <div style={{
                   fontSize: 13,
                   fontWeight: 600,
-                  color: selected ? t.color : 'var(--txt-pure)',
+                  color: selected ? 'var(--signature)' : 'var(--txt-pure)',
                   marginBottom: 3,
                   letterSpacing: '-0.2px',
                   transition: 'color 0.15s',
@@ -341,7 +344,7 @@ export default function MarketingPage() {
           className="form-textarea"
           placeholder="e.g. Get 500 signups in the first month, reach 1000 Instagram followers, generate 50 qualified leads..."
           value={campaignGoal}
-          onChange={(e) => setCampaignGoal(e.target.value)}
+          onChange={(e) => { setCampaignGoal(e.target.value); if (planError) setPlanError(''); }}
           rows={2}
         />
       </div>
@@ -359,9 +362,9 @@ export default function MarketingPage() {
                 style={{
                   padding: '8px 20px',
                   borderRadius: 999,
-                  border: `1.5px solid ${selected ? (typeConfig?.color ?? '#6b7280') : 'var(--btn-secondary-border)'}`,
-                  background: selected ? (typeConfig?.color ?? '#6b7280') : 'var(--bg-content)',
-                  color: selected ? '#fff' : 'var(--txt-muted)',
+                  border: `1.5px solid ${selected ? 'var(--signature)' : 'var(--btn-secondary-border)'}`,
+                  background: selected ? 'rgba(var(--signature-rgb), 0.12)' : 'var(--bg-content)',
+                  color: selected ? 'var(--signature)' : 'var(--txt-muted)',
                   fontSize: 13,
                   fontWeight: 600,
                   outline: 'none',
@@ -384,7 +387,7 @@ export default function MarketingPage() {
       <button
         className="btn btn-primary btn-lg"
         onClick={handlePlan}
-        disabled={isPlanning || !campaignGoal.trim() || !selectedProjectId || !campaignType}
+        disabled={isPlanning || !selectedProjectId || !campaignType}
         style={{ width: '100%', justifyContent: 'center', gap: 10 }}
       >
         {isPlanning ? (
@@ -417,15 +420,15 @@ export default function MarketingPage() {
     return (
       <div ref={planRef} style={{ marginBottom: 40 }}>
         {/* Campaign header */}
-        <div className="glass-card" style={{ marginBottom: 0, borderColor: ct.color, background: `${ct.color}0a`, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: 'none' }}>
+        <div className="glass-card" style={{ marginBottom: 0, borderColor: 'var(--signature)', background: 'rgba(var(--signature-rgb), 0.04)', borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flex: 1 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: `${ct.color}20`, border: `1px solid ${ct.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                <CampaignIcon type={ct.id} size={20} color={ct.color} />
+              <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(var(--signature-rgb), 0.12)', border: '1px solid rgba(var(--signature-rgb), 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                <CampaignIcon type={ct.id} size={20} color={'var(--signature)'} />
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                  <span className="recgon-label" style={{ color: ct.color, marginBottom: 0 }}>{ct.label.toLowerCase()}</span>
+                  <span className="recgon-label" style={{ color: 'var(--signature)', marginBottom: 0 }}>{ct.label.toLowerCase()}</span>
                   <span style={{ fontSize: 11, color: 'var(--txt-muted)', background: 'var(--btn-secondary-bg)', padding: '1px 7px', borderRadius: 4, border: '1px solid var(--btn-secondary-border)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{campaign.duration}</span>
                 </div>
                 <h3 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: 'var(--txt-pure)', marginBottom: 5, letterSpacing: '-0.5px' }}>
@@ -456,8 +459,8 @@ export default function MarketingPage() {
               style={{
                 background: 'none',
                 border: 'none',
-                borderBottom: `2px solid ${activeTab === t.id ? ct.color : 'transparent'}`,
-                color: activeTab === t.id ? ct.color : 'var(--txt-muted)',
+                borderBottom: `2px solid ${activeTab === t.id ? 'var(--signature)' : 'transparent'}`,
+                color: activeTab === t.id ? 'var(--signature)' : 'var(--txt-muted)',
                 fontWeight: activeTab === t.id ? 600 : 400,
                 fontSize: 13,
                 padding: '10px 14px',
@@ -473,7 +476,7 @@ export default function MarketingPage() {
         {activeTab === 'overview' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div className="glass-card">
-              <span className="recgon-label" style={{ color: ct.color, marginBottom: 12 }}>target_audience</span>
+              <span className="recgon-label" style={{ color: 'var(--signature)', marginBottom: 12 }}>target_audience</span>
               <p style={{ margin: '0 0 3px', fontSize: 13, color: 'var(--txt-pure)', fontWeight: 600 }}>{plan.targetAudience.primary}</p>
               <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--text-secondary)' }}>{plan.targetAudience.secondary}</p>
 
@@ -500,10 +503,10 @@ export default function MarketingPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="glass-card">
-                <span className="recgon-label" style={{ color: ct.color, marginBottom: 12 }}>key_messages</span>
+                <span className="recgon-label" style={{ color: 'var(--signature)', marginBottom: 12 }}>key_messages</span>
                 {plan.keyMessages.map((m, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: ct.color, background: `${ct.color}20`, borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--signature)', background: 'rgba(var(--signature-rgb), 0.12)', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.45 }}>{m}</span>
                   </div>
                 ))}
@@ -551,7 +554,7 @@ export default function MarketingPage() {
               {plan.phases.map((phase, i) => (
                 <div key={i} className="glass-card" style={{ marginBottom: 10, padding: '18px 22px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: ct.color, background: `${ct.color}18`, padding: '2px 9px', borderRadius: 4 }}>{phase.duration}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--signature)', background: 'rgba(var(--signature-rgb), 0.09)', padding: '2px 9px', borderRadius: 4 }}>{phase.duration}</span>
                     <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--txt-pure)', letterSpacing: '-0.3px' }}>{phase.name}</span>
                   </div>
                   <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--text-secondary)' }}>{phase.objective}</p>
@@ -559,14 +562,14 @@ export default function MarketingPage() {
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 6, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>tactics</div>
                       {phase.tactics.map((tactic, j) => (
-                        <div key={j} style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, paddingLeft: 10, borderLeft: `2px solid ${ct.color}50` }}>{tactic}</div>
+                        <div key={j} style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, paddingLeft: 10, borderLeft: `2px solid ${'var(--signature)'}50` }}>{tactic}</div>
                       ))}
                     </div>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', marginBottom: 6, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>deliverables</div>
                       {phase.keyDeliverables.map((d, j) => (
                         <div key={j} style={{ display: 'flex', gap: 5, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                          <svg width="10" height="10" fill="none" stroke={ct.color} strokeWidth="2.5" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: 2 }}><polyline points="20 6 9 17 4 12"/></svg>
+                          <svg width="10" height="10" fill="none" stroke={'var(--signature)'} strokeWidth="2.5" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: 2 }}><polyline points="20 6 9 17 4 12"/></svg>
                           {d}
                         </div>
                       ))}
@@ -604,7 +607,7 @@ export default function MarketingPage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
                                 <span style={{ background: platformBadgeColor(item.platform), color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 }}>{item.platform}</span>
                                 <span style={{ fontSize: 10, color: 'var(--txt-muted)', background: 'var(--btn-secondary-bg)', padding: '2px 7px', borderRadius: 4, border: '1px solid var(--btn-secondary-border)' }}>{item.contentType}</span>
-                                <span style={{ fontSize: 10, color: ct.color, background: `${ct.color}14`, padding: '2px 7px', borderRadius: 4 }}>{item.suggestedFormat}</span>
+                                <span style={{ fontSize: 10, color: 'var(--signature)', background: `${'var(--signature)'}14`, padding: '2px 7px', borderRadius: 4 }}>{item.suggestedFormat}</span>
                               </div>
                               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt-pure)', marginBottom: 2, letterSpacing: '-0.2px' }}>{item.topic}</div>
                               <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: 2 }}>{item.angle}</div>
@@ -627,12 +630,12 @@ export default function MarketingPage() {
                                   disabled={isGenerating}
                                   className="inline-btn"
                                   style={{
-                                    background: generated ? `${ct.color}14` : ct.color,
-                                    border: `1px solid ${generated ? `${ct.color}40` : ct.color}`,
+                                    background: generated ? `${'var(--signature)'}14` : 'var(--signature)',
+                                    border: `1px solid ${generated ? 'rgba(var(--signature-rgb), 0.25)' : 'var(--signature)'}`,
                                     borderRadius: 7,
                                     padding: '5px 11px',
                                     fontSize: 11,
-                                    color: generated ? ct.color : '#fff',
+                                    color: generated ? 'var(--signature)' : '#fff',
                                     cursor: isGenerating ? 'not-allowed' : 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -681,7 +684,7 @@ export default function MarketingPage() {
         {activeTab === 'metrics' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="glass-card">
-              <span className="recgon-label" style={{ color: ct.color, marginBottom: 14 }}>kpis</span>
+              <span className="recgon-label" style={{ color: 'var(--signature)', marginBottom: 14 }}>kpis</span>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
@@ -695,7 +698,7 @@ export default function MarketingPage() {
                     {plan.kpis.map((kpi, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid var(--btn-secondary-border)' }}>
                         <td style={{ padding: '9px 10px', color: 'var(--txt-pure)', fontWeight: 500 }}>{kpi.metric}</td>
-                        <td style={{ padding: '9px 10px', color: ct.color, fontWeight: 700, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{kpi.target}</td>
+                        <td style={{ padding: '9px 10px', color: 'var(--signature)', fontWeight: 700, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{kpi.target}</td>
                         <td style={{ padding: '9px 10px', color: 'var(--text-secondary)' }}>{kpi.platform}</td>
                         <td style={{ padding: '9px 10px', color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{kpi.timeframe}</td>
                       </tr>
@@ -706,16 +709,16 @@ export default function MarketingPage() {
             </div>
 
             <div className="glass-card">
-              <span className="recgon-label" style={{ color: ct.color, marginBottom: 4 }}>budget_guidance</span>
+              <span className="recgon-label" style={{ color: 'var(--signature)', marginBottom: 4 }}>budget_guidance</span>
               <p style={{ margin: '0 0 18px', fontSize: 22, fontWeight: 700, color: 'var(--txt-pure)', letterSpacing: '-0.5px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{plan.budgetGuidance.totalRecommendation}</p>
               {plan.budgetGuidance.breakdown.map((b, i) => (
                 <div key={i} style={{ marginBottom: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt-pure)' }}>{b.channel}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: ct.color, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{b.percentage}%</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--signature)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{b.percentage}%</span>
                   </div>
                   <div style={{ height: 4, background: 'var(--btn-secondary-border)', borderRadius: 999, marginBottom: 4, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${b.percentage}%`, background: ct.color, borderRadius: 999, transition: 'width 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }} />
+                    <div style={{ height: '100%', width: `${b.percentage}%`, background: 'var(--signature)', borderRadius: 999, transition: 'width 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }} />
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--txt-muted)' }}>{b.rationale}</div>
                 </div>
@@ -760,8 +763,8 @@ export default function MarketingPage() {
                   style={{ textAlign: 'left', border: '1px solid var(--btn-secondary-border)', background: 'var(--bg-content)', padding: '12px 16px', borderRadius: 12, width: '100%' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 7, background: ctConf ? `${ctConf.color}18` : 'var(--btn-secondary-bg)', border: `1px solid ${ctConf ? `${ctConf.color}30` : 'var(--btn-secondary-border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: ctConf?.color ?? 'var(--txt-muted)' }}>
-                      {ctConf ? <CampaignIcon type={ctConf.id} size={14} color={ctConf.color} /> : null}
+                    <div style={{ width: 30, height: 30, borderRadius: 7, background: ctConf ? 'rgba(var(--signature-rgb), 0.09)' : 'var(--btn-secondary-bg)', border: `1px solid ${ctConf ? 'rgba(var(--signature-rgb), 0.2)' : 'var(--btn-secondary-border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: ctConf ? 'var(--signature)' : 'var(--txt-muted)' }}>
+                      {ctConf ? <CampaignIcon type={ctConf.id} size={14} color="var(--signature)" /> : null}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt-pure)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.2px' }}>{c.name}</div>

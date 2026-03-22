@@ -16,8 +16,8 @@ interface Project {
   feedbackAnalyses?: unknown[];
 }
 
-const SUGGESTIONS = [
-  'What is the main selling point of my projects?',
+const DEFAULT_SUGGESTIONS = [
+  'What am I not thinking about that I should be?',
   'How should I find my first 100 users?',
   'What pricing model would you recommend for a solo developer?',
   'What are the biggest risks I should be aware of?',
@@ -56,15 +56,21 @@ function MarkdownText({ text }: { text: string }) {
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [keyDown, setKeyDown] = useState(false);
   const [recentlyTyped, setRecentlyTyped] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Typewriter effect
+  const charQueueRef = useRef<string[]>([]);
+  const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamDoneRef = useRef(false);
 
   useEffect(() => {
     fetch('/api/projects')
@@ -72,6 +78,73 @@ export default function DashboardPage() {
       .then(setProjects)
       .catch(() => {});
   }, []);
+
+  // Load persisted chat history and personalized suggestions on mount
+  useEffect(() => {
+    fetch('/api/chat')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        if (data.history && data.history.length > 0) {
+          setMessages(data.history.map((m: { role: 'user' | 'assistant'; content: string }) => ({
+            role: m.role,
+            content: m.content,
+          })));
+        }
+        if (data.suggestions && data.suggestions.length > 0) {
+          setSuggestions(data.suggestions);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const stopTypewriter = useCallback(() => {
+    if (typeIntervalRef.current) {
+      clearInterval(typeIntervalRef.current);
+      typeIntervalRef.current = null;
+    }
+    charQueueRef.current = [];
+    streamDoneRef.current = false;
+  }, []);
+
+  const startTypewriter = useCallback((onDone: () => void) => {
+    if (typeIntervalRef.current) return;
+    typeIntervalRef.current = setInterval(() => {
+      const queue = charQueueRef.current;
+      if (queue.length === 0) {
+        if (streamDoneRef.current) {
+          clearInterval(typeIntervalRef.current!);
+          typeIntervalRef.current = null;
+          onDone();
+        }
+        return;
+      }
+      // Drain 1 char while stream is live (typewriter feel),
+      // drain up to 6 chars once stream is done (flush without drag)
+      const batch = streamDoneRef.current ? Math.min(queue.length, 6) : 1;
+      const chars = queue.splice(0, batch).join('');
+      setMessages((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        updated[updated.length - 1] = { ...last, content: last.content + chars };
+        return updated;
+      });
+    }, 12);
+  }, []);
+
+  const clearChat = useCallback(async () => {
+    if (streaming) return;
+    setClearing(true);
+    try {
+      await fetch('/api/chat', { method: 'DELETE' });
+      setMessages([]);
+    } finally {
+      setClearing(false);
+    }
+  }, [streaming]);
+
+  // Clean up typewriter on unmount
+  useEffect(() => () => stopTypewriter(), [stopTypewriter]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -98,6 +171,7 @@ export default function DashboardPage() {
     setMessages((prev) => [...prev, assistantMsg]);
 
     abortRef.current = new AbortController();
+    streamDoneRef.current = false;
 
     try {
       const res = await fetch('/api/chat', {
@@ -115,21 +189,25 @@ export default function DashboardPage() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
 
+      // Start the typewriter — it runs until queue is empty + stream is done
+      startTypewriter(() => setStreaming(false));
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            ...updated[updated.length - 1],
-            content: updated[updated.length - 1].content + chunk,
-          };
-          return updated;
-        });
+        // Push every character into the queue; the interval drains them one by one
+        charQueueRef.current.push(...chunk.split(''));
       }
+
+      // All HTTP data received — tell the typewriter to flush and finish
+      streamDoneRef.current = true;
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return;
+      stopTypewriter();
+      if ((err as Error).name === 'AbortError') {
+        setStreaming(false);
+        return;
+      }
       setMessages((prev) => {
         const updated = [...prev];
         updated[updated.length - 1] = {
@@ -138,10 +216,9 @@ export default function DashboardPage() {
         };
         return updated;
       });
-    } finally {
       setStreaming(false);
     }
-  }, [messages, streaming]);
+  }, [messages, streaming, startTypewriter, stopTypewriter]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     setKeyDown(true);
@@ -186,11 +263,27 @@ export default function DashboardPage() {
           <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Recgon</span>
           <span style={{ fontSize: 12, color: 'var(--txt-faint)' }}>—</span>
           <span style={{ fontSize: 12, color: 'var(--txt-muted)' }}>mentor · cofounder</span>
-          {hasProjects && (
-            <span style={{ marginLeft: 'auto', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, color: 'var(--txt-faint)' }}>
-              {projects.length} project{projects.length > 1 ? 's' : ''} loaded
-            </span>
-          )}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            {hasProjects && (
+              <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, color: 'var(--txt-faint)' }}>
+                {projects.length} project{projects.length > 1 ? 's' : ''} loaded
+              </span>
+            )}
+            {messages.length > 0 && (
+              <button
+                onClick={clearChat}
+                disabled={streaming || clearing}
+                style={{
+                  background: 'none', border: 'none', cursor: streaming || clearing ? 'not-allowed' : 'pointer',
+                  fontSize: 11, color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                  padding: '2px 0', opacity: streaming || clearing ? 0.4 : 0.7, letterSpacing: '0.3px',
+                }}
+                title="Clear conversation history"
+              >
+                clear
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Messages */}
@@ -203,7 +296,7 @@ export default function DashboardPage() {
                   : '// no projects analyzed yet — add a project for context-aware advice'}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {SUGGESTIONS.map((s) => (
+                {suggestions.map((s) => (
                   <button key={s} className="chat-suggestion" onClick={() => send(s)}>
                     <span className="chat-suggestion-prefix">›</span>
                     {s}

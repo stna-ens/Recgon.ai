@@ -16,13 +16,14 @@ export async function chat(
   options?: { temperature?: number; maxTokens?: number }
 ): Promise<string> {
   const client = getGeminiClient();
-  const model = client.getGenerativeModel({ 
+  const model = client.getGenerativeModel({
     model: 'gemini-2.5-flash',
+    systemInstruction: systemPrompt,
   });
 
   const content = await model.generateContent({
     contents: [
-      { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+      { role: 'user', parts: [{ text: userPrompt }] }
     ],
     generationConfig: {
       temperature: options?.temperature ?? 0.7,

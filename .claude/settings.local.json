@@ -12,7 +12,18 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
       "Bash(curl -s http://localhost:3000)",
       "Bash(pkill -f \"next dev\")",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(f''''id={p[\"\"id\"\"]} name={p[\"\"name\"\"]} userId={p.get\\(\"\"userId\"\", \"\"MISSING\"\"\\)}''''\\) for p in data]\")",
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "Bash(npx next:*)",
+      "Bash(git -C /Users/eneskis/Documents/Projects/PMAI status)",
+      "Bash(git -C /Users/eneskis/Documents/Projects/PMAI log --oneline -5)",
+      "Bash(git:*)",
+      "Bash(curl:*)",
+      "Bash(python3 -c \"import json,sys; ps=[p for p in json.load\\(sys.stdin\\) if p.get\\(''''analysis''''\\)]; print\\(ps[0][''''id''''] if ps else ''''NO_ANALYZED_PROJECTS''''\\)\")",
+      "Bash(node:*)"
     ]
   }
 }

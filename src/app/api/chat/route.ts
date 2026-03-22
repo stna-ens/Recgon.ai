@@ -2,7 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAllProjects } from '@/lib/storage';
 import { getGeminiClient } from '@/lib/openai';
-import { mentorSystemPrompt } from '@/lib/prompts';
+import { mentorSystemPrompt, generateSuggestions } from '@/lib/prompts';
+import { getHistory, saveMessages, clearHistory } from '@/lib/chatStorage';
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const projects = getAllProjects(session.user.id);
+  const history = getHistory(session.user.id);
+  const suggestions = generateSuggestions(projects);
+
+  return NextResponse.json({ history, suggestions });
+}
+
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  clearHistory(session.user.id);
+  return NextResponse.json({ ok: true });
+}
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -19,7 +39,13 @@ export async function POST(request: NextRequest) {
     }
 
     const projects = getAllProjects(session.user.id);
-    const systemPrompt = mentorSystemPrompt(projects);
+
+    // Load stored history to give Recgon long-term memory across sessions
+    const storedHistory = getHistory(session.user.id);
+    // Use up to last 30 stored messages as memory context (not the live session history)
+    const memoryContext = storedHistory.slice(-30);
+
+    const systemPrompt = mentorSystemPrompt(projects, memoryContext);
 
     const client = getGeminiClient();
     const model = client.getGenerativeModel({
@@ -37,16 +63,29 @@ export async function POST(request: NextRequest) {
 
     const result = await model.generateContentStream({
       contents,
-      generationConfig: { temperature: 0.8, maxOutputTokens: 2048 },
+      generationConfig: { temperature: 0.85, maxOutputTokens: 4096 },
     });
+
+    // Collect the full response to save it
+    let fullResponse = '';
 
     const stream = new ReadableStream({
       async start(controller) {
         for await (const chunk of result.stream) {
           const text = chunk.text();
-          if (text) controller.enqueue(new TextEncoder().encode(text));
+          if (text) {
+            fullResponse += text;
+            controller.enqueue(new TextEncoder().encode(text));
+          }
         }
         controller.close();
+
+        // Persist this exchange to long-term history
+        const now = Date.now();
+        saveMessages(session.user.id, [
+          { role: 'user', content: message, ts: now },
+          { role: 'assistant', content: fullResponse, ts: now + 1 },
+        ]);
       },
     });
 
