@@ -262,7 +262,7 @@ export default function DashboardPage() {
           />
           <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Recgon</span>
           <span style={{ fontSize: 12, color: 'var(--txt-faint)' }}>—</span>
-          <span style={{ fontSize: 12, color: 'var(--txt-muted)' }}>mentor · cofounder</span>
+          <span style={{ fontSize: 12, color: 'var(--txt-muted)' }}>mentor</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
             {hasProjects && (
               <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, color: 'var(--txt-faint)' }}>
