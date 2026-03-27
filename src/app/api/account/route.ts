@@ -31,6 +31,7 @@ export async function PATCH(request: NextRequest) {
 
     const user = getUserById(session.user.id);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user.passwordHash) return NextResponse.json({ error: 'OAuth accounts cannot change email here' }, { status: 400 });
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return NextResponse.json({ error: 'Incorrect password' }, { status: 403 });
@@ -56,6 +57,7 @@ export async function PATCH(request: NextRequest) {
 
     const user = getUserById(session.user.id);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user.passwordHash) return NextResponse.json({ error: 'This account uses GitHub sign-in and has no password' }, { status: 400 });
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!valid) return NextResponse.json({ error: 'Incorrect current password' }, { status: 403 });
