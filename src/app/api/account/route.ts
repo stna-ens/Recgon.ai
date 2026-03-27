@@ -15,7 +15,7 @@ export async function PATCH(request: NextRequest) {
     if (!nickname || nickname.trim().length < 2) {
       return NextResponse.json({ error: 'Nickname must be at least 2 characters' }, { status: 400 });
     }
-    updateUser(session.user.id, { nickname: nickname.trim() });
+    await updateUser(session.user.id, { nickname: nickname.trim() });
     return NextResponse.json({ success: true, nickname: nickname.trim() });
   }
 
@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'That email is already in use' }, { status: 409 });
     }
 
-    updateUser(user.id, { email: newEmail });
+    await updateUser(user.id, { email: newEmail });
     return NextResponse.json({ success: true });
   }
 
@@ -61,7 +61,7 @@ export async function PATCH(request: NextRequest) {
     if (!valid) return NextResponse.json({ error: 'Incorrect current password' }, { status: 403 });
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    updateUser(user.id, { passwordHash });
+    await updateUser(user.id, { passwordHash });
     return NextResponse.json({ success: true });
   }
 

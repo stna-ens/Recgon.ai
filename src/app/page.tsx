@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import StatsCard from '@/components/StatsCard';
 import RecgonLogo from '@/components/RecgonLogo';
 
 interface Message {
@@ -54,6 +53,7 @@ function MarkdownText({ text }: { text: string }) {
 }
 
 export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS);
@@ -71,6 +71,14 @@ export default function DashboardPage() {
   const charQueueRef = useRef<string[]>([]);
   const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamDoneRef = useRef(false);
+  // Greeting typewriter
+  const [greetingChars, setGreetingChars] = useState(0);
+  const [greetingTextChars, setGreetingTextChars] = useState(0);
+  const greetingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const greetingTextIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const GREETING_TEXT = 'How can I help?';
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     fetch('/api/projects')
@@ -145,6 +153,48 @@ export default function DashboardPage() {
 
   // Clean up typewriter on unmount
   useEffect(() => () => stopTypewriter(), [stopTypewriter]);
+
+  // Greeting typewriter — runs when empty state is shown
+  useEffect(() => {
+    if (messages.length > 0) {
+      setGreetingChars(0);
+      setGreetingTextChars(0);
+      if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current);
+      if (greetingTextIntervalRef.current) clearInterval(greetingTextIntervalRef.current);
+      return;
+    }
+    setGreetingChars(0);
+    setGreetingTextChars(0);
+    const items = [
+      { label: 'projects', value: projects.length },
+      { label: 'analyzed', value: projects.filter((p) => p.analysis).length },
+      { label: 'campaigns', value: projects.reduce((a, p) => a + (p.marketingContent?.length ?? 0), 0) },
+      { label: 'feedback', value: projects.reduce((a, p) => a + (p.feedbackAnalyses?.length ?? 0), 0) },
+    ];
+    const total = items.reduce((a, s, i) => a + String(s.value).length + 1 + s.label.length + (i < items.length - 1 ? 2 : 0), 0);
+    const startTextAnimation = () => {
+      greetingTextIntervalRef.current = setInterval(() => {
+        setGreetingTextChars((prev) => {
+          if (prev >= GREETING_TEXT.length) { clearInterval(greetingTextIntervalRef.current!); return prev; }
+          return prev + 1;
+        });
+      }, 55);
+    };
+    greetingIntervalRef.current = setInterval(() => {
+      setGreetingChars((prev) => {
+        if (prev >= total) {
+          clearInterval(greetingIntervalRef.current!);
+          startTextAnimation();
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 55);
+    return () => {
+      if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current);
+      if (greetingTextIntervalRef.current) clearInterval(greetingTextIntervalRef.current);
+    };
+  }, [messages.length, projects]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -260,9 +310,7 @@ export default function DashboardPage() {
               boxShadow: (streaming || recentlyTyped) ? undefined : '0 0 6px var(--signature)',
             }}
           />
-          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Recgon</span>
-          <span style={{ fontSize: 12, color: 'var(--txt-faint)' }}>—</span>
-          <span style={{ fontSize: 12, color: 'var(--txt-muted)' }}>mentor · cofounder</span>
+          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Terminal</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
             {hasProjects && (
               <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, color: 'var(--txt-faint)' }}>
@@ -288,14 +336,44 @@ export default function DashboardPage() {
 
         {/* Messages */}
         <div ref={messagesContainerRef} style={{ flex: 1, minHeight: 400, maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {messages.length === 0 && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '28px 24px' }}>
-              <p style={{ fontSize: 13, color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", marginBottom: 20 }}>
-                {hasProjects
-                  ? `// ${projects.length} project${projects.length > 1 ? 's' : ''} in context — ask anything`
-                  : '// no projects analyzed yet — add a project for context-aware advice'}
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {messages.length === 0 && mounted && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div className="chat-line-assistant">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--signature)' }}>
+                  <RecgonLogo size={13} uid="greeting-avatar" />
+                  <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, fontWeight: 700, letterSpacing: '0.5px' }}>RECGON</span>
+                </div>
+                <div style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 13 }}>
+                  {(() => {
+                    const items = [
+                      { label: 'projects', value: stats.totalProjects },
+                      { label: 'analyzed', value: stats.analyzedProjects },
+                      { label: 'campaigns', value: stats.marketingCampaigns },
+                      { label: 'feedback', value: stats.feedbackAnalyses },
+                    ];
+                    const flatChars = items.flatMap((s, i, arr) => [
+                      ...String(s.value).split('').map((c) => ({ char: c, isValue: true })),
+                      ...` ${s.label}`.split('').map((c) => ({ char: c, isValue: false })),
+                      ...(i < arr.length - 1 ? '  '.split('').map((c) => ({ char: c, isValue: false })) : []),
+                    ]);
+                    const revealed = flatChars.slice(0, greetingChars);
+                    const done = greetingChars >= flatChars.length;
+                    return (
+                      <>
+                        {revealed.map((c, i) => (
+                          <span key={i} style={{ color: c.isValue ? 'var(--signature)' : 'var(--txt-faint)' }}>{c.char}</span>
+                        ))}
+                        {!done && <span style={{ opacity: 0.35 }}>▌</span>}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--txt-pure)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", marginTop: 8 }}>
+                  {GREETING_TEXT.slice(0, greetingTextChars)}
+                  {greetingTextChars < GREETING_TEXT.length && greetingTextChars > 0 && <span style={{ opacity: 0.35 }}>▌</span>}
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', padding: '7px 24px 0' }}>
                 {suggestions.map((s) => (
                   <button key={s} className="chat-suggestion" onClick={() => send(s)}>
                     <span className="chat-suggestion-prefix">›</span>
@@ -351,29 +429,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="stats-grid">
-        <StatsCard
-          icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>}
-          value={stats.totalProjects}
-          label="Projects"
-        />
-        <StatsCard
-          icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>}
-          value={stats.analyzedProjects}
-          label="Analyzed"
-        />
-        <StatsCard
-          icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><circle cx="12" cy="12" r="3"/></svg>}
-          value={stats.marketingCampaigns}
-          label="Campaigns"
-        />
-        <StatsCard
-          icon={<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
-          value={stats.feedbackAnalyses}
-          label="Feedback Reports"
-        />
-      </div>
     </div>
   );
 }

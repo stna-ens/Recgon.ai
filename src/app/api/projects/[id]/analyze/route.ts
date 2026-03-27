@@ -158,7 +158,7 @@ export async function POST(
         }
 
         project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
-        saveProject(project);
+        await saveProject(project);
         send({ type: 'done', project });
       } catch (err) {
         send({ type: 'error', message: err instanceof Error ? err.message : 'Analysis failed' });

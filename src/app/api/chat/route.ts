@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAllProjects } from '@/lib/storage';
-import { getGeminiClient } from '@/lib/openai';
+import { getGeminiClient } from '@/lib/gemini';
 import { mentorSystemPrompt, generateSuggestions } from '@/lib/prompts';
 import { getHistory, saveMessages, clearHistory } from '@/lib/chatStorage';
 
@@ -20,7 +20,7 @@ export async function DELETE() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  clearHistory(session.user.id);
+  await clearHistory(session.user.id);
   return NextResponse.json({ ok: true });
 }
 
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
         // Persist this exchange to long-term history
         const now = Date.now();
-        saveMessages(session.user.id, [
+        await saveMessages(session.user.id, [
           { role: 'user', content: message, ts: now },
           { role: 'assistant', content: fullResponse, ts: now + 1 },
         ]);

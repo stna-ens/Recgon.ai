@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { getAnalyticsConfig, setAnalyticsConfig } from '@/lib/analyticsStorage';
+import { getAnalyticsConfig, setAnalyticsConfig, setAnalyticsPropertyId, disconnectAnalytics } from '@/lib/analyticsStorage';
 
 export async function GET() {
   const session = await auth();
@@ -9,7 +9,9 @@ export async function GET() {
   const config = getAnalyticsConfig(session.user.id);
   return NextResponse.json({
     propertyId: config?.propertyId ?? null,
-    hasCredentials: !!config?.serviceAccountJson,
+    hasCredentials: !!(config?.serviceAccountJson || config?.oauth),
+    authMethod: config?.authMethod ?? null,
+    oauthConfigured: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
   });
 }
 
@@ -17,7 +19,20 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { propertyId, serviceAccountJson } = await req.json();
+  const body = await req.json();
+
+  // Handle setting property ID for OAuth users
+  if (body.type === 'set_property_id') {
+    const { propertyId } = body;
+    if (!propertyId || typeof propertyId !== 'string' || !/^\d+$/.test(propertyId.trim())) {
+      return NextResponse.json({ error: 'Invalid property ID — must be numeric (e.g. 123456789)' }, { status: 400 });
+    }
+    await setAnalyticsPropertyId(session.user.id, propertyId.trim());
+    return NextResponse.json({ ok: true });
+  }
+
+  // Handle service account setup (legacy)
+  const { propertyId, serviceAccountJson } = body;
 
   if (!propertyId || typeof propertyId !== 'string' || !/^\d+$/.test(propertyId.trim())) {
     return NextResponse.json({ error: 'Invalid property ID — must be numeric (e.g. 123456789)' }, { status: 400 });
@@ -27,7 +42,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Service account JSON is required' }, { status: 400 });
   }
 
-  // Validate it's parseable JSON with required fields
   try {
     const parsed = JSON.parse(serviceAccountJson);
     if (!parsed.client_email || !parsed.private_key) {
@@ -37,6 +51,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON — paste the full contents of your service account key file' }, { status: 400 });
   }
 
-  setAnalyticsConfig(session.user.id, propertyId.trim(), serviceAccountJson);
+  await setAnalyticsConfig(session.user.id, propertyId.trim(), serviceAccountJson);
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  await disconnectAnalytics(session.user.id);
   return NextResponse.json({ ok: true });
 }

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { withFileLock } from './fileLock';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 
@@ -41,25 +42,29 @@ export function getUserById(id: string): User | undefined {
   return getAllUsers().find((u) => u.id === id);
 }
 
-export function updateUser(id: string, updates: Partial<Pick<User, 'email' | 'passwordHash' | 'nickname'>>): User | undefined {
-  const users = getAllUsers();
-  const idx = users.findIndex((u) => u.id === id);
-  if (idx < 0) return undefined;
-  users[idx] = { ...users[idx], ...updates };
-  saveUsers(users);
-  return users[idx];
+export async function updateUser(id: string, updates: Partial<Pick<User, 'email' | 'passwordHash' | 'nickname'>>): Promise<User | undefined> {
+  return withFileLock(getUsersFile(), () => {
+    const users = getAllUsers();
+    const idx = users.findIndex((u) => u.id === id);
+    if (idx < 0) return undefined;
+    users[idx] = { ...users[idx], ...updates };
+    saveUsers(users);
+    return users[idx];
+  });
 }
 
-export function createUser(email: string, passwordHash: string, nickname: string): User {
-  const users = getAllUsers();
-  const user: User = {
-    id: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
-    email,
-    passwordHash,
-    nickname,
-    createdAt: new Date().toISOString(),
-  };
-  users.push(user);
-  saveUsers(users);
-  return user;
+export async function createUser(email: string, passwordHash: string, nickname: string): Promise<User> {
+  return withFileLock(getUsersFile(), () => {
+    const users = getAllUsers();
+    const user: User = {
+      id: Date.now().toString(36) + Math.random().toString(36).substring(2, 8),
+      email,
+      passwordHash,
+      nickname,
+      createdAt: new Date().toISOString(),
+    };
+    users.push(user);
+    saveUsers(users);
+    return user;
+  });
 }

@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         developerPrompts: result.developerPrompts,
         analyzedAt: new Date().toISOString(),
       };
-      saveFeedbackToProject(projectId, analysis, session?.user?.id);
+      await saveFeedbackToProject(projectId, analysis, session?.user?.id);
     }
 
     return NextResponse.json(result);

@@ -1,29 +1,30 @@
 # Recgon.ai
 
-AI-powered marketing content generator for developers. Point it at a GitHub repo or local codebase and get ready-to-use marketing content — captions, ad copy, videos, and more.
+AI-powered product strategy and marketing coach for solo founders. Point it at a GitHub repo or local codebase and get a full product brief, marketing content, feedback analysis, and strategic guidance.
 
 ## What it does
 
-- **Codebase analysis** — Reads your repo and generates a product brief (name, description, features, target audience, USPs) using Gemini AI
+- **Codebase analysis** — Reads your repo and generates a comprehensive product strategy brief (SWOT, competitors, business model, GTM strategy) using Gemini AI
 - **Marketing content** — Generates platform-specific content for Instagram, TikTok, and Google Ads
-- **Video generation** — Creates short marketing videos via Google Veo
-- **Image generation** — Generates ad visuals via Google Imagen
-- **Feedback analysis** — Analyzes user feedback/comments and surfaces actionable developer insights
+- **Campaign planning** — Creates full marketing campaign plans with content calendars
+- **Feedback analysis** — Analyzes user feedback and surfaces actionable developer insights
+- **Analytics dashboard** — Connects to Google Analytics for AI-powered insights
+- **AI mentor** — Chat interface that knows your projects and gives strategic advice
 
 ## Tech stack
 
-- Next.js 14 (App Router)
-- Gemini 2.5 Flash (text), Imagen 4 (images), Veo 2 (video)
+- Next.js (App Router)
+- Gemini 2.5 Flash (AI)
 - NextAuth v5 (credentials)
 - Flat-file JSON storage (no database)
-- Puppeteer (Instagram scraper)
+- Recharts (data visualization)
 
 ## Getting started
 
 ### Prerequisites
 
 - Node.js 18+
-- A [Google AI API key](https://ai.google.dev) with billing enabled (required for video/image generation)
+- A [Google AI API key](https://ai.google.dev)
 
 ### Setup
 
@@ -52,7 +53,8 @@ Open [http://localhost:3000](http://localhost:3000).
 2. Add a project — paste a GitHub URL or a local path
 3. Run **Analyze** to let Gemini read the codebase
 4. Go to **Marketing** → select a platform → generate content
-5. Optionally add a custom prompt to guide the output
+5. Use **Feedback** to analyze user comments
+6. Connect **Analytics** for GA4 insights
 
 ## API routes
 
@@ -62,12 +64,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | POST | `/api/projects` | Create project |
 | POST | `/api/projects/[id]/analyze` | Analyze codebase (SSE stream) |
 | POST | `/api/marketing/generate` | Generate marketing content |
-| GET | `/api/marketing/video-status` | Poll video job status |
-| POST | `/api/feedback/fetch` | Fetch feedback |
+| POST | `/api/marketing/campaign` | Generate campaign plan |
 | POST | `/api/feedback/analyze` | Analyze feedback |
-
-## Notes
-
-- Video generation is async — the UI polls for completion every 5 seconds
-- Video jobs are persisted to `data/video-jobs.json` and survive server restarts
-- Veo video generation requires a paid Google AI plan
+| GET | `/api/feedback/history` | Feedback history |
+| GET | `/api/analytics/data` | Fetch analytics data |
+| POST | `/api/analytics/analyze` | AI analytics insights |

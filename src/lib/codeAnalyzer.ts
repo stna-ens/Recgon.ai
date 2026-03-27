@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { chat } from './openai';
+import { chat } from './gemini';
 import { ANALYZE_SYSTEM, analyzeUserPrompt, ANALYZE_UPDATE_SYSTEM, analyzeUpdateUserPrompt } from './prompts';
 import { AnalysisResultSchema, parseAIResponse } from './schemas';
 
@@ -73,14 +73,48 @@ function readKeyFiles(dir: string): Record<string, string> {
     }
   }
 
-  // Read a few entry-point source files
+  // Prioritize entry points, routes, and high-signal files
   const tree = walkDir(dir);
   const codeFiles = tree.filter(
     (e) => e.type === 'file' && CODE_EXTENSIONS.has(path.extname(e.path))
   );
 
-  // Take the first 5 code files as samples
-  for (const codeFile of codeFiles.slice(0, 5)) {
+  const scored = codeFiles.map((f) => {
+    let score = 0;
+    const lower = f.path.toLowerCase();
+    const name = path.basename(lower);
+
+    // Entry points (highest priority)
+    if (/^(index|main|app|server|mod)\.[^/]+$/.test(name)) score += 10;
+    if (lower.includes('src/app/') && name.startsWith('page.')) score += 8;
+    if (lower.includes('src/app/') && name.startsWith('layout.')) score += 7;
+
+    // Route/API files
+    if (lower.includes('/api/') || lower.includes('/routes/')) score += 6;
+    if (lower.includes('route.')) score += 6;
+
+    // Config files
+    if (name.startsWith('next.config') || name.startsWith('vite.config') || name.startsWith('tsconfig')) score += 5;
+    if (name === 'middleware.ts' || name === 'middleware.js') score += 5;
+
+    // Core logic patterns
+    if (lower.includes('/lib/') || lower.includes('/utils/') || lower.includes('/services/')) score += 4;
+    if (lower.includes('/hooks/') || lower.includes('/store/') || lower.includes('/models/')) score += 4;
+
+    // Component files (lower priority — too many usually)
+    if (lower.includes('/components/')) score += 2;
+
+    // Prefer shorter paths (likely more central)
+    const depth = f.path.split('/').length;
+    score += Math.max(0, 5 - depth);
+
+    return { ...f, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  // Take top 12 most relevant code files
+  for (const codeFile of scored.slice(0, 12)) {
     const fullPath = path.join(dir, codeFile.path);
     try {
       const content = fs.readFileSync(fullPath, 'utf-8');

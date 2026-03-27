@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { withFileLock } from './fileLock';
 
 export interface StoredMessage {
   role: 'user' | 'assistant';
@@ -29,14 +30,18 @@ export function getHistory(userId: string): StoredMessage[] {
   return read()[userId] ?? [];
 }
 
-export function saveMessages(userId: string, msgs: StoredMessage[]) {
-  const d = read();
-  d[userId] = [...(d[userId] ?? []), ...msgs].slice(-MAX_MESSAGES);
-  write(d);
+export async function saveMessages(userId: string, msgs: StoredMessage[]) {
+  return withFileLock(FILE, () => {
+    const d = read();
+    d[userId] = [...(d[userId] ?? []), ...msgs].slice(-MAX_MESSAGES);
+    write(d);
+  });
 }
 
-export function clearHistory(userId: string) {
-  const d = read();
-  delete d[userId];
-  write(d);
+export async function clearHistory(userId: string) {
+  return withFileLock(FILE, () => {
+    const d = read();
+    delete d[userId];
+    write(d);
+  });
 }

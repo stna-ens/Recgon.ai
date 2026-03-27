@@ -9,15 +9,19 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   const isAuthPage = pathname === '/login' || pathname === '/register';
+  const isPublicPage = pathname === '/landing';
   const isApiRoute = pathname.startsWith('/api/');
 
   if (isLoggedIn && isAuthPage) {
     return NextResponse.redirect(new URL('/', req.url));
   }
 
-  if (!isLoggedIn && !isAuthPage) {
+  if (!isLoggedIn && !isAuthPage && !isPublicPage) {
     if (isApiRoute) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (pathname === '/') {
+      return NextResponse.redirect(new URL('/landing', req.url));
     }
     return NextResponse.redirect(new URL('/login', req.url));
   }
