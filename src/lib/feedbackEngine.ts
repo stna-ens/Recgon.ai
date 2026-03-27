@@ -1,4 +1,4 @@
-import { chat } from './openai';
+import { chat } from './gemini';
 import { FEEDBACK_SYSTEM, feedbackUserPrompt } from './prompts';
 import { FeedbackResultSchema, parseAIResponse } from './schemas';
 

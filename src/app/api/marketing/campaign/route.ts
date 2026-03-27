@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    saveCampaignToProject(projectId, campaign, session.user.id);
+    await saveCampaignToProject(projectId, campaign, session.user.id);
 
     return NextResponse.json({ campaign });
   } catch (error) {

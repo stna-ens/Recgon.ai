@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { withFileLock } from './fileLock';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 
@@ -94,22 +95,26 @@ export interface FeedbackAnalysis {
   analyzedAt: string;
 }
 
-export function saveCampaignToProject(projectId: string, campaign: Campaign, userId?: string): boolean {
-  const project = getProject(projectId, userId);
-  if (!project) return false;
-  if (!project.campaigns) project.campaigns = [];
-  project.campaigns.unshift(campaign);
-  saveProject(project);
-  return true;
+export async function saveCampaignToProject(projectId: string, campaign: Campaign, userId?: string): Promise<boolean> {
+  return withFileLock(getProjectsFile(), () => {
+    const project = getProject(projectId, userId);
+    if (!project) return false;
+    if (!project.campaigns) project.campaigns = [];
+    project.campaigns.unshift(campaign);
+    saveProjectUnsafe(project);
+    return true;
+  });
 }
 
-export function saveFeedbackToProject(projectId: string, analysis: FeedbackAnalysis, userId?: string): boolean {
-  const project = getProject(projectId, userId);
-  if (!project) return false;
-  if (!project.feedbackAnalyses) project.feedbackAnalyses = [];
-  project.feedbackAnalyses.unshift(analysis);
-  saveProject(project);
-  return true;
+export async function saveFeedbackToProject(projectId: string, analysis: FeedbackAnalysis, userId?: string): Promise<boolean> {
+  return withFileLock(getProjectsFile(), () => {
+    const project = getProject(projectId, userId);
+    if (!project) return false;
+    if (!project.feedbackAnalyses) project.feedbackAnalyses = [];
+    project.feedbackAnalyses.unshift(analysis);
+    saveProjectUnsafe(project);
+    return true;
+  });
 }
 
 function getProjectsFile(): string {
@@ -131,7 +136,8 @@ export function getProject(id: string, userId?: string): Project | undefined {
   return project;
 }
 
-export function saveProject(project: Project): void {
+// Internal save without lock — used by functions that already hold the lock
+function saveProjectUnsafe(project: Project): void {
   ensureDataDir();
   const projects = getAllProjects();
   const idx = projects.findIndex((p) => p.id === project.id);
@@ -143,10 +149,18 @@ export function saveProject(project: Project): void {
   fs.writeFileSync(getProjectsFile(), JSON.stringify(projects, null, 2));
 }
 
-export function deleteProject(id: string): void {
-  ensureDataDir();
-  const projects = getAllProjects().filter((p) => p.id !== id);
-  fs.writeFileSync(getProjectsFile(), JSON.stringify(projects, null, 2));
+export async function saveProject(project: Project): Promise<void> {
+  return withFileLock(getProjectsFile(), () => {
+    saveProjectUnsafe(project);
+  });
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  return withFileLock(getProjectsFile(), () => {
+    ensureDataDir();
+    const projects = getAllProjects().filter((p) => p.id !== id);
+    fs.writeFileSync(getProjectsFile(), JSON.stringify(projects, null, 2));
+  });
 }
 
 export function generateId(): string {

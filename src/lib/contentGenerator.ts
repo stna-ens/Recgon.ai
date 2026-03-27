@@ -1,4 +1,4 @@
-import { chat } from './openai';
+import { chat } from './gemini';
 import { ProductAnalysis } from './storage';
 import { MARKETING_SYSTEM, marketingUserPrompt, CAMPAIGN_SYSTEM, campaignUserPrompt, CampaignType } from './prompts';
 import { parseAIResponse, InstagramContentSchema, TikTokContentSchema, GoogleAdsContentSchema, CampaignPlanResponseSchema, CampaignPlanResponse } from './schemas';

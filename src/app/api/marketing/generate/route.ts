@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       content: result.content,
       generatedAt: new Date().toISOString(),
     });
-    saveProject(project);
+    await saveProject(project);
 
     return NextResponse.json(result);
   } catch (error) {

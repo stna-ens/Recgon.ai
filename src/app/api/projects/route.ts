@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    saveProject(project);
+    await saveProject(project);
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to create project';

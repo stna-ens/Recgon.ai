@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { chat } from '@/lib/openai';
+import { chat } from '@/lib/gemini';
 import { ANALYTICS_SYSTEM, analyticsUserPrompt } from '@/lib/prompts';
 import { AnalyticsInsightsSchema, parseAIResponse } from '@/lib/schemas';
 

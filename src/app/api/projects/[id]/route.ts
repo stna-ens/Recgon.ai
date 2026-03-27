@@ -30,6 +30,6 @@ export async function DELETE(
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
 
-  deleteProject(id);
+  await deleteProject(id);
   return NextResponse.json({ success: true });
 }

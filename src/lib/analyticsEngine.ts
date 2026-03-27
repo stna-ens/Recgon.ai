@@ -1,4 +1,6 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
+import { OAuth2Client } from 'google-auth-library';
+import { updateOAuthTokens, type OAuthTokens } from './analyticsStorage';
 
 export interface OverviewMetrics {
   sessions: number;
@@ -55,13 +57,78 @@ function num(val: string | null | undefined): number {
   return parseFloat(val ?? '0') || 0;
 }
 
+async function refreshOAuthToken(refreshToken: string, userId: string): Promise<string> {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) throw new Error('Google OAuth not configured');
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.access_token) {
+    throw new Error('Failed to refresh Google OAuth token. Please reconnect your Google account.');
+  }
+
+  const newTokens: Partial<OAuthTokens> = {
+    accessToken: data.access_token,
+    expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
+  };
+  if (data.refresh_token) newTokens.refreshToken = data.refresh_token;
+  await updateOAuthTokens(userId, newTokens);
+
+  return data.access_token;
+}
+
+interface AuthOptions {
+  serviceAccountJson?: string;
+  oauth?: OAuthTokens;
+  userId?: string;
+}
+
 export async function fetchAnalyticsData(
   propertyId: string,
-  serviceAccountJson: string,
+  authOptions: string | AuthOptions,
   days = 30,
 ): Promise<AnalyticsData> {
-  const credentials = JSON.parse(serviceAccountJson);
-  const client = new BetaAnalyticsDataClient({ credentials });
+  let client: BetaAnalyticsDataClient;
+
+  if (typeof authOptions === 'string') {
+    // Legacy: service account JSON string
+    const credentials = JSON.parse(authOptions);
+    client = new BetaAnalyticsDataClient({ credentials });
+  } else if (authOptions.oauth) {
+    let accessToken = authOptions.oauth.accessToken;
+
+    // Auto-refresh if token is expired or about to expire (5 min buffer)
+    if (authOptions.oauth.expiresAt < Date.now() + 5 * 60 * 1000) {
+      if (!authOptions.oauth.refreshToken || !authOptions.userId) {
+        throw new Error('OAuth token expired. Please reconnect your Google account.');
+      }
+      accessToken = await refreshOAuthToken(authOptions.oauth.refreshToken, authOptions.userId);
+    }
+
+    const oauth2Client = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+    );
+    oauth2Client.setCredentials({ access_token: accessToken });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    client = new BetaAnalyticsDataClient({ authClient: oauth2Client as any });
+  } else if (authOptions.serviceAccountJson) {
+    const credentials = JSON.parse(authOptions.serviceAccountJson);
+    client = new BetaAnalyticsDataClient({ credentials });
+  } else {
+    throw new Error('No authentication method provided');
+  }
   const property = `properties/${propertyId}`;
   const startDate = `${days}daysAgo`;
 

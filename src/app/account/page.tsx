@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -26,12 +27,41 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: '0.05em',
 };
 
+interface GitHubStatus {
+  connected: boolean;
+  username: string | null;
+}
+
 export default function AccountPage() {
   const { data: session, update } = useSession();
+  const searchParams = useSearchParams();
 
   const [nicknameValue, setNicknameValue] = useState('');
   const [nicknameStatus, setNicknameStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [nicknameLoading, setNicknameLoading] = useState(false);
+
+  const [githubStatus, setGithubStatus] = useState<GitHubStatus | null>(null);
+  const [githubDisconnecting, setGithubDisconnecting] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/github/status')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => data && setGithubStatus(data))
+      .catch(() => null);
+  }, []);
+
+  // Show feedback after GitHub OAuth redirect
+  useEffect(() => {
+    const github = searchParams.get('github');
+    if (github === 'connected') {
+      setGithubStatus((s) => s ? { ...s, connected: true } : { connected: true, username: null });
+      // Re-fetch to get username
+      fetch('/api/github/status')
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => data && setGithubStatus(data))
+        .catch(() => null);
+    }
+  }, [searchParams]);
 
   const [emailForm, setEmailForm] = useState({ newEmail: '', password: '' });
   const [emailStatus, setEmailStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
@@ -102,6 +132,13 @@ export default function AccountPage() {
       setPasswordStatus({ type: 'success', msg: 'Password updated successfully' });
       setPasswordForm({ currentPassword: '', newPassword: '', confirm: '' });
     }
+  }
+
+  async function handleGithubDisconnect() {
+    setGithubDisconnecting(true);
+    await fetch('/api/github/connect', { method: 'DELETE' });
+    setGithubStatus({ connected: false, username: null });
+    setGithubDisconnecting(false);
   }
 
   return (
@@ -228,6 +265,65 @@ export default function AccountPage() {
             {passwordLoading ? 'Saving…' : 'Update Password'}
           </button>
         </form>
+      </Section>
+
+      {/* GitHub */}
+      <Section title="GitHub">
+        {githubStatus === null ? (
+          <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+        ) : githubStatus.connected ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--txt-muted)', flexShrink: 0 }}>
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              <span style={{ fontSize: '0.875rem', color: 'var(--txt-pure)' }}>
+                {githubStatus.username ? (
+                  <><strong>{githubStatus.username}</strong> connected</>
+                ) : (
+                  'Connected'
+                )}
+              </span>
+            </div>
+            <button
+              onClick={handleGithubDisconnect}
+              disabled={githubDisconnecting}
+              style={{
+                padding: '0.45rem 1rem',
+                background: 'transparent',
+                color: 'var(--danger)',
+                border: '1px solid var(--danger)',
+                borderRadius: 'var(--r-sm)', fontWeight: 600,
+                fontSize: '0.8rem', cursor: githubDisconnecting ? 'not-allowed' : 'pointer',
+                opacity: githubDisconnecting ? 0.6 : 1, flexShrink: 0,
+              }}
+            >
+              {githubDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+            </button>
+          </div>
+        ) : (
+          <>
+            <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: '0 0 1rem' }}>
+              Connect your GitHub account to import repositories directly into Recgon.
+            </p>
+            <a
+              href="/api/github/connect"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.55rem 1.25rem',
+                background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)',
+                border: '1px solid var(--btn-secondary-border)',
+                borderRadius: 'var(--r-sm)', fontWeight: 600,
+                fontSize: '0.875rem', textDecoration: 'none',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              Connect GitHub
+            </a>
+          </>
+        )}
       </Section>
 
       {/* Sign Out */}

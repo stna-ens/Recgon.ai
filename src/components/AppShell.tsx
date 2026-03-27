@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import ErrorBoundary from './ErrorBoundary';
 
-const AUTH_PATHS = ['/login', '/register'];
+const AUTH_PATHS = ['/login', '/register', '/landing'];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
