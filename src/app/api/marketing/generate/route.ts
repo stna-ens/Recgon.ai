@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   try {
     validateEnv();
     const body = await request.json();
-    const { projectId, platform, customPrompt } = body as { projectId: string; platform: Platform; customPrompt?: string };
+    const { projectId, platform, customPrompt, websiteUrl } = body as { projectId: string; platform: Platform; customPrompt?: string; websiteUrl?: string };
 
     if (!projectId || !platform) {
       return NextResponse.json({ error: 'projectId and platform are required' }, { status: 400 });
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Project has not been analyzed yet. Analyze it first.' }, { status: 400 });
     }
 
-    const result = await generateMarketingContent(project.analysis, platform, customPrompt);
+    const result = await generateMarketingContent(project.analysis, platform, customPrompt, websiteUrl);
 
     if (!project.marketingContent) project.marketingContent = [];
     project.marketingContent.push({

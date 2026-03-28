@@ -21,7 +21,7 @@ Respond with valid JSON only, no markdown, no code fences. Use this exact struct
   "problemStatement": "The specific real-world pain this product solves. Be concrete — describe the situation before the product existed.",
   "marketOpportunity": "Honest assessment of the market: is this a niche or broad market? Is it growing? Are people actively searching for this solution? What's the realistic opportunity for a solo dev or small team?",
   "competitors": [
-    { "name": "Competitor or alternative name", "differentiator": "How this product wins or loses vs this competitor in one sentence" }
+    { "name": "Competitor or alternative name", "url": "https://competitor.com (the competitor's main website URL, or omit if unknown)", "differentiator": "How this product wins or loses vs this competitor in one sentence" }
   ],
 
   "businessModel": "Most viable monetization model for this product given its stage and audience (e.g. freemium SaaS, one-time license, usage-based, marketplace fee, etc.)",
@@ -366,6 +366,7 @@ export function marketingUserPrompt(
   targetAudience: string,
   uniqueSellingPoints: string[],
   customPrompt?: string,
+  websiteContent?: string,
 ): string {
   return `Generate marketing content for this product:
 
@@ -375,6 +376,7 @@ Tech Stack: ${techStack.join(', ')}
 Key Features: ${features.join(', ')}
 Target Audience: ${targetAudience}
 Unique Selling Points: ${uniqueSellingPoints.join(', ')}
+${websiteContent ? `\nLIVE WEBSITE CONTENT (use this for authentic messaging and tone):\n${websiteContent}` : ''}
 ${customPrompt ? `\nUser's Custom Instructions: ${customPrompt}\nMAKE SURE TO FOLLOW THESE INSTRUCTIONS CLOSELY.` : ''}`;
 }
 
@@ -477,6 +479,7 @@ export function campaignUserPrompt(
   campaignType: CampaignType,
   goal: string,
   duration: string,
+  websiteContent?: string,
 ): string {
   return `Create ${CAMPAIGN_TYPE_DESCRIPTIONS[campaignType]} for this product.
 
@@ -490,6 +493,7 @@ Unique Selling Points: ${uniqueSellingPoints?.join(', ') ?? 'N/A'}
 Problem Statement: ${problemStatement ?? 'N/A'}
 GTM Strategy: ${gtmStrategy ?? 'N/A'}
 Early Adopter Channels: ${earlyAdopterChannels?.join(', ') ?? 'N/A'}
+${websiteContent ? `\nLIVE WEBSITE CONTENT (use this for authentic messaging and tone):\n${websiteContent}` : ''}
 
 CAMPAIGN PARAMETERS:
 Type: ${campaignType}
@@ -523,5 +527,79 @@ export function analyticsUserPrompt(data: object, days: number): string {
 
 DATA:
 ${JSON.stringify(data, null, 2)}`;
+}
+
+// ── Competitor deep analysis ───────────────────────────────────────────────────
+
+export const COMPETITOR_ANALYSIS_SYSTEM = `You are a competitive intelligence analyst. You are given scraped website content from competitor products and the details of our product. Produce a structured deep-dive analysis for each competitor.
+
+Respond with valid JSON only, no markdown, no code fences:
+{
+  "insights": [
+    {
+      "name": "Competitor name",
+      "url": "Competitor URL if known",
+      "summary": "2-3 sentence description of what this competitor does and who it's for",
+      "positioning": "How they position themselves in the market — their core value proposition",
+      "messagingTone": "The tone and style of their marketing copy (e.g. enterprise-formal, developer-casual, consumer-friendly)",
+      "keyFeatures": ["3-5 features or capabilities prominently highlighted on their site"],
+      "weaknesses": ["2-3 apparent weaknesses or gaps based on their site and positioning"],
+      "differentiator": "In one sentence: how our product wins or should win against this competitor"
+    }
+  ]
+}
+
+Be specific and grounded in the actual content provided. Do not hallucinate features not visible in the scraped content.`;
+
+export function competitorAnalysisUserPrompt(
+  ourProduct: { name: string; description: string; uniqueSellingPoints: string[] },
+  competitors: Array<{ name: string; url?: string; scrapedContent: string }>,
+): string {
+  const competitorSections = competitors.map((c) =>
+    `--- ${c.name} (${c.url ?? 'URL unknown'}) ---\n${c.scrapedContent}`
+  ).join('\n\n');
+
+  return `Analyze these competitor websites relative to our product.
+
+OUR PRODUCT:
+Name: ${ourProduct.name}
+Description: ${ourProduct.description}
+Unique Selling Points: ${ourProduct.uniqueSellingPoints.join(', ')}
+
+COMPETITOR WEBSITE CONTENT:
+${competitorSections}`;
+}
+
+// ── Social media profile analysis ─────────────────────────────────────────────
+
+export const SOCIAL_ANALYSIS_SYSTEM = `You are a social media strategist. You are given scraped content from public social media profiles. Analyze the presence and provide actionable insights.
+
+Respond with valid JSON only, no markdown, no code fences:
+{
+  "profiles": [
+    {
+      "platform": "Platform name (e.g. Instagram, TikTok, LinkedIn)",
+      "profileUrl": "The profile URL",
+      "sizeEstimate": "Estimated audience size based on any visible follower/subscriber counts, or 'Unknown' if not visible",
+      "contentStyle": "Description of the content style, themes, and format used",
+      "postingFrequency": "Estimated posting frequency based on visible post dates, or 'Unknown'",
+      "strengths": ["2-3 things this profile does well"],
+      "improvements": ["2-3 specific, actionable improvements to grow reach and engagement"],
+      "overallScore": 7
+    }
+  ],
+  "overallSummary": "2-3 sentence summary of the overall social media presence and top priority action"
+}
+
+If the scraped content is minimal or the profile appears private/blocked, still return an entry but note the limitation in sizeEstimate and contentStyle. overallScore is 0-10.`;
+
+export function socialAnalysisUserPrompt(
+  profiles: Array<{ platform: string; url: string; content: string | null }>,
+): string {
+  const sections = profiles.map((p) =>
+    `--- ${p.platform}: ${p.url} ---\n${p.content ?? 'Could not access profile content (may be private or blocked).'}`
+  ).join('\n\n');
+
+  return `Analyze these social media profiles:\n\n${sections}`;
 }
 

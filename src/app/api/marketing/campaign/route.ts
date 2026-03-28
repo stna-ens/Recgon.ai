@@ -17,11 +17,12 @@ export async function POST(request: NextRequest) {
   try {
     validateEnv();
     const body = await request.json();
-    const { projectId, campaignType, goal, duration } = body as {
+    const { projectId, campaignType, goal, duration, websiteUrl } = body as {
       projectId: string;
       campaignType: CampaignType;
       goal: string;
       duration: string;
+      websiteUrl?: string;
     };
 
     if (!projectId || !campaignType || !goal || !duration) {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const plan = await generateCampaignPlan(project.analysis, campaignType, goal, duration);
+    const plan = await generateCampaignPlan(project.analysis, campaignType, goal, duration, websiteUrl);
 
     const campaign = {
       id: generateId(),

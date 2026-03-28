@@ -18,6 +18,7 @@ export interface User {
   createdAt: string;
   githubAccessToken?: string;
   githubUsername?: string;
+  socialProfiles?: { platform: string; url: string }[];
 }
 
 function getUsersFile(): string {
@@ -44,7 +45,7 @@ export function getUserById(id: string): User | undefined {
   return getAllUsers().find((u) => u.id === id);
 }
 
-export async function updateUser(id: string, updates: Partial<Pick<User, 'email' | 'passwordHash' | 'nickname' | 'githubAccessToken' | 'githubUsername'>>): Promise<User | undefined> {
+export async function updateUser(id: string, updates: Partial<Pick<User, 'email' | 'passwordHash' | 'nickname' | 'githubAccessToken' | 'githubUsername' | 'socialProfiles'>>): Promise<User | undefined> {
   return withFileLock(getUsersFile(), () => {
     const users = getAllUsers();
     const idx = users.findIndex((u) => u.id === id);

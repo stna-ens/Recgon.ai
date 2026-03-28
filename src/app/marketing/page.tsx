@@ -82,6 +82,22 @@ interface GeneratedContentEntry {
   platform: Platform;
 }
 
+interface SocialProfileInsight {
+  platform: string;
+  profileUrl: string;
+  sizeEstimate: string;
+  contentStyle: string;
+  postingFrequency: string;
+  strengths: string[];
+  improvements: string[];
+  overallScore: number;
+}
+
+interface SocialAnalysisResult {
+  profiles: SocialProfileInsight[];
+  overallSummary: string;
+}
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
 function CampaignIcon({ type, size = 20, color }: { type: CampaignType; size?: number; color?: string }) {
@@ -180,6 +196,67 @@ function platformBadgeColor(name: string): string {
   return '#6b7280';
 }
 
+// ── Social platform picker ────────────────────────────────────────────────────
+
+function SocialPlatformPicker({ value, onChange, platforms, blocked }: {
+  value: string;
+  onChange: (v: string) => void;
+  platforms: string[];
+  blocked: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', width: 160, flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="form-input"
+        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', gap: 6 }}
+      >
+        <span style={{ fontSize: 13 }}>{value}</span>
+        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '100%', background: 'var(--glass-active)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+          {platforms.map((p) => {
+            const isBlocked = blocked.includes(p);
+            return (
+              <button
+                key={p}
+                type="button"
+                disabled={isBlocked}
+                onClick={() => { if (!isBlocked) { onChange(p); setOpen(false); } }}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '8px 12px',
+                  background: value === p ? 'rgba(var(--signature-rgb), 0.2)' : 'transparent',
+                  border: 'none', cursor: isBlocked ? 'default' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  opacity: isBlocked ? 0.5 : 1,
+                }}
+              >
+                <span style={{ fontSize: 13, color: 'var(--txt-pure)' }}>{p}</span>
+                {isBlocked && (
+                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--txt-muted)', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.5px', flexShrink: 0 }}>
+                    SOON
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function MarketingPage() {
@@ -192,7 +269,16 @@ export default function MarketingPage() {
   const [planError, setPlanError] = useState('');
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [historyExpanded, setHistoryExpanded] = useState(false);
+
+  // Social media
+  const [socialProfiles, setSocialProfiles] = useState<{ platform: string; url: string }[]>([]);
+  const [socialPlatformInput, setSocialPlatformInput] = useState('LinkedIn');
+  const [socialUrlInput, setSocialUrlInput] = useState('');
+  const [isAnalyzingSocial, setIsAnalyzingSocial] = useState(false);
+  const [socialInsights, setSocialInsights] = useState<SocialAnalysisResult | null>(null);
+  const [socialError, setSocialError] = useState('');
   const [generatingContent, setGeneratingContent] = useState<string | null>(null);
   const [generatedContents, setGeneratedContents] = useState<Record<string, GeneratedContentEntry>>({});
   const [contentErrors, setContentErrors] = useState<Record<string, string>>({});
@@ -211,7 +297,13 @@ export default function MarketingPage() {
       })
       .catch(() => setProjects([]));
 
-  useEffect(() => { loadProjects(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const loadSocialProfiles = () =>
+    fetch('/api/social/profiles')
+      .then((r) => r.json())
+      .then((d: { profiles: { platform: string; url: string }[] }) => setSocialProfiles(d.profiles ?? []))
+      .catch(() => {});
+
+  useEffect(() => { loadProjects(); loadSocialProfiles(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
   const campaigns = selectedProject?.campaigns ?? [];
@@ -230,7 +322,7 @@ export default function MarketingPage() {
       const res = await fetch('/api/marketing/campaign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: selectedProjectId, campaignType, goal: campaignGoal, duration }),
+        body: JSON.stringify({ projectId: selectedProjectId, campaignType, goal: campaignGoal, duration, websiteUrl: websiteUrl.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Campaign planning failed');
@@ -257,7 +349,7 @@ export default function MarketingPage() {
       const res = await fetch('/api/marketing/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: selectedProjectId, platform, customPrompt }),
+        body: JSON.stringify({ projectId: selectedProjectId, platform, customPrompt, websiteUrl: websiteUrl.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Content generation failed');
@@ -274,6 +366,153 @@ export default function MarketingPage() {
       setGeneratingContent(null);
     }
   };
+
+  // ── Social media handlers ──────────────────────────────────────────────────
+
+  const handleAddSocialProfile = async () => {
+    if (!socialUrlInput.trim()) return;
+    const updated = [...socialProfiles.filter((p) => p.url !== socialUrlInput.trim()), { platform: socialPlatformInput, url: socialUrlInput.trim() }];
+    setSocialProfiles(updated);
+    setSocialUrlInput('');
+    await fetch('/api/social/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profiles: updated }) });
+  };
+
+  const handleRemoveSocialProfile = async (url: string) => {
+    const updated = socialProfiles.filter((p) => p.url !== url);
+    setSocialProfiles(updated);
+    await fetch('/api/social/profiles', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+  };
+
+  const BLOCKED_PLATFORMS = ['Instagram', 'TikTok', 'Twitter / X'];
+  const SOCIAL_PLATFORMS = ['Instagram', 'TikTok', 'LinkedIn', 'Twitter / X', 'YouTube', 'Reddit'];
+
+  const handleAnalyzeSocial = async () => {
+    const accessible = socialProfiles.filter((p) => !BLOCKED_PLATFORMS.includes(p.platform));
+    if (!accessible.length) return;
+    setIsAnalyzingSocial(true);
+    setSocialError('');
+    setSocialInsights(null);
+    try {
+      const res = await fetch('/api/social/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profiles: accessible }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Analysis failed');
+      setSocialInsights(data);
+    } catch (err) {
+      setSocialError(err instanceof Error ? err.message : 'Social media analysis failed');
+    } finally {
+      setIsAnalyzingSocial(false);
+    }
+  };
+
+  const renderSocialSection = () => (
+    <div className="glass-card" style={{ marginBottom: 32 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <svg width="16" height="16" fill="none" stroke="var(--signature)" strokeWidth="1.75" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 2a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3"/><path d="M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/><path d="M16.5 7.5v.01"/>
+        </svg>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--txt-pure)', letterSpacing: '-0.3px' }}>Social Media Presence</span>
+        <span style={{ fontSize: 11, color: 'var(--txt-muted)', marginLeft: 2 }}>Add your public profiles to get AI-powered insights</span>
+      </div>
+
+      {/* Add profile row */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <SocialPlatformPicker
+          value={socialPlatformInput}
+          onChange={setSocialPlatformInput}
+          platforms={SOCIAL_PLATFORMS}
+          blocked={BLOCKED_PLATFORMS}
+        />
+        <input
+          className="form-input"
+          type="url"
+          placeholder="https://linkedin.com/in/yourhandle"
+          value={socialUrlInput}
+          onChange={(e) => setSocialUrlInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !BLOCKED_PLATFORMS.includes(socialPlatformInput)) handleAddSocialProfile(); }}
+          disabled={BLOCKED_PLATFORMS.includes(socialPlatformInput)}
+          style={{ flex: 1 }}
+        />
+        <button className="btn btn-secondary" onClick={handleAddSocialProfile} disabled={!socialUrlInput.trim() || BLOCKED_PLATFORMS.includes(socialPlatformInput)} style={{ flexShrink: 0 }}>
+          Add
+        </button>
+      </div>
+
+      {/* Profile list */}
+      {socialProfiles.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          {socialProfiles.map((p) => {
+            const blocked = BLOCKED_PLATFORMS.includes(p.platform);
+            return (
+              <div key={p.url} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-secondary)', border: `1px solid ${blocked ? 'var(--border)' : 'var(--border)'}`, borderRadius: 20, padding: '4px 10px 4px 12px', fontSize: 12, opacity: blocked ? 0.65 : 1 }}>
+                <span style={{ fontWeight: 600, color: 'var(--txt-pure)' }}>{p.platform}</span>
+                {blocked && (
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--txt-muted)', background: 'var(--bg-content)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.3px' }}>
+                    COMING SOON
+                  </span>
+                )}
+                <span style={{ color: 'var(--txt-muted)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.url.replace(/^https?:\/\//, '')}</span>
+                <button onClick={() => handleRemoveSocialProfile(p.url)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-muted)', padding: 0, lineHeight: 1, fontSize: 14 }}>×</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {socialError && (
+        <div style={{ background: 'rgba(255,59,48,0.08)', border: '1px solid rgba(255,59,48,0.25)', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: 'var(--danger)' }}>
+          {socialError}
+        </div>
+      )}
+
+      <button
+        className="btn btn-secondary"
+        onClick={handleAnalyzeSocial}
+        disabled={isAnalyzingSocial || socialProfiles.filter((p) => !BLOCKED_PLATFORMS.includes(p.platform)).length === 0}
+        style={{ gap: 8 }}
+      >
+        {isAnalyzingSocial ? (
+          <><svg className="loader-spinner" style={{ width: 14, height: 14, borderRightColor: 'transparent', borderWidth: 2 }} />Analyzing profiles...</>
+        ) : 'Analyze Profiles'}
+      </button>
+
+      {/* Results */}
+      {socialInsights && (
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16, padding: '10px 14px', background: 'rgba(var(--signature-rgb), 0.06)', borderRadius: 8, borderLeft: '3px solid var(--signature)' }}>
+            {socialInsights.overallSummary}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {socialInsights.profiles.map((p, i) => (
+              <div key={i} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--txt-pure)' }}>{p.platform}</span>
+                  <span style={{ fontSize: 11, color: 'var(--txt-muted)' }}>{p.sizeEstimate}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: p.overallScore >= 7 ? 'var(--success)' : p.overallScore >= 4 ? 'var(--warning, #f59e0b)' : 'var(--danger)', background: 'var(--bg-content)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px' }}>
+                    {p.overallScore}/10
+                  </span>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>{p.contentStyle} · {p.postingFrequency}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Strengths</span>
+                    <ul style={{ margin: '5px 0 0', padding: '0 0 0 14px' }}>
+                      {p.strengths.map((s, j) => <li key={j} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{s}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--signature)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Improvements</span>
+                    <ul style={{ margin: '5px 0 0', padding: '0 0 0 14px' }}>
+                      {p.improvements.map((s, j) => <li key={j} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{s}</li>)}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   // ── Render: setup ──────────────────────────────────────────────────────────
 
@@ -346,6 +585,20 @@ export default function MarketingPage() {
           value={campaignGoal}
           onChange={(e) => { setCampaignGoal(e.target.value); if (planError) setPlanError(''); }}
           rows={2}
+        />
+      </div>
+
+      <div className="form-group" style={{ marginBottom: 20 }}>
+        <label className="form-label">
+          Website URL{' '}
+          <span style={{ fontWeight: 400, color: 'var(--txt-muted)', fontSize: 12 }}>(optional — crawls your site for richer AI context)</span>
+        </label>
+        <input
+          className="form-input"
+          type="url"
+          placeholder="https://yourproduct.com"
+          value={websiteUrl}
+          onChange={(e) => setWebsiteUrl(e.target.value)}
         />
       </div>
 
@@ -808,6 +1061,7 @@ export default function MarketingPage() {
         <p>Recgon plans your campaigns — you execute them</p>
       </div>
 
+      {renderSocialSection()}
       {renderSetup()}
       {activeCampaign && renderPlan(activeCampaign)}
       {renderHistory()}

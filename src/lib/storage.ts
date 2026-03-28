@@ -37,7 +37,8 @@ export interface ProductAnalysis {
   // Problem & market
   problemStatement: string;
   marketOpportunity: string;
-  competitors: { name: string; differentiator: string }[];
+  competitors: { name: string; url?: string; differentiator: string }[];
+  competitorInsights?: import('./schemas').CompetitorInsight[];
 
   // Business model
   businessModel: string;

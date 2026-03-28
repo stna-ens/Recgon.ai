@@ -2,6 +2,7 @@ import { chat } from './gemini';
 import { ProductAnalysis } from './storage';
 import { MARKETING_SYSTEM, marketingUserPrompt, CAMPAIGN_SYSTEM, campaignUserPrompt, CampaignType } from './prompts';
 import { parseAIResponse, InstagramContentSchema, TikTokContentSchema, GoogleAdsContentSchema, CampaignPlanResponseSchema, CampaignPlanResponse } from './schemas';
+import { scrapeWebsite } from './firecrawl';
 
 export type Platform = 'instagram' | 'tiktok' | 'google-ads';
 export type { CampaignType };
@@ -15,11 +16,14 @@ export async function generateMarketingContent(
   analysis: ProductAnalysis,
   platform: Platform,
   customPrompt?: string,
+  websiteUrl?: string,
 ): Promise<GeneratedContent> {
   const systemPrompt = MARKETING_SYSTEM[platform];
   if (!systemPrompt) {
     throw new Error(`Unknown platform: ${platform}`);
   }
+
+  const websiteContent = websiteUrl ? await scrapeWebsite(websiteUrl) : null;
 
   const userPrompt = marketingUserPrompt(
     analysis.name,
@@ -29,6 +33,7 @@ export async function generateMarketingContent(
     analysis.targetAudience,
     analysis.uniqueSellingPoints,
     customPrompt,
+    websiteContent ?? undefined,
   );
 
   const schema = (platform === 'instagram'
@@ -49,7 +54,10 @@ export async function generateCampaignPlan(
   campaignType: CampaignType,
   goal: string,
   duration: string,
+  websiteUrl?: string,
 ): Promise<CampaignPlanResponse> {
+  const websiteContent = websiteUrl ? await scrapeWebsite(websiteUrl) : null;
+
   const userPrompt = campaignUserPrompt(
     analysis.name,
     analysis.description,
@@ -63,6 +71,7 @@ export async function generateCampaignPlan(
     campaignType,
     goal,
     duration,
+    websiteContent ?? undefined,
   );
 
   const response = await chat(CAMPAIGN_SYSTEM, userPrompt, { temperature: 0.8, maxTokens: 16384 });
