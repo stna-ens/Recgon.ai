@@ -2,6 +2,7 @@ import fs from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
 import { getProject, saveProject } from '@/lib/storage';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '@/lib/codeAnalyzer';
+import { analyzeCompetitors } from '@/lib/competitorAnalyzer';
 import { getLatestCommit, getCommitDiff, cloneGitHubRepo } from '@/lib/githubFetcher';
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, ANALYZE_LIMIT } from '@/lib/rateLimit';
@@ -159,6 +160,19 @@ export async function POST(
 
         project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
         await saveProject(project);
+
+        // Competitor deep analysis — runs after main save, failure is non-fatal
+        if (analysis.competitors?.some((c) => c.url)) {
+          send({ type: 'progress', message: 'Analyzing competitor websites...' });
+          try {
+            const competitorInsights = await analyzeCompetitors(analysis.competitors, project.analysis);
+            project.analysis = { ...project.analysis, competitorInsights };
+            await saveProject(project);
+          } catch {
+            // competitor analysis is best-effort
+          }
+        }
+
         send({ type: 'done', project });
       } catch (err) {
         send({ type: 'error', message: err instanceof Error ? err.message : 'Analysis failed' });

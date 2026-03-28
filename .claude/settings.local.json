@@ -25,5 +25,9 @@
       "Bash(python3 -c \"import json,sys; ps=[p for p in json.load\\(sys.stdin\\) if p.get\\(''''analysis''''\\)]; print\\(ps[0][''''id''''] if ps else ''''NO_ANALYZED_PROJECTS''''\\)\")",
       "Bash(node:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "firecrawl"
+  ],
+  "enableAllProjectMcpServers": true
 }

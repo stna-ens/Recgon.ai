@@ -5,6 +5,18 @@ import { useParams, useRouter } from 'next/navigation';
 
 interface Competitor {
   name: string;
+  url?: string;
+  differentiator: string;
+}
+
+interface CompetitorInsight {
+  name: string;
+  url?: string;
+  summary: string;
+  positioning: string;
+  messagingTone: string;
+  keyFeatures: string[];
+  weaknesses: string[];
   differentiator: string;
 }
 
@@ -28,6 +40,7 @@ interface ProductAnalysis {
   problemStatement?: string;
   marketOpportunity?: string;
   competitors?: Competitor[];
+  competitorInsights?: CompetitorInsight[];
   businessModel?: string;
   revenueStreams?: string[];
   pricingSuggestion?: string;
@@ -295,14 +308,52 @@ export default function ProjectDetailPage() {
             {(a.competitors?.length ?? 0) > 0 && (
               <>
                 <span className="recgon-label">Competitive Landscape</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {a.competitors?.map((c, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', minWidth: 120 }}>{c.name}</span>
-                      <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{c.differentiator}</span>
-                    </div>
-                  ))}
-                </div>
+                {a.competitorInsights?.length ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {a.competitorInsights.map((c, i) => (
+                      <div key={i} style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '14px 16px', border: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{c.name}</span>
+                          {c.url && (
+                            <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--signature)', textDecoration: 'none', border: '1px solid var(--signature)', borderRadius: 4, padding: '1px 6px' }}>
+                              Visit site
+                            </a>
+                          )}
+                          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--txt-muted)', background: 'var(--bg-content)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px' }}>
+                            {c.messagingTone}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 10 }}>{c.summary}</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                          <div>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Their strengths</span>
+                            <ul style={{ margin: '6px 0 0', padding: '0 0 0 16px' }}>
+                              {c.keyFeatures.map((f, j) => <li key={j} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f}</li>)}
+                            </ul>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Their gaps</span>
+                            <ul style={{ margin: '6px 0 0', padding: '0 0 0 16px' }}>
+                              {c.weaknesses.map((w, j) => <li key={j} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{w}</li>)}
+                            </ul>
+                          </div>
+                        </div>
+                        <div style={{ background: 'rgba(var(--signature-rgb), 0.07)', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: 'var(--signature)', fontStyle: 'italic' }}>
+                          {c.differentiator}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {a.competitors?.map((c, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', minWidth: 120 }}>{c.name}</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{c.differentiator}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
