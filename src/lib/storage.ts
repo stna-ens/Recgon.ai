@@ -23,6 +23,7 @@ export interface Project {
   marketingContent?: MarketingContent[];
   feedbackAnalyses?: FeedbackAnalysis[];
   campaigns?: Campaign[];
+  socialProfiles?: { platform: string; url: string }[];
 }
 
 export interface ProductAnalysis {
@@ -102,6 +103,16 @@ export async function saveCampaignToProject(projectId: string, campaign: Campaig
     if (!project) return false;
     if (!project.campaigns) project.campaigns = [];
     project.campaigns.unshift(campaign);
+    saveProjectUnsafe(project);
+    return true;
+  });
+}
+
+export async function saveSocialProfilesToProject(projectId: string, profiles: { platform: string; url: string }[], userId?: string): Promise<boolean> {
+  return withFileLock(getProjectsFile(), () => {
+    const project = getProject(projectId, userId);
+    if (!project) return false;
+    project.socialProfiles = profiles;
     saveProjectUnsafe(project);
     return true;
   });

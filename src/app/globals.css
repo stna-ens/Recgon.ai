@@ -435,6 +435,34 @@ body {
 .btn:active { transform: scale(0.98); }
 .btn-sm { padding: 8px 16px; font-size: 13px; }
 
+/* === SIDEBAR (marketing) === */
+.sidebar-toggle:hover {
+  background: var(--btn-secondary-hover) !important;
+}
+.sidebar-profile-item:hover {
+  background: var(--btn-secondary-hover) !important;
+  border-color: rgba(var(--signature-rgb), 0.25) !important;
+}
+.sidebar-campaign {
+  background: var(--bg-content);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, background 0.15s;
+}
+.sidebar-campaign:hover {
+  border-color: rgba(var(--signature-rgb), 0.4) !important;
+  background: rgba(var(--signature-rgb), 0.06) !important;
+}
+.sidebar-profile-item .profile-remove {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.sidebar-profile-item:hover .profile-remove {
+  opacity: 1;
+}
+.sidebar-select:hover {
+  border-color: rgba(var(--signature-rgb), 0.4) !important;
+}
+
 /* === FORMS === */
 .form-group { margin-bottom: 24px; }
 
