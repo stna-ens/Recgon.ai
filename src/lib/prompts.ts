@@ -591,7 +591,7 @@ Respond with valid JSON only, no markdown, no code fences:
   "overallSummary": "2-3 sentence summary of the overall social media presence and top priority action"
 }
 
-If the scraped content is minimal or the profile appears private/blocked, still return an entry but note the limitation in sizeEstimate and contentStyle. overallScore is 0-10.`;
+overallScore is 0-10. Only score profiles where content was actually retrieved — if a profile's content is null or empty, set overallScore to 0, sizeEstimate to "Unknown", contentStyle to "Profile content could not be accessed", strengths to [], and improvements to ["Make sure your profile is public so it can be analyzed"].`;
 
 export function socialAnalysisUserPrompt(
   profiles: Array<{ platform: string; url: string; content: string | null }>,

@@ -23,11 +23,15 @@
       "Bash(git:*)",
       "Bash(curl:*)",
       "Bash(python3 -c \"import json,sys; ps=[p for p in json.load\\(sys.stdin\\) if p.get\\(''''analysis''''\\)]; print\\(ps[0][''''id''''] if ps else ''''NO_ANALYZED_PROJECTS''''\\)\")",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm list:*)",
+      "Bash(pip3 install:*)",
+      "Bash(open /Users/eneskis/Documents/Projects/Recgon/competitor-analysis.pptx)",
+      "Bash(npx eslint:*)"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "firecrawl"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

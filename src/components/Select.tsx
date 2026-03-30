@@ -95,6 +95,18 @@ export default function Select({ value, onChange, options, placeholder, style }:
           borderColor: open ? 'rgba(var(--signature-rgb), 0.45)' : undefined,
           transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
         }}
+        onMouseEnter={(e) => {
+          if (!open) {
+            e.currentTarget.style.borderColor = 'rgba(var(--signature-rgb), 0.35)';
+            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--signature-rgb), 0.08)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!open) {
+            e.currentTarget.style.borderColor = '';
+            e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.03)';
+          }
+        }}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {selected ? selected.label : (placeholder ?? 'Select...')}
