@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics Header — Design Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #f5f5f7;
+    --bg-content: rgba(255,255,255,0.6);
+    --glass-substrate: rgba(255,255,255,0.75);
+    --glass-active: rgba(240,240,245,0.95);
+    --shadow-float: 0 12px 32px -8px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.02);
+    --shadow-deep: 0 24px 48px -12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.03);
+    --edge-highlight: inset 0 1px 1px rgba(255,255,255,1);
+    --edge-shadow: inset 0 -1px 1px rgba(0,0,0,0.03);
+    --txt-pure: #1d1d1f;
+    --txt-muted: #86868b;
+    --txt-faint: #a1a1a6;
+    --btn-primary-bg: #1d1d1f;
+    --btn-primary-txt: #ffffff;
+    --btn-secondary-bg: rgba(0,0,0,0.04);
+    --btn-secondary-border: rgba(0,0,0,0.08);
+    --btn-secondary-hover: rgba(0,0,0,0.08);
+    --signature: #e8a8c4;
+    --signature-rgb: 232,168,196;
+    --r-sm: 14px;
+    --r-md: 24px;
+    --r-pill: 999px;
+  }
+  .dark {
+    --bg-deep: #000000;
+    --bg-content: rgba(20,20,22,0.4);
+    --glass-substrate: rgba(20,20,22,0.6);
+    --glass-active: rgba(40,40,45,0.9);
+    --shadow-float: 0 20px 40px -10px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04);
+    --shadow-deep: 0 30px 60px -15px rgba(0,0,0,1), 0 0 0 1px rgba(255,255,255,0.06);
+    --edge-highlight: inset 0 1px 1px rgba(255,255,255,0.15);
+    --edge-shadow: inset 0 -1px 1px rgba(0,0,0,0.5);
+    --txt-pure: #ffffff;
+    --txt-muted: #8e8e93;
+    --txt-faint: #636366;
+    --btn-primary-bg: #ffffff;
+    --btn-primary-txt: #000000;
+    --btn-secondary-bg: rgba(255,255,255,0.05);
+    --btn-secondary-border: rgba(255,255,255,0.1);
+    --btn-secondary-hover: rgba(255,255,255,0.1);
+    --signature: #f0b8d0;
+    --signature-rgb: 240,184,208;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-deep);
+    color: var(--txt-pure);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 64px;
+  }
+  .theme-switch {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    display: flex;
+    gap: 8px;
+    z-index: 999;
+  }
+  .theme-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    border-radius: 999px;
+    border: 1px solid var(--btn-secondary-border);
+    background: var(--btn-secondary-bg);
+    color: var(--txt-muted);
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+  .theme-btn.active { background: rgba(var(--signature-rgb), 0.12); color: var(--signature); border-color: rgba(var(--signature-rgb), 0.35); }
+
+  /* ── Option label ── */
+  .option-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--signature);
+    opacity: 0.7;
+    margin-bottom: 6px;
+  }
+  .option-label::before { content: '// '; opacity: 0.5; }
+  .option-desc {
+    font-size: 13px;
+    color: var(--txt-muted);
+    margin-bottom: 28px;
+    line-height: 1.6;
+    max-width: 520px;
+  }
+
+  /* ── Preview frame ── */
+  .preview-frame {
+    background: var(--bg-content);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid var(--btn-secondary-border);
+    border-radius: var(--r-md);
+    padding: 36px 32px;
+    box-shadow: var(--shadow-float), var(--edge-highlight);
+  }
+
+  /* ── Shared pieces ── */
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .page-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--txt-pure);
+  }
+  .page-title .prefix { color: var(--signature); opacity: 0.5; }
+  .subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--txt-muted);
+    margin-top: 4px;
+  }
+  .subtitle code { color: var(--signature); }
+
+  /* pill button group */
+  .pill-group {
+    display: flex;
+    gap: 3px;
+    background: var(--glass-substrate);
+    border: 1px solid var(--btn-secondary-border);
+    border-radius: var(--r-sm);
+    padding: 3px;
+  }
+  .pill-btn {
+    padding: 5px 13px;
+    border-radius: 10px;
+    border: none;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    background: transparent;
+    color: var(--txt-muted);
+    transition: all 0.15s;
+  }
+  .pill-btn.active {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-txt);
+  }
+
+  /* secondary button */
+  .sec-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--btn-secondary-border);
+    background: var(--btn-secondary-bg);
+    color: var(--txt-pure);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  /* fake select trigger */
+  .fake-select {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 16px;
+    background: var(--bg-deep);
+    border: 1px solid var(--btn-secondary-border);
+    border-radius: var(--r-sm);
+    color: var(--txt-pure);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: -0.2px;
+  }
+  .fake-select svg { opacity: 0.45; flex-shrink: 0; }
+
+  /* ── skeleton cards (simulated data below) ── */
+  .metric-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-top: 28px;
+    opacity: 0.35;
+  }
+  .metric-card {
+    background: var(--bg-content);
+    border: 1px solid var(--btn-secondary-border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .metric-label { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--signature); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .metric-val { font-size: 1.35rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--txt-pure); }
+
+  /* ─────────────────────────────────────────── */
+  /* OPTION A — Toolbar strip */
+  /* ─────────────────────────────────────────── */
+  .toolbar-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    background: var(--glass-substrate);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid var(--btn-secondary-border);
+    border-radius: var(--r-sm);
+    padding: 8px 12px;
+    box-shadow: var(--edge-highlight), var(--edge-shadow);
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 10px; }
+  .toolbar-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--btn-secondary-border);
+    margin: 0 4px;
+  }
+  .toolbar-right { display: flex; align-items: center; gap: 8px; }
+
+  /* ─────────────────────────────────────────── */
+  /* OPTION B — Inline title row */
+  /* ─────────────────────────────────────────── */
+  .inline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .inline-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .title-chevron-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px 3px 4px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .title-chevron-wrap:hover {
+    border-color: rgba(var(--signature-rgb), 0.3);
+    background: rgba(var(--signature-rgb), 0.06);
+  }
+  .project-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px 4px 8px;
+    border-radius: 999px;
+    background: rgba(var(--signature-rgb), 0.08);
+    border: 1px solid rgba(var(--signature-rgb), 0.2);
+    color: var(--signature);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.2px;
+  }
+  .project-pill svg { opacity: 0.6; }
+  .inline-right { display: flex; align-items: center; gap: 8px; }
+
+  /* ─────────────────────────────────────────── */
+  /* OPTION C — Tab row */
+  /* ─────────────────────────────────────────── */
+  .tabs-header { margin-bottom: 0; }
+  .tab-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 24px;
+    border-bottom: 1px solid var(--btn-secondary-border);
+    padding-bottom: 0;
+  }
+  .tab {
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: var(--r-sm) var(--r-sm) 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: var(--txt-muted);
+    font-family: inherit;
+    background: transparent;
+    position: relative;
+    bottom: -1px;
+    transition: color 0.15s;
+    white-space: nowrap;
+  }
+  .tab.active {
+    color: var(--txt-pure);
+    background: var(--bg-content);
+    border-color: var(--btn-secondary-border);
+    border-bottom-color: transparent;
+  }
+  .tab .tab-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--signature);
+    margin-left: 6px;
+    opacity: 0.7;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+  }
+  .tab-add {
+    padding: 8px 12px;
+    color: var(--txt-faint);
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 300;
+    background: transparent;
+    border: none;
+    line-height: 1;
+    margin-left: 2px;
+  }
+  .tab-controls {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+  .metrics-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 24px;
+    margin-bottom: 12px;
+  }
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--signature);
+    opacity: 0.75;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .section-label::before { content: '// '; opacity: 0.5; }
+</style>
+</head>
+<body>
+
+<div class="theme-switch">
+  <button class="theme-btn" onclick="document.documentElement.classList.remove('dark'); this.classList.add('active'); this.nextSibling.nextSibling.classList.remove('active')">light</button>
+  <span> </span>
+  <button class="theme-btn active" onclick="document.documentElement.classList.add('dark'); this.classList.add('active'); this.previousSibling.previousSibling.classList.remove('active')">dark</button>
+</div>
+
+<div class="page">
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- OPTION A                                        -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div>
+    <div class="option-label">Option A — Toolbar strip</div>
+    <div class="option-desc">Title stays top-left. A full-width glass strip sits directly below it — project selector on the left, time + controls on the right. A subtle divider separates the two sides.</div>
+    <div class="preview-frame">
+
+      <div class="page-title"><span class="prefix">$ </span>analytics</div>
+      <div class="subtitle">property <code>381927461</code> · My App · fetched 14:32:01</div>
+
+      <div class="toolbar-strip">
+        <div class="toolbar-left">
+          <div class="fake-select" style="min-width: 200px;">
+            <span>My App &nbsp;<span style="color:var(--txt-faint); font-size:11px; font-family:'JetBrains Mono',monospace;">381927461</span></span>
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-right">
+          <div class="pill-group">
+            <button class="pill-btn">7d</button>
+            <button class="pill-btn active">30d</button>
+            <button class="pill-btn">90d</button>
+          </div>
+          <button class="sec-btn">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.45"/></svg>
+            Refresh
+          </button>
+          <button class="sec-btn" style="color:var(--txt-muted)">Change property</button>
+        </div>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric-card"><div class="metric-label">Sessions</div><div class="metric-val">12.4K</div></div>
+        <div class="metric-card"><div class="metric-label">Users</div><div class="metric-val">8.1K</div></div>
+        <div class="metric-card"><div class="metric-label">Views</div><div class="metric-val">41.2K</div></div>
+        <div class="metric-card"><div class="metric-label">Bounce</div><div class="metric-val">38.2%</div></div>
+        <div class="metric-card"><div class="metric-label">Avg session</div><div class="metric-val">2m 14s</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- OPTION B                                        -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div>
+    <div class="option-label">Option B — Inline title row</div>
+    <div class="option-desc">Everything lives on one line. The project name replaces the subtitle and sits inline with the title as a tappable pill — click it to switch. Days + refresh float to the right. Zero rows wasted.</div>
+    <div class="preview-frame">
+
+      <div class="inline-header">
+        <div class="inline-left">
+          <span class="page-title mono"><span class="prefix">$ </span>analytics</span>
+          <div class="project-pill">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            My App
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+        <div class="inline-right">
+          <div class="pill-group">
+            <button class="pill-btn">7d</button>
+            <button class="pill-btn active">30d</button>
+            <button class="pill-btn">90d</button>
+          </div>
+          <button class="sec-btn">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.45"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+      <div class="subtitle" style="margin-top: 6px;">property <code>381927461</code> · fetched 14:32:01</div>
+
+      <div class="metric-row">
+        <div class="metric-card"><div class="metric-label">Sessions</div><div class="metric-val">12.4K</div></div>
+        <div class="metric-card"><div class="metric-label">Users</div><div class="metric-val">8.1K</div></div>
+        <div class="metric-card"><div class="metric-label">Views</div><div class="metric-val">41.2K</div></div>
+        <div class="metric-card"><div class="metric-label">Bounce</div><div class="metric-val">38.2%</div></div>
+        <div class="metric-card"><div class="metric-label">Avg session</div><div class="metric-val">2m 14s</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- OPTION C                                        -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div>
+    <div class="option-label">Option C — Project tabs</div>
+    <div class="option-desc">Projects become tabs sitting on a border above the data. Each linked project is a tab — active one is selected. Time range moves to the top-right of the metrics section, keeping the header clean.</div>
+    <div class="preview-frame">
+
+      <div class="page-title"><span class="prefix">$ </span>analytics</div>
+      <div class="subtitle" style="margin-bottom: 0;">fetched 14:32:01</div>
+
+      <div class="tab-row">
+        <button class="tab">All projects</button>
+        <button class="tab active">My App <span class="tab-dot"></span></button>
+        <button class="tab">Landing Site <span class="tab-dot"></span></button>
+        <button class="tab-add">+</button>
+        <div class="tab-controls">
+          <div class="pill-group">
+            <button class="pill-btn">7d</button>
+            <button class="pill-btn active">30d</button>
+            <button class="pill-btn">90d</button>
+          </div>
+          <button class="sec-btn">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.45"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="metrics-header">
+        <div class="section-label">overview · My App · 381927461</div>
+      </div>
+      <div class="metric-row" style="margin-top:0; opacity:0.35;">
+        <div class="metric-card"><div class="metric-label">Sessions</div><div class="metric-val">12.4K</div></div>
+        <div class="metric-card"><div class="metric-label">Users</div><div class="metric-val">8.1K</div></div>
+        <div class="metric-card"><div class="metric-label">Views</div><div class="metric-val">41.2K</div></div>
+        <div class="metric-card"><div class="metric-label">Bounce</div><div class="metric-val">38.2%</div></div>
+        <div class="metric-card"><div class="metric-label">Avg session</div><div class="metric-val">2m 14s</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

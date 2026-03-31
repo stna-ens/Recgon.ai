@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAnalyticsConfig, setAnalyticsConfig, setAnalyticsPropertyId, disconnectAnalytics } from '@/lib/analyticsStorage';
+import { getProject, updateProjectAnalyticsProperty } from '@/lib/storage';
 
 export async function GET() {
   const session = await auth();
@@ -20,6 +21,21 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
+
+  // Handle linking a GA4 property to a specific project
+  if (body.type === 'set_project_property') {
+    const { projectId, propertyId } = body;
+    if (!projectId || typeof projectId !== 'string')
+      return NextResponse.json({ error: 'projectId is required' }, { status: 400 });
+    const trimmed = typeof propertyId === 'string' ? propertyId.trim() : '';
+    if (trimmed && !/^\d+$/.test(trimmed))
+      return NextResponse.json({ error: 'Invalid property ID — must be numeric (e.g. 123456789)' }, { status: 400 });
+    if (!getProject(projectId, session.user.id))
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    const ok = await updateProjectAnalyticsProperty(projectId, trimmed || null, session.user.id);
+    if (!ok) return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
 
   // Handle setting property ID for OAuth users
   if (body.type === 'set_property_id') {

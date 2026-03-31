@@ -24,6 +24,7 @@ export interface Project {
   feedbackAnalyses?: FeedbackAnalysis[];
   campaigns?: Campaign[];
   socialProfiles?: { platform: string; url: string }[];
+  analyticsPropertyId?: string;
 }
 
 export interface ProductAnalysis {
@@ -113,6 +114,24 @@ export async function saveSocialProfilesToProject(projectId: string, profiles: {
     const project = getProject(projectId, userId);
     if (!project) return false;
     project.socialProfiles = profiles;
+    saveProjectUnsafe(project);
+    return true;
+  });
+}
+
+export async function updateProjectAnalyticsProperty(
+  projectId: string,
+  analyticsPropertyId: string | null,
+  userId?: string
+): Promise<boolean> {
+  return withFileLock(getProjectsFile(), () => {
+    const project = getProject(projectId, userId);
+    if (!project) return false;
+    if (analyticsPropertyId === null) {
+      delete project.analyticsPropertyId;
+    } else {
+      project.analyticsPropertyId = analyticsPropertyId;
+    }
     saveProjectUnsafe(project);
     return true;
   });

@@ -27,7 +27,9 @@
       "Bash(npm list:*)",
       "Bash(pip3 install:*)",
       "Bash(open /Users/eneskis/Documents/Projects/Recgon/competitor-analysis.pptx)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Read(//Users/eneskis/.claude/**)",
+      "Bash(open:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

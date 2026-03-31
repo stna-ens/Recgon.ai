@@ -5,6 +5,7 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
+import Select from '@/components/Select';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,12 @@ interface AnalyticsInsights {
   recommendations: string[];
   topWin: string;
   topConcern: string;
+}
+
+interface ProjectSummary {
+  id: string;
+  name: string;
+  analyticsPropertyId?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -182,6 +189,47 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
           <span style={{ fontWeight: 600 }}>{fmtNum(p.value)}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+
+function LinkPropertyBanner({ projectName, propertyId, onChange, onSave, saving, error }: {
+  projectName: string;
+  propertyId: string;
+  onChange: (v: string) => void;
+  onSave: () => void;
+  saving: boolean;
+  error: string;
+}) {
+  return (
+    <div className="glass-card" style={{ padding: '20px 24px', marginBottom: 24, borderColor: 'rgba(168,85,247,0.3)' }}>
+      <p style={{ fontWeight: 600, marginBottom: 8, fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: '0.9rem' }}>
+        Link a GA4 property to <span style={{ color: 'var(--signature)' }}>{projectName}</span>
+      </p>
+      <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', marginBottom: 16, lineHeight: 1.6 }}>
+        Enter the numeric Property ID from Google Analytics → Admin → Property details.
+      </p>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <input
+          value={propertyId}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="e.g. 123456789"
+          className="form-input"
+          style={{ maxWidth: 220, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}
+          onKeyDown={(e) => e.key === 'Enter' && onSave()}
+          autoFocus
+        />
+        <button
+          onClick={onSave}
+          disabled={saving || !propertyId.trim()}
+          className="btn btn-primary btn-sm"
+          style={{ opacity: saving || !propertyId.trim() ? 0.5 : 1 }}
+        >
+          {saving ? 'Saving…' : 'Link property'}
+        </button>
+      </div>
+      {error && <p style={{ color: 'var(--danger)', fontSize: '0.83rem', marginTop: 10, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{error}</p>}
     </div>
   );
 }
@@ -622,8 +670,18 @@ export default function AnalyticsPage() {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [error, setError] = useState('');
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [linkingPropertyId, setLinkingPropertyId] = useState('');
+  const [linkingSaving, setLinkingSaving] = useState(false);
+  const [linkingError, setLinkingError] = useState('');
 
-  const insightsKey = propertyId ? `analytics_insights_${propertyId}_${days}` : null;
+  const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
+  const activePropertyId = selectedProject?.analyticsPropertyId ?? propertyId;
+
+  const insightsKey = activePropertyId
+    ? `analytics_insights_${activePropertyId}_${selectedProjectId ?? 'global'}_${days}`
+    : null;
 
   // Load cached insights from localStorage when property/days are known
   useEffect(() => {
@@ -646,11 +704,17 @@ export default function AnalyticsPage() {
     checkConfig();
   }, []);
 
-  const fetchData = useCallback(async (selectedDays: number) => {
+  // Load project list
+  useEffect(() => {
+    fetch('/api/projects').then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
+  }, []);
+
+  const fetchData = useCallback(async (selectedDays: number, pId?: string | null) => {
     setLoadingData(true);
     setError('');
     try {
-      const res = await fetch(`/api/analytics/data?days=${selectedDays}`);
+      const projectParam = pId ? `&projectId=${pId}` : '';
+      const res = await fetch(`/api/analytics/data?days=${selectedDays}${projectParam}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Failed to fetch');
       setData(json);
@@ -661,12 +725,13 @@ export default function AnalyticsPage() {
     }
   }, []);
 
-  // Auto-fetch when property is set
+  // Auto-fetch when config or selected project changes
   useEffect(() => {
-    if (configLoaded && propertyId) {
-      fetchData(days);
+    if (!configLoaded) return;
+    if (hasCredentials && activePropertyId) {
+      fetchData(days, selectedProjectId);
     }
-  }, [configLoaded, propertyId, fetchData, days]);
+  }, [configLoaded, hasCredentials, activePropertyId, fetchData, days, selectedProjectId]);
 
   async function handleSaveProperty(id: string, serviceAccountJson: string) {
     const res = await fetch('/api/analytics/property', {
@@ -689,6 +754,29 @@ export default function AnalyticsPage() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Failed to save');
     setPropertyId(id);
+  }
+
+  async function handleLinkProperty(projectId: string, pid: string) {
+    setLinkingSaving(true);
+    setLinkingError('');
+    try {
+      const res = await fetch('/api/analytics/property', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'set_project_property', projectId, propertyId: pid }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Failed to save');
+      setProjects((prev) =>
+        prev.map((p) => p.id === projectId ? { ...p, analyticsPropertyId: pid } : p)
+      );
+      setLinkingPropertyId('');
+      fetchData(days, projectId);
+    } catch (e: unknown) {
+      setLinkingError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setLinkingSaving(false);
+    }
   }
 
   async function handleAnalyze() {
@@ -715,7 +803,7 @@ export default function AnalyticsPage() {
 
   function handleDaysChange(newDays: number) {
     setDays(newDays);
-    if (propertyId) fetchData(newDays);
+    if (activePropertyId) fetchData(newDays, selectedProjectId);
   }
 
   if (!configLoaded) {
@@ -726,13 +814,13 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Show setup screen if credentials or property not configured
-  if (!propertyId || !hasCredentials) {
+  // Show setup screen if credentials not configured
+  if (!hasCredentials) {
     return (
       <SetupScreen
         onSave={handleSaveProperty}
         oauthConfigured={oauthConfigured}
-        needsPropertyId={hasCredentials && !propertyId}
+        needsPropertyId={false}
         onPropertyIdSave={handlePropertyIdSave}
       />
     );
@@ -741,63 +829,118 @@ export default function AnalyticsPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 4, fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '-0.5px' }}>
-            <span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>analytics
-          </h1>
-          <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
-            property <code style={{ color: 'var(--signature)', fontSize: '0.8rem' }}>{propertyId}</code>
-            {data && <> · fetched {new Date(data.fetchedAt).toLocaleTimeString()}</>}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Days selector */}
-          <div style={{ display: 'flex', gap: 4, background: 'var(--glass-substrate)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', padding: 4 }}>
-            {DAYS_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => handleDaysChange(opt.value)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 10,
-                  border: 'none',
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                  background: days === opt.value ? 'var(--btn-primary-bg)' : 'transparent',
-                  color: days === opt.value ? 'var(--btn-primary-txt)' : 'var(--txt-muted)',
-                  transition: 'all 0.15s',
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 4, fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '-0.5px' }}>
+          <span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>analytics
+        </h1>
+        <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace", marginBottom: 16 }}>
+          {selectedProject && selectedProject.analyticsPropertyId && <>property <code style={{ color: 'var(--signature)', fontSize: '0.8rem' }}>{selectedProject.analyticsPropertyId}</code> · </>}
+          {selectedProject ? selectedProject.name : 'All projects'}
+          {data && <> · fetched {new Date(data.fetchedAt).toLocaleTimeString()}</>}
+        </p>
+
+        {/* Toolbar strip */}
+        <div className="analytics-toolbar" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'var(--glass-substrate)',
+          backdropFilter: 'blur(40px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+          border: '1px solid var(--btn-secondary-border)',
+          borderRadius: 'var(--r-sm)',
+          padding: '8px 12px',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.05)',
+          gap: 12,
+        }}>
+          {/* Left: project selector */}
+          <div style={{ flexShrink: 0, minWidth: 0 }}>
+            {projects.length > 0 ? (
+              <Select
+                value={selectedProjectId ?? ''}
+                onChange={(val) => {
+                  setSelectedProjectId(val || null);
+                  setData(null);
+                  setInsights(null);
+                  setError('');
+                  setLinkingPropertyId('');
+                  setLinkingError('');
                 }}
-              >
-                {opt.label}
-              </button>
-            ))}
+                placeholder="All projects"
+                options={[
+                  { value: '', label: 'All projects' },
+                  ...projects.map((p) => ({
+                    value: p.id,
+                    label: p.analyticsPropertyId ? `${p.name}  ·  ${p.analyticsPropertyId}` : `${p.name}  ·  not linked`,
+                  })),
+                ]}
+                style={{ width: 220 }}
+              />
+            ) : (
+              <span style={{ fontSize: '0.85rem', color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>All projects</span>
+            )}
           </div>
-          {/* Refresh */}
-          <button
-            onClick={() => fetchData(days)}
-            disabled={loadingData}
-            className="btn btn-secondary btn-sm"
-            style={{ opacity: loadingData ? 0.5 : 1, cursor: loadingData ? 'not-allowed' : 'pointer' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={loadingData ? { animation: 'spin 1s linear infinite' } : {}}>
-              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.45"/>
-            </svg>
-            Refresh
-          </button>
-          {/* Change property */}
-          <button
-            onClick={() => { setPropertyId(null); setHasCredentials(false); }}
-            className="btn btn-secondary btn-sm"
-            style={{
-            }}
-          >
-            Change property
-          </button>
+
+          {/* Divider */}
+          <div style={{ width: 1, height: 22, background: 'var(--btn-secondary-border)', flexShrink: 0 }} />
+
+          {/* Right: time + controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 3, background: 'var(--bg-deep)', border: '1px solid var(--btn-secondary-border)', borderRadius: 10, padding: 3 }}>
+              {DAYS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleDaysChange(opt.value)}
+                  className={`day-btn${days === opt.value ? ' day-btn--active' : ''}`}
+                  style={{
+                    padding: '5px 13px',
+                    borderRadius: 8,
+                    border: 'none',
+                    fontSize: '0.78rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                    background: days === opt.value ? 'var(--btn-primary-bg)' : 'transparent',
+                    color: days === opt.value ? 'var(--btn-primary-txt)' : 'var(--txt-muted)',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => fetchData(days, selectedProjectId)}
+              disabled={loadingData}
+              className="btn btn-secondary btn-sm"
+              style={{ opacity: loadingData ? 0.5 : 1, cursor: loadingData ? 'not-allowed' : 'pointer' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={loadingData ? { animation: 'spin 1s linear infinite' } : {}}>
+                <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.45"/>
+              </svg>
+              Refresh
+            </button>
+            <button
+              onClick={() => { setPropertyId(null); setHasCredentials(false); }}
+              className="btn btn-secondary btn-sm"
+              style={{ color: 'var(--txt-muted)' }}
+            >
+              Change property
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Link property banner — shown when a project is selected but has no GA4 property */}
+      {selectedProject && !selectedProject.analyticsPropertyId && (
+        <LinkPropertyBanner
+          projectName={selectedProject.name}
+          propertyId={linkingPropertyId}
+          onChange={setLinkingPropertyId}
+          onSave={() => handleLinkProperty(selectedProject.id, linkingPropertyId)}
+          saving={linkingSaving}
+          error={linkingError}
+        />
+      )}
 
       {/* Error */}
       {error && (() => {
