@@ -93,18 +93,20 @@ export default function Select({ value, onChange, options, placeholder, style }:
             ? '0 0 0 4px rgba(var(--signature-rgb), 0.12)'
             : 'inset 0 2px 4px rgba(0,0,0,0.03)',
           borderColor: open ? 'rgba(var(--signature-rgb), 0.45)' : undefined,
-          transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
+          transition: 'box-shadow 0.25s cubic-bezier(0.34,1.56,0.64,1), border-color 0.25s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1)',
         }}
         onMouseEnter={(e) => {
           if (!open) {
-            e.currentTarget.style.borderColor = 'rgba(var(--signature-rgb), 0.35)';
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--signature-rgb), 0.08)';
+            e.currentTarget.style.borderColor = 'rgba(var(--signature-rgb), 0.45)';
+            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--signature-rgb), 0.1), 0 8px 24px rgba(var(--signature-rgb), 0.12), inset 0 1px 0 rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
           }
         }}
         onMouseLeave={(e) => {
           if (!open) {
             e.currentTarget.style.borderColor = '';
             e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.03)';
+            e.currentTarget.style.transform = '';
           }
         }}
       >
@@ -171,18 +173,22 @@ export default function Select({ value, onChange, options, placeholder, style }:
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                transition: 'background 0.12s ease, color 0.12s ease',
+                transition: 'background 0.18s ease, color 0.18s ease, border-left-color 0.18s ease, padding-left 0.18s cubic-bezier(0.34,1.56,0.64,1)',
               }}
               onMouseEnter={(e) => {
                 if (opt.value !== value) {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--btn-secondary-hover)';
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(var(--signature-rgb), 0.07)';
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--txt-pure)';
+                  (e.currentTarget as HTMLButtonElement).style.borderLeftColor = 'rgba(var(--signature-rgb), 0.4)';
+                  (e.currentTarget as HTMLButtonElement).style.paddingLeft = '22px';
                 }
               }}
               onMouseLeave={(e) => {
                 if (opt.value !== value) {
                   (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--txt-muted)';
+                  (e.currentTarget as HTMLButtonElement).style.borderLeftColor = 'transparent';
+                  (e.currentTarget as HTMLButtonElement).style.paddingLeft = '20px';
                 }
               }}
             >
