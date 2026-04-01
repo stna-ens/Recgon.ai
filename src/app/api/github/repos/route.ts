@@ -18,7 +18,7 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const user = getUserById(session.user.id);
+  const user = await getUserById(session.user.id);
   if (!user?.githubAccessToken) {
     return NextResponse.json({ error: 'No GitHub account connected' }, { status: 400 });
   }

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/login`);
   }
 
-  const user = getUserById(session.user.id);
+  const user = await getUserById(session.user.id);
   if (!user) {
     return NextResponse.redirect(`${baseUrl}/account?github=error`);
   }
@@ -65,8 +65,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/account?github=error`);
   }
 
-  // Fetch GitHub username
+  // Fetch GitHub username and avatar
   let githubUsername: string | undefined;
+  let avatarUrl: string | undefined;
   try {
     const userRes = await fetch('https://api.github.com/user', {
       headers: {
@@ -77,12 +78,13 @@ export async function GET(request: NextRequest) {
     if (userRes.ok) {
       const githubUser = await userRes.json();
       githubUsername = githubUser.login as string;
+      avatarUrl = githubUser.avatar_url as string;
     }
   } catch {
-    // username is optional, proceed without it
+    // username/avatar are optional, proceed without them
   }
 
-  await updateUser(user.id, { githubAccessToken: accessToken, githubUsername });
+  await updateUser(user.id, { githubAccessToken: accessToken, githubUsername, avatarUrl });
 
   return NextResponse.redirect(`${baseUrl}/account?github=connected`);
 }

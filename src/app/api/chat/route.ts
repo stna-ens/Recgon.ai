@@ -4,13 +4,23 @@ import { getAllProjects } from '@/lib/storage';
 import { getGeminiClient } from '@/lib/gemini';
 import { mentorSystemPrompt, generateSuggestions } from '@/lib/prompts';
 import { getHistory, saveMessages, clearHistory } from '@/lib/chatStorage';
+import { getUserTeams } from '@/lib/teamStorage';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const projects = getAllProjects(session.user.id);
-  const history = getHistory(session.user.id);
+  const teamId = request.nextUrl.searchParams.get('teamId');
+  if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
+
+  // Verify user is in this team
+  const teams = await getUserTeams(session.user.id);
+  if (!teams.some((t) => t.id === teamId)) {
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+  }
+
+  const projects = await getAllProjects(teamId);
+  const history = await getHistory(session.user.id);
   const suggestions = generateSuggestions(projects);
 
   return NextResponse.json({ history, suggestions });
@@ -29,19 +39,21 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { message, history } = await request.json() as {
+    const { message, history, teamId } = await request.json() as {
       message: string;
       history: { role: 'user' | 'assistant'; content: string }[];
+      teamId: string;
     };
 
     if (!message?.trim()) {
       return NextResponse.json({ error: 'message is required' }, { status: 400 });
     }
+    if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
 
-    const projects = getAllProjects(session.user.id);
+    const projects = await getAllProjects(teamId);
 
     // Load stored history to give Recgon long-term memory across sessions
-    const storedHistory = getHistory(session.user.id);
+    const storedHistory = await getHistory(session.user.id);
     // Use up to last 30 stored messages as memory context (not the live session history)
     const memoryContext = storedHistory.slice(-30);
 

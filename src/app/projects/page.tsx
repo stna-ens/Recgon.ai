@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ProjectCard from '@/components/ProjectCard';
+import { useTeam } from '@/components/TeamProvider';
 
 interface Project {
   id: string;
@@ -28,6 +29,7 @@ interface GitHubRepo {
 }
 
 export default function ProjectsPage() {
+  const { currentTeam } = useTeam();
   const [projects, setProjects] = useState<Project[]>([]);
   const [updateStatuses, setUpdateStatuses] = useState<Record<string, boolean>>({});
   const [showModal, setShowModal] = useState(false);
@@ -45,7 +47,8 @@ export default function ProjectsPage() {
   const [importingRepo, setImportingRepo] = useState<string | null>(null);
 
   const fetchProjects = () => {
-    fetch('/api/projects')
+    if (!currentTeam) return;
+    fetch(`/api/projects?teamId=${currentTeam.id}`)
       .then((r) => r.json())
       .then((ps: Project[]) => {
         setProjects(ps);
@@ -54,7 +57,7 @@ export default function ProjectsPage() {
         if (githubProjects.length === 0) return;
         Promise.all(
           githubProjects.map((p) =>
-            fetch(`/api/projects/${p.id}/check-updates`)
+            fetch(`/api/projects/${p.id}/check-updates?teamId=${currentTeam.id}`)
               .then((r) => r.ok ? r.json() : { hasUpdates: false })
               .then((data) => ({ id: p.id, hasUpdates: data.hasUpdates as boolean }))
               .catch(() => ({ id: p.id, hasUpdates: false }))
@@ -70,7 +73,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     fetchProjects();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentTeam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateProject = async () => {
     if (!projectName.trim() || !projectPath.trim()) return;
@@ -80,7 +83,7 @@ export default function ProjectsPage() {
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: projectName, path: projectPath }),
+        body: JSON.stringify({ name: projectName, path: projectPath, teamId: currentTeam?.id }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -128,7 +131,7 @@ export default function ProjectsPage() {
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: repo.name, path: repo.html_url }),
+        body: JSON.stringify({ name: repo.name, path: repo.html_url, teamId: currentTeam?.id }),
       });
       if (res.ok) {
         setShowGithubModal(false);

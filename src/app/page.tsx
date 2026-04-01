@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import RecgonLogo from '@/components/RecgonLogo';
+import { useTeam } from '@/components/TeamProvider';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -53,6 +54,7 @@ function MarkdownText({ text }: { text: string }) {
 }
 
 export default function DashboardPage() {
+  const { currentTeam } = useTeam();
   const [mounted, setMounted] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -81,15 +83,17 @@ export default function DashboardPage() {
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    fetch('/api/projects')
+    if (!currentTeam) return;
+    fetch(`/api/projects?teamId=${currentTeam.id}`)
       .then((r) => r.ok ? r.json() : [])
       .then(setProjects)
       .catch(() => {});
-  }, []);
+  }, [currentTeam]);
 
   // Load persisted chat history and personalized suggestions on mount
   useEffect(() => {
-    fetch('/api/chat')
+    if (!currentTeam) return;
+    fetch(`/api/chat?teamId=${currentTeam.id}`)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (!data) return;
@@ -104,7 +108,7 @@ export default function DashboardPage() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [currentTeam]);
 
   const stopTypewriter = useCallback(() => {
     if (typeIntervalRef.current) {
@@ -144,7 +148,7 @@ export default function DashboardPage() {
     if (streaming) return;
     setClearing(true);
     try {
-      await fetch('/api/chat', { method: 'DELETE' });
+      await fetch(`/api/chat?teamId=${currentTeam?.id}`, { method: 'DELETE' });
       setMessages([]);
     } finally {
       setClearing(false);
@@ -227,7 +231,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed, history: messages }),
+        body: JSON.stringify({ message: trimmed, history: messages, teamId: currentTeam?.id }),
         signal: abortRef.current.signal,
       });
 

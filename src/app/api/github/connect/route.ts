@@ -41,7 +41,7 @@ export async function DELETE() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const user = getUserById(session.user.id);
+  const user = await getUserById(session.user.id);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
   await updateUser(user.id, { githubAccessToken: undefined, githubUsername: undefined });

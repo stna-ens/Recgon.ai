@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 
@@ -42,6 +42,15 @@ export default function AccountPage() {
 
   const [githubStatus, setGithubStatus] = useState<GitHubStatus | null>(null);
   const [githubDisconnecting, setGithubDisconnecting] = useState(false);
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const url = (session?.user as { avatarUrl?: string } | undefined)?.avatarUrl;
+    if (url) setAvatarUrl(url);
+  }, [session]);
 
   useEffect(() => {
     fetch('/api/github/status')
@@ -134,6 +143,31 @@ export default function AccountPage() {
     }
   }
 
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/account/avatar', { method: 'POST', body: formData });
+    const data = await res.json();
+    setAvatarUploading(false);
+    if (res.ok) {
+      setAvatarUrl(data.avatarUrl);
+      await update({ avatarUrl: data.avatarUrl });
+    }
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarUploading(true);
+    await fetch('/api/account/avatar', { method: 'DELETE' });
+    setAvatarUrl(null);
+    await update({ avatarUrl: '' });
+    setAvatarUploading(false);
+  }
+
   async function handleGithubDisconnect() {
     setGithubDisconnecting(true);
     await fetch('/api/github/connect', { method: 'DELETE' });
@@ -149,6 +183,70 @@ export default function AccountPage() {
           <span style={{ color: 'var(--signature)', opacity: 0.7 }}>›</span> {session?.user?.email}
         </p>
       </div>
+
+      {/* Profile Photo */}
+      <Section title="Profile Photo">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div style={{
+            width: '72px', height: '72px', borderRadius: '50%',
+            overflow: 'hidden', flexShrink: 0,
+            border: '2px solid var(--border)',
+            background: 'var(--accent-faint)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase' }}>
+                {(session?.user?.nickname || session?.user?.email || '?').slice(0, 2)}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <p style={{ color: 'var(--txt-muted)', fontSize: '0.8rem', margin: 0 }}>
+              JPEG, PNG, WebP or GIF. Max 2MB.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleAvatarUpload}
+                style={{ display: 'none' }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarUploading}
+                style={{
+                  padding: '0.45rem 1rem',
+                  background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
+                  border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600,
+                  fontSize: '0.8rem', cursor: avatarUploading ? 'not-allowed' : 'pointer',
+                  opacity: avatarUploading ? 0.7 : 1,
+                }}
+              >
+                {avatarUploading ? 'Uploading...' : 'Upload Photo'}
+              </button>
+              {avatarUrl && (
+                <button
+                  onClick={handleAvatarRemove}
+                  disabled={avatarUploading}
+                  style={{
+                    padding: '0.45rem 1rem',
+                    background: 'transparent', color: 'var(--danger)',
+                    border: '1px solid var(--danger)', borderRadius: 'var(--r-sm)',
+                    fontWeight: 600, fontSize: '0.8rem',
+                    cursor: avatarUploading ? 'not-allowed' : 'pointer',
+                    opacity: avatarUploading ? 0.6 : 1,
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Section>
 
       {/* Change Nickname */}
       <Section title="Nickname">

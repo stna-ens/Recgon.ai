@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Select from '@/components/Select';
 import MarketingPreview from '@/components/MarketingPreview';
+import { useTeam } from '@/components/TeamProvider';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -260,6 +261,7 @@ function SocialPlatformPicker({ value, onChange, platforms, blocked }: {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function MarketingPage() {
+  const { currentTeam } = useTeam();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [campaignType, setCampaignType] = useState<CampaignType | null>(null);
@@ -287,8 +289,9 @@ export default function MarketingPage() {
   const [previewEntry, setPreviewEntry] = useState<GeneratedContentEntry | null>(null);
   const planRef = useRef<HTMLDivElement>(null);
 
-  const loadProjects = () =>
-    fetch('/api/projects')
+  const loadProjects = () => {
+    if (!currentTeam) return;
+    fetch(`/api/projects?teamId=${currentTeam.id}`)
       .then((r) => r.json())
       .then((ps: Project[]) => {
         const analyzed = ps.filter((p) => p.analysis);
@@ -298,16 +301,17 @@ export default function MarketingPage() {
         }
       })
       .catch(() => setProjects([]));
+  };
 
   const loadSocialProfiles = (projectId: string) => {
-    if (!projectId) return;
-    fetch(`/api/social/profiles?projectId=${projectId}`)
+    if (!projectId || !currentTeam) return;
+    fetch(`/api/social/profiles?projectId=${projectId}&teamId=${currentTeam.id}`)
       .then((r) => r.json())
       .then((d: { profiles: { platform: string; url: string }[] }) => setSocialProfiles(d.profiles ?? []))
       .catch(() => setSocialProfiles([]));
   };
 
-  useEffect(() => { loadProjects(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadProjects(); }, [currentTeam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reload social profiles when selected project changes
   useEffect(() => {
@@ -335,7 +339,7 @@ export default function MarketingPage() {
       const res = await fetch('/api/marketing/campaign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: selectedProjectId, campaignType, goal: campaignGoal, duration, websiteUrl: websiteUrl.trim() || undefined }),
+        body: JSON.stringify({ projectId: selectedProjectId, campaignType, goal: campaignGoal, duration, websiteUrl: websiteUrl.trim() || undefined, teamId: currentTeam?.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Campaign planning failed');
@@ -362,7 +366,7 @@ export default function MarketingPage() {
       const res = await fetch('/api/marketing/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: selectedProjectId, platform, customPrompt, websiteUrl: websiteUrl.trim() || undefined }),
+        body: JSON.stringify({ projectId: selectedProjectId, platform, customPrompt, websiteUrl: websiteUrl.trim() || undefined, teamId: currentTeam?.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Content generation failed');
@@ -387,14 +391,14 @@ export default function MarketingPage() {
     const updated = [...socialProfiles.filter((p) => p.url !== socialUrlInput.trim()), { platform: socialPlatformInput, url: socialUrlInput.trim() }];
     setSocialProfiles(updated);
     setSocialUrlInput('');
-    await fetch('/api/social/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: selectedProjectId, profiles: updated }) });
+    await fetch('/api/social/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: selectedProjectId, profiles: updated, teamId: currentTeam?.id }) });
   };
 
   const handleRemoveSocialProfile = async (url: string) => {
     if (!selectedProjectId) return;
     const updated = socialProfiles.filter((p) => p.url !== url);
     setSocialProfiles(updated);
-    await fetch('/api/social/profiles', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: selectedProjectId, url }) });
+    await fetch('/api/social/profiles', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: selectedProjectId, url, teamId: currentTeam?.id }) });
   };
 
   const BLOCKED_PLATFORMS = ['Instagram', 'TikTok', 'Twitter / X', 'LinkedIn', 'Facebook'];

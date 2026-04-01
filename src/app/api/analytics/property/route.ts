@@ -7,7 +7,7 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const config = getAnalyticsConfig(session.user.id);
+  const config = await getAnalyticsConfig(session.user.id);
   return NextResponse.json({
     propertyId: config?.propertyId ?? null,
     hasCredentials: !!(config?.serviceAccountJson || config?.oauth),
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const trimmed = typeof propertyId === 'string' ? propertyId.trim() : '';
     if (trimmed && !/^\d+$/.test(trimmed))
       return NextResponse.json({ error: 'Invalid property ID — must be numeric (e.g. 123456789)' }, { status: 400 });
-    if (!getProject(projectId, session.user.id))
+    if (!(await getProject(projectId, session.user.id)))
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     const ok = await updateProjectAnalyticsProperty(projectId, trimmed || null, session.user.id);
     if (!ok) return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });

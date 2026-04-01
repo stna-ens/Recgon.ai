@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTeam } from '@/components/TeamProvider';
 
 interface Competitor {
   name: string;
@@ -114,6 +115,7 @@ function NumberedList({ items }: { items: string[] }) {
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { currentTeam } = useTeam();
   const [project, setProject] = useState<Project | null>(null);
   const [hasUpdates, setHasUpdates] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -121,7 +123,8 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch(`/api/projects/${params.id}`)
+    if (!currentTeam) return;
+    fetch(`/api/projects/${params.id}?teamId=${currentTeam.id}`)
       .then((r) => {
         if (!r.ok) throw new Error('Not found');
         return r.json();
@@ -129,21 +132,24 @@ export default function ProjectDetailPage() {
       .then((p: Project) => {
         setProject(p);
         if (p.isGithub && p.analysis && p.lastAnalyzedCommitSha) {
-          fetch(`/api/projects/${params.id}/check-updates`)
+          fetch(`/api/projects/${params.id}/check-updates?teamId=${currentTeam.id}`)
             .then((r) => r.ok ? r.json() : { hasUpdates: false })
             .then((data) => setHasUpdates(data.hasUpdates))
             .catch(() => {});
         }
       })
       .catch(() => router.push('/projects'));
-  }, [params.id, router]);
+  }, [params.id, router, currentTeam]);
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
     setError('');
     setProgressMessage('Starting analysis...');
     try {
-      const res = await fetch(`/api/projects/${params.id}/analyze`, { method: 'POST' });
+      const res = await fetch(`/api/projects/${params.id}/analyze`, {
+        method: 'POST',
+        headers: { 'x-team-id': currentTeam?.id || '' },
+      });
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
         throw new Error((data as { error?: string }).error || 'Analysis failed');
@@ -183,7 +189,7 @@ export default function ProjectDetailPage() {
 
   const handleDelete = async () => {
     if (!confirm('Delete this project?')) return;
-    await fetch(`/api/projects/${params.id}`, { method: 'DELETE' });
+    await fetch(`/api/projects/${params.id}?teamId=${currentTeam?.id}`, { method: 'DELETE' });
     router.push('/projects');
   };
 

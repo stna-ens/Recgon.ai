@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useTeam } from '@/components/TeamProvider';
 
 interface ProductAnalysis {
   name: string;
@@ -50,15 +51,17 @@ const S = {
 
 export default function ExportPage() {
   const params = useParams();
+  const { currentTeam } = useTeam();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/projects/${params.id}`)
+    if (!currentTeam) return;
+    fetch(`/api/projects/${params.id}?teamId=${currentTeam.id}`)
       .then((r) => r.ok ? r.json() : null)
       .then((p) => { setProject(p); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [params.id]);
+  }, [params.id, currentTeam]);
 
   useEffect(() => {
     if (project?.analysis && !loading) {

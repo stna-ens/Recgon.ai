@@ -7,6 +7,7 @@ import { getLatestCommit, getCommitDiff, cloneGitHubRepo } from '@/lib/githubFet
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, ANALYZE_LIMIT } from '@/lib/rateLimit';
 import { auth } from '@/auth';
+import { verifyTeamWriteAccess } from '@/lib/teamStorage';
 
 function formatDiff(diff: import('@/lib/githubFetcher').CommitDiff): string {
   const MAX_PATCH_CHARS = 3000;
@@ -80,7 +81,13 @@ export async function POST(
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 
-  const project = getProject(id, session.user.id);
+  const teamId = request.headers.get('x-team-id');
+  if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
+
+  const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
+  if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+
+  const project = await getProject(id, teamId);
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
