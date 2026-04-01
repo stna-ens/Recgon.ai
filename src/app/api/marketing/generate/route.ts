@@ -4,6 +4,7 @@ import { getProject, saveProject, generateId } from '@/lib/storage';
 import { generateMarketingContent, Platform } from '@/lib/contentGenerator';
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, GENERATE_LIMIT } from '@/lib/rateLimit';
+import { verifyTeamWriteAccess } from '@/lib/teamStorage';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -17,13 +18,17 @@ export async function POST(request: NextRequest) {
   try {
     validateEnv();
     const body = await request.json();
-    const { projectId, platform, customPrompt, websiteUrl } = body as { projectId: string; platform: Platform; customPrompt?: string; websiteUrl?: string };
+    const { projectId, platform, customPrompt, websiteUrl, teamId } = body as { projectId: string; platform: Platform; customPrompt?: string; websiteUrl?: string; teamId: string };
 
     if (!projectId || !platform) {
       return NextResponse.json({ error: 'projectId and platform are required' }, { status: 400 });
     }
+    if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
 
-    const project = getProject(projectId, session.user.id);
+    const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
+    if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+
+    const project = await getProject(projectId, teamId);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }

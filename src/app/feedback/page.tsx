@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import FeedbackPanel from '@/components/FeedbackPanel';
 import Select from '@/components/Select';
+import { useTeam } from '@/components/TeamProvider';
 
 interface FeedbackResult {
   overallSentiment: string;
@@ -49,6 +50,7 @@ function formatDate(iso: string) {
 }
 
 export default function FeedbackPage() {
+  const { currentTeam } = useTeam();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
 
@@ -64,12 +66,14 @@ export default function FeedbackPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/projects').then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
+    if (!currentTeam) return;
+    fetch(`/api/projects?teamId=${currentTeam.id}`).then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
     loadHistory();
-  }, []);
+  }, [currentTeam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function loadHistory() {
-    fetch('/api/feedback/history').then((r) => r.ok ? r.json() : []).then(setHistory).catch(() => {});
+    if (!currentTeam) return;
+    fetch(`/api/feedback/history?teamId=${currentTeam.id}`).then((r) => r.ok ? r.json() : []).then(setHistory).catch(() => {});
   }
 
   const handleManualAnalyze = async () => {
@@ -88,7 +92,7 @@ export default function FeedbackPage() {
       const res = await fetch('/api/feedback/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedback: items, projectId: selectedProjectId || undefined }),
+        body: JSON.stringify({ feedback: items, projectId: selectedProjectId || undefined, teamId: currentTeam?.id }),
       });
       if (!res.ok) {
         const data = await res.json();

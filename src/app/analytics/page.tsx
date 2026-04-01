@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import Select from '@/components/Select';
+import { useTeam } from '@/components/TeamProvider';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -660,6 +661,7 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  const { currentTeam } = useTeam();
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [hasCredentials, setHasCredentials] = useState(false);
   const [oauthConfigured, setOauthConfigured] = useState(false);
@@ -706,8 +708,9 @@ export default function AnalyticsPage() {
 
   // Load project list
   useEffect(() => {
-    fetch('/api/projects').then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
-  }, []);
+    if (!currentTeam) return;
+    fetch(`/api/projects?teamId=${currentTeam.id}`).then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
+  }, [currentTeam]);
 
   const fetchData = useCallback(async (selectedDays: number, pId?: string | null) => {
     setLoadingData(true);

@@ -1,6 +1,7 @@
 export interface Project {
   id: string;
-  userId: string;
+  teamId: string;
+  createdBy: string;
   name: string;
   path: string;
   isGithub?: boolean;

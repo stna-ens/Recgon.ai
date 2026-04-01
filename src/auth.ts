@@ -20,12 +20,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const user = getUserByEmail(credentials.email as string);
+        const user = await getUserByEmail(credentials.email as string);
         if (!user) return null;
         if (!user.passwordHash) return null;
         const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
         if (!valid) return null;
-        return { id: user.id, email: user.email, name: user.email, nickname: user.nickname };
+        return { id: user.id, email: user.email, name: user.email, nickname: user.nickname, avatarUrl: user.avatarUrl } as Record<string, unknown>;
       },
     }),
   ],
@@ -40,8 +40,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       );
       user.id = existing.id;
       (user as { nickname?: string }).nickname = existing.nickname;
+      // Set avatarUrl on user object so it lands in the JWT
+      const avatarUrl = user.image || existing.avatarUrl;
+      (user as { avatarUrl?: string }).avatarUrl = avatarUrl;
       if (account.access_token) {
-        await updateUser(existing.id, { githubAccessToken: account.access_token });
+        await updateUser(existing.id, {
+          githubAccessToken: account.access_token,
+          ...(user.image ? { avatarUrl: user.image } : {}),
+        });
       }
       return true;
     },

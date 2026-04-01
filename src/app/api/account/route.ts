@@ -29,14 +29,14 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
     }
 
-    const user = getUserById(session.user.id);
+    const user = await getUserById(session.user.id);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
     if (!user.passwordHash) return NextResponse.json({ error: 'OAuth accounts cannot change email here' }, { status: 400 });
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return NextResponse.json({ error: 'Incorrect password' }, { status: 403 });
 
-    const taken = getUserByEmail(newEmail);
+    const taken = await getUserByEmail(newEmail);
     if (taken && taken.id !== user.id) {
       return NextResponse.json({ error: 'That email is already in use' }, { status: 409 });
     }
@@ -55,7 +55,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 });
     }
 
-    const user = getUserById(session.user.id);
+    const user = await getUserById(session.user.id);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
     if (!user.passwordHash) return NextResponse.json({ error: 'This account uses GitHub sign-in and has no password' }, { status: 400 });
 

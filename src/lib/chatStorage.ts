@@ -1,6 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-import { withFileLock } from './fileLock';
+import { supabase } from './supabase';
 
 export interface StoredMessage {
   role: 'user' | 'assistant';
@@ -8,40 +6,56 @@ export interface StoredMessage {
   ts: number;
 }
 
-type ChatStore = Record<string, StoredMessage[]>;
+const MAX_MESSAGES = 120;
 
-const FILE = path.join(process.cwd(), 'data', 'chat_history.json');
-const MAX_MESSAGES = 120; // ~60 exchanges kept per user
+export async function getHistory(userId: string): Promise<StoredMessage[]> {
+  const { data } = await supabase
+    .from('chat_messages')
+    .select('role, content, ts')
+    .eq('user_id', userId)
+    .order('ts', { ascending: true });
 
-function read(): ChatStore {
-  try {
-    return JSON.parse(fs.readFileSync(FILE, 'utf-8'));
-  } catch {
-    return {};
-  }
-}
-
-function write(d: ChatStore) {
-  fs.mkdirSync(path.dirname(FILE), { recursive: true });
-  fs.writeFileSync(FILE, JSON.stringify(d));
-}
-
-export function getHistory(userId: string): StoredMessage[] {
-  return read()[userId] ?? [];
+  return (data ?? []).map((r) => ({
+    role: r.role as 'user' | 'assistant',
+    content: r.content,
+    ts: r.ts,
+  }));
 }
 
 export async function saveMessages(userId: string, msgs: StoredMessage[]) {
-  return withFileLock(FILE, () => {
-    const d = read();
-    d[userId] = [...(d[userId] ?? []), ...msgs].slice(-MAX_MESSAGES);
-    write(d);
-  });
+  if (msgs.length === 0) return;
+
+  // Insert new messages
+  const rows = msgs.map((m) => ({
+    user_id: userId,
+    role: m.role,
+    content: m.content,
+    ts: m.ts,
+  }));
+  await supabase.from('chat_messages').insert(rows);
+
+  // Trim to MAX_MESSAGES: get count, delete oldest if over limit
+  const { count } = await supabase
+    .from('chat_messages')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (count && count > MAX_MESSAGES) {
+    const excess = count - MAX_MESSAGES;
+    const { data: oldest } = await supabase
+      .from('chat_messages')
+      .select('id')
+      .eq('user_id', userId)
+      .order('ts', { ascending: true })
+      .limit(excess);
+
+    if (oldest && oldest.length > 0) {
+      const ids = oldest.map((r) => r.id);
+      await supabase.from('chat_messages').delete().in('id', ids);
+    }
+  }
 }
 
 export async function clearHistory(userId: string) {
-  return withFileLock(FILE, () => {
-    const d = read();
-    delete d[userId];
-    write(d);
-  });
+  await supabase.from('chat_messages').delete().eq('user_id', userId);
 }

@@ -15,7 +15,7 @@ export function registerTools(server: McpServer): void {
     },
     async () => {
       validateAuth();
-      const projects = getAllProjects();
+      const projects = await getAllProjects();
       const summary = projects.map((p) => ({
         id: p.id,
         name: p.name,
@@ -44,7 +44,7 @@ export function registerTools(server: McpServer): void {
     },
     async ({ projectId }) => {
       validateAuth();
-      const project = getProject(projectId);
+      const project = await getProject(projectId);
       if (!project) {
         return { content: [{ type: 'text' as const, text: `Project "${projectId}" not found.` }], isError: true };
       }
@@ -97,7 +97,7 @@ export function registerTools(server: McpServer): void {
     },
     async ({ projectId }) => {
       validateAuth();
-      const project = getProject(projectId);
+      const project = await getProject(projectId);
       if (!project) {
         return { content: [{ type: 'text' as const, text: `Project "${projectId}" not found.` }], isError: true };
       }
@@ -140,7 +140,7 @@ export function registerTools(server: McpServer): void {
     },
     async ({ projectId, itemType, index, feedbackId, evidence }) => {
       validateAuth();
-      const project = getProject(projectId);
+      const project = await getProject(projectId);
       if (!project) {
         return { content: [{ type: 'text' as const, text: `Project "${projectId}" not found.` }], isError: true };
       }
@@ -149,7 +149,7 @@ export function registerTools(server: McpServer): void {
       }
 
       if (itemType === 'next-step') {
-        return markNextStepComplete(project, index, evidence);
+        return await markNextStepComplete(project, index, evidence);
       } else {
         if (!feedbackId) {
           return {
@@ -157,7 +157,7 @@ export function registerTools(server: McpServer): void {
             isError: true,
           };
         }
-        return markDeveloperPromptComplete(project, feedbackId, index, evidence);
+        return await markDeveloperPromptComplete(project, feedbackId, index, evidence);
       }
     },
   );
@@ -212,7 +212,7 @@ function buildDeveloperPrompts(project: Project): DeveloperPromptItem[] {
   return items;
 }
 
-function markNextStepComplete(project: Project, index: number, evidence: string) {
+async function markNextStepComplete(project: Project, index: number, evidence: string) {
   const analysis = project.analysis!;
   if (index < 0 || index >= analysis.prioritizedNextSteps.length) {
     return {
@@ -236,7 +236,7 @@ function markNextStepComplete(project: Project, index: number, evidence: string)
     evidence,
   };
 
-  updateProject(project);
+  await updateProject(project);
 
   return {
     content: [
@@ -248,7 +248,7 @@ function markNextStepComplete(project: Project, index: number, evidence: string)
   };
 }
 
-function markDeveloperPromptComplete(project: Project, feedbackId: string, promptIndex: number, evidence: string) {
+async function markDeveloperPromptComplete(project: Project, feedbackId: string, promptIndex: number, evidence: string) {
   const fa = project.feedbackAnalyses?.find((f) => f.id === feedbackId) as FeedbackAnalysis | undefined;
   if (!fa) {
     return {
@@ -280,7 +280,7 @@ function markDeveloperPromptComplete(project: Project, feedbackId: string, promp
     completedBy: 'claude-code',
   });
 
-  updateProject(project);
+  await updateProject(project);
 
   return {
     content: [

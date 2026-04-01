@@ -86,7 +86,7 @@ export default function LandingPage() {
         alignItems: 'center',
         justifyContent: 'space-between',
       }}>
-        <RecgonLogo size={28} />
+        <RecgonLogo size={28} uid="logo-landing" />
         <div style={{ display: 'flex', gap: '12px' }}>
           <Link href="/login" style={{
             padding: '10px 20px',
