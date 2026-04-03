@@ -171,7 +171,9 @@ export async function POST(
           });
 
           if (project.isGithub && project.githubUrl) {
-            const commit = await getLatestCommit(project.githubUrl, githubToken);
+            // Retry up to 2 times to ensure SHA is always saved after first analysis
+            let commit = await getLatestCommit(project.githubUrl, githubToken);
+            if (!commit) commit = await getLatestCommit(project.githubUrl, githubToken);
             if (commit) project.lastAnalyzedCommitSha = commit.sha;
           }
         }
