@@ -248,18 +248,20 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      {hasUpdates && latestCommit && !analyzing && (
+      {hasUpdates && !analyzing && (
         <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 10, background: 'rgba(255,159,10,0.06)', border: '1px solid rgba(255,159,10,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <svg width="18" height="18" fill="none" stroke="var(--warning)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
             <div>
               <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--warning)' }}>New commit detected</p>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
-                {latestCommit.message}
-                {latestCommit.date && (
-                  <span style={{ marginLeft: 10, opacity: 0.6 }}>{new Date(latestCommit.date).toLocaleDateString()}</span>
-                )}
-              </p>
+              {latestCommit && (
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                  {latestCommit.message}
+                  {latestCommit.date && (
+                    <span style={{ marginLeft: 10, opacity: 0.6 }}>{new Date(latestCommit.date).toLocaleDateString()}</span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
           <button className="btn btn-primary" onClick={handleAnalyze} style={{ flexShrink: 0, fontSize: 13 }}>
