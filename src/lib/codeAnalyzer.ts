@@ -97,6 +97,9 @@ function readKeyFiles(dir: string): Record<string, string> {
     if (name.startsWith('next.config') || name.startsWith('vite.config') || name.startsWith('tsconfig')) score += 5;
     if (name === 'middleware.ts' || name === 'middleware.js') score += 5;
 
+    // Storage / database layer (must be visible to understand data architecture)
+    if (/\b(storage|supabase|database|db|prisma|schema|repository|repo)\b/.test(name)) score += 8;
+
     // Core logic patterns
     if (lower.includes('/lib/') || lower.includes('/utils/') || lower.includes('/services/')) score += 4;
     if (lower.includes('/hooks/') || lower.includes('/store/') || lower.includes('/models/')) score += 4;

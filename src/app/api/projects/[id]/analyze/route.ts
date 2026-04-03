@@ -112,6 +112,12 @@ export async function POST(
           send({ type: 'progress', message: 'Checking for new commits...' });
           const latestCommit = await getLatestCommit(project.githubUrl!);
 
+          if (latestCommit && latestCommit.sha === project.lastAnalyzedCommitSha) {
+            // No new commits since last analysis
+            send({ type: 'done', project });
+            return;
+          }
+
           if (latestCommit && latestCommit.sha !== project.lastAnalyzedCommitSha) {
             send({ type: 'progress', message: 'Fetching diff since last analysis...' });
             const diff = await getCommitDiff(
@@ -138,9 +144,12 @@ export async function POST(
               project.lastAnalyzedCommitSha = latestCommit.sha;
             }
           } else {
-            // No new commits since last analysis
-            send({ type: 'done', project });
-            return;
+            // Can't reach GitHub API — re-clone and do full re-analysis
+            const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send);
+            project.path = clonePath;
+            analysis = await analyzeCodebase(clonePath, (message) => {
+              send({ type: 'progress', message });
+            });
           }
         } else {
           // First analysis or local project
