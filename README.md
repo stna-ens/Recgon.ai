@@ -16,7 +16,7 @@ AI-powered product strategy and marketing coach for solo founders. Point it at a
 - Next.js (App Router)
 - Gemini 2.5 Flash (AI)
 - NextAuth v5 (credentials)
-- Flat-file JSON storage (no database)
+- Supabase (PostgreSQL database)
 - Recharts (data visualization)
 
 ## Getting started
@@ -39,6 +39,8 @@ Create a `.env.local` file:
 ```env
 GEMINI_API_KEY=your_gemini_api_key
 AUTH_SECRET=your_nextauth_secret  # openssl rand -base64 32
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 ```bash
