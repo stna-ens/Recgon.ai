@@ -60,7 +60,7 @@ export const ANALYZE_UPDATE_SYSTEM = `You are a senior product manager and start
 
 Update the analysis to reflect the new code changes. Follow these rules strictly:
 - DELETED FILES: If a file is listed as deleted, remove any technologies, features, or capabilities that were provided exclusively by that file.
-- MODIFIED FILES: If a feature or integration is removed from a file (lines starting with "-"), update the analysis to no longer mention it if it no longer exists anywhere.
+- MODIFIED FILES: If a feature or integration is removed from a file (lines starting with "-"), update the analysis to no longer mention it if it no longer exists anywhere. If storage patterns change (e.g. file-system/JSON replaced by a database), update swot.weaknesses, techStack, and any related fields to reflect the new reality.
 - ADDED FILES/CODE: If new functionality is added, update features and techStack accordingly.
 - Only modify fields genuinely affected by the diff — do not change fields the diff doesn't warrant.
 
