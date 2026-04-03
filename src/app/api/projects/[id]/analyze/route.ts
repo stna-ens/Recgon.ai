@@ -1,4 +1,3 @@
-import fs from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
 import { getProject, saveProject } from '@/lib/storage';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '@/lib/codeAnalyzer';
@@ -146,7 +145,7 @@ export async function POST(
         } else {
           // First analysis or local project
           let analyzePath = project.path;
-          if (project.isGithub && project.githubUrl && !fs.existsSync(project.path)) {
+          if (project.isGithub && project.githubUrl) {
             const clonePath = await ensureFreshClone(project.id, project.githubUrl, send);
             project.path = clonePath;
             analyzePath = clonePath;
