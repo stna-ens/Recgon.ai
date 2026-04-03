@@ -7,6 +7,7 @@ import { validateEnv } from '@/lib/env';
 import { isRateLimited, ANALYZE_LIMIT } from '@/lib/rateLimit';
 import { auth } from '@/auth';
 import { verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { getUserById } from '@/lib/userStorage';
 
 function formatDiff(diff: import('@/lib/githubFetcher').CommitDiff): string {
   const MAX_PATCH_CHARS = 3000;
@@ -56,9 +57,10 @@ async function ensureFreshClone(
   projectId: string,
   githubUrl: string,
   send: (data: object) => void,
+  token?: string,
 ): Promise<string> {
   send({ type: 'progress', message: 'Cloning repository...' });
-  return cloneGitHubRepo(githubUrl, projectId);
+  return cloneGitHubRepo(githubUrl, projectId, token);
 }
 
 export async function POST(
@@ -86,7 +88,11 @@ export async function POST(
   const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
   if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
-  const project = await getProject(id, teamId);
+  const [project, user] = await Promise.all([
+    getProject(id, teamId),
+    getUserById(session.user.id),
+  ]);
+  const githubToken = user?.githubAccessToken;
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
@@ -110,7 +116,7 @@ export async function POST(
 
         if (isGithubReanalysis) {
           send({ type: 'progress', message: 'Checking for new commits...' });
-          const latestCommit = await getLatestCommit(project.githubUrl!);
+          const latestCommit = await getLatestCommit(project.githubUrl!, githubToken);
 
           if (latestCommit && latestCommit.sha === project.lastAnalyzedCommitSha) {
             // No new commits since last analysis
@@ -124,6 +130,7 @@ export async function POST(
               project.githubUrl!,
               project.lastAnalyzedCommitSha!,
               latestCommit.sha,
+              githubToken,
             );
 
             if (diff && diff.files.length > 0) {
@@ -136,7 +143,7 @@ export async function POST(
               project.lastAnalyzedCommitSha = latestCommit.sha;
             } else {
               // Diff unavailable — re-clone and do full re-analysis
-              const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send);
+              const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send, githubToken);
               project.path = clonePath;
               analysis = await analyzeCodebase(clonePath, (message) => {
                 send({ type: 'progress', message });
@@ -145,7 +152,7 @@ export async function POST(
             }
           } else {
             // Can't reach GitHub API — re-clone and do full re-analysis
-            const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send);
+            const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send, githubToken);
             project.path = clonePath;
             analysis = await analyzeCodebase(clonePath, (message) => {
               send({ type: 'progress', message });
@@ -164,7 +171,7 @@ export async function POST(
           });
 
           if (project.isGithub && project.githubUrl) {
-            const commit = await getLatestCommit(project.githubUrl);
+            const commit = await getLatestCommit(project.githubUrl, githubToken);
             if (commit) project.lastAnalyzedCommitSha = commit.sha;
           }
         }
