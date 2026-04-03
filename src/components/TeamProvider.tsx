@@ -12,12 +12,28 @@ interface Team {
   createdAt: string;
 }
 
+export interface CachedProject {
+  id: string;
+  name: string;
+  path: string;
+  isGithub?: boolean;
+  lastAnalyzedCommitSha?: string;
+  analysis?: {
+    description: string;
+    techStack: string[];
+  };
+}
+
 interface TeamContextType {
   teams: Team[];
   currentTeam: Team | null;
   setCurrentTeam: (team: Team) => void;
   refreshTeams: () => Promise<void>;
   loading: boolean;
+  projects: CachedProject[] | null;
+  projectUpdateStatuses: Record<string, boolean>;
+  refreshProjects: () => void;
+  setProjectUpdateStatuses: (statuses: Record<string, boolean>) => void;
 }
 
 const TeamContext = createContext<TeamContextType>({
@@ -26,6 +42,10 @@ const TeamContext = createContext<TeamContextType>({
   setCurrentTeam: () => {},
   refreshTeams: async () => {},
   loading: true,
+  projects: null,
+  projectUpdateStatuses: {},
+  refreshProjects: () => {},
+  setProjectUpdateStatuses: () => {},
 });
 
 export function useTeam() {
@@ -36,19 +56,44 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
   const [teams, setTeams] = useState<Team[]>([]);
   const [currentTeam, setCurrentTeamState] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<CachedProject[] | null>(null);
+  const [projectUpdateStatuses, setProjectUpdateStatuses] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
   const router = useRouter();
   const didInitialCheck = useRef(false);
   const pathnameRef = useRef(pathname);
   const routerRef = useRef(router);
+  const currentTeamRef = useRef<Team | null>(null);
 
-  // Keep refs in sync without causing re-renders
-  useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
-  useEffect(() => {
-    routerRef.current = router;
-  }, [router]);
+  useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
+  useEffect(() => { routerRef.current = router; }, [router]);
+  useEffect(() => { currentTeamRef.current = currentTeam; }, [currentTeam]);
+
+  const refreshProjects = useCallback(() => {
+    const team = currentTeamRef.current;
+    if (!team) return;
+    fetch(`/api/projects?teamId=${team.id}`)
+      .then((r) => r.json())
+      .then((ps: CachedProject[]) => {
+        setProjects(ps);
+        // Check for updates on analyzed GitHub projects
+        const githubProjects = ps.filter((p) => p.isGithub && p.analysis && p.lastAnalyzedCommitSha);
+        if (githubProjects.length === 0) return;
+        Promise.all(
+          githubProjects.map((p) =>
+            fetch(`/api/projects/${p.id}/check-updates?teamId=${team.id}`)
+              .then((r) => r.ok ? r.json() : { hasUpdates: false })
+              .then((data) => ({ id: p.id, hasUpdates: data.hasUpdates as boolean }))
+              .catch(() => ({ id: p.id, hasUpdates: false }))
+          )
+        ).then((results) => {
+          const statuses: Record<string, boolean> = {};
+          for (const r of results) statuses[r.id] = r.hasUpdates;
+          setProjectUpdateStatuses(statuses);
+        });
+      })
+      .catch(() => setProjects([]));
+  }, []);
 
   const refreshTeams = useCallback(async () => {
     try {
@@ -57,7 +102,6 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
         const data = await res.json();
         setTeams(data);
 
-        // Restore last selected team from localStorage or pick first
         const savedTeamId = localStorage.getItem('recgon_current_team');
         const saved = data.find((t: Team) => t.id === savedTeamId);
         if (saved) {
@@ -67,7 +111,6 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
           localStorage.setItem('recgon_current_team', data[0].id);
         }
 
-        // Only redirect to team setup on initial load, not on every refresh
         if (!didInitialCheck.current) {
           didInitialCheck.current = true;
           const currentPath = pathnameRef.current;
@@ -84,10 +127,17 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
     }
   }, []);
 
-  // Fetch teams once on mount
   useEffect(() => {
     refreshTeams();
   }, [refreshTeams]);
+
+  // Reset project cache when team changes, then fetch fresh
+  useEffect(() => {
+    if (!currentTeam) return;
+    setProjects(null);
+    setProjectUpdateStatuses({});
+    refreshProjects();
+  }, [currentTeam?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setCurrentTeam = useCallback((team: Team) => {
     setCurrentTeamState(team);
@@ -95,7 +145,10 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
   }, []);
 
   return (
-    <TeamContext.Provider value={{ teams, currentTeam, setCurrentTeam, refreshTeams, loading }}>
+    <TeamContext.Provider value={{
+      teams, currentTeam, setCurrentTeam, refreshTeams, loading,
+      projects, projectUpdateStatuses, refreshProjects, setProjectUpdateStatuses,
+    }}>
       {children}
     </TeamContext.Provider>
   );

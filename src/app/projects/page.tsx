@@ -1,21 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import ProjectCard from '@/components/ProjectCard';
 import { useTeam } from '@/components/TeamProvider';
-
-interface Project {
-  id: string;
-  name: string;
-  path: string;
-  isGithub?: boolean;
-  lastAnalyzedCommitSha?: string;
-  analysis?: {
-    description: string;
-    techStack: string[];
-  };
-}
 
 interface GitHubRepo {
   id: number;
@@ -29,9 +17,7 @@ interface GitHubRepo {
 }
 
 export default function ProjectsPage() {
-  const { currentTeam } = useTeam();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [updateStatuses, setUpdateStatuses] = useState<Record<string, boolean>>({});
+  const { currentTeam, projects, projectUpdateStatuses, refreshProjects } = useTeam();
   const [showModal, setShowModal] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [projectPath, setProjectPath] = useState('');
@@ -45,35 +31,6 @@ export default function ProjectsPage() {
   const [githubReposError, setGithubReposError] = useState('');
   const [repoSearch, setRepoSearch] = useState('');
   const [importingRepo, setImportingRepo] = useState<string | null>(null);
-
-  const fetchProjects = () => {
-    if (!currentTeam) return;
-    fetch(`/api/projects?teamId=${currentTeam.id}`)
-      .then((r) => r.json())
-      .then((ps: Project[]) => {
-        setProjects(ps);
-        // Check for new commits on analyzed GitHub projects
-        const githubProjects = ps.filter((p) => p.isGithub && p.analysis && p.lastAnalyzedCommitSha);
-        if (githubProjects.length === 0) return;
-        Promise.all(
-          githubProjects.map((p) =>
-            fetch(`/api/projects/${p.id}/check-updates?teamId=${currentTeam.id}`)
-              .then((r) => r.ok ? r.json() : { hasUpdates: false })
-              .then((data) => ({ id: p.id, hasUpdates: data.hasUpdates as boolean }))
-              .catch(() => ({ id: p.id, hasUpdates: false }))
-          )
-        ).then((results) => {
-          const statuses: Record<string, boolean> = {};
-          for (const r of results) statuses[r.id] = r.hasUpdates;
-          setUpdateStatuses(statuses);
-        });
-      })
-      .catch(() => setProjects([]));
-  };
-
-  useEffect(() => {
-    fetchProjects();
-  }, [currentTeam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateProject = async () => {
     if (!projectName.trim() || !projectPath.trim()) return;
@@ -90,7 +47,7 @@ export default function ProjectsPage() {
         setProjectName('');
         setProjectPath('');
         setShowModal(false);
-        fetchProjects();
+        refreshProjects();
       } else {
         setCreateError(data.error || 'Failed to create project');
       }
@@ -135,7 +92,7 @@ export default function ProjectsPage() {
       });
       if (res.ok) {
         setShowGithubModal(false);
-        fetchProjects();
+        refreshProjects();
       } else {
         const data = await res.json();
         setGithubReposError(data.error || 'Failed to import repo');
@@ -172,7 +129,7 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      {projects.length === 0 ? (
+      {projects === null ? null : projects.length === 0 ? (
         <div className="empty-state animate-fade-up" style={{ marginTop: '8vh' }}>
           <span className="empty-state-icon">
              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
@@ -195,7 +152,7 @@ export default function ProjectsPage() {
               description={project.analysis?.description}
               techStack={project.analysis?.techStack}
               analyzed={!!project.analysis}
-              hasUpdates={updateStatuses[project.id]}
+              hasUpdates={projectUpdateStatuses[project.id]}
             />
           ))}
         </div>
