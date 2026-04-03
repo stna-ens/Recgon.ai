@@ -71,7 +71,7 @@ export async function POST(
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const ip = request.headers.get('x-forwarded-for') ?? 'local';
-  if (isRateLimited(`analyze:${ip}`, ANALYZE_LIMIT)) {
+  if (await isRateLimited(`analyze:${ip}`, ANALYZE_LIMIT)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 

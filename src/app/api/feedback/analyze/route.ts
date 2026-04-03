@@ -8,7 +8,7 @@ import { verifyTeamWriteAccess } from '@/lib/teamStorage';
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') ?? 'local';
-  if (isRateLimited(`feedback:${ip}`, FEEDBACK_LIMIT)) {
+  if (await isRateLimited(`feedback:${ip}`, FEEDBACK_LIMIT)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
