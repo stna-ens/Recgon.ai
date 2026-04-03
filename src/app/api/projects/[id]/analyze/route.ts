@@ -139,13 +139,9 @@ export async function POST(
               project.lastAnalyzedCommitSha = latestCommit.sha;
             }
           } else {
-            // No new commits — re-clone and do full re-analysis with latest code
-            const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send);
-            project.path = clonePath;
-            analysis = await analyzeCodebase(clonePath, (message) => {
-              send({ type: 'progress', message });
-            });
-            if (latestCommit) project.lastAnalyzedCommitSha = latestCommit.sha;
+            // No new commits since last analysis
+            send({ type: 'done', project });
+            return;
           }
         } else {
           // First analysis or local project
