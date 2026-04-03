@@ -1,56 +1,8 @@
 // Persistent rate limiter for API routes.
 // Uses a sliding-window counter keyed by (route, ip).
-// Persists to a file so limits survive server restarts.
+// Persists to Supabase so limits survive server restarts and work across instances.
 
-import fs from 'fs';
-import path from 'path';
-
-interface Window {
-  count: number;
-  resetAt: number;
-}
-
-const RATE_FILE = path.join(process.cwd(), 'data', 'rate_limits.json');
-
-// In-memory cache; periodically synced to disk
-const g = global as typeof globalThis & { _pmaiRateLimits?: Map<string, Window>; _pmaiRateDirty?: boolean };
-
-function loadFromDisk(): Map<string, Window> {
-  try {
-    const raw = fs.readFileSync(RATE_FILE, 'utf-8');
-    const entries: [string, Window][] = JSON.parse(raw);
-    return new Map(entries);
-  } catch {
-    return new Map();
-  }
-}
-
-function saveToDisk(store: Map<string, Window>) {
-  try {
-    fs.mkdirSync(path.dirname(RATE_FILE), { recursive: true });
-    // Prune expired entries before saving
-    const now = Date.now();
-    const entries = Array.from(store.entries()).filter(([, v]) => v.resetAt > now);
-    fs.writeFileSync(RATE_FILE, JSON.stringify(entries));
-  } catch {
-    // Non-critical — rate limiting still works in-memory
-  }
-}
-
-if (!g._pmaiRateLimits) {
-  g._pmaiRateLimits = loadFromDisk();
-  g._pmaiRateDirty = false;
-
-  // Flush to disk every 30 seconds if dirty
-  setInterval(() => {
-    if (g._pmaiRateDirty && g._pmaiRateLimits) {
-      saveToDisk(g._pmaiRateLimits);
-      g._pmaiRateDirty = false;
-    }
-  }, 30_000).unref();
-}
-
-const store = g._pmaiRateLimits;
+import { supabase } from './supabase';
 
 export interface RateLimitOptions {
   /** Max requests allowed within windowMs */
@@ -63,19 +15,42 @@ export interface RateLimitOptions {
  * Returns true if the request should be blocked (rate limit exceeded).
  * @param key  A unique string identifying the caller, e.g. `${route}:${ip}`
  */
-export function isRateLimited(key: string, options: RateLimitOptions): boolean {
+export async function isRateLimited(key: string, options: RateLimitOptions): Promise<boolean> {
   const now = Date.now();
-  const entry = store.get(key);
+  const resetAt = now + options.windowMs;
 
-  if (!entry || now >= entry.resetAt) {
-    store.set(key, { count: 1, resetAt: now + options.windowMs });
-    g._pmaiRateDirty = true;
+  const { data, error } = await supabase
+    .from('rate_limits')
+    .upsert(
+      { key, count: 1, reset_at: resetAt },
+      {
+        onConflict: 'key',
+        ignoreDuplicates: false,
+      }
+    )
+    .select('count, reset_at')
+    .single();
+
+  // If upsert inserted a new row, count is 1 — not rate limited
+  if (error || !data) return false;
+
+  // If the window has expired, reset
+  if (now >= data.reset_at) {
+    await supabase
+      .from('rate_limits')
+      .update({ count: 1, reset_at: resetAt })
+      .eq('key', key);
     return false;
   }
 
-  entry.count += 1;
-  g._pmaiRateDirty = true;
-  return entry.count > options.limit;
+  // Increment count
+  const newCount = data.count + 1;
+  await supabase
+    .from('rate_limits')
+    .update({ count: newCount })
+    .eq('key', key);
+
+  return newCount > options.limit;
 }
 
 // Default limits for the expensive Gemini-backed routes
