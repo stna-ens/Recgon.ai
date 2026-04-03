@@ -3,6 +3,7 @@ import { getProject } from '@/lib/storage';
 import { getLatestCommit } from '@/lib/githubFetcher';
 import { auth } from '@/auth';
 import { verifyTeamAccess } from '@/lib/teamStorage';
+import { getUserById } from '@/lib/userStorage';
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +26,8 @@ export async function GET(
     return NextResponse.json({ hasUpdates: false });
   }
 
-  const commit = await getLatestCommit(project.githubUrl);
+  const user = await getUserById(session.user.id);
+  const commit = await getLatestCommit(project.githubUrl, user?.githubAccessToken);
   if (!commit) return NextResponse.json({ hasUpdates: false });
 
   const hasUpdates =
