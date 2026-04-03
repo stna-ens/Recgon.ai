@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProject, saveProject } from '@/lib/storage';
+import { getProject, saveProject, type ProductAnalysis } from '@/lib/storage';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '@/lib/codeAnalyzer';
 import { analyzeCompetitors } from '@/lib/competitorAnalyzer';
 import { getLatestCommit, getCommitDiff, cloneGitHubRepo } from '@/lib/githubFetcher';
@@ -136,7 +136,7 @@ export async function POST(
             if (diff && diff.files.length > 0) {
               const diffStr = formatDiff(diff);
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              const { analyzedAt: _, ...existingAnalysis } = project.analysis!;
+              const { analyzedAt: _, improvements: _imp, nextStepsTaken: _nst, ...existingAnalysis } = project.analysis! as ProductAnalysis & { improvements?: unknown; nextStepsTaken?: unknown };
               analysis = await analyzeCodebaseUpdate(existingAnalysis, diffStr, (message) => {
                 send({ type: 'progress', message });
               });

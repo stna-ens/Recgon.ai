@@ -118,6 +118,7 @@ export default function ProjectDetailPage() {
   const { currentTeam } = useTeam();
   const [project, setProject] = useState<Project | null>(null);
   const [hasUpdates, setHasUpdates] = useState(false);
+  const [latestCommit, setLatestCommit] = useState<CommitInfo | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [progressMessage, setProgressMessage] = useState('');
   const [error, setError] = useState('');
@@ -134,7 +135,10 @@ export default function ProjectDetailPage() {
         if (p.isGithub && p.analysis && p.lastAnalyzedCommitSha) {
           fetch(`/api/projects/${params.id}/check-updates?teamId=${currentTeam.id}`)
             .then((r) => r.ok ? r.json() : { hasUpdates: false })
-            .then((data) => setHasUpdates(data.hasUpdates))
+            .then((data) => {
+              setHasUpdates(data.hasUpdates);
+              if (data.hasUpdates && data.commit) setLatestCommit(data.commit);
+            })
             .catch(() => {});
         }
       })
@@ -171,7 +175,7 @@ export default function ProjectDetailPage() {
           try {
             const event = JSON.parse(dataLine);
             if (event.type === 'progress') setProgressMessage(event.message);
-            else if (event.type === 'done') { setProject(event.project); setHasUpdates(false); }
+            else if (event.type === 'done') { setProject(event.project); setHasUpdates(false); setLatestCommit(null); }
             else if (event.type === 'error') throw new Error(event.message);
           } catch (parseErr) {
             if (parseErr instanceof SyntaxError) continue;
@@ -243,6 +247,27 @@ export default function ProjectDetailPage() {
           </div>
         </div>
       </div>
+
+      {hasUpdates && latestCommit && !analyzing && (
+        <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 10, background: 'rgba(255,159,10,0.06)', border: '1px solid rgba(255,159,10,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <svg width="18" height="18" fill="none" stroke="var(--warning)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+            <div>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--warning)' }}>New commit detected</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                {latestCommit.message}
+                {latestCommit.date && (
+                  <span style={{ marginLeft: 10, opacity: 0.6 }}>{new Date(latestCommit.date).toLocaleDateString()}</span>
+                )}
+              </p>
+            </div>
+          </div>
+          <button className="btn btn-primary" onClick={handleAnalyze} style={{ flexShrink: 0, fontSize: 13 }}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
+            See what changed
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="glass-card" style={{ borderColor: 'var(--danger)', marginBottom: 20 }}>

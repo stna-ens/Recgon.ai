@@ -56,6 +56,10 @@ export interface ProductAnalysis {
   earlyAdopterChannels: string[];
   growthMetrics: string[];
 
+  // Update-only: populated on diff-based re-analysis
+  improvements?: string[];
+  nextStepsTaken?: { step: string; taken: boolean; evidence: string }[];
+
   analyzedAt: string;
 }
 
