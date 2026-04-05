@@ -31,7 +31,9 @@ export async function POST(request: NextRequest) {
     const user = await createUser(email, passwordHash, nickname.trim());
 
     return NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[register]', message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
