@@ -13,9 +13,14 @@ export function getSupabase(): SupabaseClient {
   return _client;
 }
 
-// Backwards-compatible named export for existing imports
+// Backwards-compatible named export — binds methods to the real client
+// so `this` is correct inside Supabase's chained query builders.
 export const supabase = new Proxy({} as SupabaseClient, {
   get(_target, prop) {
-    return (getSupabase() as unknown as Record<string | symbol, unknown>)[prop];
+    const client = getSupabase();
+    const value = (client as unknown as Record<string | symbol, unknown>)[prop];
+    return typeof value === 'function'
+      ? (value as (...args: unknown[]) => unknown).bind(client)
+      : value;
   },
 });
