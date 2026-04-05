@@ -7,6 +7,10 @@ import { auth } from '@/auth';
 import { ToastProvider } from '@/components/Toast';
 
 export const metadata: Metadata = {
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+  },
   title: {
     default: 'Recgon — The Coach Solo Founders Don\'t Have',
     template: '%s | Recgon',
