@@ -3,6 +3,13 @@ import bcrypt from 'bcryptjs';
 import { auth } from '@/auth';
 import { getUserById, getUserByEmail, updateUser } from '@/lib/userStorage';
 
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getUserById(session.user.id);
+  return NextResponse.json({ avatarUrl: user?.avatarUrl ?? null });
+}
+
 export async function PATCH(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

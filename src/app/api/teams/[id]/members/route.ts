@@ -22,11 +22,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const callerRole = await verifyTeamAccess(id, session.user.id);
-  if (callerRole !== 'owner') return NextResponse.json({ error: 'Only owners can remove members' }, { status: 403 });
-
   const { userId } = await request.json();
   if (!userId) return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+
+  const isSelf = userId === session.user.id;
+  if (!isSelf) {
+    const callerRole = await verifyTeamAccess(id, session.user.id);
+    if (callerRole !== 'owner') return NextResponse.json({ error: 'Only owners can remove other members' }, { status: 403 });
+  }
 
   try {
     await removeTeamMember(id, userId);

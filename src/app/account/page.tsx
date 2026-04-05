@@ -49,8 +49,16 @@ export default function AccountPage() {
 
   useEffect(() => {
     const url = (session?.user as { avatarUrl?: string } | undefined)?.avatarUrl;
-    if (url) setAvatarUrl(url);
-  }, [session]);
+    if (url) {
+      setAvatarUrl(url);
+    } else if (session?.user) {
+      // JWT may be stale — fetch the current value from the DB
+      fetch('/api/account')
+        .then((r) => r.json())
+        .then((d) => { if (d.avatarUrl) setAvatarUrl(d.avatarUrl); })
+        .catch(() => {});
+    }
+  }, [session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetch('/api/github/status')

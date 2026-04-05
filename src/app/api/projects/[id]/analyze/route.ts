@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProject, saveProject, type ProductAnalysis } from '@/lib/storage';
+import { analyzeIdea } from '@/lib/ideaAnalyzer';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '@/lib/codeAnalyzer';
 import { analyzeCompetitors } from '@/lib/competitorAnalyzer';
 import { getLatestCommit, getCommitDiff, cloneGitHubRepo } from '@/lib/githubFetcher';
@@ -108,6 +109,19 @@ export async function POST(
       try {
         let analysis;
 
+        // Idea project branch
+        if (project.sourceType === 'description') {
+          if (!project.description) {
+            send({ type: 'error', message: 'No description to analyze' });
+            return;
+          }
+          analysis = await analyzeIdea(project.description, (msg) => send({ type: 'progress', message: msg }));
+          project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
+          await saveProject(project);
+          send({ type: 'done', project });
+          return;
+        }
+
         const isGithubReanalysis =
           project.isGithub &&
           project.githubUrl &&
@@ -160,11 +174,15 @@ export async function POST(
           }
         } else {
           // First analysis or local project
-          let analyzePath = project.path;
+          let analyzePath: string = project.path ?? '';
           if (project.isGithub && project.githubUrl) {
             const clonePath = await ensureFreshClone(project.id, project.githubUrl, send);
             project.path = clonePath;
             analyzePath = clonePath;
+          }
+          if (!analyzePath) {
+            send({ type: 'error', message: 'No path to analyze' });
+            return;
           }
           analysis = await analyzeCodebase(analyzePath, (message) => {
             send({ type: 'progress', message });

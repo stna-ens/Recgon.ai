@@ -5,7 +5,9 @@ export interface Project {
   teamId: string;
   createdBy: string;
   name: string;
-  path: string;
+  path?: string;
+  sourceType?: 'codebase' | 'github' | 'description';
+  description?: string;
   isGithub?: boolean;
   githubUrl?: string;
   lastAnalyzedCommitSha?: string;
@@ -143,7 +145,9 @@ async function assembleProject(row: Record<string, unknown>): Promise<Project> {
     teamId: row.team_id as string,
     createdBy: row.created_by as string,
     name: row.name as string,
-    path: row.path as string,
+    path: row.path as string | undefined,
+    sourceType: (row.source_type as string ?? 'codebase') as Project['sourceType'],
+    description: row.description as string | undefined,
     isGithub: row.is_github as boolean | undefined,
     githubUrl: row.github_url as string | undefined,
     lastAnalyzedCommitSha: row.last_analyzed_commit_sha as string | undefined,
@@ -188,7 +192,9 @@ export async function saveProject(project: Project): Promise<void> {
       team_id: core.teamId,
       created_by: core.createdBy,
       name: core.name,
-      path: core.path,
+      path: core.path ?? null,
+      source_type: core.sourceType ?? 'codebase',
+      description: core.description ?? null,
       is_github: core.isGithub ?? false,
       github_url: core.githubUrl,
       last_analyzed_commit_sha: core.lastAnalyzedCommitSha,

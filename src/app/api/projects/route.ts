@@ -24,13 +24,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, path: rawPath, teamId } = body;
+    const { name, path: rawPath, description, teamId } = body;
 
-    if (!name || !rawPath) {
-      return NextResponse.json(
-        { error: 'Name and path/URL are required' },
-        { status: 400 }
-      );
+    if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    if (!rawPath && !description) {
+      return NextResponse.json({ error: 'Path or description is required' }, { status: 400 });
     }
     if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
 
@@ -38,24 +36,41 @@ export async function POST(request: NextRequest) {
     if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
     const projectId = generateId();
-    let actualPath = rawPath;
-    let isGithub = false;
+    const createdAt = new Date().toISOString();
 
-    if (rawPath.startsWith('https://github.com/')) {
-      actualPath = await cloneGitHubRepo(rawPath, projectId);
-      isGithub = true;
+    let project;
+
+    if (description && !rawPath) {
+      project = {
+        id: projectId,
+        teamId,
+        createdBy: session.user.id,
+        name,
+        sourceType: 'description' as const,
+        description,
+        createdAt,
+      };
+    } else {
+      let actualPath = rawPath;
+      let isGithub = false;
+
+      if (rawPath.startsWith('https://github.com/')) {
+        actualPath = await cloneGitHubRepo(rawPath, projectId);
+        isGithub = true;
+      }
+
+      project = {
+        id: projectId,
+        teamId,
+        createdBy: session.user.id,
+        name,
+        path: actualPath,
+        sourceType: (isGithub ? 'github' : 'codebase') as 'github' | 'codebase',
+        isGithub,
+        ...(isGithub && { githubUrl: rawPath }),
+        createdAt,
+      };
     }
-
-    const project = {
-      id: projectId,
-      teamId,
-      createdBy: session.user.id,
-      name,
-      path: actualPath,
-      isGithub,
-      ...(isGithub && { githubUrl: rawPath }),
-      createdAt: new Date().toISOString(),
-    };
 
     await saveProject(project);
     return NextResponse.json(project, { status: 201 });

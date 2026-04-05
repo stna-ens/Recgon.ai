@@ -42,6 +42,17 @@ export default function Sidebar() {
   const [mounted, setMounted] = useState(false);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const { data: session } = useSession();
+  const [fetchedAvatarUrl, setFetchedAvatarUrl] = useState<string | null>(null);
+
+  // If the JWT doesn't have avatarUrl (e.g. stale token), fetch it from the DB once
+  useEffect(() => {
+    if (!session?.user) return;
+    if ((session.user as { avatarUrl?: string }).avatarUrl) return;
+    fetch('/api/account')
+      .then((r) => r.json())
+      .then((d) => { if (d.avatarUrl) setFetchedAvatarUrl(d.avatarUrl); })
+      .catch(() => {});
+  }, [session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setMounted(true);
@@ -141,9 +152,9 @@ export default function Sidebar() {
             flexShrink: 0,
             transition: 'border-color 0.2s',
           }}>
-            {(session.user as { avatarUrl?: string }).avatarUrl ? (
+            {((session.user as { avatarUrl?: string }).avatarUrl || fetchedAvatarUrl) ? (
               <img
-                src={(session.user as { avatarUrl?: string }).avatarUrl!}
+                src={((session.user as { avatarUrl?: string }).avatarUrl || fetchedAvatarUrl)!}
                 alt=""
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />

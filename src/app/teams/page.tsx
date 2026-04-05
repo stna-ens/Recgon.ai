@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTeam } from '@/components/TeamProvider';
+import { useToast } from '@/components/Toast';
 
 export default function TeamsPage() {
   const { teams, refreshTeams } = useTeam();
   const router = useRouter();
+  const { addToast } = useToast();
   const [showCreate, setShowCreate] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,9 +32,12 @@ export default function TeamsPage() {
       await refreshTeams();
       setShowCreate(false);
       setTeamName('');
+      addToast(`Team "${data.name}" created!`, 'success');
       router.push(`/teams/${data.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create team');
+      const msg = err instanceof Error ? err.message : 'Failed to create team';
+      setError(msg);
+      addToast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -92,10 +97,26 @@ export default function TeamsPage() {
             </svg>
           </Link>
         ))}
+
         {teams.length === 0 && (
-          <p style={{ color: 'var(--txt-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '2rem 0' }}>
-            No teams yet. Create one to get started.
-          </p>
+          <div style={{
+            padding: '2.5rem 1.5rem', background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: '12px', textAlign: 'center',
+          }}>
+            <svg width="36" height="36" fill="none" stroke="var(--txt-muted)" strokeWidth={1.5} viewBox="0 0 24 24" style={{ marginBottom: '0.75rem', opacity: 0.5 }}>
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <p style={{ color: 'var(--txt-muted)', fontSize: '0.9rem', margin: '0 0 1rem' }}>No teams yet.</p>
+            <button onClick={() => setShowCreate(true)} style={{
+              padding: '0.5rem 1.25rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
+              border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+            }}>
+              Create your first team
+            </button>
+          </div>
         )}
       </div>
     </div>

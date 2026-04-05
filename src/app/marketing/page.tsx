@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Select from '@/components/Select';
 import MarketingPreview from '@/components/MarketingPreview';
 import { useTeam } from '@/components/TeamProvider';
@@ -289,7 +289,7 @@ export default function MarketingPage() {
   const [previewEntry, setPreviewEntry] = useState<GeneratedContentEntry | null>(null);
   const planRef = useRef<HTMLDivElement>(null);
 
-  const loadProjects = () => {
+  const loadProjects = useCallback(() => {
     if (!currentTeam) return;
     fetch(`/api/projects?teamId=${currentTeam.id}`)
       .then((r) => r.json())
@@ -301,7 +301,7 @@ export default function MarketingPage() {
         }
       })
       .catch(() => setProjects([]));
-  };
+  }, [currentTeam, selectedProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadSocialProfiles = (projectId: string) => {
     if (!projectId || !currentTeam) return;
@@ -312,6 +312,13 @@ export default function MarketingPage() {
   };
 
   useEffect(() => { loadProjects(); }, [currentTeam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refetch when tab regains visibility so teammates' campaigns appear without a full reload
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') loadProjects(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [loadProjects]);
 
   // Reload social profiles when selected project changes
   useEffect(() => {

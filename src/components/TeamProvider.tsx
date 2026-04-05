@@ -15,7 +15,8 @@ interface Team {
 export interface CachedProject {
   id: string;
   name: string;
-  path: string;
+  path?: string;
+  sourceType?: 'codebase' | 'github' | 'description';
   isGithub?: boolean;
   lastAnalyzedCommitSha?: string;
   analysis?: {

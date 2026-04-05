@@ -5,6 +5,9 @@ export interface Team {
   id: string;
   name: string;
   slug: string;
+  description?: string;
+  avatarColor?: string;
+  avatarUrl?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -16,6 +19,7 @@ export interface TeamMember {
   joinedAt: string;
   nickname?: string;
   email?: string;
+  avatarUrl?: string;
 }
 
 export interface TeamInvitation {
@@ -94,6 +98,9 @@ export async function getTeam(teamId: string): Promise<Team | undefined> {
     id: data.id,
     name: data.name,
     slug: data.slug,
+    description: data.description ?? undefined,
+    avatarColor: data.avatar_color ?? undefined,
+    avatarUrl: data.avatar_url ?? undefined,
     createdBy: data.created_by,
     createdAt: data.created_at,
   };
@@ -114,6 +121,9 @@ export async function getUserTeams(userId: string): Promise<(Team & { role: stri
         id: t.id as string,
         name: t.name as string,
         slug: t.slug as string,
+        description: (t.description as string | undefined) ?? undefined,
+        avatarColor: (t.avatar_color as string | undefined) ?? undefined,
+        avatarUrl: (t.avatar_url as string | undefined) ?? undefined,
         createdBy: t.created_by as string,
         createdAt: t.created_at as string,
         role: d.role,
@@ -124,7 +134,7 @@ export async function getUserTeams(userId: string): Promise<(Team & { role: stri
 export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
   const { data } = await supabase
     .from('team_members')
-    .select('*, users(nickname, email)')
+    .select('*, users(nickname, email, avatar_url)')
     .eq('team_id', teamId);
 
   if (!data) return [];
@@ -137,6 +147,7 @@ export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
       joinedAt: d.joined_at,
       nickname: user?.nickname as string | undefined,
       email: user?.email as string | undefined,
+      avatarUrl: user?.avatar_url as string | undefined,
     };
   });
 }
@@ -257,6 +268,74 @@ export async function acceptInvitation(token: string, userId: string): Promise<v
     .from('team_invitations')
     .update({ accepted_at: new Date().toISOString() })
     .eq('token', token);
+}
+
+export async function updateTeamInfo(
+  teamId: string,
+  fields: { name?: string; description?: string; avatarColor?: string | null },
+  userId: string
+): Promise<void> {
+  const role = await verifyTeamAccess(teamId, userId);
+  if (role !== 'owner') throw new Error('Only team owners can update team info');
+
+  const update: Record<string, string | null> = {};
+
+  if (fields.name !== undefined) {
+    const trimmed = fields.name.trim();
+    if (trimmed.length < 2) throw new Error('Team name must be at least 2 characters');
+    update.name = trimmed;
+  }
+  if (fields.description !== undefined) {
+    update.description = fields.description.trim() || null;
+  }
+  if (fields.avatarColor !== undefined) {
+    update.avatar_color = fields.avatarColor;
+  }
+
+  if (Object.keys(update).length === 0) return;
+
+  const { error } = await supabase.from('teams').update(update).eq('id', teamId);
+  if (error) throw new Error(`Failed to update team: ${error.message}`);
+}
+
+/** @deprecated use updateTeamInfo */
+export async function updateTeamName(teamId: string, name: string, userId: string): Promise<void> {
+  return updateTeamInfo(teamId, { name }, userId);
+}
+
+export async function getTeamInvitations(teamId: string): Promise<TeamInvitation[]> {
+  const { data } = await supabase
+    .from('team_invitations')
+    .select('*')
+    .eq('team_id', teamId)
+    .is('accepted_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false });
+
+  if (!data) return [];
+  return data.map((d) => ({
+    id: d.id,
+    teamId: d.team_id,
+    email: d.email,
+    role: d.role,
+    invitedBy: d.invited_by,
+    token: d.token,
+    expiresAt: d.expires_at,
+    acceptedAt: d.accepted_at,
+    createdAt: d.created_at,
+  }));
+}
+
+export async function revokeInvitation(inviteId: string, teamId: string, userId: string): Promise<void> {
+  const role = await verifyTeamAccess(teamId, userId);
+  if (role !== 'owner' && role !== 'member') throw new Error('Access denied');
+
+  const { error } = await supabase
+    .from('team_invitations')
+    .delete()
+    .eq('id', inviteId)
+    .eq('team_id', teamId);
+  if (error) throw new Error(`Failed to revoke invitation: ${error.message}`);
 }
 
 export async function deleteTeam(teamId: string, userId: string): Promise<void> {

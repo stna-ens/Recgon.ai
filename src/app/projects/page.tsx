@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ProjectCard from '@/components/ProjectCard';
 import { useTeam } from '@/components/TeamProvider';
@@ -18,9 +18,15 @@ interface GitHubRepo {
 
 export default function ProjectsPage() {
   const { currentTeam, projects, projectUpdateStatuses, refreshProjects } = useTeam();
+
+  useEffect(() => { refreshProjects(); }, [refreshProjects]);
   const [showModal, setShowModal] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [projectPath, setProjectPath] = useState('');
+  const [sourceMode, setSourceMode] = useState<'idea' | 'codebase'>('idea');
+  const [description, setDescription] = useState('');
+  const [extracting, setExtracting] = useState(false);
+  const [uploadedFilename, setUploadedFilename] = useState('');
   const [loading, setLoading] = useState(false);
   const [createError, setCreateError] = useState('');
 
@@ -33,19 +39,26 @@ export default function ProjectsPage() {
   const [importingRepo, setImportingRepo] = useState<string | null>(null);
 
   const handleCreateProject = async () => {
-    if (!projectName.trim() || !projectPath.trim()) return;
+    if (sourceMode === 'idea' && !description.trim()) return;
+    if (sourceMode === 'codebase' && !projectPath.trim()) return;
+    if (!projectName.trim()) return;
     setLoading(true);
     setCreateError('');
     try {
+      const body = sourceMode === 'idea'
+        ? { name: projectName, description, teamId: currentTeam?.id }
+        : { name: projectName, path: projectPath, teamId: currentTeam?.id };
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: projectName, path: projectPath, teamId: currentTeam?.id }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (res.ok) {
         setProjectName('');
         setProjectPath('');
+        setDescription('');
+        setUploadedFilename('');
         setShowModal(false);
         refreshProjects();
       } else {
@@ -55,6 +68,30 @@ export default function ProjectsPage() {
       setCreateError('Network error — please try again');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setExtracting(true);
+    setCreateError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/projects/extract-text', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok) {
+        setDescription(data.text);
+        setUploadedFilename(file.name);
+      } else {
+        setCreateError(data.error || 'Failed to extract text');
+      }
+    } catch {
+      setCreateError('Network error — please try again');
+    } finally {
+      setExtracting(false);
+      e.target.value = '';
     }
   };
 
@@ -153,6 +190,7 @@ export default function ProjectsPage() {
               techStack={project.analysis?.techStack}
               analyzed={!!project.analysis}
               hasUpdates={projectUpdateStatuses[project.id]}
+              sourceType={project.sourceType}
             />
           ))}
         </div>
@@ -163,6 +201,31 @@ export default function ProjectsPage() {
         <div className="modal-overlay" onClick={() => { setShowModal(false); setCreateError(''); }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>Add New Project</h3>
+
+            {/* Mode toggle */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--bg-secondary)', borderRadius: 'var(--r-pill)', padding: 4 }}>
+              {(['idea', 'codebase'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setSourceMode(mode)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 0',
+                    borderRadius: 'var(--r-pill)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    background: sourceMode === mode ? 'var(--btn-primary-bg)' : 'transparent',
+                    color: sourceMode === mode ? 'var(--btn-primary-txt)' : 'var(--txt-muted)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {mode === 'idea' ? 'Idea / Description' : 'Codebase / GitHub'}
+                </button>
+              ))}
+            </div>
+
             <div className="form-group">
               <label className="form-label">Project Name</label>
               <input
@@ -173,19 +236,46 @@ export default function ProjectsPage() {
                 onChange={(e) => setProjectName(e.target.value)}
               />
             </div>
-            <div className="form-group">
-              <label className="form-label">Codebase Path or GitHub URL</label>
-              <input
-                className="form-input"
-                type="text"
-                placeholder="https://github.com/user/repo OR /Users/you/project"
-                value={projectPath}
-                onChange={(e) => setProjectPath(e.target.value)}
-              />
-              <p style={{ fontSize: 13, color: 'var(--txt-muted)', marginTop: 12 }}>
-                Paste a link to a public GitHub repo, or an absolute path to a local directory.
-              </p>
-            </div>
+
+            {sourceMode === 'idea' ? (
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label className="form-label" style={{ margin: 0 }}>Idea Description</label>
+                  <label style={{ cursor: 'pointer', fontSize: 12, color: 'var(--signature)', fontWeight: 600 }}>
+                    {extracting ? 'Extracting...' : uploadedFilename ? (
+                      <span>{uploadedFilename} · <span style={{ textDecoration: 'underline' }}>Replace</span></span>
+                    ) : 'Upload .pdf or .docx'}
+                    <input type="file" accept=".pdf,.docx" style={{ display: 'none' }} onChange={handleFileUpload} disabled={extracting} />
+                  </label>
+                </div>
+                <textarea
+                  className="form-input"
+                  rows={6}
+                  placeholder={"Describe your idea...\n\nWhat problem does it solve? Who is it for? What makes it different?"}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                />
+                <p style={{ fontSize: 13, color: 'var(--txt-muted)', marginTop: 8 }}>
+                  No code needed. Describe your idea and Recgon will analyse it like a PM mentor.
+                </p>
+              </div>
+            ) : (
+              <div className="form-group">
+                <label className="form-label">Codebase Path or GitHub URL</label>
+                <input
+                  className="form-input"
+                  type="text"
+                  placeholder="https://github.com/user/repo OR /Users/you/project"
+                  value={projectPath}
+                  onChange={(e) => setProjectPath(e.target.value)}
+                />
+                <p style={{ fontSize: 13, color: 'var(--txt-muted)', marginTop: 12 }}>
+                  Paste a link to a public GitHub repo, or an absolute path to a local directory.
+                </p>
+              </div>
+            )}
+
             {createError && (
               <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 12, marginBottom: 0 }}>{createError}</p>
             )}
@@ -196,9 +286,9 @@ export default function ProjectsPage() {
               <button
                 className="btn btn-primary"
                 onClick={handleCreateProject}
-                disabled={loading || !projectName.trim() || !projectPath.trim()}
+                disabled={loading || !projectName.trim() || (sourceMode === 'idea' ? !description.trim() : !projectPath.trim())}
               >
-                {loading ? 'Creating...' : 'Create Project & Clone'}
+                {loading ? 'Creating...' : sourceMode === 'idea' ? 'Create Project' : 'Create Project & Clone'}
               </button>
             </div>
           </div>

@@ -859,6 +859,11 @@ body {
   background: var(--glass-hover) !important;
 }
 
+/* Team avatar hover overlay */
+button:hover .avatar-hover-overlay {
+  opacity: 1 !important;
+}
+
 /* Smooth Hardware-Accelerated View Transitions */
 ::view-transition-old(root),
 ::view-transition-new(root) {
