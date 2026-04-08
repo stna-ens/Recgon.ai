@@ -32,11 +32,32 @@
       "Bash(open:*)",
       "mcp__supabase__list_organizations",
       "mcp__supabase__list_projects",
-      "mcp__claude_ai_Supabase__list_organizations"
+      "mcp__claude_ai_Supabase__list_organizations",
+      "Bash(sort -t/ -k10)",
+      "WebFetch(domain:reactbits.dev)",
+      "mcp__firecrawl__firecrawl_scrape",
+      "Bash(gh api:*)",
+      "Bash(openssl rand:*)",
+      "mcp__recgon__list_projects",
+      "mcp__recgon__get_project_analysis",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "Bash(vercel env:*)",
+      "Bash(npx vercel:*)",
+      "Bash(echo \"Exit: $?\")",
+      "WebFetch(domain:www.reactbits.dev)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(node_modules/.bin/tsc --noEmit)"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "firecrawl"
-  ]
+  ],
+  "sandbox": {
+    "enabled": false,
+    "autoAllowBashIfSandboxed": false
+  }
 }

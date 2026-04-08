@@ -93,6 +93,7 @@ export interface FeedbackAnalysis {
   praises: string[];
   developerPrompts: string[];
   analyzedAt: string;
+  completedPrompts?: { promptIndex: number; completedAt: string; completedBy: string }[];
 }
 
 async function assembleProject(row: Record<string, unknown>): Promise<Project> {
@@ -128,6 +129,7 @@ async function assembleProject(row: Record<string, unknown>): Promise<Project> {
     praises: r.praises as string[],
     developerPrompts: r.developer_prompts as string[],
     analyzedAt: r.analyzed_at,
+    completedPrompts: (r.completed_prompts as FeedbackAnalysis['completedPrompts']) ?? [],
   }));
 
   const campaigns: Campaign[] = (campaignsRes.data ?? []).map((r) => ({
@@ -242,6 +244,7 @@ export async function saveProject(project: Project): Promise<void> {
       praises: fa.praises,
       developer_prompts: fa.developerPrompts,
       analyzed_at: fa.analyzedAt,
+      completed_prompts: fa.completedPrompts ?? [],
     }));
     await supabase.from('feedback_analyses').upsert(rows);
   }

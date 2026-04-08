@@ -3,7 +3,6 @@ import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import AppShell from '@/components/AppShell';
 import { SessionProvider } from 'next-auth/react';
-import { auth } from '@/auth';
 import { ToastProvider } from '@/components/Toast';
 
 export const metadata: Metadata = {
@@ -33,17 +32,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <SessionProvider session={session}>
+        <SessionProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <div className="mesh-bg">
               <div className="mesh-blob mesh-blob-1"></div>

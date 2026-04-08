@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 
@@ -32,7 +32,7 @@ interface GitHubStatus {
   username: string | null;
 }
 
-export default function AccountPage() {
+function AccountPageInner() {
   const { data: session, update } = useSession();
   const searchParams = useSearchParams();
 
@@ -79,6 +79,14 @@ export default function AccountPage() {
         .catch(() => null);
     }
   }, [searchParams]);
+
+  const [mcpCopied, setMcpCopied] = useState(false);
+
+  function handleMcpCopy() {
+    navigator.clipboard.writeText('claude mcp add recgon --transport http https://recgon-ai.vercel.app/mcp');
+    setMcpCopied(true);
+    setTimeout(() => setMcpCopied(false), 2000);
+  }
 
   const [emailForm, setEmailForm] = useState({ newEmail: '', password: '' });
   const [emailStatus, setEmailStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
@@ -432,6 +440,43 @@ export default function AccountPage() {
         )}
       </Section>
 
+      {/* Claude Code */}
+      <Section title="Claude Code">
+        <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: '0 0 1rem' }}>
+          Connect Recgon to Claude Code to get project insights, next steps, and developer prompts directly in your editor.
+        </p>
+        <p style={{ color: 'var(--txt-muted)', fontSize: '0.8rem', margin: '0 0 0.75rem' }}>
+          Run this command in your terminal, then sign in when the browser opens:
+        </p>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          background: 'var(--btn-secondary-bg)',
+          border: '1px solid var(--btn-secondary-border)',
+          borderRadius: 'var(--r-sm)', padding: '0.6rem 0.875rem',
+        }}>
+          <code style={{
+            flex: 1, fontSize: '0.8rem', color: 'var(--txt-pure)',
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            claude mcp add recgon --transport http https://recgon-ai.vercel.app/mcp
+          </code>
+          <button
+            onClick={handleMcpCopy}
+            style={{
+              flexShrink: 0, padding: '0.35rem 0.75rem',
+              background: mcpCopied ? 'var(--success)' : 'var(--btn-primary-bg)',
+              color: mcpCopied ? '#fff' : 'var(--btn-primary-txt)',
+              border: 'none', borderRadius: 'var(--r-sm)',
+              fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            {mcpCopied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+      </Section>
+
       {/* Sign Out */}
       <Section title="Sign Out">
         <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: '0 0 1rem' }}>
@@ -452,5 +497,13 @@ export default function AccountPage() {
         </button>
       </Section>
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense>
+      <AccountPageInner />
+    </Suspense>
   );
 }

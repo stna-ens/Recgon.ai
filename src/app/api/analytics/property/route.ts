@@ -30,9 +30,10 @@ export async function POST(req: NextRequest) {
     const trimmed = typeof propertyId === 'string' ? propertyId.trim() : '';
     if (trimmed && !/^\d+$/.test(trimmed))
       return NextResponse.json({ error: 'Invalid property ID — must be numeric (e.g. 123456789)' }, { status: 400 });
-    if (!(await getProject(projectId, session.user.id)))
+    const teamId = req.headers.get('x-team-id') ?? undefined;
+    if (!(await getProject(projectId, teamId)))
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    const ok = await updateProjectAnalyticsProperty(projectId, trimmed || null, session.user.id);
+    const ok = await updateProjectAnalyticsProperty(projectId, trimmed || null, teamId);
     if (!ok) return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
     return NextResponse.json({ ok: true });
   }

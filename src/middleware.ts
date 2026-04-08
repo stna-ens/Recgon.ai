@@ -9,12 +9,18 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   const isAuthPage = pathname === '/login' || pathname === '/register';
-  const isPublicPage = pathname === '/landing';
+  const isPublicPage = pathname === '/landing' || pathname.startsWith('/.well-known/');
   const isApiRoute = pathname.startsWith('/api/');
   const isTeamSetup = pathname === '/teams/setup' || pathname.startsWith('/teams/invite/');
+  // MCP OAuth endpoints — auth is handled inside the route handlers themselves
+  const isMcpRoute = pathname === '/api/mcp' || pathname.startsWith('/api/mcp/');
 
   if (isLoggedIn && isAuthPage) {
     return NextResponse.redirect(new URL('/', req.url));
+  }
+
+  if (isMcpRoute) {
+    return NextResponse.next();
   }
 
   if (!isLoggedIn && !isAuthPage && !isPublicPage) {

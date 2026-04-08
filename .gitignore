@@ -5,3 +5,4 @@ node_modules
 next-env.d.ts
 data/
 .mcp.json
+.vercel

@@ -821,7 +821,9 @@ export default function AnalyticsPage() {
     setError('');
     try {
       const projectParam = pId ? `&projectId=${pId}` : '';
-      const res = await fetch(`/api/analytics/data?days=${selectedDays}${projectParam}`);
+      const res = await fetch(`/api/analytics/data?days=${selectedDays}${projectParam}`, {
+        headers: currentTeam ? { 'x-team-id': currentTeam.id } : {},
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Failed to fetch');
       setData(json);
@@ -830,7 +832,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoadingData(false);
     }
-  }, []);
+  }, [currentTeam]);
 
   // Auto-fetch when config or selected project changes
   useEffect(() => {
@@ -869,7 +871,7 @@ export default function AnalyticsPage() {
     try {
       const res = await fetch('/api/analytics/property', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(currentTeam ? { 'x-team-id': currentTeam.id } : {}) },
         body: JSON.stringify({ type: 'set_project_property', projectId, propertyId: pid }),
       });
       const json = await res.json();

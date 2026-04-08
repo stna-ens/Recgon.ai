@@ -110,7 +110,6 @@
 
 body {
   height: 100vh;
-  /* Ultra crisp typography tracking */
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
   background-color: var(--bg-deep);
   color: var(--txt-pure);
@@ -119,7 +118,6 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-
 }
 
 /* === MINIMALIST AURA BACKGROUND === */
@@ -153,6 +151,7 @@ body {
   flex-direction: column;
   height: 100vh;
   width: 100vw;
+  overflow: hidden;
   position: relative;
 }
 
