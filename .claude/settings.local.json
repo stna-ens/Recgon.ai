@@ -49,7 +49,8 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:github.com)",
-      "Bash(node_modules/.bin/tsc --noEmit)"
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(claude mcp:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
