@@ -1035,11 +1035,18 @@ export default function AnalyticsPage() {
               Refresh
             </button>
             <button
-              onClick={() => { setPropertyId(null); setHasCredentials(false); }}
+              onClick={async () => {
+                await fetch('/api/analytics/property', { method: 'DELETE' });
+                setPropertyId(null);
+                setHasCredentials(false);
+                setAuthMethod(null);
+                setData(null);
+                setError('');
+              }}
               className="btn btn-secondary btn-sm"
               style={{ color: 'var(--txt-muted)' }}
             >
-              Change property
+              Disconnect
             </button>
           </div>
         </div>

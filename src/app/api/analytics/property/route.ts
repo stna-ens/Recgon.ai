@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAnalyticsConfig, setAnalyticsConfig, setAnalyticsPropertyId, disconnectAnalytics } from '@/lib/analyticsStorage';
-import { getProject, updateProjectAnalyticsProperty } from '@/lib/storage';
+import { updateProjectAnalyticsProperty } from '@/lib/storage';
 
 export async function GET() {
   const session = await auth();
@@ -30,10 +30,7 @@ export async function POST(req: NextRequest) {
     const trimmed = typeof propertyId === 'string' ? propertyId.trim() : '';
     if (trimmed && !/^\d+$/.test(trimmed))
       return NextResponse.json({ error: 'Invalid property ID — must be numeric (e.g. 123456789)' }, { status: 400 });
-    const teamId = req.headers.get('x-team-id') ?? undefined;
-    if (!(await getProject(projectId, teamId)))
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    const ok = await updateProjectAnalyticsProperty(projectId, trimmed || null, teamId);
+    const ok = await updateProjectAnalyticsProperty(projectId, trimmed || null);
     if (!ok) return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
