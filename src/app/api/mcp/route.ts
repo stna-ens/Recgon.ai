@@ -7,7 +7,18 @@ import { getUserTeams } from '@/lib/teamStorage';
 import { registerTools } from '@/lib/mcpTools';
 
 function unauthorized() {
-  return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://recgon-ai.vercel.app';
+  return Response.json(
+    { error: 'Unauthorized' },
+    {
+      status: 401,
+      headers: {
+        // RFC 9728 — point clients at the protected-resource metadata so they
+        // can auto-discover the authorization server and start the OAuth flow.
+        'WWW-Authenticate': `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`,
+      },
+    },
+  );
 }
 
 async function resolveTeamIds(request: Request): Promise<string[] | null> {
