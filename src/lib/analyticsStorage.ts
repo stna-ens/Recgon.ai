@@ -16,7 +16,7 @@ export interface AnalyticsConfig {
 
 function rowToConfig(row: Record<string, unknown>): AnalyticsConfig {
   const config: AnalyticsConfig = {
-    propertyId: (row.property_id as string) ?? '',
+    propertyId: (row.property_id as string) || '',
     authMethod: row.auth_method as 'service_account' | 'oauth',
     updatedAt: row.updated_at as string,
   };
