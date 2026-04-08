@@ -117,7 +117,7 @@ export default function LandingClientShell() {
           maskImage: 'radial-gradient(ellipse 90% 90% at 50% 50%, black 30%, transparent 100%)',
         }} />
         <div style={{ position: 'relative', zIndex: 1, maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+          <div style={{ textAlign: 'left', marginBottom: '56px' }}>
             <div style={{ fontFamily: MONO, fontSize: '11px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '16px' }}>
               // capabilities
             </div>
@@ -144,7 +144,7 @@ export default function LandingClientShell() {
       {/* ── How It Works ──────────────────────────────────────────────────── */}
       <section style={{ background: '#050505', padding: '120px 40px' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+          <div style={{ textAlign: 'left', marginBottom: '56px' }}>
             <div style={{ fontFamily: MONO, fontSize: '11px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '16px' }}>
               // workflow
             </div>
