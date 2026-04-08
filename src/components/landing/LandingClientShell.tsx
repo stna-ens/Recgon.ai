@@ -19,7 +19,6 @@ const features = [
   { icon: '<!>', title: 'Feedback Analysis', description: 'Scrape Instagram comments or paste feedback manually. Get sentiment breakdowns and actionable developer prompts.' },
   { icon: '%_', title: 'Analytics Dashboard', description: 'Track your growth with GA4-powered dashboards and AI-generated insights about your traffic and engagement.' },
   { icon: '->', title: 'AI Mentor', description: 'Chat with an AI that knows your product inside out. Ask questions, get strategy advice, brainstorm features.' },
-  { icon: '◆◇', title: "Claude's Best Friend", description: "Connect Recgon to Claude Code via MCP. Claude reads your analysis, implements next steps, and marks them done — all with your approval." },
 ];
 
 const steps = [
