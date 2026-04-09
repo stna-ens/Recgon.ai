@@ -106,6 +106,9 @@ export async function cloneGitHubRepo(url: string, projectId: string, token?: st
   });
 
   if (!res.ok) {
+    if (res.status === 404) throw new Error('Repository not found. Make sure the URL is correct and the repo is public.');
+    if (res.status === 403) throw new Error('GitHub rate limit exceeded or access denied. Try again in a minute.');
+    if (res.status === 401) throw new Error('Repository is private. Sign in with GitHub to import private repos.');
     throw new Error(`Failed to download repository: ${res.status} ${res.statusText}`);
   }
 

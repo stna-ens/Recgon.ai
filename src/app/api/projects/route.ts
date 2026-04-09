@@ -76,6 +76,11 @@ export async function POST(request: NextRequest) {
     await saveProject(project);
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
+    // GitHub import errors have user-friendly messages — surface them directly.
+    const msg = error instanceof Error ? error.message : '';
+    if (msg.startsWith('Repository') || msg.startsWith('GitHub') || msg.startsWith('Invalid GitHub') || msg.startsWith('Could not parse') || msg.startsWith('Failed to download')) {
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
     return serverError('POST /api/projects', error);
   }
 }
