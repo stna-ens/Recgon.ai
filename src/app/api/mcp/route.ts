@@ -7,7 +7,7 @@ import { getUserTeams } from '@/lib/teamStorage';
 import { registerTools } from '@/lib/mcpTools';
 
 function unauthorized() {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://recgon-ai.vercel.app';
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://recgon-ai.vercel.app').trim();
   return Response.json(
     { error: 'Unauthorized' },
     {

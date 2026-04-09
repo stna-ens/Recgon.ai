@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://recgon-ai.vercel.app';
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://recgon-ai.vercel.app').trim();
   return Response.json({
     issuer: base,
     authorization_endpoint: `${base}/api/mcp/authorize`,

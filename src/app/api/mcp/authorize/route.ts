@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   if (!session?.user?.id) {
     // Not logged in — redirect to Recgon login, which will come back here after auth
     const callbackUrl = encodeURIComponent(request.url);
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://recgon-ai.vercel.app';
+    const base = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://recgon-ai.vercel.app').trim();
     return Response.redirect(`${base}/login?callbackUrl=${callbackUrl}`);
   }
 
