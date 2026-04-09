@@ -214,7 +214,7 @@ export default function DashboardPage() {
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || streaming) return;
+    if (!trimmed || streaming || !currentTeam) return;
 
     const userMsg: Message = { role: 'user', content: trimmed };
     setMessages((prev) => [...prev, userMsg]);
@@ -420,7 +420,7 @@ export default function DashboardPage() {
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
-            disabled={streaming}
+            disabled={streaming || !currentTeam}
             onKeyUp={handleKeyUp}
             rows={1}
             style={{
