@@ -6,6 +6,12 @@ import { mentorSystemPrompt, generateSuggestions } from '@/lib/prompts';
 import { getHistory, saveMessages, clearHistory } from '@/lib/chatStorage';
 import { getUserTeams } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
+import { validateEnv } from '@/lib/env';
+import type { GenerationConfig } from '@google/generative-ai';
+
+type GenerationConfigWithThinking = GenerationConfig & {
+  thinkingConfig?: { thinkingBudget: number };
+};
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -51,6 +57,8 @@ export async function POST(request: NextRequest) {
     }
     if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
 
+    validateEnv();
+
     // Verify membership before loading team data
     const userTeams = await getUserTeams(session.user.id);
     if (!userTeams.some((t) => t.id === teamId)) {
@@ -82,7 +90,11 @@ export async function POST(request: NextRequest) {
 
     const result = await model.generateContentStream({
       contents,
-      generationConfig: { temperature: 0.85, maxOutputTokens: 4096 },
+      generationConfig: {
+        temperature: 0.85,
+        maxOutputTokens: 4096,
+        thinkingConfig: { thinkingBudget: 0 },
+      } as GenerationConfigWithThinking,
     });
 
     // Collect the full response to save it
@@ -112,6 +124,14 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
   } catch (error) {
+    // Surface Gemini 503 overload errors so the client can show a useful message.
+    const msg = error instanceof Error ? error.message : '';
+    if (msg.includes('503') || msg.toLowerCase().includes('high demand') || msg.toLowerCase().includes('overloaded')) {
+      return NextResponse.json(
+        { error: 'The AI model is temporarily overloaded. Please try again in a moment.' },
+        { status: 503 }
+      );
+    }
     return serverError('POST /api/chat', error);
   }
 }
