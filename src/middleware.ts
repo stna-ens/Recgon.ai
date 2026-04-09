@@ -32,7 +32,10 @@ export default auth((req) => {
   const isApiRoute = pathname.startsWith('/api/');
   const isTeamSetup = pathname === '/teams/setup' || pathname.startsWith('/teams/invite/');
   // MCP OAuth endpoints — auth is handled inside the route handlers themselves
-  const isMcpRoute = pathname === '/api/mcp' || pathname.startsWith('/api/mcp/');
+  const isMcpRoute =
+    pathname === '/mcp' ||
+    pathname === '/api/mcp' ||
+    pathname.startsWith('/api/mcp/');
   // NextAuth handles its own CSRF — don't double-gate.
   const isNextAuthRoute = pathname.startsWith('/api/auth/');
 
