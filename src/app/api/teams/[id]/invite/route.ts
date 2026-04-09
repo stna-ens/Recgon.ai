@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createInvitation, verifyTeamAccess } from '@/lib/teamStorage';
+import { serverError } from '@/lib/apiError';
 
 export async function POST(
   request: NextRequest,
@@ -26,7 +27,6 @@ export async function POST(
     const invitation = await createInvitation(id, email.trim(), inviteRole, session.user.id);
     return NextResponse.json(invitation, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create invitation';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError('POST /api/teams/[id]/invite', error);
   }
 }

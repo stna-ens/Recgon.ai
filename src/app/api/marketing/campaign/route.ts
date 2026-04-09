@@ -5,6 +5,7 @@ import { generateCampaignPlan, CampaignType } from '@/lib/contentGenerator';
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, GENERATE_LIMIT } from '@/lib/rateLimit';
 import { verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { serverError } from '@/lib/apiError';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -66,8 +67,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ campaign });
   } catch (error) {
-    console.error('[campaign route error]', error);
-    const message = error instanceof Error ? error.message : 'Campaign planning failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError('POST /api/marketing/campaign', error);
   }
 }

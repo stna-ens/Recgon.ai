@@ -121,8 +121,13 @@ export async function fetchAnalyticsData(
       process.env.GOOGLE_CLIENT_SECRET,
     );
     oauth2Client.setCredentials({ access_token: accessToken });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    client = new BetaAnalyticsDataClient({ authClient: oauth2Client as any });
+    // BetaAnalyticsDataClient's `authClient` parameter is typed against an
+    // older google-auth-library AuthClient than the one OAuth2Client extends
+    // here — cast through unknown to bridge the version mismatch.
+    type AnalyticsClientOptions = ConstructorParameters<typeof BetaAnalyticsDataClient>[0];
+    client = new BetaAnalyticsDataClient({
+      authClient: oauth2Client as unknown as NonNullable<AnalyticsClientOptions>['authClient'],
+    });
   } else if (authOptions.serviceAccountJson) {
     const credentials = JSON.parse(authOptions.serviceAccountJson);
     client = new BetaAnalyticsDataClient({ credentials });

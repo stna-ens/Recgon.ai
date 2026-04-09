@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createTeam, getUserTeams } from '@/lib/teamStorage';
+import { serverError } from '@/lib/apiError';
 
 export async function GET() {
   const session = await auth();
@@ -23,7 +24,6 @@ export async function POST(request: NextRequest) {
     const team = await createTeam(name.trim(), session.user.id);
     return NextResponse.json(team, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create team';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError('POST /api/teams', error);
   }
 }

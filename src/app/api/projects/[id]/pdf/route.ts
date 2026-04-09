@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getProject } from '@/lib/storage';
 import { auth } from '@/auth';
 import { verifyTeamAccess } from '@/lib/teamStorage';
-import { renderToBuffer } from '@react-pdf/renderer';
-import React from 'react';
+import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer';
+import React, { type ReactElement } from 'react';
 import { ProjectPdfDocument } from '@/lib/projectPdf';
 
 export const runtime = 'nodejs';
@@ -34,10 +34,11 @@ export async function GET(
     return NextResponse.json({ error: 'No analysis found' }, { status: 404 });
   }
 
-  // renderToBuffer is typed to expect DocumentProps on the element,
-  // but our wrapper component returns a <Document> — cast to satisfy the type.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const element = React.createElement(ProjectPdfDocument, { analysis: project.analysis }) as any;
+  // renderToBuffer expects a Document element. Our wrapper returns one — cast
+  // through DocumentProps to satisfy the type without losing structure.
+  const element = React.createElement(ProjectPdfDocument, {
+    analysis: project.analysis,
+  }) as unknown as ReactElement<DocumentProps>;
   const buffer = await renderToBuffer(element);
 
   const filename = `${project.name.replace(/[^a-z0-9]/gi, '_')}_strategy_brief.pdf`;

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAnalyticsConfig } from '@/lib/analyticsStorage';
 import { fetchAnalyticsData } from '@/lib/analyticsEngine';
-import { getProject } from '@/lib/storage';
+import { getProject, getProjectTeamId } from '@/lib/storage';
+import { verifyTeamAccess } from '@/lib/teamStorage';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -15,10 +16,13 @@ export async function GET(req: NextRequest) {
 
   const days = parseInt(req.nextUrl.searchParams.get('days') ?? '30', 10) || 30;
   const projectId = req.nextUrl.searchParams.get('projectId');
-  const teamId = req.headers.get('x-team-id') ?? undefined;
 
   let propertyId: string | undefined = config?.propertyId;
   if (projectId) {
+    const teamId = await getProjectTeamId(projectId);
+    if (!teamId) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    const role = await verifyTeamAccess(teamId, session.user.id);
+    if (!role) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const project = await getProject(projectId, teamId);
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     propertyId = project.analyticsPropertyId || config?.propertyId;

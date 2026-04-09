@@ -3,6 +3,7 @@ import { getAllProjects, saveProject, generateId } from '@/lib/storage';
 import { cloneGitHubRepo } from '@/lib/githubFetcher';
 import { auth } from '@/auth';
 import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { serverError } from '@/lib/apiError';
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -75,7 +76,6 @@ export async function POST(request: NextRequest) {
     await saveProject(project);
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create project';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError('POST /api/projects', error);
   }
 }

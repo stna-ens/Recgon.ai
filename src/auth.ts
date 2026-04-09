@@ -4,6 +4,9 @@ import GitHub from 'next-auth/providers/github';
 import bcrypt from 'bcryptjs';
 import { getUserByEmail, findOrCreateOAuthUser, updateUser } from '@/lib/userStorage';
 import { authConfig } from './auth.config';
+import { validateBootEnv } from '@/lib/env';
+
+validateBootEnv();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -11,7 +14,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET ? [GitHub({
       clientId: process.env.GITHUB_ID,
       clientSecret: process.env.GITHUB_SECRET,
-      authorization: { params: { scope: 'read:user user:email repo' } },
+      // Minimum scope needed: profile + email. We intentionally do NOT request
+      // 'repo' so a leaked token cannot read private repositories.
+      // 'public_repo' is added so users can analyze their public repos via the
+      // GitHub API. If you need private-repo analysis, gate that behind a
+      // separate, explicit re-auth flow rather than the default sign-in.
+      authorization: { params: { scope: 'read:user user:email public_repo' } },
     })] : []),
     Credentials({
       credentials: {

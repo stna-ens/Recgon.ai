@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProject, saveProject, type ProductAnalysis } from '@/lib/storage';
+import { getProject, getProjectTeamId, saveProject, type ProductAnalysis } from '@/lib/storage';
 import { analyzeIdea } from '@/lib/ideaAnalyzer';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '@/lib/codeAnalyzer';
 import { analyzeCompetitors } from '@/lib/competitorAnalyzer';
@@ -83,8 +83,10 @@ export async function POST(
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 
-  const teamId = request.headers.get('x-team-id');
-  if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
+  // Derive teamId from the project itself — never trust the client to tell us which
+  // team a project belongs to.
+  const teamId = await getProjectTeamId(id);
+  if (!teamId) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
   if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });

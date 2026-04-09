@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 export async function GET() {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://recgon-ai.vercel.app';
   return Response.json({
-    resource: `${base}/api/mcp`,
+    resource: `${base}/mcp`,
     authorization_servers: [base],
     bearer_methods_supported: ['header'],
     scopes_supported: ['mcp'],

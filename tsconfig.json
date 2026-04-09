@@ -37,7 +37,6 @@
   ],
   "exclude": [
     "node_modules",
-    "mcp-server",
-    "src/lib/test-gemini.ts"
+    "mcp-server"
   ]
 }

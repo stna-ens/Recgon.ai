@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { setAnalyticsOAuth } from '@/lib/analyticsStorage';
+import { logger } from '@/lib/logger';
 
 // Google redirects here after the user consents
 export async function GET(req: NextRequest) {
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     const tokens = await tokenRes.json();
 
     if (!tokenRes.ok || !tokens.access_token) {
-      console.error('[OAuth callback] Token exchange failed:', tokens);
+      logger.error('oauth token exchange failed', { status: tokenRes.status });
       return NextResponse.redirect(new URL('/analytics?error=token_exchange_failed', req.nextUrl.origin));
     }
 

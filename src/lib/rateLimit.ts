@@ -9,46 +9,50 @@ export interface RateLimitOptions {
   limit: number;
   /** Window size in milliseconds */
   windowMs: number;
+  /**
+   * What to do if the backing store errors. 'closed' = treat as rate-limited
+   * (safer for sensitive endpoints). 'open' = allow through. Defaults to 'closed'.
+   */
+  failMode?: 'open' | 'closed';
 }
 
 /**
  * Returns true if the request should be blocked (rate limit exceeded).
+ * Fails closed by default — if the backing store errors, the request is blocked.
  * @param key  A unique string identifying the caller, e.g. `${route}:${ip}`
  */
 export async function isRateLimited(key: string, options: RateLimitOptions): Promise<boolean> {
+  const failClosed = (options.failMode ?? 'closed') === 'closed';
   const now = Date.now();
   const resetAt = now + options.windowMs;
 
-  const { data, error } = await supabase
+  // Read existing row first — we cannot use a single `upsert` to "increment"
+  // because Postgres upserts overwrite the columns we provide, which would
+  // reset count back to 1 on every call.
+  const { data: existing, error: readErr } = await supabase
     .from('rate_limits')
-    .upsert(
-      { key, count: 1, reset_at: resetAt },
-      {
-        onConflict: 'key',
-        ignoreDuplicates: false,
-      }
-    )
     .select('count, reset_at')
-    .single();
+    .eq('key', key)
+    .maybeSingle();
 
-  // If upsert inserted a new row, count is 1 — not rate limited
-  if (error || !data) return false;
+  if (readErr) return failClosed;
 
-  // If the window has expired, reset
-  if (now >= data.reset_at) {
-    await supabase
+  // No row yet, or window expired → (re)start the window at count=1.
+  if (!existing || now >= existing.reset_at) {
+    const { error: upsertErr } = await supabase
       .from('rate_limits')
-      .update({ count: 1, reset_at: resetAt })
-      .eq('key', key);
+      .upsert({ key, count: 1, reset_at: resetAt }, { onConflict: 'key' });
+    if (upsertErr) return failClosed;
     return false;
   }
 
-  // Increment count
-  const newCount = data.count + 1;
-  await supabase
+  // Window still active → increment.
+  const newCount = existing.count + 1;
+  const { error: incErr } = await supabase
     .from('rate_limits')
     .update({ count: newCount })
     .eq('key', key);
+  if (incErr) return failClosed;
 
   return newCount > options.limit;
 }
@@ -57,3 +61,4 @@ export async function isRateLimited(key: string, options: RateLimitOptions): Pro
 export const ANALYZE_LIMIT: RateLimitOptions = { limit: 5, windowMs: 60_000 };
 export const GENERATE_LIMIT: RateLimitOptions = { limit: 10, windowMs: 60_000 };
 export const FEEDBACK_LIMIT: RateLimitOptions = { limit: 15, windowMs: 60_000 };
+export const REGISTER_LIMIT: RateLimitOptions = { limit: 5, windowMs: 60 * 60_000 }; // 5/hour per IP

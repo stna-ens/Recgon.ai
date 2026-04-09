@@ -50,7 +50,8 @@
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:github.com)",
       "Bash(node_modules/.bin/tsc --noEmit)",
-      "Bash(claude mcp:*)"
+      "Bash(claude mcp:*)",
+      "Bash(wc -l /Users/eneskis/Documents/Projects/Recgon/src/lib/*.ts)"
     ]
   },
   "enableAllProjectMcpServers": true,

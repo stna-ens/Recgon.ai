@@ -35,7 +35,7 @@ export interface TeamInvitation {
 }
 
 function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+  return crypto.randomUUID();
 }
 
 function slugify(name: string): string {

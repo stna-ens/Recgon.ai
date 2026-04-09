@@ -4,6 +4,7 @@ import { scrapeWebsite } from '@/lib/firecrawl';
 import { chat } from '@/lib/gemini';
 import { SOCIAL_ANALYSIS_SYSTEM, socialAnalysisUserPrompt } from '@/lib/prompts';
 import { parseAIResponse, SocialAnalysisResponseSchema, SocialAnalysisResponse } from '@/lib/schemas';
+import { serverError } from '@/lib/apiError';
 
 // These platforms block automated scraping — scraping will always fail
 const UNSCRAPPABLE_PLATFORMS = ['linkedin', 'facebook'];
@@ -59,7 +60,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Social media analysis failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError('POST /api/social/analyze', error);
   }
 }

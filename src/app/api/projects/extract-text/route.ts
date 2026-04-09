@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { serverError } from '@/lib/apiError';
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -26,15 +27,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (name.endsWith('.pdf')) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdfParse = (await import('pdf-parse') as any).default ?? (await import('pdf-parse'));
-      const result = await pdfParse(buffer);
+      const mod = await import('pdf-parse');
+      const pdfParse = (mod as unknown as { default?: typeof mod }).default ?? mod;
+      const result = await (pdfParse as unknown as (b: Buffer) => Promise<{ text: string }>)(buffer);
       return NextResponse.json({ text: result.text });
     }
 
     return NextResponse.json({ error: 'Unsupported file type. Use .pdf or .docx.' }, { status: 400 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to extract text';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError('POST /api/projects/extract-text', err);
   }
 }

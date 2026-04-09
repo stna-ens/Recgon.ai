@@ -5,6 +5,7 @@ import { getGeminiClient } from '@/lib/gemini';
 import { mentorSystemPrompt, generateSuggestions } from '@/lib/prompts';
 import { getHistory, saveMessages, clearHistory } from '@/lib/chatStorage';
 import { getUserTeams } from '@/lib/teamStorage';
+import { serverError } from '@/lib/apiError';
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -49,6 +50,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'message is required' }, { status: 400 });
     }
     if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
+
+    // Verify membership before loading team data
+    const userTeams = await getUserTeams(session.user.id);
+    if (!userTeams.some((t) => t.id === teamId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     const projects = await getAllProjects(teamId);
 
@@ -105,7 +112,6 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Chat failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError('POST /api/chat', error);
   }
 }

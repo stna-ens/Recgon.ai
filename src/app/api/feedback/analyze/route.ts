@@ -5,6 +5,8 @@ import { isRateLimited, FEEDBACK_LIMIT } from '@/lib/rateLimit';
 import { saveFeedbackToProject, generateId } from '@/lib/storage';
 import { auth } from '@/auth';
 import { verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { serverError } from '@/lib/apiError';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') ?? 'local';
@@ -24,9 +26,9 @@ export async function POST(request: NextRequest) {
     }
 
     validateEnv();
-    console.log(`[API Analyze] Analyzing ${feedback.length} items.`);
+    logger.debug('analyzing feedback', { count: feedback.length });
     const result = await analyzeFeedback(feedback);
-    console.log(`[API Analyze] Analysis complete.`);
+    logger.debug('feedback analysis complete');
 
     if (projectId && teamId) {
       const session = await auth();
@@ -52,7 +54,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Feedback analysis failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError('POST /api/feedback/analyze', error);
   }
 }

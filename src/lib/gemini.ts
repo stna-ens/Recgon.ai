@@ -1,4 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, type GenerationConfig } from '@google/generative-ai';
+import { logger } from './logger';
+
+// `thinkingConfig` is a Gemini 2.5 setting not yet typed in @google/generative-ai.
+type GenerationConfigWithThinking = GenerationConfig & {
+  thinkingConfig?: { thinkingBudget: number };
+};
 
 let genAI: GoogleGenerativeAI | null = null;
 
@@ -32,12 +38,11 @@ export async function chat(
       // Disable thinking for structured JSON tasks — thinking tokens eat into
       // the output budget and can truncate the response before it closes.
       thinkingConfig: { thinkingBudget: 0 },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any,
+    } as GenerationConfigWithThinking,
   });
 
   const response = await content.response;
   const text = response.text();
-  console.log('[Gemini Raw Response]:', text.substring(0, 500));
+  logger.debug('gemini response received', { length: text.length });
   return text;
 }

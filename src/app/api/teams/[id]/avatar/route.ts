@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { supabase } from '@/lib/supabase';
 import { verifyTeamAccess } from '@/lib/teamStorage';
+import { logger } from '@/lib/logger';
 
 const BUCKET = 'team-avatars';
 
@@ -33,7 +34,10 @@ export async function POST(
     .from(BUCKET)
     .upload(path, buffer, { upsert: true, contentType: file.type });
 
-  if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 });
+  if (uploadError) {
+    logger.error('team avatar upload failed', uploadError);
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+  }
 
   const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
@@ -42,7 +46,10 @@ export async function POST(
     .update({ avatar_url: publicUrl })
     .eq('id', id);
 
-  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
+  if (dbError) {
+    logger.error('team avatar db update failed', dbError);
+    return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+  }
 
   return NextResponse.json({ avatarUrl: publicUrl });
 }

@@ -174,11 +174,43 @@ export async function getAllProjects(teamId: string): Promise<Project[]> {
   return Promise.all(data.map((row) => assembleProject(row)));
 }
 
-export async function getProject(id: string, teamId?: string): Promise<Project | undefined> {
-  let query = supabase.from('projects').select('*').eq('id', id);
-  if (teamId) query = query.eq('team_id', teamId);
+export async function getProject(id: string, teamId: string): Promise<Project | undefined> {
+  const { data } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', id)
+    .eq('team_id', teamId)
+    .single();
+  if (!data) return undefined;
+  return assembleProject(data);
+}
 
-  const { data } = await query.single();
+/**
+ * Look up the owning team for a project. Used to derive team scope from a project id
+ * server-side, instead of trusting any client-supplied teamId.
+ */
+export async function getProjectTeamId(projectId: string): Promise<string | undefined> {
+  const { data } = await supabase
+    .from('projects')
+    .select('team_id')
+    .eq('id', projectId)
+    .single();
+  return (data?.team_id as string | undefined) ?? undefined;
+}
+
+/**
+ * Fetch a project across a set of teams the caller is authorized for.
+ * Use this only when the caller has been independently authorized for ALL teamIds
+ * (e.g. MCP server with a session-derived team list).
+ */
+export async function getProjectForTeams(id: string, teamIds: string[]): Promise<Project | undefined> {
+  if (teamIds.length === 0) return undefined;
+  const { data } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', id)
+    .in('team_id', teamIds)
+    .single();
   if (!data) return undefined;
   return assembleProject(data);
 }
@@ -265,18 +297,13 @@ export async function saveProject(project: Project): Promise<void> {
   }
 }
 
-export async function deleteProject(id: string, teamId?: string): Promise<void> {
-  let query = supabase.from('projects').delete().eq('id', id);
-  if (teamId) query = query.eq('team_id', teamId);
-  await query;
+export async function deleteProject(id: string, teamId: string): Promise<void> {
+  await supabase.from('projects').delete().eq('id', id).eq('team_id', teamId);
 }
 
-export async function saveCampaignToProject(projectId: string, campaign: Campaign, teamId?: string): Promise<boolean> {
-  // Verify project belongs to team
-  if (teamId) {
-    const project = await getProject(projectId, teamId);
-    if (!project) return false;
-  }
+export async function saveCampaignToProject(projectId: string, campaign: Campaign, teamId: string): Promise<boolean> {
+  const project = await getProject(projectId, teamId);
+  if (!project) return false;
 
   const { error } = await supabase.from('campaigns').insert({
     id: campaign.id,
@@ -294,33 +321,32 @@ export async function saveCampaignToProject(projectId: string, campaign: Campaig
 export async function saveSocialProfilesToProject(
   projectId: string,
   profiles: { platform: string; url: string }[],
-  teamId?: string
+  teamId: string
 ): Promise<boolean> {
-  let query = supabase.from('projects').update({ social_profiles: profiles }).eq('id', projectId);
-  if (teamId) query = query.eq('team_id', teamId);
-  const { error } = await query;
+  const { error } = await supabase
+    .from('projects')
+    .update({ social_profiles: profiles })
+    .eq('id', projectId)
+    .eq('team_id', teamId);
   return !error;
 }
 
 export async function updateProjectAnalyticsProperty(
   projectId: string,
   analyticsPropertyId: string | null,
-  teamId?: string
+  teamId: string
 ): Promise<boolean> {
-  let query = supabase
+  const { error } = await supabase
     .from('projects')
     .update({ analytics_property_id: analyticsPropertyId })
-    .eq('id', projectId);
-  if (teamId) query = query.eq('team_id', teamId);
-  const { error } = await query;
+    .eq('id', projectId)
+    .eq('team_id', teamId);
   return !error;
 }
 
-export async function saveFeedbackToProject(projectId: string, analysis: FeedbackAnalysis, teamId?: string): Promise<boolean> {
-  if (teamId) {
-    const project = await getProject(projectId, teamId);
-    if (!project) return false;
-  }
+export async function saveFeedbackToProject(projectId: string, analysis: FeedbackAnalysis, teamId: string): Promise<boolean> {
+  const project = await getProject(projectId, teamId);
+  if (!project) return false;
 
   const { error } = await supabase.from('feedback_analyses').insert({
     id: analysis.id,
@@ -339,5 +365,5 @@ export async function saveFeedbackToProject(projectId: string, analysis: Feedbac
 }
 
 export function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+  return crypto.randomUUID();
 }

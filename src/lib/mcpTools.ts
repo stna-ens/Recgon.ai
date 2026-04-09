@@ -1,6 +1,6 @@
 import * as z from 'zod/v4';
 import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getAllProjects, getProject, saveProject } from './storage';
+import { getAllProjects, getProjectForTeams, saveProject } from './storage';
 import type { ProductAnalysis, FeedbackAnalysis } from './storage';
 
 export function registerTools(server: McpServer, teamIds: string[]): void {
@@ -43,8 +43,8 @@ export function registerTools(server: McpServer, teamIds: string[]): void {
       }),
     },
     async ({ projectId }) => {
-      const project = await getProject(projectId);
-      if (!project || !teamIds.includes(project.teamId)) {
+      const project = await getProjectForTeams(projectId, teamIds);
+      if (!project) {
         return { content: [{ type: 'text' as const, text: `Project not found or access denied.` }], isError: true };
       }
       if (!project.analysis) {
@@ -89,8 +89,8 @@ export function registerTools(server: McpServer, teamIds: string[]): void {
       }),
     },
     async ({ projectId }) => {
-      const project = await getProject(projectId);
-      if (!project || !teamIds.includes(project.teamId)) {
+      const project = await getProjectForTeams(projectId, teamIds);
+      if (!project) {
         return { content: [{ type: 'text' as const, text: `Project not found or access denied.` }], isError: true };
       }
       if (!project.analysis) {
@@ -126,8 +126,8 @@ export function registerTools(server: McpServer, teamIds: string[]): void {
       }),
     },
     async ({ projectId, itemType, index, feedbackId, evidence }) => {
-      const project = await getProject(projectId);
-      if (!project || !teamIds.includes(project.teamId)) {
+      const project = await getProjectForTeams(projectId, teamIds);
+      if (!project) {
         return { content: [{ type: 'text' as const, text: `Project not found or access denied.` }], isError: true };
       }
       if (!project.analysis) {

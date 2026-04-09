@@ -4,6 +4,25 @@ import { NextResponse } from 'next/server';
 
 const { auth } = NextAuth(authConfig);
 
+// Methods that mutate state — require a same-origin request to defend against CSRF.
+const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function isSameOrigin(req: { headers: Headers; nextUrl: URL }): boolean {
+  // Modern browsers send Sec-Fetch-Site on every request — prefer that.
+  const fetchSite = req.headers.get('sec-fetch-site');
+  if (fetchSite) return fetchSite === 'same-origin' || fetchSite === 'none';
+
+  // Fall back to comparing Origin against the host. If neither is present,
+  // it's almost certainly not a browser → allow (e.g. server-side fetch, MCP).
+  const origin = req.headers.get('origin');
+  if (!origin) return true;
+  try {
+    return new URL(origin).host === req.nextUrl.host;
+  } catch {
+    return false;
+  }
+}
+
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
@@ -14,6 +33,15 @@ export default auth((req) => {
   const isTeamSetup = pathname === '/teams/setup' || pathname.startsWith('/teams/invite/');
   // MCP OAuth endpoints — auth is handled inside the route handlers themselves
   const isMcpRoute = pathname === '/api/mcp' || pathname.startsWith('/api/mcp/');
+  // NextAuth handles its own CSRF — don't double-gate.
+  const isNextAuthRoute = pathname.startsWith('/api/auth/');
+
+  // CSRF check: state-changing API calls must come from same origin.
+  if (isApiRoute && !isMcpRoute && !isNextAuthRoute && CSRF_METHODS.has(req.method)) {
+    if (!isSameOrigin(req)) {
+      return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+    }
+  }
 
   if (isLoggedIn && isAuthPage) {
     return NextResponse.redirect(new URL('/', req.url));

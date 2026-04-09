@@ -1,39 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { z } from 'zod';
 import { getUserByEmail, createUser } from '@/lib/userStorage';
+import { isRateLimited, REGISTER_LIMIT } from '@/lib/rateLimit';
+import { logger } from '@/lib/logger';
+
+const RegisterSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  password: z.string().min(8).max(200),
+  nickname: z.string().trim().min(2).max(60),
+});
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
+  if (await isRateLimited(`register:${ip}`, REGISTER_LIMIT)) {
+    return NextResponse.json({ error: 'Too many signup attempts. Try again later.' }, { status: 429 });
+  }
+
   try {
-    const { email, password, nickname } = await request.json();
-
-    if (!email || !password || !nickname) {
-      return NextResponse.json({ error: 'Email, password, and nickname are required' }, { status: 400 });
+    const body = await request.json();
+    const parsed = RegisterSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     }
-
-    if (nickname.trim().length < 2) {
-      return NextResponse.json({ error: 'Nickname must be at least 2 characters' }, { status: 400 });
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
-    }
+    const { email, password, nickname } = parsed.data;
 
     const existing = await getUserByEmail(email);
     if (existing) {
-      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
+      // Generic message — do not confirm whether the email is registered.
+      return NextResponse.json({ error: 'Unable to create account' }, { status: 409 });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await createUser(email, passwordHash, nickname.trim());
+    const user = await createUser(email, passwordHash, nickname);
 
     return NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('[register]', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error('register failed', err);
+    return NextResponse.json({ error: 'Unable to create account' }, { status: 500 });
   }
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAnalyticsConfig, setAnalyticsConfig, setAnalyticsPropertyId, disconnectAnalytics } from '@/lib/analyticsStorage';
-import { updateProjectAnalyticsProperty } from '@/lib/storage';
+import { updateProjectAnalyticsProperty, getProjectTeamId } from '@/lib/storage';
+import { verifyTeamWriteAccess } from '@/lib/teamStorage';
 
 export async function GET() {
   const session = await auth();
@@ -30,7 +31,13 @@ export async function POST(req: NextRequest) {
     const trimmed = typeof propertyId === 'string' ? propertyId.trim() : '';
     if (trimmed && !/^\d+$/.test(trimmed))
       return NextResponse.json({ error: 'Invalid property ID — must be numeric (e.g. 123456789)' }, { status: 400 });
-    const ok = await updateProjectAnalyticsProperty(projectId, trimmed || null);
+
+    const teamId = await getProjectTeamId(projectId);
+    if (!teamId) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    const canWrite = await verifyTeamWriteAccess(teamId, session.user.id);
+    if (!canWrite) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    const ok = await updateProjectAnalyticsProperty(projectId, trimmed || null, teamId);
     if (!ok) return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
     return NextResponse.json({ ok: true });
   }

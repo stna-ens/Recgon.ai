@@ -15,7 +15,7 @@ function unauthorized() {
       headers: {
         // RFC 9728 — point clients at the protected-resource metadata so they
         // can auto-discover the authorization server and start the OAuth flow.
-        'WWW-Authenticate': `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`,
+        'WWW-Authenticate': `Bearer realm="${base}/mcp", resource_metadata="${base}/.well-known/oauth-protected-resource"`,
       },
     },
   );
