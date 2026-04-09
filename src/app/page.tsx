@@ -54,7 +54,7 @@ function MarkdownText({ text }: { text: string }) {
 }
 
 export default function DashboardPage() {
-  const { currentTeam } = useTeam();
+  const { currentTeam, loading: teamLoading } = useTeam();
   const [mounted, setMounted] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -420,7 +420,7 @@ export default function DashboardPage() {
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
-            disabled={streaming || !currentTeam}
+            disabled={streaming || teamLoading}
             onKeyUp={handleKeyUp}
             rows={1}
             style={{

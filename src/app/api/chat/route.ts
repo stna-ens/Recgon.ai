@@ -124,14 +124,6 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
   } catch (error) {
-    // Surface Gemini 503 overload errors so the client can show a useful message.
-    const msg = error instanceof Error ? error.message : '';
-    if (msg.includes('503') || msg.toLowerCase().includes('high demand') || msg.toLowerCase().includes('overloaded')) {
-      return NextResponse.json(
-        { error: 'The AI model is temporarily overloaded. Please try again in a moment.' },
-        { status: 503 }
-      );
-    }
     return serverError('POST /api/chat', error);
   }
 }
