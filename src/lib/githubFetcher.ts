@@ -1,8 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import os from 'os';
+import JSZip from 'jszip';
 
 export interface CommitInfo {
   sha: string;
@@ -83,41 +82,62 @@ export async function getCommitDiff(
   }
 }
 
-const execAsync = promisify(exec);
-
 export async function cloneGitHubRepo(url: string, projectId: string, token?: string): Promise<string> {
-  // Clean URL to prevent command injection
   const cleanUrl = url.trim();
   if (!cleanUrl.startsWith('https://github.com/')) {
     throw new Error('Invalid GitHub URL. Must start with https://github.com/');
   }
 
-  // Create a unique temporary directory for this project
-  const tmpDir = path.join(os.tmpdir(), `pmai-repos-${projectId}`);
+  const match = cleanUrl.match(/github\.com\/([^/]+\/[^/]+?)(?:\.git|\/)?$/);
+  if (!match) throw new Error('Could not parse GitHub repository from URL');
+  const repo = match[1];
 
-  // Clean up if it somehow exists
+  const headers: Record<string, string> = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'Recgon-App',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  // Download repo zip via GitHub API (no git binary needed)
+  const res = await fetch(`https://api.github.com/repos/${repo}/zipball`, {
+    headers,
+    redirect: 'follow',
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to download repository: ${res.status} ${res.statusText}`);
+  }
+
+  const zipBuffer = Buffer.from(await res.arrayBuffer());
+  const zip = await JSZip.loadAsync(zipBuffer);
+
+  const tmpDir = path.join(os.tmpdir(), `pmai-repos-${projectId}`);
   if (fs.existsSync(tmpDir)) {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+  fs.mkdirSync(tmpDir, { recursive: true });
 
-  // Embed token in URL for private repos (https://token@github.com/...)
-  const cloneUrl = token
-    ? cleanUrl.replace('https://', `https://${token}@`)
-    : cleanUrl;
+  // GitHub zip has a single top-level folder (e.g. owner-repo-sha/); strip it.
+  const writes: Promise<void>[] = [];
+  zip.forEach((relativePath, file) => {
+    if (file.dir) return;
+    const parts = relativePath.split('/');
+    const stripped = parts.slice(1).join('/');
+    if (!stripped) return;
 
-  // Clone with depth=1 to save time and bandwidth; 60s timeout to prevent hanging
-  try {
-    const command = `git clone --depth 1 ${cloneUrl} ${tmpDir}`;
-    await execAsync(command, { timeout: 60_000 });
-    
-    // Remove the .git folder so we don't analyze git history/objects
-    const gitFolder = path.join(tmpDir, '.git');
-    if (fs.existsSync(gitFolder)) {
-      fs.rmSync(gitFolder, { recursive: true, force: true });
-    }
-    
-    return tmpDir;
-  } catch (error) {
-    throw new Error(`Failed to clone repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+    const fullPath = path.join(tmpDir, stripped);
+    // Guard against zip-slip path traversal
+    if (!fullPath.startsWith(tmpDir + path.sep)) return;
+
+    writes.push(
+      file.async('nodebuffer').then((content) => {
+        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+        fs.writeFileSync(fullPath, content);
+      }),
+    );
+  });
+
+  await Promise.all(writes);
+  return tmpDir;
 }
