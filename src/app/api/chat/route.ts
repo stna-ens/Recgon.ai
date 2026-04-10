@@ -7,11 +7,6 @@ import { getHistory, saveMessages, clearHistory } from '@/lib/chatStorage';
 import { getUserTeams } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
 import { validateEnv } from '@/lib/env';
-import type { GenerationConfig } from '@google/generative-ai';
-
-type GenerationConfigWithThinking = GenerationConfig & {
-  thinkingConfig?: { thinkingBudget: number };
-};
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -93,8 +88,7 @@ export async function POST(request: NextRequest) {
       generationConfig: {
         temperature: 0.85,
         maxOutputTokens: 4096,
-        thinkingConfig: { thinkingBudget: 0 },
-      } as GenerationConfigWithThinking,
+      },
     }));
 
     // Collect the full response to save it

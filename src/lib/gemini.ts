@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, type GenerationConfig } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logger } from './logger';
 
 function isOverloaded(err: unknown): boolean {
@@ -30,11 +30,6 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 5): Promise<T
   throw new Error('Unreachable');
 }
 
-// `thinkingConfig` is a Gemini 2.5 setting not yet typed in @google/generative-ai.
-type GenerationConfigWithThinking = GenerationConfig & {
-  thinkingConfig?: { thinkingBudget: number };
-};
-
 let genAI: GoogleGenerativeAI | null = null;
 
 export function getGeminiClient(): GoogleGenerativeAI {
@@ -64,10 +59,7 @@ export async function chat(
       temperature: options?.temperature ?? 0.7,
       maxOutputTokens: options?.maxTokens ?? 8192,
       responseMimeType: 'application/json',
-      // Disable thinking for structured JSON tasks — thinking tokens eat into
-      // the output budget and can truncate the response before it closes.
-      thinkingConfig: { thinkingBudget: 0 },
-    } as GenerationConfigWithThinking,
+    },
   }));
 
   const response = await content.response;
