@@ -51,7 +51,16 @@
       "WebFetch(domain:github.com)",
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(claude mcp:*)",
-      "Bash(wc -l /Users/eneskis/Documents/Projects/Recgon/src/lib/*.ts)"
+      "Bash(wc -l /Users/eneskis/Documents/Projects/Recgon/src/lib/*.ts)",
+      "Bash(RECGON_MCP_TOKEN=\"4b28d20de5d31d28da664860b53b7545c65bbe96a8e8c7daac7fcc31e8045d60\" SUPABASE_URL=\"https://hrgyrtgpgvsgvxmozcax.supabase.co\" SUPABASE_SERVICE_ROLE_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZ3lydGdwZ3ZzZ3Z4bW96Y2F4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDk3NDExMSwiZXhwIjoyMDkwNTUwMTExfQ.ffHXzDMS4eJNR5dfdsrB8kEg1BI6SwiFmcWKCvTsuQc\" npx tsx /Users/eneskis/Documents/Projects/Recgon/mcp-server/src/index.ts)",
+      "Bash(kill %1)",
+      "Bash(vercel logs:*)",
+      "mcp__recgon__get_actionable_items",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(npx tsx:*)",
+      "mcp__plugin_vercel_vercel__get_runtime_logs",
+      "mcp__plugin_vercel_vercel__get_project"
     ]
   },
   "enableAllProjectMcpServers": true,
