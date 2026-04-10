@@ -3,6 +3,7 @@ import { getAllProjects, saveProject, generateId } from '@/lib/storage';
 import { cloneGitHubRepo } from '@/lib/githubFetcher';
 import { auth } from '@/auth';
 import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { getUserById } from '@/lib/userStorage';
 import { serverError } from '@/lib/apiError';
 
 export async function GET(request: NextRequest) {
@@ -56,7 +57,9 @@ export async function POST(request: NextRequest) {
       let isGithub = false;
 
       if (rawPath.startsWith('https://github.com/')) {
-        actualPath = await cloneGitHubRepo(rawPath, projectId);
+        const user = await getUserById(session.user.id);
+        const token = user?.githubAccessToken ?? undefined;
+        actualPath = await cloneGitHubRepo(rawPath, projectId, token);
         isGithub = true;
       }
 
