@@ -102,7 +102,47 @@ const steps = [
   { number: '03', title: 'Act', description: 'Generate marketing content, plan campaigns, analyze feedback, and grow — all from one place.' },
 ];
 
+function MobileComing() {
+  return (
+    <div style={{ background: '#000', color: '#fff', minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 32px', textAlign: 'center' }}>
+      <style>{`
+        @keyframes mobileGlow {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+      `}</style>
+      <div style={{ marginBottom: '32px', animation: 'mobileGlow 3s ease-in-out infinite' }}>
+        <span style={{ color: PINK }}><RecgonLogo size={48} uid="logo-mobile" /></span>
+      </div>
+      <div style={{ fontFamily: MONO, fontSize: '10px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>
+        // mobile experience
+      </div>
+      <h1 style={{ fontFamily: MONO, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1.2, margin: '0 0 20px', color: '#fff' }}>
+        Coming Soon
+      </h1>
+      <p style={{ fontSize: '15px', lineHeight: 1.7, color: 'rgba(255,255,255,0.5)', maxWidth: '320px', margin: '0 auto 40px' }}>
+        Recgon is built for desktop — we&apos;re working on a proper mobile experience. For now, open it on your laptop.
+      </p>
+      <div style={{ fontFamily: MONO, fontSize: '12px', color: 'rgba(255,255,255,0.2)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '24px', width: '100%', maxWidth: '320px' }}>
+        recgon — built for builders
+      </div>
+    </div>
+  );
+}
+
 export default function LandingClientShell() {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  if (isMobile === null) return null;
+  if (isMobile) return <MobileComing />;
+
   return (
     <div style={{ background: '#000', color: '#fff', overflowX: 'hidden' }}>
       <style>{`
