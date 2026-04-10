@@ -272,7 +272,7 @@ export default function DashboardPage() {
       });
       setStreaming(false);
     }
-  }, [messages, streaming, startTypewriter, stopTypewriter]);
+  }, [messages, streaming, currentTeam, startTypewriter, stopTypewriter]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     setKeyDown(true);
