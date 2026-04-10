@@ -21,12 +21,19 @@ export function serverError(route: string, err: unknown): NextResponse {
   if (err instanceof ApiError) {
     return NextResponse.json({ error: err.message }, { status: err.status });
   }
-  // Surface Gemini 503 overload errors with a user-friendly message.
   const msg = err instanceof Error ? err.message : '';
+  // Surface Gemini 503 overload errors with a user-friendly message.
   if (msg.includes('503') || msg.toLowerCase().includes('high demand') || msg.toLowerCase().includes('overloaded')) {
     return NextResponse.json(
       { error: 'The AI model is temporarily overloaded. Please try again in a moment.' },
       { status: 503 },
+    );
+  }
+  // Surface Gemini 429 rate limit errors with a user-friendly message.
+  if (msg.includes('429') || msg.toLowerCase().includes('too many requests') || msg.toLowerCase().includes('quota')) {
+    return NextResponse.json(
+      { error: 'AI rate limit reached. Please wait a moment and try again.' },
+      { status: 429 },
     );
   }
   logger.error(`${route} failed`, err);

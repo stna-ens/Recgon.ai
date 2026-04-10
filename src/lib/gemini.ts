@@ -6,14 +6,21 @@ function isOverloaded(err: unknown): boolean {
   return msg.includes('503') || msg.toLowerCase().includes('overloaded') || msg.toLowerCase().includes('high demand');
 }
 
+function isRateLimited(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('429') || msg.toLowerCase().includes('too many requests') || msg.toLowerCase().includes('quota');
+}
+
 export async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      if (isOverloaded(err) && attempt < retries) {
-        const delay = 1000 * 2 ** attempt; // 1s, 2s, 4s
-        logger.warn(`Gemini overloaded, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
+      const overloaded = isOverloaded(err);
+      const rateLimited = isRateLimited(err);
+      if ((overloaded || rateLimited) && attempt < retries) {
+        const delay = rateLimited ? 5000 * (attempt + 1) : 1000 * 2 ** attempt; // rate limit: 5s, 10s, 15s; overload: 1s, 2s, 4s
+        logger.warn(`Gemini ${rateLimited ? 'rate limited' : 'overloaded'}, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
         await new Promise((r) => setTimeout(r, delay));
         continue;
       }
