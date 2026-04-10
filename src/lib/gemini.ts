@@ -47,7 +47,7 @@ export async function chat(
 ): Promise<string> {
   const client = getGeminiClient();
   const model = client.getGenerativeModel({
-    model: 'gemini-3.1-pro-preview',
+    model: 'gemini-2.5-flash',
     systemInstruction: systemPrompt,
   });
 
