@@ -1,6 +1,28 @@
 import { GoogleGenerativeAI, type GenerationConfig } from '@google/generative-ai';
 import { logger } from './logger';
 
+function isOverloaded(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('503') || msg.toLowerCase().includes('overloaded') || msg.toLowerCase().includes('high demand');
+}
+
+export async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (isOverloaded(err) && attempt < retries) {
+        const delay = 1000 * 2 ** attempt; // 1s, 2s, 4s
+        logger.warn(`Gemini overloaded, retrying in ${delay}ms (attempt ${attempt + 1}/${retries})`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('Unreachable');
+}
+
 // `thinkingConfig` is a Gemini 2.5 setting not yet typed in @google/generative-ai.
 type GenerationConfigWithThinking = GenerationConfig & {
   thinkingConfig?: { thinkingBudget: number };
@@ -27,7 +49,7 @@ export async function chat(
     systemInstruction: systemPrompt,
   });
 
-  const content = await model.generateContent({
+  const content = await withRetry(() => model.generateContent({
     contents: [
       { role: 'user', parts: [{ text: userPrompt }] }
     ],
@@ -39,7 +61,7 @@ export async function chat(
       // the output budget and can truncate the response before it closes.
       thinkingConfig: { thinkingBudget: 0 },
     } as GenerationConfigWithThinking,
-  });
+  }));
 
   const response = await content.response;
   const text = response.text();

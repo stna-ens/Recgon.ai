@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAllProjects } from '@/lib/storage';
-import { getGeminiClient } from '@/lib/gemini';
+import { getGeminiClient, withRetry } from '@/lib/gemini';
 import { mentorSystemPrompt, generateSuggestions } from '@/lib/prompts';
 import { getHistory, saveMessages, clearHistory } from '@/lib/chatStorage';
 import { getUserTeams } from '@/lib/teamStorage';
@@ -88,14 +88,14 @@ export async function POST(request: NextRequest) {
       { role: 'user' as const, parts: [{ text: message }] },
     ];
 
-    const result = await model.generateContentStream({
+    const result = await withRetry(() => model.generateContentStream({
       contents,
       generationConfig: {
         temperature: 0.85,
         maxOutputTokens: 4096,
         thinkingConfig: { thinkingBudget: 0 },
       } as GenerationConfigWithThinking,
-    });
+    }));
 
     // Collect the full response to save it
     let fullResponse = '';
