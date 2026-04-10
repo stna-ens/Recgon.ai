@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     const client = getGeminiClient();
     const model = client.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       systemInstruction: systemPrompt,
     });
 
