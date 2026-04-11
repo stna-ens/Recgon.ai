@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import AppShell from '@/components/AppShell';
 import { SessionProvider } from 'next-auth/react';
 import { ToastProvider } from '@/components/Toast';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   icons: {
@@ -52,6 +53,7 @@ export default function RootLayout({
             </ToastProvider>
           </ThemeProvider>
         </SessionProvider>
+        <Analytics />
       </body>
     </html>
   );
