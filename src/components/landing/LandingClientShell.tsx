@@ -7,10 +7,10 @@ import RecgonLogo from '@/components/RecgonLogo';
 import DecryptedText from '@/components/landing/DecryptedText';
 import SpotlightCard from '@/components/landing/SpotlightCard';
 import BlurText from '@/components/landing/BlurText';
+import MobileLanding from '@/components/landing/MobileLanding';
+import { AUDIENCE, MONO, PINK, features, steps } from '@/components/landing/constants';
 const FaultyTerminal = dynamic(() => import('@/components/landing/FaultyTerminal'), { ssr: false });
 const Aurora = dynamic(() => import('@/components/landing/Aurora'), { ssr: false });
-
-const AUDIENCE = ['Solo Founders', 'Small Teams', 'Indie Hackers', 'Early-Stage Startups', 'Side Projects'];
 
 function RotatingWord({ word, decryptKey, started }: { word: string; decryptKey: number; started: boolean }) {
   if (!started) return <>{word}</>;
@@ -84,32 +84,18 @@ function HeroText() {
   );
 }
 
-const MONO = "'JetBrains Mono', ui-monospace, monospace";
-const PINK = '#f0b8d0';
-
-const features = [
-  { icon: '{ }', title: 'Codebase Analysis', description: 'Drop in a local path or GitHub URL. Recgon walks your codebase and extracts a full product analysis in seconds.' },
-  { icon: '///', title: 'Marketing Content', description: 'Generate platform-ready copy for Instagram, TikTok, and Google Ads — all grounded in what your product actually does.' },
-  { icon: '>>>', title: 'Campaign Planning', description: 'Get structured campaign timelines, content calendars, and messaging strategies tailored to your product.' },
-  { icon: '<!>', title: 'Feedback Analysis', description: 'Scrape Instagram comments or paste feedback manually. Get sentiment breakdowns and actionable developer prompts.' },
-  { icon: '%_', title: 'Analytics Dashboard', description: 'Track your growth with GA4-powered dashboards and AI-generated insights about your traffic and engagement.' },
-  { icon: '->', title: 'AI Mentor', description: 'Chat with an AI that knows your product inside out. Ask questions, get strategy advice, brainstorm features.' },
-];
-
-const steps = [
-  { number: '01', title: 'Add Project', description: "Point Recgon at a local directory or paste a GitHub URL. That's it." },
-  { number: '02', title: 'Analyze', description: 'AI walks your codebase, understands your product, and builds a comprehensive profile.' },
-  { number: '03', title: 'Act', description: 'Generate marketing content, plan campaigns, analyze feedback, and grow — all from one place.' },
-];
-
 export default function LandingClientShell() {
   const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
+    setMounted(true);
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  if (mounted && isMobile) return <MobileLanding />;
 
   return (
     <div style={{ background: '#000', color: '#fff', overflowX: 'hidden' }}>
@@ -117,10 +103,6 @@ export default function LandingClientShell() {
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes mobileGlow {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 1; }
         }
         .encrypted-char { color: rgba(240,184,208,0.55); }
         .decrypted-char  { color: #ffffff; }
@@ -152,9 +134,6 @@ export default function LandingClientShell() {
           .cta-section { padding: 100px 20px !important; }
           .features-grid { grid-template-columns: 1fr !important; }
           .mcp-terminal { display: none !important; }
-          .mobile-coming-section { display: none !important; }
-          .cta-desktop { display: none !important; }
-          .cta-mobile { display: block !important; }
           /* Tap highlight */
           a, button { -webkit-tap-highlight-color: rgba(240,184,208,0.15); }
         }
@@ -356,52 +335,21 @@ export default function LandingClientShell() {
           <Aurora colorStops={['#1a0a10', '#f0b8d0', '#1a0a10']} amplitude={1.0} blend={0.4} speed={0.5} />
         </div>
         <div className="cta-section" style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '160px 40px' }}>
-          {/* Desktop CTA */}
-          <div className="cta-desktop">
-            <h2 style={{ fontFamily: MONO, fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: 700, letterSpacing: '-1px', color: '#fff', marginTop: 0, marginBottom: '24px' }}>
-              <BlurText text="Ready to stop guessing?" animateBy="words" delay={100} stepDuration={0.4} />
-            </h2>
-            <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', maxWidth: '480px', margin: '0 auto 48px', lineHeight: 1.6 }}>
-              Join solo founders who use Recgon to understand their product, reach their users, and grow faster.
-            </p>
-            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/register" className="btn-primary" style={{ padding: '16px 40px', borderRadius: '8px', fontSize: '16px', fontWeight: 600, color: '#000', textDecoration: 'none', background: PINK, display: 'inline-block' }}>
-                Get Started Free
-              </Link>
-              <Link href="/login" className="btn-ghost" style={{ padding: '16px 40px', borderRadius: '8px', fontSize: '16px', fontWeight: 500, color: '#fff', textDecoration: 'none', display: 'inline-block', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                Login
-              </Link>
-            </div>
-          </div>
-          {/* Mobile CTA */}
-          <div className="cta-mobile" style={{ display: 'none' }}>
-            <div style={{ fontFamily: MONO, fontSize: '10px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>
-              // coming soon
-            </div>
-            <h2 style={{ fontFamily: MONO, fontSize: '1.8rem', fontWeight: 700, letterSpacing: '-0.5px', color: '#fff', marginTop: 0, marginBottom: '16px' }}>
-              Coming to Mobile Soon
-            </h2>
-            <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.5)', maxWidth: '300px', margin: '0 auto', lineHeight: 1.7 }}>
-              We&apos;re building a native mobile experience. Until then, Recgon is best on desktop.
-            </p>
+          <h2 style={{ fontFamily: MONO, fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: 700, letterSpacing: '-1px', color: '#fff', marginTop: 0, marginBottom: '24px' }}>
+            <BlurText text="Ready to stop guessing?" animateBy="words" delay={100} stepDuration={0.4} style={{ justifyContent: 'center' }} />
+          </h2>
+          <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', maxWidth: '480px', margin: '0 auto 48px', lineHeight: 1.6 }}>
+            Join solo founders who use Recgon to understand their product, reach their users, and grow faster.
+          </p>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/register" className="btn-primary" style={{ padding: '16px 40px', borderRadius: '8px', fontSize: '16px', fontWeight: 600, color: '#000', textDecoration: 'none', background: PINK, display: 'inline-block' }}>
+              Get Started Free
+            </Link>
+            <Link href="/login" className="btn-ghost" style={{ padding: '16px 40px', borderRadius: '8px', fontSize: '16px', fontWeight: 500, color: '#fff', textDecoration: 'none', display: 'inline-block', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)' }}>
+              Login
+            </Link>
           </div>
         </div>
-      </section>
-
-      {/* ── Mobile Coming Soon (mobile only) ─────────────────────────────── */}
-      <section className="mobile-coming-section" style={{ display: 'none', background: '#050505', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '72px 32px', textAlign: 'center' }}>
-        <div style={{ animation: 'mobileGlow 3s ease-in-out infinite', marginBottom: '24px' }}>
-          <span style={{ fontFamily: MONO, fontSize: '28px', color: PINK }}>{'[]'}</span>
-        </div>
-        <div style={{ fontFamily: MONO, fontSize: '10px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '16px' }}>
-          // mobile app
-        </div>
-        <h2 style={{ fontFamily: MONO, fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.5px', color: '#fff', margin: '0 0 16px' }}>
-          Coming to Mobile Soon
-        </h2>
-        <p style={{ fontSize: '14px', lineHeight: 1.7, color: 'rgba(255,255,255,0.45)', maxWidth: '300px', margin: '0 auto' }}>
-          A native mobile experience is on the way. For now, Recgon works best on desktop.
-        </p>
       </section>
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import RecgonLogo from '@/components/RecgonLogo';
 
@@ -46,11 +46,16 @@ const FEATURES = [
   },
 ];
 
+const URL_ERRORS: Record<string, string> = {
+  metuonly: 'Only METU email addresses (@metu.edu.tr) can sign in with GitHub.',
+};
+
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(URL_ERRORS[searchParams.get('error') ?? ''] ?? '');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {

@@ -43,7 +43,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider !== 'github') return true;
       if (!user.email) return false;
-      if (!user.email.endsWith('@metu.edu.tr')) return false;
+      if (!user.email.endsWith('@metu.edu.tr')) return '/login?error=metuonly';
       const existing = await findOrCreateOAuthUser(
         user.email,
         (user.name ?? user.email.split('@')[0]).slice(0, 32),
