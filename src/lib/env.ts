@@ -21,6 +21,7 @@ const OPTIONAL = [
   'FIRECRAWL_API_KEY',
   'NEXTAUTH_URL',
   'LOG_LEVEL',
+  'RESEND_API_KEY', // Required for email verification on registration
 ] as const;
 
 export function validateEnv(): void {

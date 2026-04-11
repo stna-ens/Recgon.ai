@@ -45,7 +45,7 @@ function HeroText() {
   }, [heroDone]);
 
   return (
-    <div style={{ flex: 1, position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 40px' }}>
+    <div className="hero-text" style={{ flex: 1, position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 40px' }}>
       <div style={{ fontFamily: MONO, fontSize: '11px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '24px' }}>
         {heroDone
           ? <>// for <RotatingWord word={AUDIENCE[audIndex]} decryptKey={audKey} started={audStarted} /></>
@@ -72,7 +72,7 @@ function HeroText() {
         Recgon analyzes your codebase, generates marketing content, plans campaigns,
         and turns user feedback into developer prompts — so you can stop guessing and start shipping.
       </p>
-      <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', animation: 'fadeInUp 0.8s ease 1.1s both' }}>
+      <div className="cta-row" style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', animation: 'fadeInUp 0.8s ease 1.1s both' }}>
         <Link href="/register" className="btn-primary" style={{ padding: '16px 32px', borderRadius: '8px', fontSize: '16px', fontWeight: 600, color: '#000', textDecoration: 'none', background: PINK, display: 'inline-block' }}>
           Get Started Free
         </Link>
@@ -102,46 +102,14 @@ const steps = [
   { number: '03', title: 'Act', description: 'Generate marketing content, plan campaigns, analyze feedback, and grow — all from one place.' },
 ];
 
-function MobileComing() {
-  return (
-    <div style={{ background: '#000', color: '#fff', minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 32px', textAlign: 'center' }}>
-      <style>{`
-        @keyframes mobileGlow {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 1; }
-        }
-      `}</style>
-      <div style={{ marginBottom: '32px', animation: 'mobileGlow 3s ease-in-out infinite' }}>
-        <span style={{ color: PINK }}><RecgonLogo size={48} uid="logo-mobile" /></span>
-      </div>
-      <div style={{ fontFamily: MONO, fontSize: '10px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>
-        // mobile experience
-      </div>
-      <h1 style={{ fontFamily: MONO, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1.2, margin: '0 0 20px', color: '#fff' }}>
-        Coming Soon
-      </h1>
-      <p style={{ fontSize: '15px', lineHeight: 1.7, color: 'rgba(255,255,255,0.5)', maxWidth: '320px', margin: '0 auto 40px' }}>
-        Recgon is built for desktop — we&apos;re working on a proper mobile experience. For now, open it on your laptop.
-      </p>
-      <div style={{ fontFamily: MONO, fontSize: '12px', color: 'rgba(255,255,255,0.2)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '24px', width: '100%', maxWidth: '320px' }}>
-        recgon — built for builders
-      </div>
-    </div>
-  );
-}
-
 export default function LandingClientShell() {
-  const [isMobile, setIsMobile] = useState<boolean | null>(null);
-
+  const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  if (isMobile === null) return null;
-  if (isMobile) return <MobileComing />;
 
   return (
     <div style={{ background: '#000', color: '#fff', overflowX: 'hidden' }}>
@@ -150,20 +118,45 @@ export default function LandingClientShell() {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes mobileGlow {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
+        }
         .encrypted-char { color: rgba(240,184,208,0.55); }
         .decrypted-char  { color: #ffffff; }
         .pink-encrypted-char { color: rgba(240,184,208,0.35); }
         .pink-decrypted-char { color: #f0b8d0; }
         .btn-primary, .btn-ghost {
           transition: border-color 0.3s ease, transform 0.2s ease;
+          touch-action: manipulation;
         }
-        .btn-primary:hover, .btn-ghost:hover {
-          border-color: rgba(255,255,255,0.16) !important;
-          transform: translateY(-2px);
+        @media (hover: hover) {
+          .btn-primary:hover, .btn-ghost:hover {
+            border-color: rgba(255,255,255,0.16) !important;
+            transform: translateY(-2px);
+          }
         }
-        @media (max-width: 700px) {
-          .mcp-grid { grid-template-columns: 1fr !important; }
+        @media (max-width: 768px) {
+          .mcp-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
           .footer-row { flex-direction: column !important; gap: 16px !important; text-align: center !important; }
+          .hero-header { padding: 20px 20px !important; }
+          .hero-header nav { display: none !important; }
+          .footer-nav { display: none !important; }
+          .hero-text { padding: 0 20px !important; }
+          .hero-text h1 { font-size: clamp(1.6rem, 8vw, 2.4rem) !important; }
+          .hero-text p { font-size: 15px !important; }
+          .hero-text .cta-row { flex-direction: column !important; align-items: center !important; }
+          .hero-text .cta-row a { width: 100% !important; max-width: 280px !important; text-align: center !important; }
+          .section-pad { padding: 72px 20px !important; }
+          .section-pad-bottom { padding: 0 20px 72px !important; }
+          .cta-section { padding: 100px 20px !important; }
+          .features-grid { grid-template-columns: 1fr !important; }
+          .mcp-terminal { display: none !important; }
+          .mobile-coming-section { display: none !important; }
+          .cta-desktop { display: none !important; }
+          .cta-mobile { display: block !important; }
+          /* Tap highlight */
+          a, button { -webkit-tap-highlight-color: rgba(240,184,208,0.15); }
         }
       `}</style>
 
@@ -174,9 +167,9 @@ export default function LandingClientShell() {
             tint={PINK}
             brightness={0.35}
             scale={1.2}
-            gridMul={[2, 1]}
+            gridMul={isMobile ? [1, 2] : [2, 1]}
             pageLoadAnimation={true}
-            mouseReact={true}
+            mouseReact={!isMobile}
             mouseStrength={0.2}
             curvature={0}
           />
@@ -186,7 +179,7 @@ export default function LandingClientShell() {
           background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 55%, rgba(0,0,0,0.75) 100%)',
         }} />
 
-        <header style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 40px' }}>
+        <header className="hero-header" style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 40px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ color: PINK }}><RecgonLogo size={28} uid="logo-header" /></span>
           </div>
@@ -204,7 +197,7 @@ export default function LandingClientShell() {
       </section>
 
       {/* ── Features ──────────────────────────────────────────────────────── */}
-      <section id="features" style={{ position: 'relative', background: '#000', padding: '120px 40px' }}>
+      <section id="features" className="section-pad" style={{ position: 'relative', background: '#000', padding: '120px 40px' }}>
         <div style={{
           position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
           backgroundImage: 'radial-gradient(rgba(240,184,208,0.13) 1px, transparent 1px)',
@@ -225,7 +218,7 @@ export default function LandingClientShell() {
               style={{ fontFamily: MONO, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.5px', color: '#fff', margin: 0 }}
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+          <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
             {features.map((feature) => (
               <SpotlightCard key={feature.title} spotlightColor="rgba(240,184,208,0.12)" style={{ padding: '32px' }}>
                 <div style={{ fontFamily: MONO, fontSize: '20px', color: PINK, marginBottom: '16px', fontWeight: 500 }}>{feature.icon}</div>
@@ -238,7 +231,7 @@ export default function LandingClientShell() {
       </section>
 
       {/* ── How It Works ──────────────────────────────────────────────────── */}
-      <section style={{ background: '#050505', padding: '120px 40px' }}>
+      <section className="section-pad" style={{ background: '#050505', padding: '120px 40px' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ textAlign: 'left', marginBottom: '56px' }}>
             <div style={{ fontFamily: MONO, fontSize: '11px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '16px' }}>
@@ -267,7 +260,7 @@ export default function LandingClientShell() {
       </section>
 
       {/* ── Claude MCP ────────────────────────────────────────────────────── */}
-      <section style={{ background: '#000', padding: '0 40px 120px' }}>
+      <section className="section-pad-bottom" style={{ background: '#000', padding: '0 40px 120px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           {/* Section tag */}
           <div style={{ marginBottom: '16px' }}>
@@ -312,7 +305,7 @@ export default function LandingClientShell() {
             </div>
 
             {/* Right: gradient-bordered terminal */}
-            <div style={{ position: 'relative' }}>
+            <div className="mcp-terminal" style={{ position: 'relative' }}>
               {/* Glow behind terminal */}
               <div style={{ position: 'absolute', inset: '-1px', borderRadius: '15px', background: `linear-gradient(135deg, rgba(240,184,208,0.35) 0%, rgba(240,184,208,0.05) 40%, rgba(255,255,255,0.04) 100%)`, zIndex: 0 }} />
               <div style={{ position: 'relative', zIndex: 1, borderRadius: '14px', overflow: 'hidden', background: '#0d0d0d' }}>
@@ -362,22 +355,53 @@ export default function LandingClientShell() {
         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
           <Aurora colorStops={['#1a0a10', '#f0b8d0', '#1a0a10']} amplitude={1.0} blend={0.4} speed={0.5} />
         </div>
-        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '160px 40px' }}>
-          <h2 style={{ fontFamily: MONO, fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: 700, letterSpacing: '-1px', color: '#fff', marginTop: 0, marginBottom: '24px' }}>
-            <BlurText text="Ready to stop guessing?" animateBy="words" delay={100} stepDuration={0.4} />
-          </h2>
-          <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', maxWidth: '480px', margin: '0 auto 48px', lineHeight: 1.6 }}>
-            Join solo founders who use Recgon to understand their product, reach their users, and grow faster.
-          </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/register" className="btn-primary" style={{ padding: '16px 40px', borderRadius: '8px', fontSize: '16px', fontWeight: 600, color: '#000', textDecoration: 'none', background: PINK, display: 'inline-block' }}>
-              Get Started Free
-            </Link>
-            <Link href="/login" className="btn-ghost" style={{ padding: '16px 40px', borderRadius: '8px', fontSize: '16px', fontWeight: 500, color: '#fff', textDecoration: 'none', display: 'inline-block', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)' }}>
-              Login
-            </Link>
+        <div className="cta-section" style={{ position: 'relative', zIndex: 1, textAlign: 'center', padding: '160px 40px' }}>
+          {/* Desktop CTA */}
+          <div className="cta-desktop">
+            <h2 style={{ fontFamily: MONO, fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: 700, letterSpacing: '-1px', color: '#fff', marginTop: 0, marginBottom: '24px' }}>
+              <BlurText text="Ready to stop guessing?" animateBy="words" delay={100} stepDuration={0.4} />
+            </h2>
+            <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', maxWidth: '480px', margin: '0 auto 48px', lineHeight: 1.6 }}>
+              Join solo founders who use Recgon to understand their product, reach their users, and grow faster.
+            </p>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link href="/register" className="btn-primary" style={{ padding: '16px 40px', borderRadius: '8px', fontSize: '16px', fontWeight: 600, color: '#000', textDecoration: 'none', background: PINK, display: 'inline-block' }}>
+                Get Started Free
+              </Link>
+              <Link href="/login" className="btn-ghost" style={{ padding: '16px 40px', borderRadius: '8px', fontSize: '16px', fontWeight: 500, color: '#fff', textDecoration: 'none', display: 'inline-block', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                Login
+              </Link>
+            </div>
+          </div>
+          {/* Mobile CTA */}
+          <div className="cta-mobile" style={{ display: 'none' }}>
+            <div style={{ fontFamily: MONO, fontSize: '10px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>
+              // coming soon
+            </div>
+            <h2 style={{ fontFamily: MONO, fontSize: '1.8rem', fontWeight: 700, letterSpacing: '-0.5px', color: '#fff', marginTop: 0, marginBottom: '16px' }}>
+              Coming to Mobile Soon
+            </h2>
+            <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.5)', maxWidth: '300px', margin: '0 auto', lineHeight: 1.7 }}>
+              We&apos;re building a native mobile experience. Until then, Recgon is best on desktop.
+            </p>
           </div>
         </div>
+      </section>
+
+      {/* ── Mobile Coming Soon (mobile only) ─────────────────────────────── */}
+      <section className="mobile-coming-section" style={{ display: 'none', background: '#050505', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '72px 32px', textAlign: 'center' }}>
+        <div style={{ animation: 'mobileGlow 3s ease-in-out infinite', marginBottom: '24px' }}>
+          <span style={{ fontFamily: MONO, fontSize: '28px', color: PINK }}>{'[]'}</span>
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: '10px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '16px' }}>
+          // mobile app
+        </div>
+        <h2 style={{ fontFamily: MONO, fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.5px', color: '#fff', margin: '0 0 16px' }}>
+          Coming to Mobile Soon
+        </h2>
+        <p style={{ fontSize: '14px', lineHeight: 1.7, color: 'rgba(255,255,255,0.45)', maxWidth: '300px', margin: '0 auto' }}>
+          A native mobile experience is on the way. For now, Recgon works best on desktop.
+        </p>
       </section>
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
@@ -388,7 +412,7 @@ export default function LandingClientShell() {
         <p style={{ fontFamily: MONO, fontSize: '12px', color: 'rgba(255,255,255,0.3)', margin: 0 }}>
           recgon — built for builders
         </p>
-        <div style={{ display: 'flex', gap: '20px' }}>
+        <div className="footer-nav" style={{ display: 'flex', gap: '20px' }}>
           <Link href="/login" style={{ fontFamily: MONO, fontSize: '12px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>Login</Link>
           <Link href="/register" style={{ fontFamily: MONO, fontSize: '12px', color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>Register</Link>
         </div>

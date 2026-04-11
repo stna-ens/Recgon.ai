@@ -50,14 +50,22 @@ const FEATURES = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [step, setStep] = useState<'form' | 'verify'>('form');
+
+  // Form fields
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+
+  // OTP step
+  const [otp, setOtp] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
@@ -67,10 +75,32 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
+    const res = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    setLoading(false);
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || 'Unable to send verification code');
+      return;
+    }
+
+    setStep('verify');
+    startResendCooldown();
+  }
+
+  async function handleVerifySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname, email, password }),
+      body: JSON.stringify({ nickname, email, password, otp }),
     });
     const data = await res.json();
     setLoading(false);
@@ -82,58 +112,142 @@ export default function RegisterPage() {
     }
   }
 
+  async function handleResend() {
+    if (resendCooldown > 0) return;
+    setError('');
+    setLoading(true);
+    const res = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    setLoading(false);
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || 'Unable to resend code');
+    } else {
+      startResendCooldown();
+    }
+  }
+
+  function startResendCooldown() {
+    setResendCooldown(60);
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
   return (
     <div style={{ width: '100vw', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10rem' }}>
 
-        {/* Register form */}
+        {/* Left panel: form or verify step */}
         <div style={{ width: '340px' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>Create account</h1>
-          <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>Get started with Recgon</p>
+          {step === 'form' ? (
+            <>
+              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>Create account</h1>
+              <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>Get started with Recgon</p>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nickname</label>
-              <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="How should we call you?" required minLength={2} style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength={8} style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confirm Password</label>
-              <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-            {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
-            <button type="submit" disabled={loading} style={{ padding: '0.7rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: '0.25rem' }}>
-              {loading ? 'Creating account…' : 'Create account'}
-            </button>
-          </form>
+              <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nickname</label>
+                  <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="How should we call you?" required minLength={2} style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</label>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength={8} style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confirm Password</label>
+                  <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
+                <button type="submit" disabled={loading} style={{ padding: '0.7rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: '0.25rem' }}>
+                  {loading ? 'Sending code…' : 'Continue'}
+                </button>
+              </form>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0 0' }}>
-            <div style={{ flex: 1, height: '1px', background: 'var(--btn-secondary-border)' }} />
-            <span style={{ fontSize: '0.78rem', color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or</span>
-            <div style={{ flex: 1, height: '1px', background: 'var(--btn-secondary-border)' }} />
-          </div>
-          <button
-            type="button"
-            onClick={() => signIn('github', { callbackUrl: '/' })}
-            style={{ width: '100%', padding: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', marginTop: '0.75rem' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
-            </svg>
-            Continue with GitHub
-          </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0 0' }}>
+                <div style={{ flex: 1, height: '1px', background: 'var(--btn-secondary-border)' }} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>or</span>
+                <div style={{ flex: 1, height: '1px', background: 'var(--btn-secondary-border)' }} />
+              </div>
+              <button
+                type="button"
+                onClick={() => signIn('github', { callbackUrl: '/' })}
+                style={{ width: '100%', padding: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', marginTop: '0.75rem' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                Continue with GitHub
+              </button>
 
-          <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--txt-muted)', marginBottom: 0 }}>
-            Already have an account?{' '}
-            <Link href="/login" style={{ color: 'var(--txt-pure)', fontWeight: 500, textDecoration: 'none' }}>Sign in</Link>
-          </p>
+              <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--txt-muted)', marginBottom: 0 }}>
+                Already have an account?{' '}
+                <Link href="/login" style={{ color: 'var(--txt-pure)', fontWeight: 500, textDecoration: 'none' }}>Sign in</Link>
+              </p>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => { setStep('form'); setError(''); setOtp(''); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', color: 'var(--txt-muted)', fontSize: '0.85rem', cursor: 'pointer', padding: 0, marginBottom: '1.5rem' }}
+              >
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+
+              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>Check your email</h1>
+              <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                We sent a 6-digit code to <strong style={{ color: 'var(--txt-pure)' }}>{email}</strong>. Enter it below to verify your email.
+              </p>
+
+              <form onSubmit={handleVerifySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Verification Code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d{6}"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    required
+                    autoFocus
+                    style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '1.5rem', fontFamily: 'monospace', letterSpacing: '0.4rem', outline: 'none', boxSizing: 'border-box', textAlign: 'center' }}
+                  />
+                </div>
+                {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
+                <button type="submit" disabled={loading || otp.length !== 6} style={{ padding: '0.7rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: (loading || otp.length !== 6) ? 'not-allowed' : 'pointer', opacity: (loading || otp.length !== 6) ? 0.7 : 1, marginTop: '0.25rem' }}>
+                  {loading ? 'Creating account…' : 'Create account'}
+                </button>
+              </form>
+
+              <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.875rem', color: 'var(--txt-muted)', marginBottom: 0 }}>
+                Didn&apos;t receive it?{' '}
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendCooldown > 0 || loading}
+                  style={{ background: 'none', border: 'none', color: resendCooldown > 0 ? 'var(--txt-muted)' : 'var(--txt-pure)', fontWeight: 500, fontSize: '0.875rem', cursor: resendCooldown > 0 ? 'default' : 'pointer', padding: 0 }}
+                >
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+                </button>
+              </p>
+            </>
+          )}
         </div>
 
         {/* Feature panel */}

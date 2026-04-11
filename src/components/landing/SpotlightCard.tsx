@@ -19,11 +19,22 @@ export default function SpotlightCard({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = divRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    divRef.current!.style.setProperty('--mouse-x', `${x}px`);
-    divRef.current!.style.setProperty('--mouse-y', `${y}px`);
+    divRef.current!.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
+    divRef.current!.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
     divRef.current!.style.setProperty('--spotlight-color', spotlightColor);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    const rect = divRef.current!.getBoundingClientRect();
+    divRef.current!.style.setProperty('--mouse-x', `${touch.clientX - rect.left}px`);
+    divRef.current!.style.setProperty('--mouse-y', `${touch.clientY - rect.top}px`);
+    divRef.current!.style.setProperty('--spotlight-color', spotlightColor);
+    divRef.current!.setAttribute('data-touch-active', 'true');
+  };
+
+  const handleTouchEnd = () => {
+    divRef.current!.removeAttribute('data-touch-active');
   };
 
   return (
@@ -39,6 +50,7 @@ export default function SpotlightCard({
           --mouse-y: 50%;
           --spotlight-color: rgba(255,255,255,0.08);
           transition: border-color 0.3s ease, transform 0.2s ease;
+          touch-action: manipulation;
         }
         .spotlight-card::before {
           content: '';
@@ -50,12 +62,23 @@ export default function SpotlightCard({
           pointer-events: none;
           z-index: 0;
         }
-        .spotlight-card:hover::before {
-          opacity: 1;
+        /* Hover only on real pointer devices — prevents iOS sticky-hover */
+        @media (hover: hover) {
+          .spotlight-card:hover::before { opacity: 1; }
+          .spotlight-card:hover {
+            border-color: rgba(255,255,255,0.16);
+            transform: translateY(-2px);
+          }
         }
-        .spotlight-card:hover {
+        /* Touch: show on press, vanish on release via data attribute */
+        .spotlight-card[data-touch-active]::before {
+          opacity: 1;
+          transition: opacity 0.12s ease;
+        }
+        .spotlight-card[data-touch-active] {
           border-color: rgba(255,255,255,0.16);
           transform: translateY(-2px);
+          transition: border-color 0.12s ease, transform 0.12s ease;
         }
         .spotlight-card > * {
           position: relative;
@@ -65,6 +88,9 @@ export default function SpotlightCard({
       <div
         ref={divRef}
         onMouseMove={handleMouseMove}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         className={`spotlight-card ${className}`}
         style={style}
       >

@@ -23,6 +23,11 @@ function isSameOrigin(req: { headers: Headers; nextUrl: URL }): boolean {
   }
 }
 
+function isMobileUA(req: { headers: Headers }): boolean {
+  const ua = req.headers.get('user-agent') ?? '';
+  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+}
+
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
@@ -30,6 +35,11 @@ export default auth((req) => {
   const isAuthPage = pathname === '/login' || pathname === '/register';
   const isPublicPage = pathname === '/landing' || pathname.startsWith('/.well-known/');
   const isApiRoute = pathname.startsWith('/api/');
+
+  // Block mobile users from accessing the app — redirect to landing page.
+  if (isMobileUA(req) && !isPublicPage && !isApiRoute && pathname !== '/') {
+    return NextResponse.redirect(new URL('/landing', req.url));
+  }
   const isTeamSetup = pathname === '/teams/setup' || pathname.startsWith('/teams/invite/');
   // MCP OAuth endpoints — auth is handled inside the route handlers themselves
   const isMcpRoute =

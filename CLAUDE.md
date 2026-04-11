@@ -7,7 +7,7 @@
 - `npm run test` — vitest
 
 ## Env (`.env.local`)
-Required: `GEMINI_API_KEY`, `AUTH_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+Required: `GEMINI_API_KEY`, `AUTH_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
 Optional (GA4 OAuth): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 
 ## Stack

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { supabase } from '@/lib/supabase';
 import { getUserByEmail, createUser } from '@/lib/userStorage';
 import { isRateLimited, REGISTER_LIMIT } from '@/lib/rateLimit';
 import { logger } from '@/lib/logger';
@@ -9,6 +10,7 @@ const RegisterSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
   password: z.string().min(8).max(200),
   nickname: z.string().trim().min(2).max(60),
+  otp: z.string().length(6).regex(/^\d{6}$/),
 });
 
 export async function POST(request: NextRequest) {
@@ -23,11 +25,37 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     }
-    const { email, password, nickname } = parsed.data;
+    const { email, password, nickname, otp } = parsed.data;
+
+    if (!email.endsWith('@metu.edu.tr')) {
+      return NextResponse.json({ error: 'Only metu.edu.tr email addresses are allowed' }, { status: 403 });
+    }
+
+    // Validate OTP
+    const { data: verification, error: verifyErr } = await supabase
+      .from('email_verifications')
+      .select('code, expires_at')
+      .eq('email', email)
+      .single();
+
+    if (verifyErr || !verification) {
+      return NextResponse.json({ error: 'Invalid or expired verification code' }, { status: 400 });
+    }
+
+    if (new Date(verification.expires_at) < new Date()) {
+      await supabase.from('email_verifications').delete().eq('email', email);
+      return NextResponse.json({ error: 'Verification code has expired. Please request a new one.' }, { status: 400 });
+    }
+
+    if (verification.code !== otp) {
+      return NextResponse.json({ error: 'Incorrect verification code' }, { status: 400 });
+    }
+
+    // Clean up used OTP
+    await supabase.from('email_verifications').delete().eq('email', email);
 
     const existing = await getUserByEmail(email);
     if (existing) {
-      // Generic message — do not confirm whether the email is registered.
       return NextResponse.json({ error: 'Unable to create account' }, { status: 409 });
     }
 

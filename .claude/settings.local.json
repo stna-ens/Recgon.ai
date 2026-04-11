@@ -60,7 +60,8 @@
       "mcp__context7__query-docs",
       "Bash(npx tsx:*)",
       "mcp__plugin_vercel_vercel__get_runtime_logs",
-      "mcp__plugin_vercel_vercel__get_project"
+      "mcp__plugin_vercel_vercel__get_project",
+      "Bash(pip install:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
