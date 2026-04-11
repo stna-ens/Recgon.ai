@@ -178,7 +178,7 @@ export async function POST(
           // First analysis or local project
           let analyzePath: string = project.path ?? '';
           if (project.isGithub && project.githubUrl) {
-            const clonePath = await ensureFreshClone(project.id, project.githubUrl, send);
+            const clonePath = await ensureFreshClone(project.id, project.githubUrl, send, githubToken);
             project.path = clonePath;
             analyzePath = clonePath;
           }
