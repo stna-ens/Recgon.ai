@@ -69,6 +69,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    if (!email.toLowerCase().endsWith('@metu.edu.tr')) {
+      setError('Only METU email addresses (@metu.edu.tr) are allowed during beta.');
+      return;
+    }
+
     if (password !== confirm) {
       setError('Passwords do not match');
       return;
@@ -158,7 +163,7 @@ export default function RegisterPage() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@metu.edu.tr" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
