@@ -41,7 +41,8 @@ export async function createConversation(userId: string, title?: string): Promis
     created_at: now,
     updated_at: now,
   };
-  await supabase.from('chat_conversations').insert(row);
+  const { error } = await supabase.from('chat_conversations').insert(row);
+  if (error) throw new Error(`Supabase insert error: ${error.message}`);
   return { id, title: row.title, createdAt: now, updatedAt: now };
 }
 
@@ -51,7 +52,8 @@ export async function renameConversation(userId: string, convId: string, title: 
     .from('chat_conversations')
     .update({ title: trimmed, updated_at: Date.now() })
     .eq('id', convId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .throwOnError();
 }
 
 export async function deleteConversation(userId: string, convId: string) {
@@ -59,7 +61,8 @@ export async function deleteConversation(userId: string, convId: string) {
     .from('chat_conversations')
     .delete()
     .eq('id', convId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .throwOnError();
 }
 
 export async function verifyConversationOwner(userId: string, convId: string): Promise<boolean> {
@@ -96,13 +99,14 @@ export async function saveMessages(userId: string, convId: string, msgs: StoredM
     content: m.content,
     ts: m.ts,
   }));
-  await supabase.from('chat_messages').insert(rows);
+  await supabase.from('chat_messages').insert(rows).throwOnError();
 
   await supabase
     .from('chat_conversations')
     .update({ updated_at: Date.now() })
     .eq('id', convId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .throwOnError();
 
   // Trim to MAX_MESSAGES per conversation
   const { count } = await supabase

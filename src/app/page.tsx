@@ -119,7 +119,7 @@ export default function DashboardPage() {
   }, [currentTeam]);
 
   const refreshConversations = useCallback(async () => {
-    const res = await fetch('/api/chat/conversations');
+    const res = await fetch('/api/chat/conversations?_t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) return [] as ChatConversation[];
     const data = await res.json() as { conversations: ChatConversation[] };
     setConversations(data.conversations ?? []);
@@ -133,7 +133,7 @@ export default function DashboardPage() {
       setMessages([]);
       return;
     }
-    const res = await fetch(`/api/chat?teamId=${currentTeam.id}&conversationId=${convId}`);
+    const res = await fetch(`/api/chat?teamId=${currentTeam.id}&conversationId=${convId}&_t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return;
     const data = await res.json();
     setMessages((data.history ?? []).map((m: { role: 'user' | 'assistant'; content: string }) => ({
@@ -150,7 +150,7 @@ export default function DashboardPage() {
     (async () => {
       const [convs, chatRes] = await Promise.all([
         refreshConversations(),
-        fetch(`/api/chat?teamId=${currentTeam.id}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+        fetch(`/api/chat?teamId=${currentTeam.id}&_t=${Date.now()}`, { cache: 'no-store' }).then((r) => r.ok ? r.json() : null).catch(() => null),
       ]);
       if (cancelled) return;
       if (chatRes?.suggestions?.length > 0) setSuggestions(chatRes.suggestions);
@@ -337,8 +337,10 @@ export default function DashboardPage() {
 
       const resolvedConvId = res.headers.get('x-conversation-id');
       const wasNewChat = !activeConvId;
-      if (resolvedConvId && !activeConvId) {
+      if (resolvedConvId) {
         setActiveConvId(resolvedConvId);
+        // Refresh sidebar immediately so the newly created chat appears at the top
+        refreshConversations().catch(() => {});
       }
 
       const reader = res.body.getReader();
@@ -357,11 +359,7 @@ export default function DashboardPage() {
 
       // All HTTP data received — tell the typewriter to flush and finish
       streamDoneRef.current = true;
-
-      // Refresh sidebar so new/updated chat surfaces
-      if (wasNewChat) {
-        refreshConversations().catch(() => {});
-      }
+      // (Sidebar is already refreshed immediately before starting the stream)
     } catch (err) {
       stopTypewriter();
       if ((err as Error).name === 'AbortError') {
