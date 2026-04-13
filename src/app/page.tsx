@@ -9,6 +9,13 @@ interface Message {
   content: string;
 }
 
+interface ChatConversation {
+  id: string;
+  title: string;
+  updatedAt: number;
+  createdAt: number;
+}
+
 interface Project {
   name: string;
   analysis?: unknown;
@@ -64,6 +71,27 @@ export default function DashboardPage() {
   const [keyDown, setKeyDown] = useState(false);
   const [recentlyTyped, setRecentlyTyped] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem('recgon.chatSidebarCollapsed');
+    if (stored === '1') setSidebarCollapsed(true);
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('recgon.chatSidebarCollapsed', next ? '1' : '0');
+      }
+      return next;
+    });
+  }, []);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -90,25 +118,51 @@ export default function DashboardPage() {
       .catch(() => {});
   }, [currentTeam]);
 
-  // Load persisted chat history and personalized suggestions on mount
+  const refreshConversations = useCallback(async () => {
+    const res = await fetch('/api/chat/conversations');
+    if (!res.ok) return [] as ChatConversation[];
+    const data = await res.json() as { conversations: ChatConversation[] };
+    setConversations(data.conversations ?? []);
+    return data.conversations ?? [];
+  }, []);
+
+  const loadConversation = useCallback(async (convId: string | null) => {
+    if (!currentTeam) return;
+    setActiveConvId(convId);
+    if (!convId) {
+      setMessages([]);
+      return;
+    }
+    const res = await fetch(`/api/chat?teamId=${currentTeam.id}&conversationId=${convId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setMessages((data.history ?? []).map((m: { role: 'user' | 'assistant'; content: string }) => ({
+      role: m.role,
+      content: m.content,
+    })));
+    if (data.suggestions?.length > 0) setSuggestions(data.suggestions);
+  }, [currentTeam]);
+
+  // Load conversations + personalized suggestions on mount; auto-open most recent
   useEffect(() => {
     if (!currentTeam) return;
-    fetch(`/api/chat?teamId=${currentTeam.id}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (!data) return;
-        if (data.history && data.history.length > 0) {
-          setMessages(data.history.map((m: { role: 'user' | 'assistant'; content: string }) => ({
-            role: m.role,
-            content: m.content,
-          })));
-        }
-        if (data.suggestions && data.suggestions.length > 0) {
-          setSuggestions(data.suggestions);
-        }
-      })
-      .catch(() => {});
-  }, [currentTeam]);
+    let cancelled = false;
+    (async () => {
+      const [convs, chatRes] = await Promise.all([
+        refreshConversations(),
+        fetch(`/api/chat?teamId=${currentTeam.id}`).then((r) => r.ok ? r.json() : null).catch(() => null),
+      ]);
+      if (cancelled) return;
+      if (chatRes?.suggestions?.length > 0) setSuggestions(chatRes.suggestions);
+      if (convs.length > 0) {
+        await loadConversation(convs[0].id);
+      } else {
+        setActiveConvId(null);
+        setMessages([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentTeam, refreshConversations, loadConversation]);
 
   const stopTypewriter = useCallback(() => {
     if (typeIntervalRef.current) {
@@ -144,16 +198,52 @@ export default function DashboardPage() {
     }, 12);
   }, []);
 
-  const clearChat = useCallback(async () => {
-    if (streaming) return;
+  const deleteCurrentChat = useCallback(async () => {
+    if (streaming || !activeConvId) return;
     setClearing(true);
     try {
-      await fetch(`/api/chat?teamId=${currentTeam?.id}`, { method: 'DELETE' });
+      await fetch(`/api/chat?conversationId=${activeConvId}`, { method: 'DELETE' });
       setMessages([]);
+      setActiveConvId(null);
+      const convs = await refreshConversations();
+      if (convs.length > 0) await loadConversation(convs[0].id);
     } finally {
       setClearing(false);
     }
+  }, [streaming, activeConvId, refreshConversations, loadConversation]);
+
+  const newChat = useCallback(() => {
+    if (streaming) return;
+    stopTypewriter();
+    setActiveConvId(null);
+    setMessages([]);
+    setInput('');
   }, [streaming]);
+
+  const deleteConversationRow = useCallback(async (convId: string) => {
+    if (streaming) return;
+    await fetch(`/api/chat/conversations/${convId}`, { method: 'DELETE' });
+    if (convId === activeConvId) {
+      setActiveConvId(null);
+      setMessages([]);
+    }
+    const convs = await refreshConversations();
+    if (convId === activeConvId && convs.length > 0) {
+      await loadConversation(convs[0].id);
+    }
+  }, [streaming, activeConvId, refreshConversations, loadConversation]);
+
+  const commitRename = useCallback(async (convId: string) => {
+    const title = renameDraft.trim();
+    setRenamingId(null);
+    if (!title) return;
+    await fetch(`/api/chat/conversations/${convId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    });
+    await refreshConversations();
+  }, [renameDraft, refreshConversations]);
 
   // Clean up typewriter on unmount
   useEffect(() => () => stopTypewriter(), [stopTypewriter]);
@@ -231,13 +321,24 @@ export default function DashboardPage() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed, history: messages, teamId: currentTeam?.id }),
+        body: JSON.stringify({
+          message: trimmed,
+          history: messages,
+          teamId: currentTeam?.id,
+          conversationId: activeConvId,
+        }),
         signal: abortRef.current.signal,
       });
 
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
         throw new Error((data as { error?: string }).error || 'Chat failed');
+      }
+
+      const resolvedConvId = res.headers.get('x-conversation-id');
+      const wasNewChat = !activeConvId;
+      if (resolvedConvId && !activeConvId) {
+        setActiveConvId(resolvedConvId);
       }
 
       const reader = res.body.getReader();
@@ -256,6 +357,11 @@ export default function DashboardPage() {
 
       // All HTTP data received — tell the typewriter to flush and finish
       streamDoneRef.current = true;
+
+      // Refresh sidebar so new/updated chat surfaces
+      if (wasNewChat) {
+        refreshConversations().catch(() => {});
+      }
     } catch (err) {
       stopTypewriter();
       if ((err as Error).name === 'AbortError') {
@@ -272,7 +378,7 @@ export default function DashboardPage() {
       });
       setStreaming(false);
     }
-  }, [messages, streaming, currentTeam, startTypewriter, stopTypewriter]);
+  }, [messages, streaming, currentTeam, activeConvId, startTypewriter, stopTypewriter, refreshConversations]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     setKeyDown(true);
@@ -301,11 +407,122 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Chat */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', minHeight: 600, padding: 0, overflow: 'hidden', marginBottom: 24, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+      {/* Chat + history sidebar */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'row', minHeight: 600, padding: 0, overflow: 'hidden', marginBottom: 24, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+
+        {/* History sidebar */}
+        <div style={{
+          width: sidebarCollapsed ? 0 : 240,
+          opacity: sidebarCollapsed ? 0 : 1,
+          pointerEvents: sidebarCollapsed ? 'none' : 'auto',
+          flexShrink: 0,
+          borderRight: '1px solid var(--btn-secondary-border)',
+          display: 'flex', flexDirection: 'column',
+          background: 'rgba(0,0,0,0.04)',
+          transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}>
+          <div style={{
+            padding: '14px 14px 10px',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <button
+              onClick={newChat}
+              disabled={streaming}
+              style={{
+                flex: 1, textAlign: 'left', padding: '6px 10px',
+                background: 'transparent', border: '1px dashed var(--btn-secondary-border)',
+                borderRadius: 6, cursor: streaming ? 'not-allowed' : 'pointer',
+                color: 'var(--txt-pure)', fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                fontSize: 12, letterSpacing: '0.3px', opacity: streaming ? 0.4 : 1,
+              }}
+              title="Start a new chat"
+            >
+              + new chat
+            </button>
+          </div>
+
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '0 8px 12px',
+          }}>
+            {conversations.length === 0 && (
+              <div style={{ padding: '6px 10px', fontSize: 11, color: 'var(--txt-faint)', opacity: 0.7 }}>
+                no history yet
+              </div>
+            )}
+            {conversations.map((c) => {
+              const isActive = c.id === activeConvId;
+              const isRenaming = renamingId === c.id;
+              return (
+                <div
+                  key={c.id}
+                  className="chat-history-row"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '6px 8px', borderRadius: 5, marginBottom: 2,
+                    background: isActive ? 'var(--btn-secondary-border)' : 'transparent',
+                    cursor: streaming ? 'default' : 'pointer',
+                  }}
+                  onClick={() => !streaming && !isRenaming && loadConversation(c.id)}
+                >
+                  {isRenaming ? (
+                    <input
+                      autoFocus
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      onBlur={() => commitRename(c.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); commitRename(c.id); }
+                        if (e.key === 'Escape') { e.preventDefault(); setRenamingId(null); }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        flex: 1, background: 'var(--bg-pure)', border: '1px solid var(--btn-secondary-border)',
+                        borderRadius: 4, color: 'var(--txt-pure)', padding: '2px 6px',
+                        fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12, minWidth: 0,
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <span style={{
+                        flex: 1, fontSize: 12, color: 'var(--txt-pure)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                      }}>{c.title}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRenamingId(c.id);
+                          setRenameDraft(c.title);
+                        }}
+                        className="chat-history-action"
+                        title="Rename"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
+                      >✎</button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteConversationRow(c.id);
+                        }}
+                        className="chat-history-action"
+                        title="Delete"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
+                      >×</button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Chat column */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
 
         {/* Header */}
         <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--btn-secondary-border)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+
           <div
             className={streaming ? 'dot-streaming' : (recentlyTyped && keyDown) ? 'dot-typing' : ''}
             style={{
@@ -316,23 +533,34 @@ export default function DashboardPage() {
           />
           <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Terminal</span>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+               onClick={toggleSidebar}
+               style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 11, color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                  padding: '2px 0', opacity: 0.7, letterSpacing: '0.3px',
+               }}
+               title={sidebarCollapsed ? 'Expand history' : 'Collapse history'}
+            >
+              {sidebarCollapsed ? 'show history' : 'hide history'}
+            </button>
             {hasProjects && (
               <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, color: 'var(--txt-faint)' }}>
                 {projects.length} project{projects.length > 1 ? 's' : ''} loaded
               </span>
             )}
-            {messages.length > 0 && (
+            {activeConvId && messages.length > 0 && (
               <button
-                onClick={clearChat}
+                onClick={deleteCurrentChat}
                 disabled={streaming || clearing}
                 style={{
                   background: 'none', border: 'none', cursor: streaming || clearing ? 'not-allowed' : 'pointer',
                   fontSize: 11, color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace",
                   padding: '2px 0', opacity: streaming || clearing ? 0.4 : 0.7, letterSpacing: '0.3px',
                 }}
-                title="Clear conversation history"
+                title="Delete this conversation"
               >
-                clear
+                delete chat
               </button>
             )}
           </div>
@@ -430,6 +658,7 @@ export default function DashboardPage() {
               fontSize: 13.5, lineHeight: 1.6, minHeight: 24, paddingTop: 2,
             }}
           />
+        </div>
         </div>
       </div>
 

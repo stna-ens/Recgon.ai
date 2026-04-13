@@ -6,6 +6,7 @@ import { analyzeCompetitors } from '@/lib/competitorAnalyzer';
 import { getLatestCommit, getCommitDiff, cloneGitHubRepo } from '@/lib/githubFetcher';
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, ANALYZE_LIMIT } from '@/lib/rateLimit';
+import { checkAnalysisQuota, recordAnalysis } from '@/lib/analysisQuota';
 import { auth } from '@/auth';
 import { verifyTeamWriteAccess } from '@/lib/teamStorage';
 import { getUserById } from '@/lib/userStorage';
@@ -91,6 +92,15 @@ export async function POST(
   const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
   if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
+  // Enforce per-user analysis quota (3 total, 1 per 2 weeks)
+  const quota = await checkAnalysisQuota(session.user.id, session.user.email ?? undefined);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      { error: quota.reason, quota },
+      { status: 429 },
+    );
+  }
+
   const [project, user] = await Promise.all([
     getProject(id, teamId),
     getUserById(session.user.id),
@@ -120,6 +130,7 @@ export async function POST(
           analysis = await analyzeIdea(project.description, (msg) => send({ type: 'progress', message: msg }));
           project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
           await saveProject(project);
+          await recordAnalysis(session.user.id, session.user.email ?? undefined);
           send({ type: 'done', project });
           return;
         }
@@ -200,6 +211,9 @@ export async function POST(
 
         project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
         await saveProject(project);
+
+        // Record quota usage after successful save
+        await recordAnalysis(session.user.id, session.user.email ?? undefined);
 
         // Competitor deep analysis — runs after main save, failure is non-fatal
         if (analysis.competitors?.some((c) => c.url)) {

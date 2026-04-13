@@ -19,6 +19,7 @@
     "@supabase/supabase-js": "^2.101.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jszip": "^3.4.0",
+    "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^3.0.3",
     "jszip": "^3.10.1",
     "mammoth": "^1.12.0",

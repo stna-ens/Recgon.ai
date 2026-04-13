@@ -130,6 +130,7 @@ export default function ProjectDetailPage() {
   const [connectingCodebase, setConnectingCodebase] = useState(false);
   const [codebasePath, setCodebasePath] = useState('');
   const [connectLoading, setConnectLoading] = useState(false);
+  const [quota, setQuota] = useState<{ allowed: boolean; used: number; limit: number; reason?: string; nextAvailableAt?: string } | null>(null);
 
   const fetchProject = useCallback(() => {
     if (!currentTeam) return;
@@ -155,6 +156,14 @@ export default function ProjectDetailPage() {
 
   useEffect(() => { fetchProject(); }, [fetchProject]);
 
+  // Fetch analysis quota on mount
+  useEffect(() => {
+    fetch('/api/analysis-quota')
+      .then((r) => r.ok ? r.json() : null)
+      .then((q) => { if (q) setQuota(q); })
+      .catch(() => {});
+  }, []);
+
   // Refetch when tab regains visibility so teammates' changes appear without a full reload
   useEffect(() => {
     const onVisible = () => { if (document.visibilityState === 'visible') fetchProject(); };
@@ -162,7 +171,10 @@ export default function ProjectDetailPage() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [fetchProject]);
 
+  const quotaBlocked = quota !== null && !quota.allowed;
+
   const handleAnalyze = async () => {
+    if (quotaBlocked) return;
     setAnalyzing(true);
     setError('');
     setProgressMessage('Starting analysis...');
@@ -173,6 +185,10 @@ export default function ProjectDetailPage() {
       });
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
+        // If blocked by quota, refresh the quota state for the UI
+        if (res.status === 429 && (data as { quota?: typeof quota }).quota) {
+          setQuota((data as { quota: typeof quota }).quota);
+        }
         throw new Error((data as { error?: string }).error || 'Analysis failed');
       }
 
@@ -192,7 +208,11 @@ export default function ProjectDetailPage() {
           try {
             const event = JSON.parse(dataLine);
             if (event.type === 'progress') setProgressMessage(event.message);
-            else if (event.type === 'done') { setProject(event.project); setHasUpdates(false); setLatestCommit(null); refreshProjects(); }
+            else if (event.type === 'done') {
+              setProject(event.project); setHasUpdates(false); setLatestCommit(null); refreshProjects();
+              // Refresh quota after successful analysis
+              fetch('/api/analysis-quota').then(r => r.ok ? r.json() : null).then(q => { if (q) setQuota(q); }).catch(() => {});
+            }
             else if (event.type === 'error') throw new Error(event.message);
           } catch (parseErr) {
             if (parseErr instanceof SyntaxError) continue;
@@ -315,7 +335,7 @@ export default function ProjectDetailPage() {
                 </button>
               </>
             )}
-            <button className="btn btn-primary" onClick={handleAnalyze} disabled={analyzing}>
+            <button className="btn btn-primary" onClick={handleAnalyze} disabled={analyzing || quotaBlocked} title={quotaBlocked ? quota?.reason : undefined}>
               {analyzing ? (
                 <><svg className="loader-spinner" style={{ width: 15, height: 15, borderRightColor: 'transparent', borderWidth: 2 }}></svg> Analyzing...</>
               ) : a ? (
@@ -336,6 +356,30 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
+      {/* ── Analysis Quota Banner ────────────────────────────────── */}
+      {quota && (
+        <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 10, background: quotaBlocked ? 'rgba(255,69,58,0.06)' : 'rgba(var(--signature-rgb), 0.06)', border: `1px solid ${quotaBlocked ? 'rgba(255,69,58,0.25)' : 'rgba(var(--signature-rgb), 0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <svg width="18" height="18" fill="none" stroke={quotaBlocked ? 'var(--danger)' : 'var(--signature)'} strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" /><path d="M12 6v6l4 2" /></svg>
+            <div>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: quotaBlocked ? 'var(--danger)' : 'var(--text-primary)' }}>
+                {quotaBlocked ? quota.reason : `${quota.limit - quota.used} of ${quota.limit} analyses remaining`}
+              </p>
+              {!quotaBlocked && quota.used > 0 && quota.nextAvailableAt && (
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Next available: {new Date(quota.nextAvailableAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {Array.from({ length: quota.limit }).map((_, i) => (
+              <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i < quota.used ? (quotaBlocked ? 'var(--danger)' : 'var(--signature)') : 'var(--btn-secondary-bg)', border: `1px solid ${i < quota.used ? 'transparent' : 'var(--border)'}`, transition: 'background 0.3s' }} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {project.sourceType !== 'description' && hasUpdates && !analyzing && (
         <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 10, background: 'rgba(255,159,10,0.06)', border: '1px solid rgba(255,159,10,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -352,7 +396,7 @@ export default function ProjectDetailPage() {
               )}
             </div>
           </div>
-          <button className="btn btn-primary" onClick={handleAnalyze} style={{ flexShrink: 0, fontSize: 13 }}>
+          <button className="btn btn-primary" onClick={handleAnalyze} disabled={quotaBlocked} title={quotaBlocked ? quota?.reason : undefined} style={{ flexShrink: 0, fontSize: 13 }}>
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
             See what changed
           </button>

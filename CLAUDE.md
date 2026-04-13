@@ -26,6 +26,7 @@ Next.js 15 (App Router) + TypeScript + Tailwind. AI via Gemini 2.5 Flash (`@goog
 - `src/lib/teamStorage.ts` — team CRUD, membership, invitations, access verification → Supabase tables (`teams`, `team_members`, `team_invitations`)
 - `src/lib/chatStorage.ts` — mentor chat history → Supabase `chat_messages` table
 - `src/lib/analyticsStorage.ts` — per-user GA4 property + OAuth tokens → Supabase `analytics_configs` table
+- `src/lib/analysisQuota.ts` — per-user analysis quota enforcement (3 total, 1 per 2 weeks) → Supabase `analysis_quotas` table
 
 ### AI (all prompts in `src/lib/prompts.ts`, all schemas in `src/lib/schemas.ts`)
 - `src/lib/gemini.ts` — Gemini wrapper, always JSON response mode

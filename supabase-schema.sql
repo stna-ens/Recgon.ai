@@ -104,15 +104,27 @@ CREATE TABLE campaigns (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Chat history (per user, personal mentor)
+-- Chat conversations (ChatGPT-style threads)
+CREATE TABLE chat_conversations (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT 'New chat',
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+CREATE INDEX idx_chat_conv_user ON chat_conversations(user_id, updated_at DESC);
+
+-- Chat history (per user, personal mentor), scoped by conversation
 CREATE TABLE chat_messages (
   id BIGSERIAL PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  conversation_id TEXT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
   content TEXT NOT NULL,
   ts BIGINT NOT NULL
 );
 CREATE INDEX idx_chat_user ON chat_messages(user_id);
+CREATE INDEX idx_chat_msg_conv ON chat_messages(conversation_id, ts);
 
 -- Analytics config (per user, personal OAuth tokens)
 CREATE TABLE analytics_configs (
@@ -124,4 +136,11 @@ CREATE TABLE analytics_configs (
   oauth_expires_at BIGINT,
   auth_method TEXT NOT NULL CHECK (auth_method IN ('service_account', 'oauth')),
   updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Analysis quota tracking (per user, limits project analyses)
+CREATE TABLE analysis_quotas (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  total_count INTEGER NOT NULL DEFAULT 0,
+  last_analyzed_at TIMESTAMPTZ
 );

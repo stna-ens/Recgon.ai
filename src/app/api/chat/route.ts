@@ -3,7 +3,15 @@ import { auth } from '@/auth';
 import { getAllProjects } from '@/lib/storage';
 import { getGeminiClient, withRetry } from '@/lib/gemini';
 import { mentorSystemPrompt, generateSuggestions } from '@/lib/prompts';
-import { getHistory, saveMessages, clearHistory } from '@/lib/chatStorage';
+import {
+  getConversationMessages,
+  saveMessages,
+  createConversation,
+  deleteConversation,
+  verifyConversationOwner,
+  deriveTitle,
+  renameConversation,
+} from '@/lib/chatStorage';
 import { getUserTeams } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
 import { validateEnv } from '@/lib/env';
@@ -15,24 +23,33 @@ export async function GET(request: NextRequest) {
   const teamId = request.nextUrl.searchParams.get('teamId');
   if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
 
-  // Verify user is in this team
   const teams = await getUserTeams(session.user.id);
   if (!teams.some((t) => t.id === teamId)) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
+  const conversationId = request.nextUrl.searchParams.get('conversationId');
   const projects = await getAllProjects(teamId);
-  const history = await getHistory(session.user.id);
   const suggestions = generateSuggestions(projects);
+
+  let history: Awaited<ReturnType<typeof getConversationMessages>> = [];
+  if (conversationId) {
+    const owns = await verifyConversationOwner(session.user.id, conversationId);
+    if (!owns) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    history = await getConversationMessages(conversationId);
+  }
 
   return NextResponse.json({ history, suggestions });
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  await clearHistory(session.user.id);
+  const conversationId = request.nextUrl.searchParams.get('conversationId');
+  if (!conversationId) return NextResponse.json({ error: 'conversationId is required' }, { status: 400 });
+
+  await deleteConversation(session.user.id, conversationId);
   return NextResponse.json({ ok: true });
 }
 
@@ -41,10 +58,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { message, history, teamId } = await request.json() as {
+    const { message, history, teamId, conversationId: incomingConvId } = await request.json() as {
       message: string;
       history: { role: 'user' | 'assistant'; content: string }[];
       teamId: string;
+      conversationId?: string | null;
     };
 
     if (!message?.trim()) {
@@ -54,17 +72,27 @@ export async function POST(request: NextRequest) {
 
     validateEnv();
 
-    // Verify membership before loading team data
     const userTeams = await getUserTeams(session.user.id);
     if (!userTeams.some((t) => t.id === teamId)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    // Resolve conversation: verify ownership, or create a new one
+    let convId = incomingConvId ?? null;
+    let createdNew = false;
+    if (convId) {
+      const owns = await verifyConversationOwner(session.user.id, convId);
+      if (!owns) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    } else {
+      const conv = await createConversation(session.user.id, deriveTitle(message));
+      convId = conv.id;
+      createdNew = true;
+    }
+
     const projects = await getAllProjects(teamId);
 
-    // Load stored history to give Recgon long-term memory across sessions
-    const storedHistory = await getHistory(session.user.id);
-    // Use up to last 30 stored messages as memory context (not the live session history)
+    // Use last 30 messages from this conversation as memory context
+    const storedHistory = await getConversationMessages(convId);
     const memoryContext = storedHistory.slice(-30);
 
     const systemPrompt = mentorSystemPrompt(projects, memoryContext);
@@ -91,8 +119,9 @@ export async function POST(request: NextRequest) {
       },
     }));
 
-    // Collect the full response to save it
     let fullResponse = '';
+    const resolvedConvId = convId;
+    const userId = session.user.id;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -105,17 +134,24 @@ export async function POST(request: NextRequest) {
         }
         controller.close();
 
-        // Persist this exchange to long-term history
         const now = Date.now();
-        await saveMessages(session.user.id, [
+        await saveMessages(userId, resolvedConvId, [
           { role: 'user', content: message, ts: now },
           { role: 'assistant', content: fullResponse, ts: now + 1 },
         ]);
+
+        // If we auto-created the conversation, refine the title from the first message
+        if (createdNew) {
+          await renameConversation(userId, resolvedConvId, deriveTitle(message));
+        }
       },
     });
 
     return new Response(stream, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'x-conversation-id': convId,
+      },
     });
   } catch (error) {
     return serverError('POST /api/chat', error);
