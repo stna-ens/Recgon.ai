@@ -18,6 +18,12 @@ import {
 import { getUserTeams } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
 import { validateEnv } from '@/lib/env';
+import { geminiFunctionDeclarations } from '@/lib/tools/registry';
+import { runTool } from '@/lib/tools/runTool';
+import { getRecentActivities, formatActivitiesForPrompt } from '@/lib/activityLog';
+import type { Content } from '@google/generative-ai';
+
+const MAX_TOOL_ITERATIONS = 5;
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -82,7 +88,6 @@ export async function POST(request: NextRequest) {
 
     const projects = await getAllProjects(teamId);
 
-    // Resolve conversation: verify ownership, or create a new one
     let convId = incomingConvId ?? null;
     let createdNew = false;
     if (convId) {
@@ -94,82 +99,147 @@ export async function POST(request: NextRequest) {
       createdNew = true;
     }
 
-    // Use last 30 messages from this conversation as memory context
     const storedHistory = await getConversationMessages(convId);
     const memoryContext = storedHistory.slice(-30);
 
-    const systemPrompt = mentorSystemPrompt(projects, memoryContext);
+    // Pull recent cross-surface activity so the terminal knows what the GUI did
+    // (and vice versa). This is the thread that stitches the two surfaces together.
+    const recentActivities = await getRecentActivities(teamId, { sinceHours: 48, limit: 15 });
+    const activitiesBlock = recentActivities.length
+      ? `\n\nRECENT ACTIVITY ACROSS THIS TEAM (both GUI and terminal, most recent first):\n${formatActivitiesForPrompt(recentActivities)}\n`
+      : '';
+
+    const toolGuidance = `\n\nYou have access to tools that read and modify the user's workspace. Call a tool whenever the user asks for something a tool can do — for example, "list my projects", "what projects do I have", "show me project X", "run a GA4 analysis". Do not fabricate project data; call the tool and use the result. If the user just wants advice or brainstorming, answer directly without a tool call. When you call a tool, keep any text you emit before the call short — the UI shows a progress chip for the call itself.`;
+
+    const systemPrompt = mentorSystemPrompt(projects, memoryContext) + activitiesBlock + toolGuidance;
 
     const client = getGeminiClient();
+    const functionDeclarations = geminiFunctionDeclarations();
+
     const model = client.getGenerativeModel({
       model: 'gemini-2.5-flash',
       systemInstruction: systemPrompt,
+      tools: [{ functionDeclarations }],
     });
 
-    const contents = [
-      ...(history ?? []).map((msg) => ({
-        role: msg.role === 'assistant' ? ('model' as const) : ('user' as const),
+    const contents: Content[] = [
+      ...(history ?? []).map<Content>((msg) => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }],
       })),
-      { role: 'user' as const, parts: [{ text: message }] },
+      { role: 'user', parts: [{ text: message }] },
     ];
 
-    const result = await withRetry(() => model.generateContentStream({
-      contents,
-      generationConfig: {
-        temperature: 0.85,
-        maxOutputTokens: 4096,
-      },
-    }));
-
-    let fullResponse = '';
+    const encoder = new TextEncoder();
     const resolvedConvId = convId;
     const userId = session.user.id;
 
     const stream = new ReadableStream({
       async start(controller) {
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) {
-            fullResponse += text;
-            controller.enqueue(new TextEncoder().encode(text));
+        const emit = (s: string) => controller.enqueue(encoder.encode(s));
+        let fullResponse = '';
+
+        try {
+          let iterations = 0;
+          while (iterations < MAX_TOOL_ITERATIONS) {
+            iterations += 1;
+
+            const result = await withRetry(() => model.generateContent({
+              contents,
+              generationConfig: { temperature: 0.85, maxOutputTokens: 4096 },
+            }));
+
+            const response = result.response;
+            const calls = response.functionCalls() ?? [];
+
+            if (calls.length > 0) {
+              // Record the model's tool-call turn so it can reference it next iteration
+              contents.push({
+                role: 'model',
+                parts: calls.map((c) => ({ functionCall: c })),
+              });
+
+              const responses = await Promise.all(calls.map(async (call) => {
+                const chip = `\n\n> running \`${call.name}\`...\n\n`;
+                emit(chip);
+                fullResponse += chip;
+
+                const toolResult = await runTool(call.name, call.args ?? {}, {
+                  userId,
+                  teamId,
+                  source: 'terminal',
+                });
+
+                const payload = toolResult.ok
+                  ? { ok: true, output: toolResult.output }
+                  : { ok: false, error: toolResult.error };
+
+                return {
+                  functionResponse: {
+                    name: call.name,
+                    response: payload as Record<string, unknown>,
+                  },
+                };
+              }));
+
+              contents.push({ role: 'user', parts: responses });
+              continue; // next iteration — model now sees tool output
+            }
+
+            // No more tool calls — emit the final text.
+            const text = response.text();
+            if (text) {
+              emit(text);
+              fullResponse += text;
+            }
+            break;
           }
-        }
-        controller.close();
 
-        const now = Date.now();
-        await saveMessages(userId, resolvedConvId, [
-          { role: 'user', content: message, ts: now },
-          { role: 'assistant', content: fullResponse, ts: now + 1 },
-        ]);
+          if (iterations >= MAX_TOOL_ITERATIONS) {
+            const msg = '\n\n_(reached tool-call limit — stopping here)_\n';
+            emit(msg);
+            fullResponse += msg;
+          }
+        } catch (err) {
+          const msg = `\n\n_(error: ${err instanceof Error ? err.message : 'unknown'})_\n`;
+          emit(msg);
+          fullResponse += msg;
+        } finally {
+          controller.close();
 
-        if (createdNew) {
-          await renameConversation(userId, resolvedConvId, deriveTitle(message));
-        }
+          const now = Date.now();
+          await saveMessages(userId, resolvedConvId, [
+            { role: 'user', content: message, ts: now },
+            { role: 'assistant', content: fullResponse, ts: now + 1 },
+          ]);
 
-        // Classify conversation to a project if not already tagged
-        const currentProjectId = await getConversationProjectId(userId, resolvedConvId).catch(() => undefined);
-        if (currentProjectId === null && projects.length > 0) {
-          try {
-            const classifier = client.getGenerativeModel({
-              model: 'gemini-2.5-flash',
-              generationConfig: { responseMimeType: 'application/json', temperature: 0 },
-            });
-            const res = await classifier.generateContent(
-              classifyChatProjectPrompt(
-                message,
-                projects.map((p) => ({ id: p.id, name: p.name, description: p.analysis?.description })),
-              ),
-            );
-            const raw = res.response.text().trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
-            const parsed = JSON.parse(raw) as { projectId?: string | null };
-            const match = parsed.projectId && projects.some((p) => p.id === parsed.projectId)
-              ? parsed.projectId
-              : null;
-            console.log('[chat classify]', { conversationId: resolvedConvId, parsed, match });
-            if (match) await setConversationProject(userId, resolvedConvId, match);
-          } catch (err) {
-            console.error('[chat classify] failed', err);
+          if (createdNew) {
+            await renameConversation(userId, resolvedConvId, deriveTitle(message));
+          }
+
+          // Classify conversation to a project if not already tagged
+          const currentProjectId = await getConversationProjectId(userId, resolvedConvId).catch(() => undefined);
+          if (currentProjectId === null && projects.length > 0) {
+            try {
+              const classifier = client.getGenerativeModel({
+                model: 'gemini-2.5-flash',
+                generationConfig: { responseMimeType: 'application/json', temperature: 0 },
+              });
+              const res = await classifier.generateContent(
+                classifyChatProjectPrompt(
+                  message,
+                  projects.map((p) => ({ id: p.id, name: p.name, description: p.analysis?.description })),
+                ),
+              );
+              const raw = res.response.text().trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
+              const parsed = JSON.parse(raw) as { projectId?: string | null };
+              const match = parsed.projectId && projects.some((p) => p.id === parsed.projectId)
+                ? parsed.projectId
+                : null;
+              if (match) await setConversationProject(userId, resolvedConvId, match);
+            } catch (err) {
+              console.error('[chat classify] failed', err);
+            }
           }
         }
       },

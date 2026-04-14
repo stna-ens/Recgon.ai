@@ -70,7 +70,10 @@
       "Bash(vercel teams:*)",
       "Bash(vercel projects:*)",
       "Bash(vercel --prod)",
-      "Bash(vercel deploy:*)"
+      "Bash(vercel deploy:*)",
+      "Bash(vercel domains:*)",
+      "Bash(vercel inspect:*)",
+      "mcp__supabase__apply_migration"
     ]
   },
   "enableAllProjectMcpServers": true,
