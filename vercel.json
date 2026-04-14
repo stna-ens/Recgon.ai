@@ -1,4 +1,12 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.recgon.app" }],
+      "destination": "https://recgon.app/:path*",
+      "permanent": true
+    }
+  ],
   "functions": {
     "src/app/api/projects/[id]/analyze/route.ts": {
       "maxDuration": 300
