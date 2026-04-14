@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Classify conversation to a project if not already tagged
-        const currentProjectId = await getConversationProjectId(userId, resolvedConvId);
+        const currentProjectId = await getConversationProjectId(userId, resolvedConvId).catch(() => undefined);
         if (currentProjectId === null && projects.length > 0) {
           try {
             const classifier = client.getGenerativeModel({

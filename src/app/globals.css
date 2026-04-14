@@ -652,10 +652,12 @@ body {
   max-width: 220px;
   max-height: 220px;
   overflow-y: auto;
-  background: var(--bg-pure);
+  background: var(--bg-content);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
   border: 1px solid var(--btn-secondary-border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(var(--signature-rgb), 0.12);
   z-index: 50;
   padding: 4px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;

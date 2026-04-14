@@ -18,18 +18,32 @@ export interface ChatConversation {
 const MAX_MESSAGES = 120;
 
 export async function listConversations(userId: string): Promise<ChatConversation[]> {
-  const { data } = await supabase
+  // Try with project_id first (requires migration); fall back if column missing
+  let data: Record<string, unknown>[] | null = null;
+  let hasProjectId = true;
+  const res = await supabase
     .from('chat_conversations')
     .select('id, title, created_at, updated_at, project_id')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
+  if (res.error?.message?.includes('project_id')) {
+    hasProjectId = false;
+    const fallback = await supabase
+      .from('chat_conversations')
+      .select('id, title, created_at, updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+    data = (fallback.data ?? []) as Record<string, unknown>[];
+  } else {
+    data = (res.data ?? []) as Record<string, unknown>[];
+  }
 
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    title: r.title,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-    projectId: r.project_id ?? null,
+  return data.map((r) => ({
+    id: r.id as string,
+    title: r.title as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    projectId: hasProjectId ? ((r.project_id ?? null) as string | null) : null,
   }));
 }
 
@@ -40,17 +54,18 @@ export async function createConversation(
 ): Promise<ChatConversation> {
   const now = Date.now();
   const id = randomUUID();
-  const row = {
+  const row: Record<string, unknown> = {
     id,
     user_id: userId,
     title: title?.trim() || 'New chat',
     created_at: now,
     updated_at: now,
-    project_id: projectId ?? null,
   };
+  // Only include project_id after migration is applied
+  if (projectId !== undefined) row.project_id = projectId ?? null;
   const { error } = await supabase.from('chat_conversations').insert(row);
   if (error) throw new Error(`Supabase insert error: ${error.message}`);
-  return { id, title: row.title, createdAt: now, updatedAt: now, projectId: projectId ?? null };
+  return { id, title: row.title as string, createdAt: now, updatedAt: now, projectId: projectId ?? null };
 }
 
 export async function setConversationProject(userId: string, convId: string, projectId: string | null) {
