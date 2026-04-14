@@ -41,9 +41,12 @@ function MarkdownText({ text }: { text: string }) {
       {lines.map((line, i) => {
         const isBullet = /^[-*•]\s/.test(line);
         const content = line.replace(/^[-*•]\s/, '');
-        const parts = content.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
+        const parts = content.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map((part, j) => {
           if (part.startsWith('**') && part.endsWith('**')) {
             return <strong key={j}>{part.slice(2, -2)}</strong>;
+          }
+          if (part.startsWith('*') && part.endsWith('*')) {
+            return <em key={j}>{part.slice(1, -1)}</em>;
           }
           return part;
         });

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GitHub × AI Era</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+    :root {
+      --bg:       #0a0d14;
+      --surface:  #111520;
+      --border:   rgba(255,255,255,0.06);
+      --accent:   #7c6af7;
+      --accent2:  #a89af9;
+      --dim:      #3a3f55;
+      --muted:    #5a607a;
+      --text:     #dde1ef;
+      --text-sub: #6b7294;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      min-height: 100vh;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 56px 24px 80px; }
+
+    /* ---- Header ---- */
+    .header { margin-bottom: 52px; }
+
+    .tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(124,106,247,0.1);
+      border: 1px solid rgba(124,106,247,0.2);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px; letter-spacing: 1.5px; color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+    h1 {
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+    h1 span { color: var(--accent2); }
+
+    .subtitle {
+      font-size: 14px; color: var(--text-sub);
+      max-width: 520px; line-height: 1.7;
+    }
+
+    /* ---- KPI row ---- */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+    @media(max-width: 780px) {
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
+      .kpi-row .kpi:last-child { grid-column: 1 / -1; }
+    }
+    .kpi {
+      background: var(--surface);
+      padding: 22px 20px;
+    }
+    .kpi-label { font-size: 11px; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 8px; }
+    .kpi-value { font-size: 26px; font-weight: 700; color: var(--accent2); line-height: 1; margin-bottom: 5px; }
+    .kpi-note  { font-size: 11px; color: var(--muted); }
+
+    /* ---- Charts grid ---- */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media(max-width: 760px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .card.wide { grid-column: 1 / -1; }
+
+    .card-title {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      margin-bottom: 3px;
+    }
+    .card-sub { font-size: 11px; color: var(--text-sub); margin-bottom: 20px; }
+
+    canvas { max-height: 240px; }
+    .card.wide canvas { max-height: 280px; }
+
+    /* ---- Divider ---- */
+    .divider {
+      height: 1px; background: var(--border);
+      margin: 32px 0;
+    }
+
+    /* ---- Timeline ---- */
+    .tl-title {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      margin-bottom: 24px; letter-spacing: 0.3px;
+    }
+
+    .tl-list { display: flex; flex-direction: column; gap: 0; }
+    .tl-item {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 16px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tl-item:last-child { border-bottom: none; }
+
+    .tl-date {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; color: var(--muted);
+      padding-top: 2px; letter-spacing: 0.5px;
+    }
+    .tl-body {}
+    .tl-event { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .tl-desc  { font-size: 12px; color: var(--text-sub); line-height: 1.6; }
+
+    /* ---- Footer ---- */
+    .footer {
+      margin-top: 48px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; color: var(--muted);
+      letter-spacing: 0.5px;
+    }
+    .footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="tag"><span class="tag-dot"></span>Recgon.ai Analiz</div>
+    <h1>GitHub'ın <span>Yapay Zeka</span> Çağındaki<br/>Dönüşümü</h1>
+    <p class="subtitle">
+      2022'de GitHub Copilot ve ChatGPT'nin lansmanından bu yana
+      platform aktivitesinin nasıl değiştiğini gösteren analiz.
+    </p>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Geliştirici (2025)</div>
+      <div class="kpi-value">180M</div>
+      <div class="kpi-note">↑ 147% (2021'den)</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Aylık PR (2025)</div>
+      <div class="kpi-value">43.2M</div>
+      <div class="kpi-note">↑ +23% yıllık</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Yeni AI Repo (2024)</div>
+      <div class="kpi-value">137K</div>
+      <div class="kpi-note">↑ +98% YoY</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Yıllık Commit (2025)</div>
+      <div class="kpi-value">~1B</div>
+      <div class="kpi-note">↑ +25.1% yıllık</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Copilot Kullanıcı</div>
+      <div class="kpi-value">20M+</div>
+      <div class="kpi-note">↑ 4× (1 yılda)</div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="charts-grid">
+
+    <div class="card">
+      <div class="card-title">Geliştirici Büyümesi</div>
+      <div class="card-sub">Toplam GitHub geliştiricisi (milyon)</div>
+      <canvas id="c1"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AI Repo Artışı</div>
+      <div class="card-sub">Kümülatif generative AI repoları (bin)</div>
+      <canvas id="c2"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Aylık Pull Request</div>
+      <div class="card-sub">Ortalama aylık PR hacmi (milyon)</div>
+      <canvas id="c3"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Dil Büyümesi — YoY %</div>
+      <div class="card-sub">Python & TypeScript katkıcı artışı</div>
+      <canvas id="c4"></canvas>
+    </div>
+
+    <div class="card wide">
+      <div class="card-title">Copilot Etkisi</div>
+      <div class="card-sub">AI ile yazılan kod oranı (%) ve kullanıcı sayısı (M) — çift eksen</div>
+      <canvas id="c5"></canvas>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- TIMELINE -->
+  <div class="tl-title">Kilometre Taşları</div>
+  <div class="tl-list">
+    <div class="tl-item">
+      <div class="tl-date">Haz 2022</div>
+      <div class="tl-body">
+        <div class="tl-event">GitHub Copilot GA</div>
+        <div class="tl-desc">Genel kullanıma açıldı. AI destekli kod tamamlama çağı başladı.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-date">Kas 2022</div>
+      <div class="tl-body">
+        <div class="tl-event">ChatGPT Lansmanı</div>
+        <div class="tl-desc">5 günde 1M kullanıcıya ulaştı. LLM projelerine ilgi patladı.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-date">Mar 2023</div>
+      <div class="tl-body">
+        <div class="tl-event">GPT-4 & Model Rekabeti</div>
+        <div class="tl-desc">Büyük model yarışı başladı; LLM SDK importları hızla çoğaldı.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-date">2024</div>
+      <div class="tl-body">
+        <div class="tl-event">AI Repo Patlaması</div>
+        <div class="tl-desc">137K yeni AI reposu, %59 artan katkı, Python 1. sıraya yerleşti.</div>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-date">2025</div>
+      <div class="tl-body">
+        <div class="tl-event">180M Geliştirici & 1B Commit</div>
+        <div class="tl-desc">Her saniye 1 yeni geliştirici. Kodun %46'sı artık Copilot tarafından üretiliyor.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Kaynak: GitHub Octoverse 2024–2025 ·
+    <a href="https://octoverse.github.com" target="_blank">octoverse.github.com</a>
+  </div>
+
+</div>
+
+<script>
+Chart.defaults.color = '#5a607a';
+Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+Chart.defaults.font.size = 11;
+
+const ACCENT   = '#7c6af7';
+const ACCENT2  = '#a89af9';
+const GRID     = 'rgba(255,255,255,0.04)';
+const TICK     = '#3a3f55';
+const SURFACE  = '#111520';
+
+function areaGrad(ctx, color) {
+  const g = ctx.createLinearGradient(0, 0, 0, 280);
+  g.addColorStop(0, color + '40');
+  g.addColorStop(1, color + '00');
+  return g;
+}
+
+const baseScales = {
+  x: { grid: { color: GRID }, ticks: { color: TICK } },
+  y: { grid: { color: GRID }, ticks: { color: TICK } }
+};
+
+const baseTip = {
+  backgroundColor: '#0f1219',
+  borderColor: 'rgba(124,106,247,0.25)',
+  borderWidth: 1,
+  titleColor: '#dde1ef',
+  bodyColor: ACCENT2,
+  padding: 10,
+};
+
+// 1 — Developer Growth
+{
+  const ctx = document.getElementById('c1').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['2019','2020','2021','2022','2023','2024','2025'],
+      datasets: [{
+        data: [40, 56, 73, 94, 100, 150, 180],
+        borderColor: ACCENT,
+        backgroundColor: areaGrad(ctx, ACCENT),
+        fill: true, tension: 0.45,
+        pointBackgroundColor: ACCENT,
+        pointBorderColor: SURFACE,
+        pointBorderWidth: 2,
+        pointRadius: 4, pointHoverRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { ...baseTip, callbacks: { label: v => `  ${v.raw}M` } } },
+      scales: { ...baseScales, y: { ...baseScales.y, ticks: { color: TICK, callback: v => v+'M' } } }
+    }
+  });
+}
+
+// 2 — AI Repos
+{
+  const ctx = document.getElementById('c2').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['2020','2021','2022','2023','2024','2025*'],
+      datasets: [{
+        data: [8, 18, 38, 95, 232, 390],
+        backgroundColor: [
+          'rgba(124,106,247,0.2)','rgba(124,106,247,0.25)',
+          'rgba(124,106,247,0.35)','rgba(124,106,247,0.5)',
+          'rgba(124,106,247,0.75)','rgba(124,106,247,0.35)',
+        ],
+        borderColor: ACCENT,
+        borderWidth: 1,
+        borderRadius: 5,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { ...baseTip, callbacks: { label: v => `  ${v.raw}K repo` } } },
+      scales: { ...baseScales, y: { ...baseScales.y, ticks: { color: TICK, callback: v => v+'K' } } }
+    }
+  });
+}
+
+// 3 — Monthly PRs
+{
+  const ctx = document.getElementById('c3').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Q1 22','Q3 22','Q1 23','Q3 23','Q1 24','Q3 24','Q1 25'],
+      datasets: [{
+        data: [26, 28, 31, 33, 36, 39, 43.2],
+        borderColor: ACCENT2,
+        backgroundColor: areaGrad(ctx, ACCENT2),
+        fill: true, tension: 0.4,
+        pointBackgroundColor: ACCENT2,
+        pointBorderColor: SURFACE,
+        pointBorderWidth: 2,
+        pointRadius: 4, pointHoverRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { ...baseTip, callbacks: { label: v => `  ${v.raw}M PR` } } },
+      scales: { ...baseScales, y: { ...baseScales.y, ticks: { color: TICK, callback: v => v+'M' } } }
+    }
+  });
+}
+
+// 4 — Language Growth
+{
+  const ctx = document.getElementById('c4').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['2022','2023','2024','2025'],
+      datasets: [
+        {
+          label: 'Python',
+          data: [14, 22, 35, 48],
+          backgroundColor: 'rgba(124,106,247,0.55)',
+          borderColor: ACCENT, borderWidth: 1,
+          borderRadius: 4, borderSkipped: false,
+        },
+        {
+          label: 'TypeScript',
+          data: [18, 24, 38, 66],
+          backgroundColor: 'rgba(168,154,249,0.35)',
+          borderColor: ACCENT2, borderWidth: 1,
+          borderRadius: 4, borderSkipped: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { color: '#5a607a', boxWidth: 10, font: { size: 11 } }
+        },
+        tooltip: { ...baseTip }
+      },
+      scales: { ...baseScales, y: { ...baseScales.y, ticks: { color: TICK, callback: v => v+'%' }, max: 80 } }
+    }
+  });
+}
+
+// 5 — Copilot Impact
+{
+  const ctx = document.getElementById('c5').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Haz 22','Ara 22','Haz 23','Ara 23','Haz 24','Ara 24','Haz 25'],
+      datasets: [
+        {
+          label: 'AI Kod Oranı (%)',
+          data: [27, 30, 34, 38, 42, 46, 50],
+          borderColor: ACCENT,
+          backgroundColor: areaGrad(ctx, ACCENT),
+          fill: true, tension: 0.4,
+          pointBackgroundColor: ACCENT,
+          pointBorderColor: SURFACE,
+          pointBorderWidth: 2,
+          pointRadius: 4, pointHoverRadius: 7,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Copilot Kullanıcı (M)',
+          data: [0.4, 1.5, 4, 7, 12, 17, 20],
+          borderColor: ACCENT2,
+          backgroundColor: 'transparent',
+          tension: 0.4,
+          borderDash: [5, 4],
+          pointBackgroundColor: ACCENT2,
+          pointBorderColor: SURFACE,
+          pointBorderWidth: 2,
+          pointRadius: 4, pointHoverRadius: 7,
+          yAxisID: 'y1',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { color: '#5a607a', boxWidth: 12, font: { size: 11 } }
+        },
+        tooltip: { ...baseTip }
+      },
+      scales: {
+        x: { grid: { color: GRID }, ticks: { color: TICK } },
+        y: {
+          type: 'linear', position: 'left',
+          grid: { color: GRID },
+          ticks: { color: TICK, callback: v => v+'%' },
+        },
+        y1: {
+          type: 'linear', position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: { color: TICK, callback: v => v+'M' },
+        }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
