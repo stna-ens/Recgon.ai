@@ -151,6 +151,12 @@ export async function POST(request: NextRequest) {
 
             const response = result.response;
             const calls = response.functionCalls() ?? [];
+            console.log('[chat]', {
+              iteration: iterations,
+              calls: calls.map((c) => c.name),
+              finishReason: response.candidates?.[0]?.finishReason,
+              promptFeedback: response.promptFeedback,
+            });
 
             if (calls.length > 0) {
               // Record the model's tool-call turn so it can reference it next iteration
@@ -187,10 +193,19 @@ export async function POST(request: NextRequest) {
             }
 
             // No more tool calls — emit the final text.
-            const text = response.text();
+            let text = '';
+            try {
+              text = response.text();
+            } catch (e) {
+              console.error('[chat] response.text() threw', e);
+            }
             if (text) {
               emit(text);
               fullResponse += text;
+            } else {
+              const fallback = '\n\n_(the model returned no text — try rephrasing your question)_\n';
+              emit(fallback);
+              fullResponse += fallback;
             }
             break;
           }
