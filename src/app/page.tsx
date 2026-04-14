@@ -605,7 +605,11 @@ export default function DashboardPage() {
               boxShadow: (streaming || recentlyTyped) ? undefined : '0 0 6px var(--signature)',
             }}
           />
-          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Terminal</span>
+
+          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Recgon</span>
+          <span style={{ fontSize: 12, color: 'var(--txt-faint)' }}>—</span>
+          <span style={{ fontSize: 12, color: 'var(--txt-muted)' }}>mentor</span>
+
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
             <button
                onClick={toggleSidebar}
