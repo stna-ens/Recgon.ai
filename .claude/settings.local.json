@@ -61,7 +61,9 @@
       "Bash(npx tsx:*)",
       "mcp__plugin_vercel_vercel__get_runtime_logs",
       "mcp__plugin_vercel_vercel__get_project",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(echo \"PID: $!\")",
+      "mcp__supabase__execute_sql"
     ]
   },
   "enableAllProjectMcpServers": true,

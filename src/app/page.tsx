@@ -75,12 +75,12 @@ export default function DashboardPage() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = localStorage.getItem('recgon.chatSidebarCollapsed');
-    if (stored === '1') setSidebarCollapsed(true);
+    if (stored === '0') setSidebarCollapsed(false);
   }, []);
 
   const toggleSidebar = useCallback(() => {
