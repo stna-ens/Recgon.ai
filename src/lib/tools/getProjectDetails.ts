@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { getProject, getAllProjects } from '../storage';
 import type { ToolDefinition } from './types';
+import { resolveProject } from './resolveProject';
 
 const parameters = z.object({
-  projectId: z.string().describe(
-    'ID or name of the project to fetch. Prefer passing the UUID from list_projects, but a partial name match also works.',
+  project: z.string().describe(
+    'The project name (as the user refers to it). Partial matches work. UUIDs also accepted but not required.',
   ),
 });
 
@@ -13,22 +13,11 @@ type Input = z.infer<typeof parameters>;
 export const getProjectDetailsTool: ToolDefinition<Input, Record<string, unknown>> = {
   name: 'get_project_details',
   description:
-    'Fetch the full stored analysis for a specific project: product description, tech stack, SWOT, prioritized next steps, GA4 property id, recent feedback analyses, and campaigns. Use this before answering detailed questions about a project. You can pass either the project UUID or a partial name.',
+    'Fetch the full stored analysis for a specific project: product description, tech stack, SWOT, prioritized next steps, GA4 property id, recent feedback analyses, and campaigns. Use this before answering detailed questions about a project. Pass the project name exactly as the user says it — no UUID needed.',
   parameters,
-  summarize: (input) => `project ${input.projectId}`,
+  summarize: (_input, output) => `project ${(output as { name?: string }).name ?? 'unknown'}`,
   handler: async (input, ctx) => {
-    // Try exact UUID lookup first
-    let project = await getProject(input.projectId, ctx.teamId).catch(() => undefined);
-
-    // Fall back to case-insensitive name match
-    if (!project) {
-      const all = await getAllProjects(ctx.teamId);
-      const needle = input.projectId.toLowerCase();
-      project = all.find((p) => p.name.toLowerCase().includes(needle));
-    }
-
-    if (!project) throw new Error(`No project matching "${input.projectId}" found in this team`);
-
+    const project = await resolveProject(input.project, ctx.teamId);
     return {
       id: project.id,
       name: project.name,
