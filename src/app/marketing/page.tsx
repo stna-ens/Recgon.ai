@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Select from '@/components/Select';
 import MarketingPreview from '@/components/MarketingPreview';
+import { useTeam } from '@/components/TeamProvider';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,22 @@ interface Project {
 interface GeneratedContentEntry {
   content: Record<string, string>;
   platform: Platform;
+}
+
+interface SocialProfileInsight {
+  platform: string;
+  profileUrl: string;
+  sizeEstimate: string;
+  contentStyle: string;
+  postingFrequency: string;
+  strengths: string[];
+  improvements: string[];
+  overallScore: number;
+}
+
+interface SocialAnalysisResult {
+  profiles: SocialProfileInsight[];
+  overallSummary: string;
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -180,9 +197,71 @@ function platformBadgeColor(name: string): string {
   return '#6b7280';
 }
 
+// ── Social platform picker ────────────────────────────────────────────────────
+
+function SocialPlatformPicker({ value, onChange, platforms, blocked }: {
+  value: string;
+  onChange: (v: string) => void;
+  platforms: string[];
+  blocked: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="form-input"
+        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', gap: 6 }}
+      >
+        <span style={{ fontSize: 12 }}>{value}</span>
+        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '100%', background: 'var(--glass-active)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+          {platforms.map((p) => {
+            const isBlocked = blocked.includes(p);
+            return (
+              <button
+                key={p}
+                type="button"
+                disabled={isBlocked}
+                onClick={() => { if (!isBlocked) { onChange(p); setOpen(false); } }}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '8px 12px',
+                  background: value === p ? 'rgba(var(--signature-rgb), 0.2)' : 'transparent',
+                  border: 'none', cursor: isBlocked ? 'default' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  opacity: isBlocked ? 0.5 : 1,
+                }}
+              >
+                <span style={{ fontSize: 12, color: 'var(--txt-pure)' }}>{p}</span>
+                {isBlocked && (
+                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--txt-muted)', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.5px', flexShrink: 0 }}>
+                    SOON
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function MarketingPage() {
+  const { currentTeam } = useTeam();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [campaignType, setCampaignType] = useState<CampaignType | null>(null);
@@ -192,15 +271,27 @@ export default function MarketingPage() {
   const [planError, setPlanError] = useState('');
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState('');
+
+  // Social media — now project-scoped
+  const [socialProfiles, setSocialProfiles] = useState<{ platform: string; url: string }[]>([]);
+  const [socialPlatformInput, setSocialPlatformInput] = useState('LinkedIn');
+  const [socialUrlInput, setSocialUrlInput] = useState('');
+  const [isAnalyzingSocial, setIsAnalyzingSocial] = useState(false);
+  const [socialInsights, setSocialInsights] = useState<SocialAnalysisResult | null>(null);
+  const [socialError, setSocialError] = useState('');
+  const [socialExpanded, setSocialExpanded] = useState(false);
+
+  // Content generation
   const [generatingContent, setGeneratingContent] = useState<string | null>(null);
   const [generatedContents, setGeneratedContents] = useState<Record<string, GeneratedContentEntry>>({});
   const [contentErrors, setContentErrors] = useState<Record<string, string>>({});
   const [previewEntry, setPreviewEntry] = useState<GeneratedContentEntry | null>(null);
   const planRef = useRef<HTMLDivElement>(null);
 
-  const loadProjects = () =>
-    fetch('/api/projects')
+  const loadProjects = useCallback(() => {
+    if (!currentTeam) return;
+    fetch(`/api/projects?teamId=${currentTeam.id}`)
       .then((r) => r.json())
       .then((ps: Project[]) => {
         const analyzed = ps.filter((p) => p.analysis);
@@ -210,12 +301,37 @@ export default function MarketingPage() {
         }
       })
       .catch(() => setProjects([]));
+  }, [currentTeam, selectedProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { loadProjects(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const loadSocialProfiles = (projectId: string) => {
+    if (!projectId || !currentTeam) return;
+    fetch(`/api/social/profiles?projectId=${projectId}&teamId=${currentTeam.id}`)
+      .then((r) => r.json())
+      .then((d: { profiles: { platform: string; url: string }[] }) => setSocialProfiles(d.profiles ?? []))
+      .catch(() => setSocialProfiles([]));
+  };
+
+  useEffect(() => { loadProjects(); }, [currentTeam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refetch when tab regains visibility so teammates' campaigns appear without a full reload
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') loadProjects(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [loadProjects]);
+
+  // Reload social profiles when selected project changes
+  useEffect(() => {
+    if (selectedProjectId) {
+      setSocialInsights(null);
+      setSocialError('');
+      loadSocialProfiles(selectedProjectId);
+    }
+  }, [selectedProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
   const campaigns = selectedProject?.campaigns ?? [];
-  const typeConfig = CAMPAIGN_TYPES.find((t) => t.id === campaignType) ?? null;;
+  const typeConfig = CAMPAIGN_TYPES.find((t) => t.id === campaignType) ?? null;
 
   const handlePlan = async () => {
     if (!selectedProjectId) return;
@@ -230,7 +346,7 @@ export default function MarketingPage() {
       const res = await fetch('/api/marketing/campaign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: selectedProjectId, campaignType, goal: campaignGoal, duration }),
+        body: JSON.stringify({ projectId: selectedProjectId, campaignType, goal: campaignGoal, duration, websiteUrl: websiteUrl.trim() || undefined, teamId: currentTeam?.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Campaign planning failed');
@@ -257,7 +373,7 @@ export default function MarketingPage() {
       const res = await fetch('/api/marketing/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: selectedProjectId, platform, customPrompt }),
+        body: JSON.stringify({ projectId: selectedProjectId, platform, customPrompt, websiteUrl: websiteUrl.trim() || undefined, teamId: currentTeam?.id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Content generation failed');
@@ -275,19 +391,253 @@ export default function MarketingPage() {
     }
   };
 
-  // ── Render: setup ──────────────────────────────────────────────────────────
+  // ── Social media handlers ──────────────────────────────────────────────────
 
-  const renderSetup = () => (
-    <div className="glass-card" style={{ marginBottom: 32 }}>
-      <div className="form-group" style={{ marginBottom: 20 }}>
-        <label className="form-label">Project</label>
+  const handleAddSocialProfile = async () => {
+    if (!socialUrlInput.trim() || !selectedProjectId) return;
+    const updated = [...socialProfiles.filter((p) => p.url !== socialUrlInput.trim()), { platform: socialPlatformInput, url: socialUrlInput.trim() }];
+    setSocialProfiles(updated);
+    setSocialUrlInput('');
+    await fetch('/api/social/profiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: selectedProjectId, profiles: updated, teamId: currentTeam?.id }) });
+  };
+
+  const handleRemoveSocialProfile = async (url: string) => {
+    if (!selectedProjectId) return;
+    const updated = socialProfiles.filter((p) => p.url !== url);
+    setSocialProfiles(updated);
+    await fetch('/api/social/profiles', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: selectedProjectId, url, teamId: currentTeam?.id }) });
+  };
+
+  const BLOCKED_PLATFORMS = ['Instagram', 'TikTok', 'Twitter / X', 'LinkedIn', 'Facebook'];
+  const SOCIAL_PLATFORMS = ['Instagram', 'TikTok', 'LinkedIn', 'Twitter / X', 'YouTube', 'Reddit'];
+
+  const handleAnalyzeSocial = async () => {
+    const accessible = socialProfiles.filter((p) => !BLOCKED_PLATFORMS.includes(p.platform));
+    if (!accessible.length) return;
+    setIsAnalyzingSocial(true);
+    setSocialError('');
+    setSocialInsights(null);
+    try {
+      const res = await fetch('/api/social/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profiles: accessible }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Analysis failed');
+      setSocialInsights(data);
+    } catch (err) {
+      setSocialError(err instanceof Error ? err.message : 'Social media analysis failed');
+    } finally {
+      setIsAnalyzingSocial(false);
+    }
+  };
+
+  // ── Render: sidebar ───────────────────────────────────────────────────────
+
+  const renderSidebar = () => (
+    <div style={{ width: 280, flexShrink: 0, position: 'sticky', top: 0, height: 'calc(100vh - 80px)', overflowY: 'auto', paddingRight: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Project selector */}
+      <div>
+        <label className="form-label" style={{ fontSize: 11, marginBottom: 6 }}>Project</label>
         <Select
           value={selectedProjectId}
-          onChange={setSelectedProjectId}
+          onChange={(v) => {
+            setSelectedProjectId(v);
+            setActiveCampaign(null);
+            setGeneratedContents({});
+            setContentErrors({});
+          }}
           options={projects.map((p) => ({ value: p.id, label: p.analysis?.name ?? p.name }))}
         />
       </div>
 
+      {/* Social profiles — collapsible */}
+      <div style={{ background: 'var(--bg-content)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <button
+          onClick={() => setSocialExpanded((v) => !v)}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--btn-secondary-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-pure)', transition: 'background 0.15s', borderRadius: 12 }}
+        >
+          <svg width="14" height="14" fill="none" stroke="var(--signature)" strokeWidth="1.75" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 2a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3"/><path d="M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/><path d="M16.5 7.5v.01"/>
+          </svg>
+          <span style={{ fontSize: 12, fontWeight: 600, flex: 1, textAlign: 'left' }}>Social Profiles</span>
+          {socialProfiles.length > 0 && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--signature)', background: 'rgba(var(--signature-rgb), 0.12)', borderRadius: 10, padding: '1px 7px' }}>
+              {socialProfiles.length}
+            </span>
+          )}
+          <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+            style={{ transform: socialExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s cubic-bezier(0.16,1,0.3,1)', color: 'var(--txt-muted)' }}>
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+        {socialExpanded && (
+          <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Add profile */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <SocialPlatformPicker
+                value={socialPlatformInput}
+                onChange={setSocialPlatformInput}
+                platforms={SOCIAL_PLATFORMS}
+                blocked={BLOCKED_PLATFORMS}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  className="form-input"
+                  type="url"
+                  placeholder="https://..."
+                  value={socialUrlInput}
+                  onChange={(e) => setSocialUrlInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !BLOCKED_PLATFORMS.includes(socialPlatformInput)) handleAddSocialProfile(); }}
+                  disabled={BLOCKED_PLATFORMS.includes(socialPlatformInput)}
+                  style={{ flex: 1, fontSize: 12 }}
+                />
+                <button className="btn btn-secondary" onClick={handleAddSocialProfile} disabled={!socialUrlInput.trim() || BLOCKED_PLATFORMS.includes(socialPlatformInput)} style={{ flexShrink: 0, padding: '6px 10px', fontSize: 11 }}>
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Profile list */}
+            {socialProfiles.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {socialProfiles.map((p) => {
+                  const blocked = BLOCKED_PLATFORMS.includes(p.platform);
+                  return (
+                    <div key={p.url} className="sidebar-profile-item" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 8px', fontSize: 11, opacity: blocked ? 0.65 : 1, transition: 'background 0.15s, border-color 0.15s', cursor: 'default' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--txt-pure)', flexShrink: 0 }}>{p.platform}</span>
+                      {blocked && (
+                        <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--txt-muted)', background: 'var(--bg-content)', border: '1px solid var(--border)', borderRadius: 4, padding: '0px 4px', letterSpacing: '0.3px' }}>
+                          SOON
+                        </span>
+                      )}
+                      <span style={{ color: 'var(--txt-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{p.url.replace(/^https?:\/\//, '')}</span>
+                      <button className="profile-remove" onClick={() => handleRemoveSocialProfile(p.url)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-muted)', padding: 0, lineHeight: 1, fontSize: 14, flexShrink: 0 }}>×</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {socialError && (
+              <div style={{ background: 'rgba(255,59,48,0.08)', border: '1px solid rgba(255,59,48,0.25)', borderRadius: 8, padding: '6px 10px', fontSize: 11, color: 'var(--danger)' }}>
+                {socialError}
+              </div>
+            )}
+
+            <button
+              className="btn btn-secondary"
+              onClick={handleAnalyzeSocial}
+              disabled={isAnalyzingSocial || socialProfiles.filter((p) => !BLOCKED_PLATFORMS.includes(p.platform)).length === 0}
+              style={{ gap: 6, fontSize: 11, padding: '6px 12px' }}
+            >
+              {isAnalyzingSocial ? (
+                <><svg className="loader-spinner" style={{ width: 12, height: 12, borderRightColor: 'transparent', borderWidth: 2 }} />Analyzing...</>
+              ) : 'Analyze Profiles'}
+            </button>
+
+            {/* Social analysis results */}
+            {socialInsights && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, padding: '8px 10px', background: 'rgba(var(--signature-rgb), 0.06)', borderRadius: 8, borderLeft: '3px solid var(--signature)', margin: 0 }}>
+                  {socialInsights.overallSummary}
+                </p>
+                {socialInsights.profiles.map((p, i) => (
+                  <div key={i} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt-pure)' }}>{p.platform}</span>
+                      <span style={{ fontSize: 10, color: 'var(--txt-muted)' }}>{p.sizeEstimate}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: p.overallScore >= 7 ? 'var(--success)' : p.overallScore >= 4 ? 'var(--warning, #f59e0b)' : 'var(--danger)', background: 'var(--bg-content)', border: '1px solid var(--border)', borderRadius: 6, padding: '1px 6px' }}>
+                        {p.overallScore}/10
+                      </span>
+                    </div>
+                    <p style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 8, lineHeight: 1.4 }}>{p.contentStyle} · {p.postingFrequency}</p>
+                    <div>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Strengths</span>
+                      <ul style={{ margin: '3px 0 6px', padding: '0 0 0 14px' }}>
+                        {p.strengths.map((s, j) => <li key={j} style={{ fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{s}</li>)}
+                      </ul>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--signature)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Improvements</span>
+                      <ul style={{ margin: '3px 0 0', padding: '0 0 0 14px' }}>
+                        {p.improvements.map((s, j) => <li key={j} style={{ fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{s}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Past campaigns */}
+      {campaigns.length > 0 && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '0.03em' }}>
+              // campaigns
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--signature)', background: 'rgba(var(--signature-rgb), 0.12)', borderRadius: 10, padding: '1px 7px' }}>
+              {campaigns.length}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {campaigns.map((c) => {
+              const ctConf = CAMPAIGN_TYPES.find((t) => t.id === c.type);
+              const isActive = activeCampaign?.id === c.id;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    setActiveCampaign(c);
+                    setActiveTab('overview');
+                    setGeneratedContents({});
+                    setTimeout(() => planRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.borderColor = 'rgba(var(--signature-rgb), 0.4)';
+                      e.currentTarget.style.background = 'rgba(var(--signature-rgb), 0.06)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.background = 'var(--bg-content)';
+                    }
+                  }}
+                  style={{
+                    textAlign: 'left',
+                    border: `1px solid ${isActive ? 'var(--signature)' : 'var(--border)'}`,
+                    background: isActive ? 'rgba(var(--signature-rgb), 0.06)' : 'var(--bg-content)',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    width: '100%',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: 6, background: ctConf ? 'rgba(var(--signature-rgb), 0.09)' : 'var(--btn-secondary-bg)', border: `1px solid ${ctConf ? 'rgba(var(--signature-rgb), 0.2)' : 'var(--btn-secondary-border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: ctConf ? 'var(--signature)' : 'var(--txt-muted)' }}>
+                      {ctConf ? <CampaignIcon type={ctConf.id} size={12} color={isActive ? 'var(--signature)' : 'var(--signature)'} /> : null}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: isActive ? 'var(--signature)' : 'var(--txt-pure)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.2px' }}>{c.name}</div>
+                      <div style={{ fontSize: 10, color: 'var(--txt-muted)', marginTop: 1, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{ctConf?.label} · {c.duration}</div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Render: campaign setup ────────────────────────────────────────────────
+
+  const renderSetup = () => (
+    <div className="glass-card" style={{ marginBottom: 32 }}>
       <div className="form-group" style={{ marginBottom: 20 }}>
         <label className="form-label">Campaign Type</label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -346,6 +696,20 @@ export default function MarketingPage() {
           value={campaignGoal}
           onChange={(e) => { setCampaignGoal(e.target.value); if (planError) setPlanError(''); }}
           rows={2}
+        />
+      </div>
+
+      <div className="form-group" style={{ marginBottom: 20 }}>
+        <label className="form-label">
+          Website URL{' '}
+          <span style={{ fontWeight: 400, color: 'var(--txt-muted)', fontSize: 12 }}>(optional — crawls your site for richer AI context)</span>
+        </label>
+        <input
+          className="form-input"
+          type="url"
+          placeholder="https://yourproduct.com"
+          value={websiteUrl}
+          onChange={(e) => setWebsiteUrl(e.target.value)}
         />
       </div>
 
@@ -730,57 +1094,6 @@ export default function MarketingPage() {
     );
   };
 
-  // ── Render: history ────────────────────────────────────────────────────────
-
-  const renderHistory = () => {
-    if (campaigns.length === 0) return null;
-    return (
-      <div style={{ marginTop: 8 }}>
-        <button
-          onClick={() => setHistoryExpanded((v) => !v)}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-muted)', fontSize: 13, fontWeight: 500, padding: 0, marginBottom: 10, transition: 'color 0.15s' }}
-        >
-          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
-            style={{ transform: historyExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s cubic-bezier(0.16,1,0.3,1)' }}>
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-          <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>// past_campaigns ({campaigns.length})</span>
-        </button>
-        {historyExpanded && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {campaigns.map((c) => {
-              const ctConf = CAMPAIGN_TYPES.find((t) => t.id === c.type);
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => {
-                    setActiveCampaign(c);
-                    setActiveTab('overview');
-                    setGeneratedContents({});
-                    setTimeout(() => planRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-                  }}
-                  className="history-campaign-btn glass-card"
-                  style={{ textAlign: 'left', border: '1px solid var(--btn-secondary-border)', background: 'var(--bg-content)', padding: '12px 16px', borderRadius: 12, width: '100%' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 7, background: ctConf ? 'rgba(var(--signature-rgb), 0.09)' : 'var(--btn-secondary-bg)', border: `1px solid ${ctConf ? 'rgba(var(--signature-rgb), 0.2)' : 'var(--btn-secondary-border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: ctConf ? 'var(--signature)' : 'var(--txt-muted)' }}>
-                      {ctConf ? <CampaignIcon type={ctConf.id} size={14} color="var(--signature)" /> : null}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt-pure)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.2px' }}>{c.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--txt-muted)', marginTop: 1, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{ctConf?.label} · {c.duration} · {new Date(c.createdAt).toLocaleDateString()}</div>
-                    </div>
-                    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: 'var(--txt-muted)', flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // ── Main render ────────────────────────────────────────────────────────────
 
   if (projects.length === 0) {
@@ -808,9 +1121,13 @@ export default function MarketingPage() {
         <p>Recgon plans your campaigns — you execute them</p>
       </div>
 
-      {renderSetup()}
-      {activeCampaign && renderPlan(activeCampaign)}
-      {renderHistory()}
+      <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start' }}>
+        {renderSidebar()}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {renderSetup()}
+          {activeCampaign && renderPlan(activeCampaign)}
+        </div>
+      </div>
 
       {/* Preview modal */}
       {previewEntry && (

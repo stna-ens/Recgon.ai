@@ -6,12 +6,13 @@ import { useTheme } from 'next-themes';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import RecgonLogo from './RecgonLogo';
+import TeamSwitcher from './TeamSwitcher';
 
 const NAV_ITEMS = [
   { 
     href: '/', 
-    label: 'Overview', 
-    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    label: 'Terminal', 
+    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
   },
   { 
     href: '/projects', 
@@ -41,6 +42,17 @@ export default function Sidebar() {
   const [mounted, setMounted] = useState(false);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const { data: session } = useSession();
+  const [fetchedAvatarUrl, setFetchedAvatarUrl] = useState<string | null>(null);
+
+  // If the JWT doesn't have avatarUrl (e.g. stale token), fetch it from the DB once
+  useEffect(() => {
+    if (!session?.user) return;
+    if ((session.user as { avatarUrl?: string }).avatarUrl) return;
+    fetch('/api/account')
+      .then((r) => r.json())
+      .then((d) => { if (d.avatarUrl) setFetchedAvatarUrl(d.avatarUrl); })
+      .catch(() => {});
+  }, [session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setMounted(true);
@@ -123,19 +135,42 @@ export default function Sidebar() {
       </nav>
 
       {session?.user && (
-        <Link href="/account" style={{
-          position: 'fixed', top: '40px', right: '48px',
-          display: 'flex', alignItems: 'center', gap: '8px',
-          zIndex: 100, textDecoration: 'none',
+        <div style={{
+          position: 'fixed', top: '32px', right: '48px',
+          display: 'flex', alignItems: 'center', gap: '12px',
+          zIndex: 100,
         }}>
-          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: 'var(--txt-muted)', flexShrink: 0 }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
-          <span style={{ fontSize: '0.8rem', color: 'var(--txt-muted)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {session.user.nickname || session.user.email}
-          </span>
-        </Link>
+          <TeamSwitcher />
+          <Link href="/account" title={session.user.nickname || session.user.email || 'Account'} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '36px', height: '36px',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            border: '2px solid var(--border)',
+            background: 'var(--accent-faint)',
+            textDecoration: 'none',
+            flexShrink: 0,
+            transition: 'border-color 0.2s',
+          }}>
+            {((session.user as { avatarUrl?: string }).avatarUrl || fetchedAvatarUrl) ? (
+              <img
+                src={((session.user as { avatarUrl?: string }).avatarUrl || fetchedAvatarUrl)!}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <span style={{
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--accent)',
+                textTransform: 'uppercase',
+                lineHeight: 1,
+              }}>
+                {(session.user.nickname || session.user.email || '?').slice(0, 2)}
+              </span>
+            )}
+          </Link>
+        </div>
       )}
     </>
   );

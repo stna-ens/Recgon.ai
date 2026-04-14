@@ -1,11 +1,15 @@
-import fs from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
-import { getProject, saveProject } from '@/lib/storage';
+import { getProject, getProjectTeamId, saveProject, type ProductAnalysis } from '@/lib/storage';
+import { analyzeIdea } from '@/lib/ideaAnalyzer';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '@/lib/codeAnalyzer';
+import { analyzeCompetitors } from '@/lib/competitorAnalyzer';
 import { getLatestCommit, getCommitDiff, cloneGitHubRepo } from '@/lib/githubFetcher';
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, ANALYZE_LIMIT } from '@/lib/rateLimit';
+import { checkAnalysisQuota, recordAnalysis } from '@/lib/analysisQuota';
 import { auth } from '@/auth';
+import { verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { getUserById } from '@/lib/userStorage';
 
 function formatDiff(diff: import('@/lib/githubFetcher').CommitDiff): string {
   const MAX_PATCH_CHARS = 3000;
@@ -55,9 +59,10 @@ async function ensureFreshClone(
   projectId: string,
   githubUrl: string,
   send: (data: object) => void,
+  token?: string,
 ): Promise<string> {
   send({ type: 'progress', message: 'Cloning repository...' });
-  return cloneGitHubRepo(githubUrl, projectId);
+  return cloneGitHubRepo(githubUrl, projectId, token);
 }
 
 export async function POST(
@@ -69,7 +74,7 @@ export async function POST(
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const ip = request.headers.get('x-forwarded-for') ?? 'local';
-  if (isRateLimited(`analyze:${ip}`, ANALYZE_LIMIT)) {
+  if (await isRateLimited(`analyze:${ip}`, ANALYZE_LIMIT)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
@@ -79,7 +84,28 @@ export async function POST(
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 
-  const project = getProject(id, session.user.id);
+  // Derive teamId from the project itself — never trust the client to tell us which
+  // team a project belongs to.
+  const teamId = await getProjectTeamId(id);
+  if (!teamId) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+
+  const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
+  if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+
+  // Enforce per-user analysis quota (3 total, 1 per 2 weeks)
+  const quota = await checkAnalysisQuota(session.user.id, session.user.email ?? undefined);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      { error: quota.reason, quota },
+      { status: 429 },
+    );
+  }
+
+  const [project, user] = await Promise.all([
+    getProject(id, teamId),
+    getUserById(session.user.id),
+  ]);
+  const githubToken = user?.githubAccessToken;
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
@@ -95,6 +121,20 @@ export async function POST(
       try {
         let analysis;
 
+        // Idea project branch
+        if (project.sourceType === 'description') {
+          if (!project.description) {
+            send({ type: 'error', message: 'No description to analyze' });
+            return;
+          }
+          analysis = await analyzeIdea(project.description, (msg) => send({ type: 'progress', message: msg }));
+          project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
+          await saveProject(project);
+          await recordAnalysis(session.user.id, session.user.email ?? undefined);
+          send({ type: 'done', project });
+          return;
+        }
+
         const isGithubReanalysis =
           project.isGithub &&
           project.githubUrl &&
@@ -103,7 +143,13 @@ export async function POST(
 
         if (isGithubReanalysis) {
           send({ type: 'progress', message: 'Checking for new commits...' });
-          const latestCommit = await getLatestCommit(project.githubUrl!);
+          const latestCommit = await getLatestCommit(project.githubUrl!, githubToken);
+
+          if (latestCommit && latestCommit.sha === project.lastAnalyzedCommitSha) {
+            // No new commits since last analysis
+            send({ type: 'done', project });
+            return;
+          }
 
           if (latestCommit && latestCommit.sha !== project.lastAnalyzedCommitSha) {
             send({ type: 'progress', message: 'Fetching diff since last analysis...' });
@@ -111,19 +157,20 @@ export async function POST(
               project.githubUrl!,
               project.lastAnalyzedCommitSha!,
               latestCommit.sha,
+              githubToken,
             );
 
             if (diff && diff.files.length > 0) {
               const diffStr = formatDiff(diff);
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              const { analyzedAt: _, ...existingAnalysis } = project.analysis!;
+              const { analyzedAt: _, improvements: _imp, nextStepsTaken: _nst, ...existingAnalysis } = project.analysis! as ProductAnalysis & { improvements?: unknown; nextStepsTaken?: unknown };
               analysis = await analyzeCodebaseUpdate(existingAnalysis, diffStr, (message) => {
                 send({ type: 'progress', message });
               });
               project.lastAnalyzedCommitSha = latestCommit.sha;
             } else {
               // Diff unavailable — re-clone and do full re-analysis
-              const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send);
+              const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send, githubToken);
               project.path = clonePath;
               analysis = await analyzeCodebase(clonePath, (message) => {
                 send({ type: 'progress', message });
@@ -131,34 +178,55 @@ export async function POST(
               project.lastAnalyzedCommitSha = latestCommit.sha;
             }
           } else {
-            // No new commits — re-clone and do full re-analysis with latest code
-            const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send);
+            // Can't reach GitHub API — re-clone and do full re-analysis
+            const clonePath = await ensureFreshClone(project.id, project.githubUrl!, send, githubToken);
             project.path = clonePath;
             analysis = await analyzeCodebase(clonePath, (message) => {
               send({ type: 'progress', message });
             });
-            if (latestCommit) project.lastAnalyzedCommitSha = latestCommit.sha;
           }
         } else {
           // First analysis or local project
-          let analyzePath = project.path;
-          if (project.isGithub && project.githubUrl && !fs.existsSync(project.path)) {
-            const clonePath = await ensureFreshClone(project.id, project.githubUrl, send);
+          let analyzePath: string = project.path ?? '';
+          if (project.isGithub && project.githubUrl) {
+            const clonePath = await ensureFreshClone(project.id, project.githubUrl, send, githubToken);
             project.path = clonePath;
             analyzePath = clonePath;
+          }
+          if (!analyzePath) {
+            send({ type: 'error', message: 'No path to analyze' });
+            return;
           }
           analysis = await analyzeCodebase(analyzePath, (message) => {
             send({ type: 'progress', message });
           });
 
           if (project.isGithub && project.githubUrl) {
-            const commit = await getLatestCommit(project.githubUrl);
+            // Retry up to 2 times to ensure SHA is always saved after first analysis
+            let commit = await getLatestCommit(project.githubUrl, githubToken);
+            if (!commit) commit = await getLatestCommit(project.githubUrl, githubToken);
             if (commit) project.lastAnalyzedCommitSha = commit.sha;
           }
         }
 
         project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
-        saveProject(project);
+        await saveProject(project);
+
+        // Record quota usage after successful save
+        await recordAnalysis(session.user.id, session.user.email ?? undefined);
+
+        // Competitor deep analysis — runs after main save, failure is non-fatal
+        if (analysis.competitors?.some((c) => c.url)) {
+          send({ type: 'progress', message: 'Analyzing competitor websites...' });
+          try {
+            const competitorInsights = await analyzeCompetitors(analysis.competitors, project.analysis);
+            project.analysis = { ...project.analysis, competitorInsights };
+            await saveProject(project);
+          } catch {
+            // competitor analysis is best-effort
+          }
+        }
+
         send({ type: 'done', project });
       } catch (err) {
         send({ type: 'error', message: err instanceof Error ? err.message : 'Analysis failed' });

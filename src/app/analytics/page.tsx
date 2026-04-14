@@ -5,6 +5,8 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
+import Select from '@/components/Select';
+import { useTeam } from '@/components/TeamProvider';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +46,18 @@ interface AnalyticsInsights {
   recommendations: string[];
   topWin: string;
   topConcern: string;
+}
+
+interface ProjectSummary {
+  id: string;
+  name: string;
+  analyticsPropertyId?: string;
+}
+
+interface GAProperty {
+  id: string;
+  displayName: string;
+  accountName: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -186,15 +200,115 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   );
 }
 
+
+function LinkPropertyBanner({ projectName, propertyId, onChange, onSave, saving, error, gaProperties, propertiesLoading }: {
+  projectName: string;
+  propertyId: string;
+  onChange: (v: string) => void;
+  onSave: () => void;
+  saving: boolean;
+  error: string;
+  gaProperties: GAProperty[];
+  propertiesLoading: boolean;
+}) {
+  return (
+    <div className="glass-card" style={{ padding: '20px 24px', marginBottom: 24, borderColor: 'rgba(168,85,247,0.3)' }}>
+      <p style={{ fontWeight: 600, marginBottom: 8, fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: '0.9rem' }}>
+        Link a GA4 property to <span style={{ color: 'var(--signature)' }}>{projectName}</span>
+      </p>
+      <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', marginBottom: 16, lineHeight: 1.6 }}>
+        {gaProperties.length > 0
+          ? 'Choose the GA4 property to link to this project.'
+          : 'Enter the numeric Property ID from Google Analytics → Admin → Property details.'}
+      </p>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {propertiesLoading ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--txt-muted)', fontSize: '0.85rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+            <div className="loader-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+            Loading properties…
+          </div>
+        ) : gaProperties.length > 0 ? (
+          <Select
+            value={propertyId}
+            onChange={onChange}
+            options={gaProperties.map((p) => ({ value: p.id, label: `${p.displayName}  ·  ${p.accountName}` }))}
+            placeholder="Select a property…"
+            style={{ width: 320 }}
+          />
+        ) : (
+          <input
+            value={propertyId}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="e.g. 123456789"
+            className="form-input"
+            style={{ maxWidth: 220, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}
+            onKeyDown={(e) => e.key === 'Enter' && onSave()}
+            autoFocus
+          />
+        )}
+        <button
+          onClick={onSave}
+          disabled={saving || !propertyId.trim()}
+          className="btn btn-primary btn-sm"
+          style={{ opacity: saving || !propertyId.trim() ? 0.5 : 1 }}
+        >
+          {saving ? 'Saving…' : 'Link property'}
+        </button>
+      </div>
+      {error && <p style={{ color: 'var(--danger)', fontSize: '0.83rem', marginTop: 10, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{error}</p>}
+    </div>
+  );
+}
+
 // ─── Setup screen ─────────────────────────────────────────────────────────────
 
-function SetupScreen({ onSave }: { onSave: (propertyId: string, serviceAccountJson: string) => Promise<void> }) {
+function SetupScreen({ onSave, oauthConfigured, needsPropertyId, onPropertyIdSave, gaProperties, propertiesLoading, propertiesError, onRetryProperties }: {
+  onSave: (propertyId: string, serviceAccountJson: string) => Promise<void>;
+  oauthConfigured: boolean;
+  needsPropertyId: boolean;
+  onPropertyIdSave: (propertyId: string) => Promise<void>;
+  gaProperties: GAProperty[];
+  propertiesLoading: boolean;
+  propertiesError: string;
+  onRetryProperties: () => void;
+}) {
   const [id, setId] = useState('');
   const [json, setJson] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const [showManual, setShowManual] = useState(false);
 
   const canSave = id.trim() && json.trim();
+
+  function handleFileLoad(file: File) {
+    if (!file.name.endsWith('.json')) {
+      setErr('Please upload a .json file');
+      return;
+    }
+    if (file.size > 50_000) {
+      setErr('File too large — service account keys are typically under 5 KB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      try {
+        const parsed = JSON.parse(text);
+        if (!parsed.client_email || !parsed.private_key) {
+          setErr('Invalid service account key — missing client_email or private_key');
+          return;
+        }
+        setJson(text);
+        setFileName(file.name);
+        setErr('');
+      } catch {
+        setErr('Invalid JSON file');
+      }
+    };
+    reader.readAsText(file);
+  }
 
   async function handleSave() {
     if (!canSave) return;
@@ -209,6 +323,114 @@ function SetupScreen({ onSave }: { onSave: (propertyId: string, serviceAccountJs
     }
   }
 
+  async function handlePropertyIdSave() {
+    if (!id.trim()) return;
+    setSaving(true);
+    setErr('');
+    try {
+      await onPropertyIdSave(id.trim());
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // After OAuth, user picks their GA4 property from a list
+  if (needsPropertyId) {
+    const propertyOptions = gaProperties.map((p) => ({
+      value: p.id,
+      label: `${p.displayName}  ·  ${p.accountName}`,
+    }));
+
+    return (
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: '60px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <svg width="20" height="20" fill="none" stroke="var(--success)" strokeWidth="2" viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '-0.5px' }}>
+            Google account connected
+          </h1>
+        </div>
+        <p style={{ color: 'var(--txt-muted)', marginBottom: 32, lineHeight: 1.6 }}>
+          Select the GA4 property you want to connect to Recgon.
+        </p>
+
+        {propertiesLoading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--txt-muted)', fontSize: '0.85rem', marginBottom: 20, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+            <div className="loader-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+            Loading your properties…
+          </div>
+        )}
+
+        {!propertiesLoading && propertiesError && (() => {
+          const isApiNotEnabled = propertiesError.includes('has not been used') || propertiesError.includes('disabled');
+          return (
+            <div className="glass-card" style={{ borderColor: 'rgba(255,59,48,0.3)', background: 'rgba(255,59,48,0.04)', marginBottom: 20, padding: '16px 20px' }}>
+              {isApiNotEnabled ? (
+                <>
+                  <p style={{ color: 'var(--danger)', fontWeight: 600, fontSize: '0.88rem', marginBottom: 8, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                    ! Google Analytics Admin API is not enabled
+                  </p>
+                  <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <li style={{ color: 'var(--txt-muted)', fontSize: '0.83rem', lineHeight: 1.6 }}>Go to <strong>Google Cloud Console → APIs &amp; Services → Library</strong></li>
+                    <li style={{ color: 'var(--txt-muted)', fontSize: '0.83rem', lineHeight: 1.6 }}>Search for <strong>&quot;Google Analytics Admin API&quot;</strong> and click Enable</li>
+                    <li style={{ color: 'var(--txt-muted)', fontSize: '0.83rem', lineHeight: 1.6 }}>Wait 1–2 minutes, then click Retry below</li>
+                  </ol>
+                </>
+              ) : (
+                <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                  {propertiesError}
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
+        {!propertiesLoading && !propertiesError && gaProperties.length === 0 && (
+          <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', marginBottom: 16, lineHeight: 1.6 }}>
+            No GA4 properties found on this account. Make sure you have at least one GA4 property in Google Analytics.
+          </p>
+        )}
+
+        {!propertiesLoading && gaProperties.length > 0 && (
+          <div className="form-group" style={{ marginBottom: 20 }}>
+            <label className="form-label">GA4 Property</label>
+            <Select
+              value={id}
+              onChange={setId}
+              options={propertyOptions}
+              placeholder="Select a property…"
+            />
+          </div>
+        )}
+
+        {err && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: '0 0 16px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{err}</p>}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          {propertiesError && (
+            <button
+              onClick={onRetryProperties}
+              disabled={propertiesLoading}
+              className="btn btn-secondary btn-sm"
+            >
+              Retry
+            </button>
+          )}
+          <button
+            onClick={handlePropertyIdSave}
+            disabled={saving || !id.trim() || propertiesLoading}
+            className="btn btn-primary btn-sm"
+            style={{ opacity: saving || !id.trim() || propertiesLoading ? 0.5 : 1, cursor: saving || !id.trim() || propertiesLoading ? 'not-allowed' : 'pointer' }}
+          >
+            {saving ? 'Saving…' : 'Continue'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: 620, margin: '0 auto', padding: '60px 24px' }}>
       <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8, fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '-0.5px' }}>
@@ -218,55 +440,156 @@ function SetupScreen({ onSave }: { onSave: (propertyId: string, serviceAccountJs
         Recgon reads your GA4 data to surface insights and recommendations.
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-        {/* Service account JSON */}
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label">Service Account Key (JSON)</label>
-          <textarea
-            value={json}
-            onChange={(e) => setJson(e.target.value)}
-            placeholder={'{\n  "type": "service_account",\n  "project_id": "...",\n  "client_email": "...",\n  "private_key": "..."\n}'}
-            rows={8}
-            className="form-textarea"
-            style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: '0.78rem', resize: 'vertical', lineHeight: 1.5 }}
-          />
-          <div style={{ color: 'var(--txt-faint)', fontSize: '0.78rem', lineHeight: 1.8 }}>
-            <strong style={{ color: 'var(--txt-muted)' }}>How to get this:</strong><br />
-            1. In <strong>Google Cloud Console</strong>, search for <em>Google Analytics Data API</em> and enable it<br />
-            2. Go to <strong>IAM &amp; Admin</strong> → Service Accounts → Create Service Account (skip role grants)<br />
-            3. Open the created service account → <strong>Keys</strong> tab → Add Key → Create new key → <strong>JSON</strong> → download<br />
-            4. Open the downloaded file and paste its full contents into the field above<br />
-            5. In <strong>Google Analytics</strong> → Admin → <strong>Property Access Management</strong> → click + → add the service account&apos;s email (<code style={{ background: 'rgba(128,128,128,0.1)', padding: '1px 5px', borderRadius: 3 }}>client_email</code> in the JSON) with <strong>Viewer</strong> role
-          </div>
-        </div>
-
-        {/* Property ID */}
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label">GA4 Property ID</label>
-          <input
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-            placeholder="e.g. 123456789"
-            className="form-input"
-            style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-          />
-          <p style={{ color: 'var(--txt-faint)', fontSize: '0.78rem', lineHeight: 1.8, marginTop: 8 }}>
-            In <strong style={{ color: 'var(--txt-muted)' }}>Google Analytics</strong>, click <strong style={{ color: 'var(--txt-muted)' }}>Admin</strong> (bottom-left gear icon) → under the <em>Property</em> column click <strong style={{ color: 'var(--txt-muted)' }}>Property details</strong> → the <strong style={{ color: 'var(--txt-muted)' }}>Property ID</strong> is the number in the top-right (e.g. <code style={{ background: 'rgba(128,128,128,0.1)', padding: '1px 5px', borderRadius: 3 }}>123456789</code>). Do not use the Measurement ID (G-XXXXXXXX).
+      {/* OAuth — primary option */}
+      {oauthConfigured && (
+        <div className="glass-card" style={{ marginBottom: 24, padding: '28px 24px', textAlign: 'center' }}>
+          <p style={{ fontSize: 14, color: 'var(--txt-muted)', marginBottom: 20, lineHeight: 1.6 }}>
+            Sign in with your Google account to grant Recgon read-only access to your analytics.
+          </p>
+          <a
+            href="/api/analytics/oauth"
+            className="btn btn-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 28px', fontSize: 14, textDecoration: 'none' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            Connect with Google
+          </a>
+          <p style={{ fontSize: 12, color: 'var(--txt-faint)', marginTop: 14 }}>
+            Read-only access — Recgon can only view your analytics data
           </p>
         </div>
+      )}
 
-        {err && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{err}</p>}
+      {/* Divider */}
+      {oauthConfigured && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <span style={{ fontSize: 12, color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', monospace" }}>or</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        </div>
+      )}
 
+      {/* Service account — secondary / fallback */}
+      {(!oauthConfigured || showManual) ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Service Account Key (JSON)</label>
+
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const file = e.dataTransfer.files[0];
+                if (file) handleFileLoad(file);
+              }}
+              style={{
+                border: `2px dashed ${dragOver ? 'var(--signature)' : json ? 'var(--success)' : 'var(--btn-secondary-border)'}`,
+                borderRadius: 12,
+                padding: '24px 20px',
+                textAlign: 'center',
+                marginBottom: 12,
+                background: dragOver ? 'rgba(232,168,196,0.05)' : json ? 'rgba(52,199,89,0.04)' : 'transparent',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer',
+              }}
+              onClick={() => document.getElementById('sa-file-input')?.click()}
+            >
+              <input
+                id="sa-file-input"
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileLoad(file);
+                  e.target.value = '';
+                }}
+              />
+              {json ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <svg width="16" height="16" fill="none" stroke="var(--success)" strokeWidth="2" viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span style={{ fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>
+                    {fileName || 'Key loaded'} — click to replace
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <svg width="24" height="24" fill="none" stroke="var(--txt-muted)" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 8 }}>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  <p style={{ fontSize: 13, color: 'var(--txt-muted)', margin: 0 }}>
+                    Drop your <strong>.json</strong> key file here or click to browse
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--txt-faint)', margin: '6px 0 0' }}>
+                    Or paste the JSON contents below
+                  </p>
+                </>
+              )}
+            </div>
+
+            <textarea
+              value={json}
+              onChange={(e) => { setJson(e.target.value); setFileName(''); }}
+              placeholder={'{\n  "type": "service_account",\n  "project_id": "...",\n  "client_email": "...",\n  "private_key": "..."\n}'}
+              rows={6}
+              className="form-textarea"
+              style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: '0.78rem', resize: 'vertical', lineHeight: 1.5 }}
+            />
+            <div style={{ color: 'var(--txt-faint)', fontSize: '0.78rem', lineHeight: 1.8, marginTop: 8 }}>
+              <strong style={{ color: 'var(--txt-muted)' }}>How to get this:</strong><br />
+              1. In <strong>Google Cloud Console</strong>, search for <em>Google Analytics Data API</em> and enable it<br />
+              2. Go to <strong>IAM &amp; Admin</strong> → Service Accounts → Create Service Account (skip role grants)<br />
+              3. Open the created service account → <strong>Keys</strong> tab → Add Key → Create new key → <strong>JSON</strong> → download<br />
+              4. Drop the downloaded file above or paste its contents<br />
+              5. In <strong>Google Analytics</strong> → Admin → <strong>Property Access Management</strong> → click + → add the service account&apos;s email (<code style={{ background: 'rgba(128,128,128,0.1)', padding: '1px 5px', borderRadius: 3 }}>client_email</code> in the JSON) with <strong>Viewer</strong> role
+            </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">GA4 Property ID</label>
+            <input
+              value={id}
+              onChange={(e) => setId(e.target.value)}
+              placeholder="e.g. 123456789"
+              className="form-input"
+              style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}
+              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            />
+            <p style={{ color: 'var(--txt-faint)', fontSize: '0.78rem', lineHeight: 1.8, marginTop: 8 }}>
+              In <strong style={{ color: 'var(--txt-muted)' }}>Google Analytics</strong> → <strong style={{ color: 'var(--txt-muted)' }}>Admin</strong> → <strong style={{ color: 'var(--txt-muted)' }}>Property details</strong> → copy the numeric <strong style={{ color: 'var(--txt-muted)' }}>Property ID</strong> (not the Measurement ID).
+            </p>
+          </div>
+
+          {err && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{err}</p>}
+
+          <button
+            onClick={handleSave}
+            disabled={saving || !canSave}
+            className="btn btn-primary btn-sm"
+            style={{ alignSelf: 'flex-start', opacity: saving || !canSave ? 0.5 : 1, cursor: saving || !canSave ? 'not-allowed' : 'pointer' }}
+          >
+            {saving ? 'Connecting…' : 'Connect Property'}
+          </button>
+        </div>
+      ) : (
         <button
-          onClick={handleSave}
-          disabled={saving || !canSave}
-          className="btn btn-primary btn-sm"
-          style={{ alignSelf: 'flex-start', opacity: saving || !canSave ? 0.5 : 1, cursor: saving || !canSave ? 'not-allowed' : 'pointer' }}
+          onClick={() => setShowManual(true)}
+          className="btn btn-secondary btn-sm"
+          style={{ width: '100%', justifyContent: 'center' }}
         >
-          {saving ? 'Connecting…' : 'Connect Property'}
+          Use service account instead
         </button>
-      </div>
+      )}
     </div>
   );
 }
@@ -416,7 +739,11 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  const { currentTeam } = useTeam();
   const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [hasCredentials, setHasCredentials] = useState(false);
+  const [oauthConfigured, setOauthConfigured] = useState(false);
+  const [authMethod, setAuthMethod] = useState<'oauth' | 'service_account' | null>(null);
   const [days, setDays] = useState(30);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [insights, setInsights] = useState<AnalyticsInsights | null>(null);
@@ -424,8 +751,21 @@ export default function AnalyticsPage() {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [error, setError] = useState('');
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [linkingPropertyId, setLinkingPropertyId] = useState('');
+  const [linkingSaving, setLinkingSaving] = useState(false);
+  const [linkingError, setLinkingError] = useState('');
+  const [gaProperties, setGaProperties] = useState<GAProperty[]>([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(false);
+  const [propertiesError, setPropertiesError] = useState('');
 
-  const insightsKey = propertyId ? `analytics_insights_${propertyId}_${days}` : null;
+  const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
+  const activePropertyId = selectedProject?.analyticsPropertyId ?? propertyId;
+
+  const insightsKey = activePropertyId
+    ? `analytics_insights_${activePropertyId}_${selectedProjectId ?? 'global'}_${days}`
+    : null;
 
   // Load cached insights from localStorage when property/days are known
   useEffect(() => {
@@ -436,22 +776,54 @@ export default function AnalyticsPage() {
     } catch { /* ignore */ }
   }, [insightsKey]);
 
+  async function fetchProperties() {
+    setPropertiesLoading(true);
+    setPropertiesError('');
+    try {
+      const res = await fetch('/api/analytics/properties');
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error ?? 'Failed to load properties');
+      }
+      setGaProperties(await res.json());
+    } catch (e: unknown) {
+      setPropertiesError(e instanceof Error ? e.message : 'Failed to load properties');
+    } finally {
+      setPropertiesLoading(false);
+    }
+  }
+
   // Check config on mount
   useEffect(() => {
     async function checkConfig() {
-      const res = await fetch('/api/analytics/property').then((r) => r.ok ? r.json() : { propertyId: null, hasCredentials: false });
-      // Only consider configured if both propertyId and credentials are stored
+      const res = await fetch('/api/analytics/property').then((r) => r.ok ? r.json() : { propertyId: null, hasCredentials: false, oauthConfigured: false, authMethod: null });
       setPropertyId(res.hasCredentials && res.propertyId ? res.propertyId : null);
+      setHasCredentials(res.hasCredentials ?? false);
+      setOauthConfigured(res.oauthConfigured ?? false);
+      setAuthMethod(res.authMethod ?? null);
       setConfigLoaded(true);
+      if (res.authMethod === 'oauth' && res.hasCredentials) {
+        fetchProperties();
+      }
     }
     checkConfig();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchData = useCallback(async (selectedDays: number) => {
+  // Load project list
+  useEffect(() => {
+    if (!currentTeam) return;
+    fetch(`/api/projects?teamId=${currentTeam.id}`).then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
+  }, [currentTeam]);
+
+  const fetchData = useCallback(async (selectedDays: number, pId?: string | null) => {
     setLoadingData(true);
     setError('');
     try {
-      const res = await fetch(`/api/analytics/data?days=${selectedDays}`);
+      const projectParam = pId ? `&projectId=${pId}` : '';
+      const res = await fetch(`/api/analytics/data?days=${selectedDays}${projectParam}`, {
+        headers: currentTeam ? { 'x-team-id': currentTeam.id } : {},
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Failed to fetch');
       setData(json);
@@ -460,14 +832,15 @@ export default function AnalyticsPage() {
     } finally {
       setLoadingData(false);
     }
-  }, []);
+  }, [currentTeam]);
 
-  // Auto-fetch when property is set
+  // Auto-fetch when config or selected project changes
   useEffect(() => {
-    if (configLoaded && propertyId) {
-      fetchData(days);
+    if (!configLoaded) return;
+    if (hasCredentials && activePropertyId) {
+      fetchData(days, selectedProjectId);
     }
-  }, [configLoaded, propertyId, fetchData, days]);
+  }, [configLoaded, hasCredentials, activePropertyId, fetchData, days, selectedProjectId]);
 
   async function handleSaveProperty(id: string, serviceAccountJson: string) {
     const res = await fetch('/api/analytics/property', {
@@ -478,6 +851,41 @@ export default function AnalyticsPage() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Failed to save');
     setPropertyId(id);
+    setHasCredentials(true);
+  }
+
+  async function handlePropertyIdSave(id: string) {
+    const res = await fetch('/api/analytics/property', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'set_property_id', propertyId: id }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error ?? 'Failed to save');
+    setPropertyId(id);
+  }
+
+  async function handleLinkProperty(projectId: string, pid: string) {
+    setLinkingSaving(true);
+    setLinkingError('');
+    try {
+      const res = await fetch('/api/analytics/property', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(currentTeam ? { 'x-team-id': currentTeam.id } : {}) },
+        body: JSON.stringify({ type: 'set_project_property', projectId, propertyId: pid }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Failed to save');
+      setProjects((prev) =>
+        prev.map((p) => p.id === projectId ? { ...p, analyticsPropertyId: pid } : p)
+      );
+      setLinkingPropertyId('');
+      fetchData(days, projectId);
+    } catch (e: unknown) {
+      setLinkingError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setLinkingSaving(false);
+    }
   }
 
   async function handleAnalyze() {
@@ -504,7 +912,7 @@ export default function AnalyticsPage() {
 
   function handleDaysChange(newDays: number) {
     setDays(newDays);
-    if (propertyId) fetchData(newDays);
+    if (activePropertyId) fetchData(newDays, selectedProjectId);
   }
 
   if (!configLoaded) {
@@ -515,71 +923,148 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Show setup screen if credentials or property not configured
-  if (!propertyId) {
-    return <SetupScreen onSave={handleSaveProperty} />;
+  const needsPropertyId = authMethod === 'oauth' && hasCredentials && !propertyId;
+
+  // Show setup screen if credentials not configured, or OAuth user hasn't selected a property yet
+  if (!hasCredentials || needsPropertyId) {
+    return (
+      <SetupScreen
+        onSave={handleSaveProperty}
+        oauthConfigured={oauthConfigured}
+        needsPropertyId={needsPropertyId}
+        onPropertyIdSave={handlePropertyIdSave}
+        gaProperties={gaProperties}
+        propertiesLoading={propertiesLoading}
+        propertiesError={propertiesError}
+        onRetryProperties={fetchProperties}
+      />
+    );
   }
 
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 4, fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '-0.5px' }}>
-            <span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>analytics
-          </h1>
-          <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
-            property <code style={{ color: 'var(--signature)', fontSize: '0.8rem' }}>{propertyId}</code>
-            {data && <> · fetched {new Date(data.fetchedAt).toLocaleTimeString()}</>}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Days selector */}
-          <div style={{ display: 'flex', gap: 4, background: 'var(--glass-substrate)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', padding: 4 }}>
-            {DAYS_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => handleDaysChange(opt.value)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 10,
-                  border: 'none',
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                  background: days === opt.value ? 'var(--btn-primary-bg)' : 'transparent',
-                  color: days === opt.value ? 'var(--btn-primary-txt)' : 'var(--txt-muted)',
-                  transition: 'all 0.15s',
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 4, fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '-0.5px' }}>
+          <span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>analytics
+        </h1>
+        <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace", marginBottom: 16 }}>
+          {selectedProject && selectedProject.analyticsPropertyId && <>property <code style={{ color: 'var(--signature)', fontSize: '0.8rem' }}>{selectedProject.analyticsPropertyId}</code> · </>}
+          {selectedProject ? selectedProject.name : 'All projects'}
+          {data && <> · fetched {new Date(data.fetchedAt).toLocaleTimeString()}</>}
+        </p>
+
+        {/* Toolbar strip */}
+        <div className="analytics-toolbar" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'var(--glass-substrate)',
+          backdropFilter: 'blur(40px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+          border: '1px solid var(--btn-secondary-border)',
+          borderRadius: 'var(--r-sm)',
+          padding: '8px 12px',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.05)',
+          gap: 12,
+        }}>
+          {/* Left: project selector */}
+          <div style={{ flexShrink: 0, minWidth: 0 }}>
+            {projects.length > 0 ? (
+              <Select
+                value={selectedProjectId ?? ''}
+                onChange={(val) => {
+                  setSelectedProjectId(val || null);
+                  setData(null);
+                  setInsights(null);
+                  setError('');
+                  setLinkingPropertyId('');
+                  setLinkingError('');
                 }}
-              >
-                {opt.label}
-              </button>
-            ))}
+                placeholder="All projects"
+                options={[
+                  { value: '', label: 'All projects' },
+                  ...projects.map((p) => ({
+                    value: p.id,
+                    label: p.analyticsPropertyId ? `${p.name}  ·  ${p.analyticsPropertyId}` : `${p.name}  ·  not linked`,
+                  })),
+                ]}
+                style={{ width: 220 }}
+              />
+            ) : (
+              <span style={{ fontSize: '0.85rem', color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>All projects</span>
+            )}
           </div>
-          {/* Refresh */}
-          <button
-            onClick={() => fetchData(days)}
-            disabled={loadingData}
-            className="btn btn-secondary btn-sm"
-            style={{ opacity: loadingData ? 0.5 : 1, cursor: loadingData ? 'not-allowed' : 'pointer' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={loadingData ? { animation: 'spin 1s linear infinite' } : {}}>
-              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.45"/>
-            </svg>
-            Refresh
-          </button>
-          {/* Change property */}
-          <button
-            onClick={() => setPropertyId(null)}
-            className="btn btn-secondary btn-sm"
-            style={{
-            }}
-          >
-            Change property
-          </button>
+
+          {/* Divider */}
+          <div style={{ width: 1, height: 22, background: 'var(--btn-secondary-border)', flexShrink: 0 }} />
+
+          {/* Right: time + controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 3, background: 'var(--bg-deep)', border: '1px solid var(--btn-secondary-border)', borderRadius: 10, padding: 3 }}>
+              {DAYS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleDaysChange(opt.value)}
+                  className={`day-btn${days === opt.value ? ' day-btn--active' : ''}`}
+                  style={{
+                    padding: '5px 13px',
+                    borderRadius: 8,
+                    border: 'none',
+                    fontSize: '0.78rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                    background: days === opt.value ? 'var(--btn-primary-bg)' : 'transparent',
+                    color: days === opt.value ? 'var(--btn-primary-txt)' : 'var(--txt-muted)',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => fetchData(days, selectedProjectId)}
+              disabled={loadingData}
+              className="btn btn-secondary btn-sm"
+              style={{ opacity: loadingData ? 0.5 : 1, cursor: loadingData ? 'not-allowed' : 'pointer' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={loadingData ? { animation: 'spin 1s linear infinite' } : {}}>
+                <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.45"/>
+              </svg>
+              Refresh
+            </button>
+            <button
+              onClick={async () => {
+                await fetch('/api/analytics/property', { method: 'DELETE' });
+                setPropertyId(null);
+                setHasCredentials(false);
+                setAuthMethod(null);
+                setData(null);
+                setError('');
+              }}
+              className="btn btn-secondary btn-sm"
+              style={{ color: 'var(--txt-muted)' }}
+            >
+              Disconnect
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Link property banner — shown when a project is selected but has no GA4 property */}
+      {selectedProject && !selectedProject.analyticsPropertyId && (
+        <LinkPropertyBanner
+          projectName={selectedProject.name}
+          propertyId={linkingPropertyId}
+          onChange={setLinkingPropertyId}
+          onSave={() => handleLinkProperty(selectedProject.id, linkingPropertyId)}
+          saving={linkingSaving}
+          error={linkingError}
+          gaProperties={gaProperties}
+          propertiesLoading={propertiesLoading}
+        />
+      )}
 
       {/* Error */}
       {error && (() => {

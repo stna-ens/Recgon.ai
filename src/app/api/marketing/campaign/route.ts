@@ -4,24 +4,28 @@ import { getProject, saveCampaignToProject, generateId } from '@/lib/storage';
 import { generateCampaignPlan, CampaignType } from '@/lib/contentGenerator';
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, GENERATE_LIMIT } from '@/lib/rateLimit';
+import { verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { serverError } from '@/lib/apiError';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const ip = request.headers.get('x-forwarded-for') ?? 'local';
-  if (isRateLimited(`campaign:${ip}`, GENERATE_LIMIT)) {
+  if (await isRateLimited(`campaign:${ip}`, GENERATE_LIMIT)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
   try {
     validateEnv();
     const body = await request.json();
-    const { projectId, campaignType, goal, duration } = body as {
+    const { projectId, campaignType, goal, duration, websiteUrl, teamId } = body as {
       projectId: string;
       campaignType: CampaignType;
       goal: string;
       duration: string;
+      websiteUrl?: string;
+      teamId: string;
     };
 
     if (!projectId || !campaignType || !goal || !duration) {
@@ -30,8 +34,12 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+    if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
 
-    const project = getProject(projectId, session.user.id);
+    const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
+    if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+
+    const project = await getProject(projectId, teamId);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -43,7 +51,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const plan = await generateCampaignPlan(project.analysis, campaignType, goal, duration);
+    const plan = await generateCampaignPlan(project.analysis, campaignType, goal, duration, websiteUrl);
 
     const campaign = {
       id: generateId(),
@@ -55,12 +63,10 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    saveCampaignToProject(projectId, campaign, session.user.id);
+    await saveCampaignToProject(projectId, campaign, teamId);
 
     return NextResponse.json({ campaign });
   } catch (error) {
-    console.error('[campaign route error]', error);
-    const message = error instanceof Error ? error.message : 'Campaign planning failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError('POST /api/marketing/campaign', error);
   }
 }

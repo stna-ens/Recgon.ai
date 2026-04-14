@@ -1,0 +1,30 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.recgon.app" }],
+      "destination": "https://recgon.app/:path*",
+      "permanent": true
+    }
+  ],
+  "functions": {
+    "src/app/api/projects/[id]/analyze/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/projects/[id]/pdf/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/chat/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/marketing/generate/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/marketing/campaign/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/analytics/analyze/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

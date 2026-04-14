@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { chat } from '@/lib/openai';
+import { chat } from '@/lib/gemini';
 import { ANALYTICS_SYSTEM, analyticsUserPrompt } from '@/lib/prompts';
 import { AnalyticsInsightsSchema, parseAIResponse } from '@/lib/schemas';
+import { serverError } from '@/lib/apiError';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -18,8 +19,7 @@ export async function POST(req: NextRequest) {
     });
     const insights = parseAIResponse(raw, AnalyticsInsightsSchema);
     return NextResponse.json(insights);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'AI analysis failed';
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch (err) {
+    return serverError('POST /api/analytics/analyze', err);
   }
 }

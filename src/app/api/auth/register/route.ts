@@ -1,37 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { z } from 'zod';
+import { supabase } from '@/lib/supabase';
 import { getUserByEmail, createUser } from '@/lib/userStorage';
+import { isRateLimited, REGISTER_LIMIT } from '@/lib/rateLimit';
+import { logger } from '@/lib/logger';
+
+const RegisterSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  password: z.string().min(8).max(200),
+  nickname: z.string().trim().min(2).max(60),
+  otp: z.string().length(6).regex(/^\d{6}$/),
+});
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
+  if (await isRateLimited(`register:${ip}`, REGISTER_LIMIT)) {
+    return NextResponse.json({ error: 'Too many signup attempts. Try again later.' }, { status: 429 });
+  }
+
   try {
-    const { email, password, nickname } = await request.json();
+    const body = await request.json();
+    const parsed = RegisterSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
+    const { email, password, nickname, otp } = parsed.data;
 
-    if (!email || !password || !nickname) {
-      return NextResponse.json({ error: 'Email, password, and nickname are required' }, { status: 400 });
+    if (!email.endsWith('@metu.edu.tr')) {
+      return NextResponse.json({ error: 'Only metu.edu.tr email addresses are allowed' }, { status: 403 });
     }
 
-    if (nickname.trim().length < 2) {
-      return NextResponse.json({ error: 'Nickname must be at least 2 characters' }, { status: 400 });
+    // Validate OTP
+    const { data: verification, error: verifyErr } = await supabase
+      .from('email_verifications')
+      .select('code, expires_at')
+      .eq('email', email)
+      .single();
+
+    if (verifyErr || !verification) {
+      return NextResponse.json({ error: 'Invalid or expired verification code' }, { status: 400 });
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    if (new Date(verification.expires_at) < new Date()) {
+      await supabase.from('email_verifications').delete().eq('email', email);
+      return NextResponse.json({ error: 'Verification code has expired. Please request a new one.' }, { status: 400 });
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+    if (verification.code !== otp) {
+      return NextResponse.json({ error: 'Incorrect verification code' }, { status: 400 });
     }
 
-    const existing = getUserByEmail(email);
+    // Clean up used OTP
+    await supabase.from('email_verifications').delete().eq('email', email);
+
+    const existing = await getUserByEmail(email);
     if (existing) {
-      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
+      return NextResponse.json({ error: 'Unable to create account' }, { status: 409 });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = createUser(email, passwordHash, nickname.trim());
+    const user = await createUser(email, passwordHash, nickname);
 
     return NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
+  } catch (err) {
+    logger.error('register failed', err);
+    return NextResponse.json({ error: 'Unable to create account' }, { status: 500 });
   }
 }
