@@ -157,6 +157,24 @@ interface ProjectForMentor {
   };
 }
 
+export function classifyChatProjectPrompt(
+  message: string,
+  projects: { id: string; name: string; description?: string }[],
+): string {
+  const lines = projects.map((p) => `- ${p.id} | ${p.name}${p.description ? ` — ${p.description.slice(0, 120)}` : ''}`).join('\n');
+  return `You are a classifier. Given a chat message and a list of the user's projects, decide which single project (if any) the message is primarily about.
+
+Projects:
+${lines || '(none)'}
+
+Message:
+"""
+${message.slice(0, 1200)}
+"""
+
+Respond with JSON only: {"projectId": "<id or null>"}. Use null if the message is general/unclear or not about a specific project.`;
+}
+
 export function generateSuggestions(projects: ProjectForMentor[]): string[] {
   const analyzed = projects.filter((p) => p.analysis);
 

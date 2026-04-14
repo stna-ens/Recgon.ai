@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAllProjects } from '@/lib/storage';
 import { getGeminiClient, withRetry } from '@/lib/gemini';
-import { mentorSystemPrompt, generateSuggestions } from '@/lib/prompts';
+import { mentorSystemPrompt, generateSuggestions, classifyChatProjectPrompt } from '@/lib/prompts';
 import {
   getConversationMessages,
   saveMessages,
@@ -12,6 +12,7 @@ import {
   verifyConversationOwner,
   deriveTitle,
   renameConversation,
+  setConversationProject,
 } from '@/lib/chatStorage';
 import { getUserTeams } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
@@ -78,6 +79,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    const projects = await getAllProjects(teamId);
+
     // Resolve conversation: verify ownership, or create a new one
     let convId = incomingConvId ?? null;
     let createdNew = false;
@@ -89,8 +92,6 @@ export async function POST(request: NextRequest) {
       convId = conv.id;
       createdNew = true;
     }
-
-    const projects = await getAllProjects(teamId);
 
     // Use last 30 messages from this conversation as memory context
     const storedHistory = await getConversationMessages(convId);
@@ -141,9 +142,30 @@ export async function POST(request: NextRequest) {
           { role: 'assistant', content: fullResponse, ts: now + 1 },
         ]);
 
-        // If we auto-created the conversation, refine the title from the first message
+        // If we auto-created the conversation, refine the title and classify to a project
         if (createdNew) {
           await renameConversation(userId, resolvedConvId, deriveTitle(message));
+          if (projects.length > 0) {
+            try {
+              const classifier = client.getGenerativeModel({
+                model: 'gemini-2.5-flash',
+                generationConfig: { responseMimeType: 'application/json', temperature: 0 },
+              });
+              const res = await classifier.generateContent(
+                classifyChatProjectPrompt(
+                  message,
+                  projects.map((p) => ({ id: p.id, name: p.name, description: p.analysis?.description })),
+                ),
+              );
+              const parsed = JSON.parse(res.response.text()) as { projectId?: string | null };
+              const match = parsed.projectId && projects.some((p) => p.id === parsed.projectId)
+                ? parsed.projectId
+                : null;
+              if (match) await setConversationProject(userId, resolvedConvId, match);
+            } catch {
+              // classifier is best-effort; silently skip
+            }
+          }
         }
       },
     });

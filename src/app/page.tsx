@@ -14,9 +14,11 @@ interface ChatConversation {
   title: string;
   updatedAt: number;
   createdAt: number;
+  projectId: string | null;
 }
 
 interface Project {
+  id: string;
   name: string;
   analysis?: unknown;
   marketingContent?: unknown[];
@@ -232,6 +234,15 @@ export default function DashboardPage() {
       await loadConversation(convs[0].id);
     }
   }, [streaming, activeConvId, refreshConversations, loadConversation]);
+
+  const assignProject = useCallback(async (convId: string, projectId: string | null) => {
+    await fetch(`/api/chat/conversations/${convId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId }),
+    });
+    await refreshConversations();
+  }, [refreshConversations]);
 
   const commitRename = useCallback(async (convId: string) => {
     const title = renameDraft.trim();
@@ -449,69 +460,119 @@ export default function DashboardPage() {
                 no history yet
               </div>
             )}
-            {conversations.map((c) => {
-              const isActive = c.id === activeConvId;
-              const isRenaming = renamingId === c.id;
-              return (
-                <div
-                  key={c.id}
-                  className="chat-history-row"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    padding: '6px 8px', borderRadius: 5, marginBottom: 2,
-                    background: isActive ? 'var(--btn-secondary-border)' : 'transparent',
-                    cursor: streaming ? 'default' : 'pointer',
-                  }}
-                  onClick={() => !streaming && !isRenaming && loadConversation(c.id)}
-                >
-                  {isRenaming ? (
-                    <input
-                      autoFocus
-                      value={renameDraft}
-                      onChange={(e) => setRenameDraft(e.target.value)}
-                      onBlur={() => commitRename(c.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); commitRename(c.id); }
-                        if (e.key === 'Escape') { e.preventDefault(); setRenamingId(null); }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        flex: 1, background: 'var(--bg-pure)', border: '1px solid var(--btn-secondary-border)',
-                        borderRadius: 4, color: 'var(--txt-pure)', padding: '2px 6px',
-                        fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12, minWidth: 0,
-                      }}
-                    />
-                  ) : (
-                    <>
-                      <span style={{
-                        flex: 1, fontSize: 12, color: 'var(--txt-pure)',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                      }}>{c.title}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRenamingId(c.id);
-                          setRenameDraft(c.title);
-                        }}
-                        className="chat-history-action"
-                        title="Rename"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
-                      >✎</button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteConversationRow(c.id);
-                        }}
-                        className="chat-history-action"
-                        title="Delete"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
-                      >×</button>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+            {(() => {
+              const groups = new Map<string, ChatConversation[]>();
+              const projectById = new Map(projects.map((p) => [p.id, p.name]));
+              for (const c of conversations) {
+                const key = c.projectId && projectById.has(c.projectId) ? c.projectId : '__none__';
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key)!.push(c);
+              }
+              const orderedKeys = [
+                ...projects.filter((p) => groups.has(p.id)).map((p) => p.id),
+                ...(groups.has('__none__') ? ['__none__'] : []),
+              ];
+              return orderedKeys.map((key) => {
+                const label = key === '__none__' ? 'general' : projectById.get(key) ?? 'unknown';
+                const items = groups.get(key)!;
+                return (
+                  <div key={key} style={{ marginBottom: 8 }}>
+                    <div style={{
+                      padding: '6px 10px 2px', fontSize: 10, color: 'var(--txt-faint)',
+                      textTransform: 'uppercase', letterSpacing: '0.6px', opacity: 0.7,
+                      fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                    }}>{label}</div>
+                    {items.map((c) => {
+                      const isActive = c.id === activeConvId;
+                      const isRenaming = renamingId === c.id;
+                      return (
+                        <div
+                          key={c.id}
+                          className="chat-history-row"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: '6px 8px', borderRadius: 5, marginBottom: 2,
+                            background: isActive ? 'var(--btn-secondary-border)' : 'transparent',
+                            cursor: streaming ? 'default' : 'pointer',
+                          }}
+                          onClick={() => !streaming && !isRenaming && loadConversation(c.id)}
+                        >
+                          {isRenaming ? (
+                            <input
+                              autoFocus
+                              value={renameDraft}
+                              onChange={(e) => setRenameDraft(e.target.value)}
+                              onBlur={() => commitRename(c.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { e.preventDefault(); commitRename(c.id); }
+                                if (e.key === 'Escape') { e.preventDefault(); setRenamingId(null); }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                flex: 1, background: 'var(--bg-pure)', border: '1px solid var(--btn-secondary-border)',
+                                borderRadius: 4, color: 'var(--txt-pure)', padding: '2px 6px',
+                                fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12, minWidth: 0,
+                              }}
+                            />
+                          ) : (
+                            <>
+                              <span style={{
+                                flex: 1, fontSize: 12, color: 'var(--txt-pure)',
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                              }}>{c.title}</span>
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="chat-history-action"
+                                title="Assign to project"
+                                style={{ position: 'relative', width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <span style={{ color: 'var(--txt-faint)', fontSize: 11, pointerEvents: 'none' }}>◈</span>
+                                <select
+                                  value={c.projectId ?? ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    assignProject(c.id, val === '' ? null : val);
+                                  }}
+                                  style={{
+                                    position: 'absolute', inset: 0, opacity: 0,
+                                    cursor: 'pointer', width: '100%', height: '100%',
+                                  }}
+                                >
+                                  <option value="">general</option>
+                                  {projects.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRenamingId(c.id);
+                                  setRenameDraft(c.title);
+                                }}
+                                className="chat-history-action"
+                                title="Rename"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
+                              >✎</button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteConversationRow(c.id);
+                                }}
+                                className="chat-history-action"
+                                title="Delete"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
+                              >×</button>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
 

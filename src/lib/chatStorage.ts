@@ -12,6 +12,7 @@ export interface ChatConversation {
   title: string;
   updatedAt: number;
   createdAt: number;
+  projectId: string | null;
 }
 
 const MAX_MESSAGES = 120;
@@ -19,7 +20,7 @@ const MAX_MESSAGES = 120;
 export async function listConversations(userId: string): Promise<ChatConversation[]> {
   const { data } = await supabase
     .from('chat_conversations')
-    .select('id, title, created_at, updated_at')
+    .select('id, title, created_at, updated_at, project_id')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
 
@@ -28,10 +29,15 @@ export async function listConversations(userId: string): Promise<ChatConversatio
     title: r.title,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    projectId: r.project_id ?? null,
   }));
 }
 
-export async function createConversation(userId: string, title?: string): Promise<ChatConversation> {
+export async function createConversation(
+  userId: string,
+  title?: string,
+  projectId?: string | null,
+): Promise<ChatConversation> {
   const now = Date.now();
   const id = randomUUID();
   const row = {
@@ -40,10 +46,20 @@ export async function createConversation(userId: string, title?: string): Promis
     title: title?.trim() || 'New chat',
     created_at: now,
     updated_at: now,
+    project_id: projectId ?? null,
   };
   const { error } = await supabase.from('chat_conversations').insert(row);
   if (error) throw new Error(`Supabase insert error: ${error.message}`);
-  return { id, title: row.title, createdAt: now, updatedAt: now };
+  return { id, title: row.title, createdAt: now, updatedAt: now, projectId: projectId ?? null };
+}
+
+export async function setConversationProject(userId: string, convId: string, projectId: string | null) {
+  await supabase
+    .from('chat_conversations')
+    .update({ project_id: projectId, updated_at: Date.now() })
+    .eq('id', convId)
+    .eq('user_id', userId)
+    .throwOnError();
 }
 
 export async function renameConversation(userId: string, convId: string, title: string) {

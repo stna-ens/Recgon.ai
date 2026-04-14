@@ -63,7 +63,14 @@
       "mcp__plugin_vercel_vercel__get_project",
       "Bash(pip install:*)",
       "Bash(echo \"PID: $!\")",
-      "mcp__supabase__execute_sql"
+      "mcp__supabase__execute_sql",
+      "Bash(vercel --version)",
+      "Bash(vercel link:*)",
+      "Bash(vercel ls:*)",
+      "Bash(vercel teams:*)",
+      "Bash(vercel projects:*)",
+      "Bash(vercel --prod)",
+      "Bash(vercel deploy:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
