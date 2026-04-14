@@ -105,21 +105,28 @@ export async function recordAnalysis(userId: string, email?: string): Promise<vo
   const now = new Date().toISOString();
 
   // Read first to decide insert vs update (upsert would reset count to 1)
-  const { data } = await supabase
+  const { data, error: readError } = await supabase
     .from('analysis_quotas')
     .select('total_count')
     .eq('user_id', userId)
     .maybeSingle();
 
+  if (readError) {
+    console.error('[analysisQuota] recordAnalysis read failed:', readError.message);
+    return;
+  }
+
   if (data) {
-    await supabase
+    const { error } = await supabase
       .from('analysis_quotas')
       .update({ total_count: data.total_count + 1, last_analyzed_at: now })
       .eq('user_id', userId);
+    if (error) console.error('[analysisQuota] recordAnalysis update failed:', error.message);
   } else {
-    await supabase
+    const { error } = await supabase
       .from('analysis_quotas')
       .insert({ user_id: userId, total_count: 1, last_analyzed_at: now });
+    if (error) console.error('[analysisQuota] recordAnalysis insert failed:', error.message);
   }
 }
 
