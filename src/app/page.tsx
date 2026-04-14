@@ -78,6 +78,7 @@ export default function DashboardPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [classifyOpenId, setClassifyOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -521,29 +522,43 @@ export default function DashboardPage() {
                                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                                 fontFamily: "'JetBrains Mono', ui-monospace, monospace",
                               }}>{c.title}</span>
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="chat-history-action"
-                                title="Assign to project"
-                                style={{ position: 'relative', width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                              >
-                                <span style={{ color: 'var(--txt-faint)', fontSize: 11, pointerEvents: 'none' }}>◈</span>
-                                <select
-                                  value={c.projectId ?? ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    assignProject(c.id, val === '' ? null : val);
+                              <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setClassifyOpenId((id) => id === c.id ? null : c.id);
                                   }}
-                                  style={{
-                                    position: 'absolute', inset: 0, opacity: 0,
-                                    cursor: 'pointer', width: '100%', height: '100%',
-                                  }}
-                                >
-                                  <option value="">general</option>
-                                  {projects.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                  ))}
-                                </select>
+                                  className={`chat-history-action${classifyOpenId === c.id ? ' is-active' : ''}`}
+                                  title="Assign to project"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
+                                >◈</button>
+                                {classifyOpenId === c.id && (
+                                  <>
+                                    <div
+                                      onClick={(e) => { e.stopPropagation(); setClassifyOpenId(null); }}
+                                      style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                                    />
+                                    <div className="classify-popover" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        className={`classify-option${c.projectId == null ? ' is-selected' : ''}`}
+                                        onClick={() => { assignProject(c.id, null); setClassifyOpenId(null); }}
+                                      >
+                                        <span className="classify-option-check">{c.projectId == null ? '✓' : ''}</span>
+                                        general
+                                      </button>
+                                      {projects.map((p) => (
+                                        <button
+                                          key={p.id}
+                                          className={`classify-option${c.projectId === p.id ? ' is-selected' : ''}`}
+                                          onClick={() => { assignProject(c.id, p.id); setClassifyOpenId(null); }}
+                                        >
+                                          <span className="classify-option-check">{c.projectId === p.id ? '✓' : ''}</span>
+                                          {p.name}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
                               </div>
                               <button
                                 onClick={(e) => {

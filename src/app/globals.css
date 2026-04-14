@@ -625,6 +625,62 @@ body {
   flex-shrink: 0;
 }
 
+/* Chat history action buttons (rename / delete / classify) */
+.chat-history-row { position: relative; transition: background 120ms ease; }
+.chat-history-row:hover { background: rgba(var(--signature-rgb), 0.06) !important; }
+
+.chat-history-action {
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+  border-radius: 4px;
+}
+.chat-history-row:hover .chat-history-action { opacity: 0.7; }
+.chat-history-action:hover {
+  opacity: 1 !important;
+  color: var(--txt-pure) !important;
+  background: rgba(var(--signature-rgb), 0.12);
+}
+.chat-history-action.is-active { opacity: 1; color: var(--signature) !important; }
+
+/* Classify popover */
+.classify-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 160px;
+  max-width: 220px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-pure);
+  border: 1px solid var(--btn-secondary-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 50;
+  padding: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.classify-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 11.5px;
+  color: var(--txt-pure);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.classify-option:hover { background: rgba(var(--signature-rgb), 0.1); }
+.classify-option.is-selected { color: var(--signature); }
+.classify-option-check { width: 10px; flex-shrink: 0; color: var(--signature); }
+
 /* Recgon section label — monospace // prefix */
 .recgon-label {
   font-family: 'JetBrains Mono', ui-monospace, monospace;

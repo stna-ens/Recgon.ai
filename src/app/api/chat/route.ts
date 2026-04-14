@@ -13,6 +13,7 @@ import {
   deriveTitle,
   renameConversation,
   setConversationProject,
+  getConversationProjectId,
 } from '@/lib/chatStorage';
 import { getUserTeams } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
@@ -142,29 +143,33 @@ export async function POST(request: NextRequest) {
           { role: 'assistant', content: fullResponse, ts: now + 1 },
         ]);
 
-        // If we auto-created the conversation, refine the title and classify to a project
         if (createdNew) {
           await renameConversation(userId, resolvedConvId, deriveTitle(message));
-          if (projects.length > 0) {
-            try {
-              const classifier = client.getGenerativeModel({
-                model: 'gemini-2.5-flash',
-                generationConfig: { responseMimeType: 'application/json', temperature: 0 },
-              });
-              const res = await classifier.generateContent(
-                classifyChatProjectPrompt(
-                  message,
-                  projects.map((p) => ({ id: p.id, name: p.name, description: p.analysis?.description })),
-                ),
-              );
-              const parsed = JSON.parse(res.response.text()) as { projectId?: string | null };
-              const match = parsed.projectId && projects.some((p) => p.id === parsed.projectId)
-                ? parsed.projectId
-                : null;
-              if (match) await setConversationProject(userId, resolvedConvId, match);
-            } catch {
-              // classifier is best-effort; silently skip
-            }
+        }
+
+        // Classify conversation to a project if not already tagged
+        const currentProjectId = await getConversationProjectId(userId, resolvedConvId);
+        if (currentProjectId === null && projects.length > 0) {
+          try {
+            const classifier = client.getGenerativeModel({
+              model: 'gemini-2.5-flash',
+              generationConfig: { responseMimeType: 'application/json', temperature: 0 },
+            });
+            const res = await classifier.generateContent(
+              classifyChatProjectPrompt(
+                message,
+                projects.map((p) => ({ id: p.id, name: p.name, description: p.analysis?.description })),
+              ),
+            );
+            const raw = res.response.text().trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
+            const parsed = JSON.parse(raw) as { projectId?: string | null };
+            const match = parsed.projectId && projects.some((p) => p.id === parsed.projectId)
+              ? parsed.projectId
+              : null;
+            console.log('[chat classify]', { conversationId: resolvedConvId, parsed, match });
+            if (match) await setConversationProject(userId, resolvedConvId, match);
+          } catch (err) {
+            console.error('[chat classify] failed', err);
           }
         }
       },

@@ -91,6 +91,17 @@ export async function verifyConversationOwner(userId: string, convId: string): P
   return !!data;
 }
 
+export async function getConversationProjectId(userId: string, convId: string): Promise<string | null | undefined> {
+  const { data } = await supabase
+    .from('chat_conversations')
+    .select('project_id')
+    .eq('id', convId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (!data) return undefined;
+  return (data.project_id ?? null) as string | null;
+}
+
 export async function getConversationMessages(convId: string): Promise<StoredMessage[]> {
   const { data } = await supabase
     .from('chat_messages')
