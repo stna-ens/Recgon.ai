@@ -3,10 +3,18 @@ import type { FunctionDeclaration } from '@google/generative-ai';
 import type { ToolDefinition } from './types';
 import { listProjectsTool } from './listProjects';
 import { getProjectDetailsTool } from './getProjectDetails';
+import { analyzeCodeTool } from './analyzeCode';
+import { fetchAnalyticsTool } from './fetchAnalytics';
+import { queryFeedbackTool } from './queryFeedback';
+import { generateContentTool } from './generateContent';
 
 const ALL_TOOLS: ToolDefinition[] = [
   listProjectsTool as unknown as ToolDefinition,
   getProjectDetailsTool as unknown as ToolDefinition,
+  analyzeCodeTool as unknown as ToolDefinition,
+  fetchAnalyticsTool as unknown as ToolDefinition,
+  queryFeedbackTool as unknown as ToolDefinition,
+  generateContentTool as unknown as ToolDefinition,
 ];
 
 const byName = new Map(ALL_TOOLS.map((t) => [t.name, t] as const));
