@@ -13,7 +13,7 @@ type Input = z.infer<typeof parameters>;
 export const getProjectDetailsTool: ToolDefinition<Input, Record<string, unknown>> = {
   name: 'get_project_details',
   description:
-    'Fetch the full stored analysis for a specific project: product description, tech stack, SWOT, prioritized next steps, GA4 property id, recent feedback analyses, and campaigns. Use this before answering detailed questions about a project. Pass the project name exactly as the user says it — no UUID needed.',
+    'Fetch the full stored data for a specific project — including recent feedback analyses, campaigns, and marketing content. Only call this when you need data NOT already in the system prompt (e.g. the user asks about recent feedback, campaigns, or marketing content). Do NOT call this for general project questions — those are already answered by the project summary in the system prompt.',
   parameters,
   summarize: (_input, output) => `project ${(output as { name?: string }).name ?? 'unknown'}`,
   handler: async (input, ctx) => {

@@ -691,6 +691,13 @@ export default function MobileLanding() {
               </div>
               <div>
                 <span style={{ color: 'rgba(255,255,255,0.25)' }}>$ </span>
+                <span style={{ color: PINK }}>get_project_analysis</span>
+                <span style={{ color: 'rgba(255,255,255,0.5)' }}>(</span>
+                <span style={{ color: '#98c379' }}>&quot;my-saas&quot;</span>
+                <span style={{ color: 'rgba(255,255,255,0.5)' }}>)</span>
+              </div>
+              <div>
+                <span style={{ color: 'rgba(255,255,255,0.25)' }}>$ </span>
                 <span style={{ color: PINK }}>get_actionable_items</span>
                 <span style={{ color: 'rgba(255,255,255,0.5)' }}>(</span>
                 <span style={{ color: '#98c379' }}>&quot;my-saas&quot;</span>
@@ -731,6 +738,92 @@ export default function MobileLanding() {
           }}
         >
           // You stay in control. Claude asks before it acts.
+        </div>
+      </section>
+
+      {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+      <section id="ml-faq" style={{ background: '#050505', padding: '84px 18px 72px' }}>
+        <Reveal>
+          <div
+            style={{
+              fontFamily: MONO,
+              fontSize: '10px',
+              fontWeight: 700,
+              color: PINK,
+              textTransform: 'uppercase',
+              letterSpacing: '1.6px',
+              marginBottom: '14px',
+            }}
+          >
+            // faq
+          </div>
+          <h2
+            style={{
+              fontFamily: MONO,
+              fontSize: '1.55rem',
+              fontWeight: 700,
+              letterSpacing: '-0.6px',
+              lineHeight: 1.15,
+              color: '#fff',
+              margin: '0 0 36px',
+            }}
+          >
+            Common questions
+          </h2>
+        </Reveal>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {[
+            {
+              q: 'What is Recgon?',
+              a: 'An AI platform for solo founders and indie hackers. It analyzes your codebase, generates marketing content, plans campaigns, turns user feedback into dev prompts, and mentors you through growth.',
+            },
+            {
+              q: 'How does codebase analysis work?',
+              a: "Point Recgon at a local directory or GitHub URL. AI walks your code, extracts your product's purpose, stack, and features, and builds a full profile in seconds.",
+            },
+            {
+              q: 'What marketing content can it generate?',
+              a: 'Platform-ready copy for Instagram, TikTok, and Google Ads — grounded in your actual product. Also creates campaign timelines and content calendars.',
+            },
+            {
+              q: 'Does it integrate with Claude Code?',
+              a: 'Yes. Via MCP, Claude can read your analysis, pick up prioritized next steps, implement them, and mark them done — all tracked in Recgon.',
+            },
+            {
+              q: 'Is Recgon free?',
+              a: 'Yes, free to get started. Sign up from your laptop to begin analyzing your product.',
+            },
+          ].map(({ q, a }, i) => (
+            <Reveal key={q} delay={i * 60}>
+              <div
+                style={{
+                  padding: '18px 18px 18px 20px',
+                  borderRadius: '14px',
+                  background:
+                    'linear-gradient(135deg, rgba(240,184,208,0.05) 0%, rgba(255,255,255,0.02) 60%, rgba(255,255,255,0) 100%)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderLeft: '2px solid rgba(240,184,208,0.35)',
+                }}
+              >
+                <h3
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    color: '#fff',
+                    margin: '0 0 8px',
+                    letterSpacing: '-0.1px',
+                  }}
+                >
+                  {q}
+                </h3>
+                <p style={{ fontSize: '13px', lineHeight: 1.65, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                  {a}
+                </p>
+              </div>
+            </Reveal>
+          ))}
         </div>
       </section>
 

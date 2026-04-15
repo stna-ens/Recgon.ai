@@ -26,6 +26,11 @@ interface Project {
 }
 
 const COMMANDS = [
+  { name: '/projects', description: 'list all your projects' },
+  { name: '/analyze', description: '/analyze [project] — run codebase analysis' },
+  { name: '/analytics', description: '/analytics [project] — fetch GA4 insights' },
+  { name: '/feedback', description: '/feedback [project] — query feedback & sentiment' },
+  { name: '/content', description: '/content [project] — generate marketing content' },
   { name: '/clear', description: 'clear the current conversation' },
 ];
 
@@ -45,9 +50,12 @@ function MarkdownText({ text }: { text: string }) {
       {lines.map((line, i) => {
         const isBullet = /^[-*•]\s/.test(line);
         const content = line.replace(/^[-*•]\s/, '');
-        const parts = content.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
-          if (part.startsWith('**') && part.endsWith('**')) {
+        const parts = content.split(/(\*\*.+?\*\*|\*[^*\s][^*]*\*)/g).map((part, j) => {
+          if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
             return <strong key={j}>{part.slice(2, -2)}</strong>;
+          }
+          if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+            return <em key={j}>{part.slice(1, -1)}</em>;
           }
           return part;
         });
@@ -82,29 +90,19 @@ export default function DashboardPage() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [classifyOpenId, setClassifyOpenId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = localStorage.getItem('recgon.chatSidebarCollapsed');
-    if (stored === '0') setSidebarCollapsed(false);
-  }, []);
-
-  const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('recgon.chatSidebarCollapsed', next ? '1' : '0');
-      }
-      return next;
-    });
-  }, []);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIndex, setPaletteIndex] = useState(0);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+  const paletteListRef = useRef<HTMLDivElement>(null);
+  const paletteModalRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const loadedTeamRef = useRef<string | null>(null);
   // Typewriter effect
   const charQueueRef = useRef<string[]>([]);
   const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -151,9 +149,18 @@ export default function DashboardPage() {
     if (data.suggestions?.length > 0) setSuggestions(data.suggestions);
   }, [currentTeam]);
 
-  // Load conversations + personalized suggestions on mount; auto-open most recent
+  // Load conversations + personalized suggestions on mount; auto-open most recent.
+  // Guard with loadedTeamRef so a re-render that recreates the currentTeam object
+  // (same ID, new reference) doesn't stomp an intentionally blank new chat.
   useEffect(() => {
     if (!currentTeam) return;
+    const teamChanged = loadedTeamRef.current !== currentTeam.id;
+    if (!teamChanged) {
+      // Team didn't change — just keep the sidebar list fresh, don't auto-open.
+      refreshConversations();
+      return;
+    }
+    loadedTeamRef.current = currentTeam.id;
     let cancelled = false;
     (async () => {
       const [convs, chatRes] = await Promise.all([
@@ -264,6 +271,76 @@ export default function DashboardPage() {
   // Clean up typewriter on unmount
   useEffect(() => () => stopTypewriter(), [stopTypewriter]);
 
+  // ⌘K / Ctrl+K opens palette
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+        setPaletteQuery('');
+        setPaletteIndex(0);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const openPalette = useCallback(() => {
+    setPaletteOpen(true);
+    setPaletteQuery('');
+    setPaletteIndex(0);
+  }, []);
+
+  const closePalette = useCallback(() => setPaletteOpen(false), []);
+
+
+  // Close palette on click outside the modal
+  useEffect(() => {
+    if (!paletteOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (paletteModalRef.current && !paletteModalRef.current.contains(e.target as Node)) {
+        closePalette();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [paletteOpen, closePalette]);
+
+  // Forward wheel events to palette list when palette is open
+  useEffect(() => {
+    if (!paletteOpen) return;
+    const handler = (e: WheelEvent) => {
+      if (!paletteListRef.current) return;
+      if (paletteListRef.current.contains(e.target as Node)) return; // already scrolling inside
+      paletteListRef.current.scrollBy({ top: e.deltaY });
+      e.preventDefault();
+    };
+    document.addEventListener('wheel', handler, { passive: false });
+    return () => document.removeEventListener('wheel', handler);
+  }, [paletteOpen]);
+
+  // Flat list used for keyboard nav: [new_chat sentinel, ...conversations]
+  const paletteItems = useCallback((query: string): Array<{ type: 'new' } | ChatConversation> => {
+    const filtered = query.trim()
+      ? conversations.filter((c) => c.title.toLowerCase().includes(query.toLowerCase()))
+      : conversations;
+    return [{ type: 'new' as const }, ...filtered];
+  }, [conversations]);
+
+  const handlePaletteKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    const items = paletteItems(paletteQuery);
+    if (e.key === 'ArrowDown') { e.preventDefault(); setPaletteIndex((i) => Math.min(i + 1, items.length - 1)); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setPaletteIndex((i) => Math.max(i - 1, 0)); }
+    if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const item = items[paletteIndex];
+      if (!item) return;
+      if ('type' in item && item.type === 'new') { newChat(); closePalette(); }
+      else { loadConversation((item as ChatConversation).id); closePalette(); }
+    }
+  }, [paletteItems, paletteQuery, paletteIndex, newChat, loadConversation, closePalette]);
+
   // Greeting typewriter — runs when empty state is shown
   useEffect(() => {
     if (messages.length > 0) {
@@ -326,6 +403,21 @@ export default function DashboardPage() {
       setInput('');
       await deleteCurrentChat();
       return;
+    }
+
+    // Slash command → natural-language prompt the AI will tool-call on
+    const SLASH_MAP: Record<string, (arg: string) => string> = {
+      '/projects': () => 'List all my projects.',
+      '/analyze': (arg) => arg ? `Run a codebase analysis for the project "${arg}".` : 'Run a codebase analysis for my main project.',
+      '/analytics': (arg) => arg ? `Fetch GA4 analytics data for the project "${arg}".` : 'Fetch analytics data for my main project.',
+      '/feedback': (arg) => arg ? `Show me the feedback analysis for the project "${arg}".` : 'Show me the feedback analysis for my main project.',
+      '/content': (arg) => arg ? `Generate marketing content for the project "${arg}".` : 'Generate marketing content for my main project.',
+    };
+    const [cmd, ...rest] = trimmed.split(' ');
+    if (SLASH_MAP[cmd]) {
+      const mapped = SLASH_MAP[cmd](rest.join(' ').trim());
+      // Continue with the mapped prompt — fall through to the normal send flow below
+      return send(mapped);
     }
 
     const userMsg: Message = { role: 'user', content: trimmed };
@@ -438,182 +530,192 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Chat + history sidebar */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'row', minHeight: 600, padding: 0, overflow: 'hidden', marginBottom: 24, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+      <style>{`.main-content { overflow: hidden !important; }`}</style>
+      {/* Chat */}
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', minHeight: 600, padding: 0, overflow: 'hidden', marginBottom: 24, fontFamily: "'JetBrains Mono', ui-monospace, monospace", position: 'relative' }}>
 
-        {/* History sidebar */}
-        <div style={{
-          width: sidebarCollapsed ? 0 : 240,
-          opacity: sidebarCollapsed ? 0 : 1,
-          pointerEvents: sidebarCollapsed ? 'none' : 'auto',
-          flexShrink: 0,
-          borderRight: '1px solid var(--btn-secondary-border)',
-          display: 'flex', flexDirection: 'column',
-          background: 'rgba(0,0,0,0.04)',
-          transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-        }}>
-          <div style={{
-            padding: '14px 14px 10px',
-            display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            <button
-              onClick={newChat}
-              disabled={streaming}
-              style={{
-                flex: 1, textAlign: 'left', padding: '6px 10px',
-                background: 'transparent', border: '1px dashed var(--btn-secondary-border)',
-                borderRadius: 6, cursor: streaming ? 'not-allowed' : 'pointer',
-                color: 'var(--txt-pure)', fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                fontSize: 12, letterSpacing: '0.3px', opacity: streaming ? 0.4 : 1,
-              }}
-              title="Start a new chat"
-            >
-              + new chat
-            </button>
-          </div>
+        {/* Command Palette */}
+        {paletteOpen && (() => {
+          const projectById = new Map(projects.map((p) => [p.id, p.name]));
+          const filtered = paletteQuery.trim()
+            ? conversations.filter((c) => c.title.toLowerCase().includes(paletteQuery.toLowerCase()))
+            : conversations;
+          const groups = new Map<string, ChatConversation[]>();
+          for (const c of filtered) {
+            const key = c.projectId && projectById.has(c.projectId) ? c.projectId : '__none__';
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(c);
+          }
+          const orderedKeys = [
+            ...projects.filter((p) => groups.has(p.id)).map((p) => p.id),
+            ...(groups.has('__none__') ? ['__none__'] : []),
+          ];
+          // flat list for keyboard nav: index 0 = new chat, 1+ = conversations
+          const flatConvs = orderedKeys.flatMap((k) => groups.get(k)!);
+          const getItemIndex = (convId: string) => flatConvs.findIndex((c) => c.id === convId) + 1;
 
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '0 8px 12px',
-          }}>
-            {conversations.length === 0 && (
-              <div style={{ padding: '6px 10px', fontSize: 11, color: 'var(--txt-faint)', opacity: 0.7 }}>
-                no history yet
-              </div>
-            )}
-            {(() => {
-              const groups = new Map<string, ChatConversation[]>();
-              const projectById = new Map(projects.map((p) => [p.id, p.name]));
-              for (const c of conversations) {
-                const key = c.projectId && projectById.has(c.projectId) ? c.projectId : '__none__';
-                if (!groups.has(key)) groups.set(key, []);
-                groups.get(key)!.push(c);
-              }
-              const orderedKeys = [
-                ...projects.filter((p) => groups.has(p.id)).map((p) => p.id),
-                ...(groups.has('__none__') ? ['__none__'] : []),
-              ];
-              return orderedKeys.map((key) => {
-                const label = key === '__none__' ? 'general' : projectById.get(key) ?? 'unknown';
-                const items = groups.get(key)!;
-                return (
-                  <div key={key} style={{ marginBottom: 8 }}>
-                    <div style={{
-                      padding: '6px 10px 2px', fontSize: 10, color: 'var(--txt-faint)',
-                      textTransform: 'uppercase', letterSpacing: '0.6px', opacity: 0.7,
-                      fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                    }}>{label}</div>
-                    {items.map((c) => {
-                      const isActive = c.id === activeConvId;
-                      const isRenaming = renamingId === c.id;
-                      return (
-                        <div
-                          key={c.id}
-                          className="chat-history-row"
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 4,
-                            padding: '6px 8px', borderRadius: 5, marginBottom: 2,
-                            background: isActive ? 'var(--btn-secondary-border)' : 'transparent',
-                            cursor: streaming ? 'default' : 'pointer',
-                          }}
-                          onClick={() => !streaming && !isRenaming && loadConversation(c.id)}
-                        >
-                          {isRenaming ? (
-                            <input
-                              autoFocus
-                              value={renameDraft}
-                              onChange={(e) => setRenameDraft(e.target.value)}
-                              onBlur={() => commitRename(c.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') { e.preventDefault(); commitRename(c.id); }
-                                if (e.key === 'Escape') { e.preventDefault(); setRenamingId(null); }
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                flex: 1, background: 'var(--bg-pure)', border: '1px solid var(--btn-secondary-border)',
-                                borderRadius: 4, color: 'var(--txt-pure)', padding: '2px 6px',
-                                fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12, minWidth: 0,
-                              }}
-                            />
-                          ) : (
-                            <>
-                              <span style={{
-                                flex: 1, fontSize: 12, color: 'var(--txt-pure)',
-                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                              }}>{c.title}</span>
-                              <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setClassifyOpenId((id) => id === c.id ? null : c.id);
-                                  }}
-                                  className={`chat-history-action${classifyOpenId === c.id ? ' is-active' : ''}`}
-                                  title="Assign to project"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
-                                >◈</button>
-                                {classifyOpenId === c.id && (
-                                  <>
-                                    <div
-                                      onClick={(e) => { e.stopPropagation(); setClassifyOpenId(null); }}
-                                      style={{ position: 'fixed', inset: 0, zIndex: 40 }}
-                                    />
-                                    <div className="classify-popover" onClick={(e) => e.stopPropagation()}>
-                                      <button
-                                        className={`classify-option${c.projectId == null ? ' is-selected' : ''}`}
-                                        onClick={() => { assignProject(c.id, null); setClassifyOpenId(null); }}
-                                      >
-                                        <span className="classify-option-check">{c.projectId == null ? '✓' : ''}</span>
-                                        general
-                                      </button>
-                                      {projects.map((p) => (
-                                        <button
-                                          key={p.id}
-                                          className={`classify-option${c.projectId === p.id ? ' is-selected' : ''}`}
-                                          onClick={() => { assignProject(c.id, p.id); setClassifyOpenId(null); }}
-                                        >
-                                          <span className="classify-option-check">{c.projectId === p.id ? '✓' : ''}</span>
-                                          {p.name}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setRenamingId(c.id);
-                                  setRenameDraft(c.title);
-                                }}
-                                className="chat-history-action"
-                                title="Rename"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
-                              >✎</button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteConversationRow(c.id);
-                                }}
-                                className="chat-history-action"
-                                title="Delete"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: 2, fontSize: 11 }}
-                              >×</button>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
+          return (
+            <>
+              {/* Scrim — absolute, visual only, dims only the terminal card */}
+              <div style={{ position: 'absolute', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.55)', pointerEvents: 'none' }} />
+              {/* Palette */}
+              <div ref={paletteModalRef} style={{
+                position: 'fixed', top: '18%', left: '50%', transform: 'translateX(-50%)',
+                width: 420, maxHeight: 500, zIndex: 51,
+                background: 'var(--bg-deep)', border: '1px solid var(--btn-secondary-border)',
+                borderRadius: 10, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.7)',
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              }}>
+                {/* Search */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--btn-secondary-border)' }}>
+                  <span style={{ color: 'var(--signature)', fontSize: 14, flexShrink: 0 }}>›</span>
+                  <input
+                    ref={paletteInputRef}
+                    autoFocus
+                    value={paletteQuery}
+                    onChange={(e) => { setPaletteQuery(e.target.value); setPaletteIndex(0); }}
+                    onKeyDown={handlePaletteKeyDown}
+                    placeholder="search conversations…"
+                    style={{
+                      flex: 1, background: 'none', border: 'none', outline: 'none',
+                      color: 'var(--txt-pure)', fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                      fontSize: 13, letterSpacing: '0.2px',
+                    }}
+                  />
+                  <span style={{ fontSize: 10, color: 'var(--txt-faint)', opacity: 0.6 }}>esc</span>
+                </div>
+
+                {/* List */}
+                <div ref={paletteListRef} style={{ overflowY: 'auto', flex: 1 }}>
+                  {/* New chat */}
+                  <div
+                    onClick={() => { newChat(); closePalette(); }}
+                    style={{
+                      padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 8,
+                      cursor: 'pointer', fontSize: 12,
+                      color: paletteIndex === 0 ? 'var(--signature)' : 'var(--txt-muted)',
+                      background: paletteIndex === 0 ? 'rgba(124,106,255,0.08)' : 'transparent',
+                      borderBottom: '1px solid var(--btn-secondary-border)',
+                    }}
+                    onMouseEnter={() => setPaletteIndex(0)}
+                  >
+                    + new conversation
                   </div>
-                );
-              });
-            })()}
-          </div>
-        </div>
 
-        {/* Chat column */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  {/* Grouped conversations */}
+                  {filtered.length === 0 && paletteQuery && (
+                    <div style={{ padding: '12px 16px', fontSize: 11, color: 'var(--txt-faint)', opacity: 0.6 }}>no results</div>
+                  )}
+                  {orderedKeys.map((key) => {
+                    const label = key === '__none__' ? 'general' : projectById.get(key) ?? 'unknown';
+                    const items = groups.get(key)!;
+                    return (
+                      <div key={key}>
+                        <div style={{ padding: '8px 16px 3px', fontSize: 9, color: 'var(--txt-faint)', textTransform: 'uppercase', letterSpacing: '0.7px', opacity: 0.6 }}>
+                          {label}
+                        </div>
+                        {items.map((c) => {
+                          const flatIdx = getItemIndex(c.id);
+                          const isHighlighted = paletteIndex === flatIdx;
+                          const isRenaming = renamingId === c.id;
+                          return (
+                            <div
+                              key={c.id}
+                              className="chat-history-row"
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '7px 16px', cursor: 'pointer',
+                                background: isHighlighted ? 'rgba(255,255,255,0.05)' : 'transparent',
+                              }}
+                              onMouseEnter={() => setPaletteIndex(flatIdx)}
+                              onClick={() => { if (!isRenaming) { loadConversation(c.id); closePalette(); } }}
+                            >
+                              {isRenaming ? (
+                                <input
+                                  autoFocus
+                                  value={renameDraft}
+                                  onChange={(e) => setRenameDraft(e.target.value)}
+                                  onBlur={() => commitRename(c.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); commitRename(c.id); }
+                                    if (e.key === 'Escape') { e.preventDefault(); setRenamingId(null); }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    flex: 1, background: 'var(--bg-pure)', border: '1px solid var(--btn-secondary-border)',
+                                    borderRadius: 4, color: 'var(--txt-pure)', padding: '2px 8px',
+                                    fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12, minWidth: 0,
+                                  }}
+                                />
+                              ) : (
+                                <>
+                                  <span style={{
+                                    flex: 1, fontSize: 12, color: c.id === activeConvId ? 'var(--txt-pure)' : 'var(--txt-muted)',
+                                    fontWeight: c.id === activeConvId ? 600 : 400,
+                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                  }}>{c.title}</span>
+                                  {/* Row actions — visible on highlight */}
+                                  {isHighlighted && (
+                                    <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                                      {/* Assign ◈ */}
+                                      <div style={{ position: 'relative' }}>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setClassifyOpenId((id) => id === c.id ? null : c.id); }}
+                                          className={`chat-history-action${classifyOpenId === c.id ? ' is-active' : ''}`}
+                                          title="Assign to project"
+                                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: '2px 4px', fontSize: 11 }}
+                                        >◈</button>
+                                        {classifyOpenId === c.id && (
+                                          <>
+                                            <div onClick={(e) => { e.stopPropagation(); setClassifyOpenId(null); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+                                            <div className="classify-popover" onClick={(e) => e.stopPropagation()} style={{ zIndex: 61 }}>
+                                              <button className={`classify-option${c.projectId == null ? ' is-selected' : ''}`} onClick={() => { assignProject(c.id, null); setClassifyOpenId(null); }}>
+                                                <span className="classify-option-check">{c.projectId == null ? '✓' : ''}</span>general
+                                              </button>
+                                              {projects.map((p) => (
+                                                <button key={p.id} className={`classify-option${c.projectId === p.id ? ' is-selected' : ''}`} onClick={() => { assignProject(c.id, p.id); setClassifyOpenId(null); }}>
+                                                  <span className="classify-option-check">{c.projectId === p.id ? '✓' : ''}</span>{p.name}
+                                                </button>
+                                              ))}
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                      {/* Rename ✎ */}
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setRenamingId(c.id); setRenameDraft(c.title); }}
+                                        className="chat-history-action" title="Rename"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: '2px 4px', fontSize: 11 }}
+                                      >✎</button>
+                                      {/* Delete × */}
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); deleteConversationRow(c.id); }}
+                                        className="chat-history-action" title="Delete"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-faint)', padding: '2px 4px', fontSize: 11 }}
+                                      >×</button>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Footer */}
+                <div style={{ padding: '7px 16px', borderTop: '1px solid var(--btn-secondary-border)', display: 'flex', gap: 14, fontSize: 10, color: 'var(--txt-faint)', opacity: 0.7 }}>
+                  <span>↑↓ navigate</span>
+                  <span>↵ open</span>
+                  <span>esc close</span>
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Header */}
         <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--btn-secondary-border)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -627,22 +729,30 @@ export default function DashboardPage() {
             }}
           />
 
-          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Recgon</span>
+          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.3px' }}>Terminal</span>
           <span style={{ fontSize: 12, color: 'var(--txt-faint)' }}>—</span>
           <span style={{ fontSize: 12, color: 'var(--txt-muted)' }}>mentor</span>
 
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Conversation title pill — opens palette */}
             <button
-               onClick={toggleSidebar}
-               style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  fontSize: 11, color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                  padding: '2px 0', opacity: 0.7, letterSpacing: '0.3px',
-               }}
-               title={sidebarCollapsed ? 'Expand history' : 'Collapse history'}
+              onClick={openPalette}
+              style={{
+                background: 'none', border: '1px solid var(--btn-secondary-border)', borderRadius: 5,
+                cursor: 'pointer', padding: '3px 9px',
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                fontSize: 11, color: 'var(--txt-muted)', letterSpacing: '0.3px',
+                maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}
+              title="Switch conversation (⌘K)"
             >
-              {sidebarCollapsed ? 'show history' : 'hide history'}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
+                {activeConvId ? (conversations.find((c) => c.id === activeConvId)?.title ?? 'conversation') : 'new conversation'}
+              </span>
+              <span style={{ opacity: 0.5, fontSize: 9 }}>▾</span>
             </button>
+            <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 10, color: 'var(--txt-faint)', opacity: 0.6, letterSpacing: '0.2px' }}>⌘K</span>
             {hasProjects && (
               <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, color: 'var(--txt-faint)' }}>
                 {projects.length} project{projects.length > 1 ? 's' : ''} loaded
@@ -652,7 +762,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Messages */}
-        <div ref={messagesContainerRef} style={{ flex: 1, minHeight: 400, maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div ref={messagesContainerRef} style={{ flex: 1, minHeight: 400, maxHeight: 520, overflowY: paletteOpen ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
           {messages.length === 0 && mounted && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div className="chat-line-assistant">
@@ -771,7 +881,6 @@ export default function DashboardPage() {
               fontSize: 13.5, lineHeight: 1.6, minHeight: 24, paddingTop: 2,
             }}
           />
-        </div>
         </div>
       </div>
 

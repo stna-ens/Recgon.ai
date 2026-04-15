@@ -261,8 +261,9 @@ export default function LandingClientShell() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {[
                   { num: '01', fn: 'list_projects()', desc: 'Claude sees all your analyzed projects' },
-                  { num: '02', fn: 'get_actionable_items("my-app")', desc: 'Gets prioritized next steps to tackle' },
-                  { num: '03', fn: 'mark_item_complete({ ... })', desc: 'Closes the loop — tracked in Recgon' },
+                  { num: '02', fn: 'get_project_analysis("my-app")', desc: 'Full SWOT, tech stack, risks, and next steps' },
+                  { num: '03', fn: 'get_actionable_items("my-app")', desc: 'Gets prioritized next steps to tackle' },
+                  { num: '04', fn: 'mark_item_complete({ ... })', desc: 'Closes the loop — tracked in Recgon' },
                 ].map(({ num, fn, desc }) => (
                   <div key={num} style={{ display: 'flex', gap: '0' }}>
                     <SpotlightCard spotlightColor="rgba(240,184,208,0.12)" style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', padding: '14px 18px', borderRadius: '10px', flex: 1 }}>
@@ -301,6 +302,10 @@ export default function LandingClientShell() {
                   <div style={{ color: 'rgba(255,255,255,0.3)', paddingLeft: '2px' }}>{'→ [{ name: "my-saas", hasAnalysis: true }]'}</div>
                   <div style={{ height: '14px' }} />
 
+                  <div><span style={{ color: 'rgba(255,255,255,0.2)' }}>{'$ '}</span><span style={{ color: PINK }}>{'get_project_analysis'}</span><span style={{ color: 'rgba(255,255,255,0.55)' }}>{'('}</span><span style={{ color: '#98c379' }}>{"\"my-saas\""}</span><span style={{ color: 'rgba(255,255,255,0.55)' }}>{')'}</span></div>
+                  <div style={{ color: 'rgba(255,255,255,0.3)', paddingLeft: '2px' }}>{'→ stage: "growth", risks: 2, nextSteps: 3'}</div>
+                  <div style={{ height: '14px' }} />
+
                   <div><span style={{ color: 'rgba(255,255,255,0.2)' }}>{'$ '}</span><span style={{ color: PINK }}>{'get_actionable_items'}</span><span style={{ color: 'rgba(255,255,255,0.55)' }}>{'('}</span><span style={{ color: '#98c379' }}>{"\"my-saas\""}</span><span style={{ color: 'rgba(255,255,255,0.55)' }}>{')'}</span></div>
                   <div style={{ color: 'rgba(255,255,255,0.3)', paddingLeft: '2px' }}>{'→ totalActionable: 3'}</div>
                   <div style={{ color: 'rgba(255,255,255,0.22)', paddingLeft: '14px' }}>{'[0] Add auth rate limiting'}</div>
@@ -325,6 +330,53 @@ export default function LandingClientShell() {
               </div>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ───────────────────────────────────────────────────────────── */}
+      <section id="faq" className="section-pad" style={{ background: '#050505', padding: '120px 40px' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'left', marginBottom: '56px' }}>
+            <div style={{ fontFamily: MONO, fontSize: '11px', fontWeight: 700, color: PINK, textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '16px' }}>
+              // faq
+            </div>
+            <h2 style={{ fontFamily: MONO, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.5px', color: '#fff', margin: 0 }}>
+              Common questions
+            </h2>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {[
+              {
+                q: 'What is Recgon?',
+                a: 'Recgon is an AI-powered platform for solo founders and indie hackers. It analyzes your codebase to understand your product, generates marketing content for Instagram, TikTok, and Google Ads, plans campaigns, turns user feedback into actionable developer prompts, and provides an AI mentor that knows your product inside out.',
+              },
+              {
+                q: 'How does the codebase analysis work?',
+                a: 'Point Recgon at a local directory or paste a GitHub URL. AI walks your codebase, extracts the product\'s purpose, tech stack, features, and limitations, and builds a full product profile in seconds — no config required.',
+              },
+              {
+                q: 'What marketing content can Recgon generate?',
+                a: 'Recgon generates platform-ready copy for Instagram posts, TikTok captions, and Google Ads — all grounded in what your product actually does. It also creates structured campaign timelines and content calendars tailored to your product.',
+              },
+              {
+                q: 'Does Recgon integrate with Claude Code?',
+                a: 'Yes. Recgon ships a Claude Code MCP server. Claude can read your product analysis, pick up prioritized next steps, implement them, and mark them done — all tracked in Recgon. You stay in control; Claude asks before it acts.',
+              },
+              {
+                q: 'Who is Recgon built for?',
+                a: 'Solo founders, indie hackers, small teams, and early-stage startups who need the strategic advice of a cofounder and the execution support of a marketing team — without the headcount.',
+              },
+              {
+                q: 'Is Recgon free?',
+                a: 'Yes, Recgon is free to get started. Create an account and begin analyzing your product right away.',
+              },
+            ].map(({ q, a }) => (
+              <SpotlightCard key={q} spotlightColor="rgba(240,184,208,0.10)" style={{ padding: '24px 28px', borderRadius: '12px' }}>
+                <h3 style={{ fontFamily: MONO, fontSize: '0.95rem', fontWeight: 600, color: '#fff', margin: '0 0 10px', letterSpacing: '-0.2px' }}>{q}</h3>
+                <p style={{ fontSize: '14px', lineHeight: 1.7, color: 'rgba(255,255,255,0.48)', margin: 0 }}>{a}</p>
+              </SpotlightCard>
+            ))}
           </div>
         </div>
       </section>

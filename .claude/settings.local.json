@@ -73,7 +73,8 @@
       "Bash(vercel deploy:*)",
       "Bash(vercel domains:*)",
       "Bash(vercel inspect:*)",
-      "mcp__supabase__apply_migration"
+      "mcp__supabase__apply_migration",
+      "Bash(gh pr:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
