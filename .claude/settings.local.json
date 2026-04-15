@@ -84,5 +84,30 @@
   "sandbox": {
     "enabled": false,
     "autoAllowBashIfSandboxed": false
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/eneskis/Documents/Projects/Recgon/.claude/hooks/session-start.sh",
+            "statusMessage": "Loading architecture.md..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/eneskis/Documents/Projects/Recgon/.claude/hooks/arch-update-reminder.sh",
+            "statusMessage": "Checking architecture.md..."
+          }
+        ]
+      }
+    ]
   }
 }

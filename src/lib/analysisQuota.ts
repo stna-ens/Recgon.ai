@@ -7,6 +7,9 @@
  *
  * The quota is tracked in the `analysis_quotas` table. A row is lazily
  * created on the first check, so no back-fill migration is needed.
+ *
+ * Exemptions are managed in the `quota_exceptions` table (Supabase dashboard).
+ * The QUOTA_EXEMPT_EMAILS env var is checked first as a fast, zero-DB fallback.
  */
 
 import { supabase } from './supabase';
@@ -17,14 +20,35 @@ const MAX_ANALYSES = 3;
 const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 
 /**
- * Emails listed in QUOTA_EXEMPT_EMAILS (comma-separated) skip all quota
- * checks. Use this for your team / testers.
+ * Returns true if the email is on the exception list.
+ * Checks (in order):
+ *  1. QUOTA_EXEMPT_EMAILS env var  — instant, no DB round-trip
+ *  2. `quota_exceptions` DB table  — manageable without redeployment
  */
-function isExempt(email: string): boolean {
+async function isExempt(email: string): Promise<boolean> {
+  const normalised = email.toLowerCase();
+
+  // 1. Fast env-var check
   const raw = process.env.QUOTA_EXEMPT_EMAILS ?? '';
-  if (!raw) return false;
-  const exemptList = raw.split(',').map((e) => e.trim().toLowerCase());
-  return exemptList.includes(email.toLowerCase());
+  if (raw) {
+    const envList = raw.split(',').map((e) => e.trim().toLowerCase());
+    if (envList.includes(normalised)) return true;
+  }
+
+  // 2. DB exception table
+  const { data, error } = await supabase
+    .from('quota_exceptions')
+    .select('id')
+    .eq('email', normalised)
+    .maybeSingle();
+
+  if (error) {
+    // Table missing or transient error — don't block the user, just skip
+    console.error('[analysisQuota] quota_exceptions read error:', error.message);
+    return false;
+  }
+
+  return data !== null;
 }
 
 export interface QuotaStatus {
@@ -46,7 +70,7 @@ export interface QuotaStatus {
  */
 export async function checkAnalysisQuota(userId: string, email?: string): Promise<QuotaStatus> {
   // Exempt users have unlimited access
-  if (email && isExempt(email)) {
+  if (email && (await isExempt(email))) {
     return { allowed: true, used: 0, limit: MAX_ANALYSES };
   }
 
@@ -100,7 +124,7 @@ export async function checkAnalysisQuota(userId: string, email?: string): Promis
  */
 export async function recordAnalysis(userId: string, email?: string): Promise<void> {
   // Don't track quota for exempt users
-  if (email && isExempt(email)) return;
+  if (email && (await isExempt(email))) return;
 
   const now = new Date().toISOString();
 
