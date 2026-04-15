@@ -25,6 +25,10 @@ interface Project {
   feedbackAnalyses?: unknown[];
 }
 
+const COMMANDS = [
+  { name: '/clear', description: 'clear the current conversation' },
+];
+
 const DEFAULT_SUGGESTIONS = [
   'What am I not thinking about that I should be?',
   'How should I find my first 100 users?',
@@ -73,6 +77,7 @@ export default function DashboardPage() {
   const [keyDown, setKeyDown] = useState(false);
   const [recentlyTyped, setRecentlyTyped] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [cmdIndex, setCmdIndex] = useState(0);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -208,12 +213,11 @@ export default function DashboardPage() {
       await fetch(`/api/chat?conversationId=${activeConvId}`, { method: 'DELETE' });
       setMessages([]);
       setActiveConvId(null);
-      const convs = await refreshConversations();
-      if (convs.length > 0) await loadConversation(convs[0].id);
+      await refreshConversations();
     } finally {
       setClearing(false);
     }
-  }, [streaming, activeConvId, refreshConversations, loadConversation]);
+  }, [streaming, activeConvId, refreshConversations]);
 
   const newChat = useCallback(() => {
     if (streaming) return;
@@ -318,6 +322,12 @@ export default function DashboardPage() {
     const trimmed = text.trim();
     if (!trimmed || streaming || !currentTeam) return;
 
+    if (trimmed === '/clear') {
+      setInput('');
+      await deleteCurrentChat();
+      return;
+    }
+
     const userMsg: Message = { role: 'user', content: trimmed };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
@@ -388,7 +398,7 @@ export default function DashboardPage() {
       });
       setStreaming(false);
     }
-  }, [messages, streaming, currentTeam, activeConvId, startTypewriter, stopTypewriter, refreshConversations]);
+  }, [messages, streaming, currentTeam, activeConvId, startTypewriter, stopTypewriter, refreshConversations, deleteCurrentChat]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     setKeyDown(true);
@@ -398,6 +408,16 @@ export default function DashboardPage() {
       setRecentlyTyped(false);
       setKeyDown(false);
     }, 5000);
+    const cmdMatches = input.startsWith('/')
+      ? COMMANDS.filter((c) => c.name.startsWith(input.split(' ')[0].toLowerCase()))
+      : [];
+    if (cmdMatches.length > 0) {
+      if (e.key === 'ArrowUp') { e.preventDefault(); setCmdIndex((i) => Math.max(0, i - 1)); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); setCmdIndex((i) => Math.min(cmdMatches.length - 1, i + 1)); return; }
+      if (e.key === 'Escape') { e.preventDefault(); setInput(''); return; }
+      if (e.key === 'Tab') { e.preventDefault(); setInput(cmdMatches[cmdIndex].name); return; }
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(cmdMatches[cmdIndex].name); return; }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       send(input);
@@ -408,6 +428,7 @@ export default function DashboardPage() {
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
+    setCmdIndex(0);
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 160) + 'px';
@@ -627,20 +648,6 @@ export default function DashboardPage() {
                 {projects.length} project{projects.length > 1 ? 's' : ''} loaded
               </span>
             )}
-            {activeConvId && messages.length > 0 && (
-              <button
-                onClick={deleteCurrentChat}
-                disabled={streaming || clearing}
-                style={{
-                  background: 'none', border: 'none', cursor: streaming || clearing ? 'not-allowed' : 'pointer',
-                  fontSize: 11, color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                  padding: '2px 0', opacity: streaming || clearing ? 0.4 : 0.7, letterSpacing: '0.3px',
-                }}
-                title="Delete this conversation"
-              >
-                delete chat
-              </button>
-            )}
           </div>
         </div>
 
@@ -716,7 +723,35 @@ export default function DashboardPage() {
         </div>
 
         {/* Input */}
-        <div style={{ borderTop: '1px solid var(--btn-secondary-border)', padding: '12px 20px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ borderTop: '1px solid var(--btn-secondary-border)', padding: '12px 20px', display: 'flex', alignItems: 'center', flexShrink: 0, position: 'relative' }}>
+          {(() => {
+            const cmdMatches = input.startsWith('/')
+              ? COMMANDS.filter((c) => c.name.startsWith(input.split(' ')[0].toLowerCase()))
+              : [];
+            if (cmdMatches.length === 0) return null;
+            return (
+              <div style={{
+                position: 'absolute', bottom: '100%', left: 0, right: 0,
+                background: 'var(--bg-deep)', borderTop: '1px solid var(--btn-secondary-border)',
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              }}>
+                {cmdMatches.map((cmd, i) => (
+                  <div
+                    key={cmd.name}
+                    onMouseDown={(e) => { e.preventDefault(); send(cmd.name); }}
+                    style={{
+                      padding: '8px 20px', cursor: 'pointer',
+                      display: 'flex', gap: 14, alignItems: 'center',
+                      background: i === cmdIndex ? 'rgba(128,128,128,0.12)' : 'transparent',
+                    }}
+                  >
+                    <span style={{ color: 'var(--signature)', fontSize: 12, fontWeight: 600 }}>{cmd.name}</span>
+                    <span style={{ color: 'var(--txt-muted)', fontSize: 11 }}>{cmd.description}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
           <span className="chat-input-prefix">
             {streaming ? <svg className="loader-spinner" style={{ width: 14, height: 14, borderWidth: 1.5, borderRightColor: 'transparent' }} /> : '›'}
           </span>
