@@ -11,9 +11,9 @@ validateBootEnv();
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
-    ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET ? [GitHub({
-      clientId: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET ? [GitHub({
+      clientId: process.env.GITHUB_ID,
+      clientSecret: process.env.GITHUB_SECRET,
       // Minimum scope needed: profile + email. We intentionally do NOT request
       // 'repo' so a leaked token cannot read private repositories.
       // 'public_repo' is added so users can analyze their public repos via the
