@@ -78,7 +78,11 @@
       "mcp__supabase__list_migrations",
       "Bash(echo \"EXIT: $?\")",
       "Read(//Users/eneskis/**)",
-      "mcp__supabase__get_logs"
+      "mcp__supabase__get_logs",
+      "Read(//tmp/**)",
+      "Bash(rm -f /tmp/vercel_env_check)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel project *)"
     ]
   },
   "enableAllProjectMcpServers": true,

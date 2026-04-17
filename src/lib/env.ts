@@ -19,7 +19,7 @@ const OPTIONAL = [
   'GITHUB_CLIENT_ID',
   'GITHUB_CLIENT_SECRET',
   'FIRECRAWL_API_KEY',
-  'NEXTAUTH_URL',
+  'AUTH_URL', // NextAuth v5 base URL (set this on Vercel to your production domain)
   'LOG_LEVEL',
   'RESEND_API_KEY', // Required for email verification on registration
 ] as const;
