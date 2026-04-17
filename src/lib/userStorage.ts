@@ -56,8 +56,8 @@ export async function updateUser(
   if (updates.email !== undefined) mapped.email = updates.email;
   if (updates.passwordHash !== undefined) mapped.password_hash = updates.passwordHash;
   if (updates.nickname !== undefined) mapped.nickname = updates.nickname;
-  if (updates.githubAccessToken !== undefined) mapped.github_access_token = updates.githubAccessToken;
-  if (updates.githubUsername !== undefined) mapped.github_username = updates.githubUsername;
+  if ('githubAccessToken' in updates) mapped.github_access_token = updates.githubAccessToken ?? null;
+  if ('githubUsername' in updates) mapped.github_username = updates.githubUsername ?? null;
   if (updates.avatarUrl !== undefined) mapped.avatar_url = updates.avatarUrl;
   if (updates.socialProfiles !== undefined) mapped.social_profiles = updates.socialProfiles;
 
