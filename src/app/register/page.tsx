@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import RecgonLogo from '@/components/RecgonLogo';
 
@@ -13,8 +13,8 @@ const FEATURES = [
         <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
       </svg>
     ),
-    title: 'Codebase Analysis',
-    desc: 'Point to any repo or local path — get a full product breakdown in seconds.',
+    title: 'Product Analysis',
+    desc: 'Paste a GitHub URL or describe your idea — get a full product breakdown in seconds.',
   },
   {
     icon: (
@@ -50,6 +50,11 @@ const FEATURES = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Preserve callbackUrl across registration → login (e.g. team invite links).
+  // Only accept relative paths to prevent open redirects.
+  const rawCallback = searchParams.get('callbackUrl') ?? '';
+  const callbackUrl = rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '';
   const [step, setStep] = useState<'form' | 'verify'>('form');
 
   // Form fields
@@ -113,7 +118,9 @@ export default function RegisterPage() {
     if (!res.ok) {
       setError(data.error || 'Something went wrong');
     } else {
-      router.push('/login?registered=1');
+      const qs = new URLSearchParams({ registered: '1' });
+      if (callbackUrl) qs.set('callbackUrl', callbackUrl);
+      router.push(`/login?${qs.toString()}`);
     }
   }
 
@@ -186,7 +193,7 @@ export default function RegisterPage() {
               </div>
               <button
                 type="button"
-                onClick={() => signIn('github', { callbackUrl: '/' })}
+                onClick={() => signIn('github', { callbackUrl: callbackUrl || '/' })}
                 style={{ width: '100%', padding: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', marginTop: '0.75rem' }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -197,7 +204,7 @@ export default function RegisterPage() {
 
               <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--txt-muted)', marginBottom: 0 }}>
                 Already have an account?{' '}
-                <Link href="/login" style={{ color: 'var(--txt-pure)', fontWeight: 500, textDecoration: 'none' }}>Sign in</Link>
+                <Link href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'} style={{ color: 'var(--txt-pure)', fontWeight: 500, textDecoration: 'none' }}>Sign in</Link>
               </p>
             </>
           ) : (

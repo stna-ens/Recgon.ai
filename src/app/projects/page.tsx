@@ -22,8 +22,6 @@ export default function ProjectsPage() {
   useEffect(() => { refreshProjects(); }, [refreshProjects]);
   const [showModal, setShowModal] = useState(false);
   const [projectName, setProjectName] = useState('');
-  const [projectPath, setProjectPath] = useState('');
-  const [sourceMode, setSourceMode] = useState<'idea' | 'codebase'>('idea');
   const [description, setDescription] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [uploadedFilename, setUploadedFilename] = useState('');
@@ -39,15 +37,12 @@ export default function ProjectsPage() {
   const [importingRepo, setImportingRepo] = useState<string | null>(null);
 
   const handleCreateProject = async () => {
-    if (sourceMode === 'idea' && !description.trim()) return;
-    if (sourceMode === 'codebase' && !projectPath.trim()) return;
+    if (!description.trim()) return;
     if (!projectName.trim()) return;
     setLoading(true);
     setCreateError('');
     try {
-      const body = sourceMode === 'idea'
-        ? { name: projectName, description, teamId: currentTeam?.id }
-        : { name: projectName, path: projectPath, teamId: currentTeam?.id };
+      const body = { name: projectName, description, teamId: currentTeam?.id };
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -56,7 +51,6 @@ export default function ProjectsPage() {
       const data = await res.json();
       if (res.ok) {
         setProjectName('');
-        setProjectPath('');
         setDescription('');
         setUploadedFilename('');
         setShowModal(false);
@@ -173,7 +167,7 @@ export default function ProjectsPage() {
           </span>
           <h3 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.5px', marginBottom: 12 }}>No projects yet</h3>
           <p style={{ fontSize: 16, color: 'var(--txt-muted)', maxWidth: 400, margin: '0 auto', lineHeight: 1.5, marginBottom: 40 }}>
-            Add your first project by pointing Recgon at a local directory or a public GitHub link
+            Import a GitHub repo or describe your idea — Recgon will take it from there
           </p>
           <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ padding: '14px 28px', borderRadius: 'var(--r-pill)' }}>
             + Add Your First Project
@@ -200,31 +194,11 @@ export default function ProjectsPage() {
       {showModal && typeof document !== 'undefined' && createPortal(
         <div className="modal-overlay" onClick={() => { setShowModal(false); setCreateError(''); }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Add New Project</h3>
-
-            {/* Mode toggle */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--bg-secondary)', borderRadius: 'var(--r-pill)', padding: 4 }}>
-              {(['idea', 'codebase'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setSourceMode(mode)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 0',
-                    borderRadius: 'var(--r-pill)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    background: sourceMode === mode ? 'var(--btn-primary-bg)' : 'transparent',
-                    color: sourceMode === mode ? 'var(--btn-primary-txt)' : 'var(--txt-muted)',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {mode === 'idea' ? 'Idea / Description' : 'Codebase / GitHub'}
-                </button>
-              ))}
-            </div>
+            <h3>Describe Your Idea</h3>
+            <p style={{ fontSize: 13, color: 'var(--txt-muted)', margin: '4px 0 20px' }}>
+              No code yet? No problem. Describe what you&apos;re building and Recgon will analyse it like a PM mentor.
+              {' '}To analyse actual code, use <strong>Import from GitHub</strong> instead.
+            </p>
 
             <div className="form-group">
               <label className="form-label">Project Name</label>
@@ -237,44 +211,25 @@ export default function ProjectsPage() {
               />
             </div>
 
-            {sourceMode === 'idea' ? (
-              <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label className="form-label" style={{ margin: 0 }}>Idea Description</label>
-                  <label style={{ cursor: 'pointer', fontSize: 12, color: 'var(--signature)', fontWeight: 600 }}>
-                    {extracting ? 'Extracting...' : uploadedFilename ? (
-                      <span>{uploadedFilename} · <span style={{ textDecoration: 'underline' }}>Replace</span></span>
-                    ) : 'Upload .pdf or .docx'}
-                    <input type="file" accept=".pdf,.docx" style={{ display: 'none' }} onChange={handleFileUpload} disabled={extracting} />
-                  </label>
-                </div>
-                <textarea
-                  className="form-input"
-                  rows={6}
-                  placeholder={"Describe your idea...\n\nWhat problem does it solve? Who is it for? What makes it different?"}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  style={{ resize: 'vertical', fontFamily: 'inherit' }}
-                />
-                <p style={{ fontSize: 13, color: 'var(--txt-muted)', marginTop: 8 }}>
-                  No code needed. Describe your idea and Recgon will analyse it like a PM mentor.
-                </p>
+            <div className="form-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label className="form-label" style={{ margin: 0 }}>Idea Description</label>
+                <label style={{ cursor: 'pointer', fontSize: 12, color: 'var(--signature)', fontWeight: 600 }}>
+                  {extracting ? 'Extracting...' : uploadedFilename ? (
+                    <span>{uploadedFilename} · <span style={{ textDecoration: 'underline' }}>Replace</span></span>
+                  ) : 'Upload .pdf or .docx'}
+                  <input type="file" accept=".pdf,.docx" style={{ display: 'none' }} onChange={handleFileUpload} disabled={extracting} />
+                </label>
               </div>
-            ) : (
-              <div className="form-group">
-                <label className="form-label">Codebase Path or GitHub URL</label>
-                <input
-                  className="form-input"
-                  type="text"
-                  placeholder="https://github.com/user/repo OR /Users/you/project"
-                  value={projectPath}
-                  onChange={(e) => setProjectPath(e.target.value)}
-                />
-                <p style={{ fontSize: 13, color: 'var(--txt-muted)', marginTop: 12 }}>
-                  Paste a link to a public GitHub repo, or an absolute path to a local directory.
-                </p>
-              </div>
-            )}
+              <textarea
+                className="form-input"
+                rows={6}
+                placeholder={"Describe your idea...\n\nWhat problem does it solve? Who is it for? What makes it different?"}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{ resize: 'vertical', fontFamily: 'inherit' }}
+              />
+            </div>
 
             {createError && (
               <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 12, marginBottom: 0 }}>{createError}</p>
@@ -286,9 +241,9 @@ export default function ProjectsPage() {
               <button
                 className="btn btn-primary"
                 onClick={handleCreateProject}
-                disabled={loading || !projectName.trim() || (sourceMode === 'idea' ? !description.trim() : !projectPath.trim())}
+                disabled={loading || !projectName.trim() || !description.trim()}
               >
-                {loading ? 'Creating...' : sourceMode === 'idea' ? 'Create Project' : 'Create Project & Clone'}
+                {loading ? 'Creating...' : 'Create Project'}
               </button>
             </div>
           </div>

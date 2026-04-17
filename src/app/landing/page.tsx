@@ -7,11 +7,11 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://recgon.com';
 export const metadata: Metadata = {
   title: "Recgon — The Coach Solo Founders Don't Have",
   description:
-    'Recgon analyzes your codebase, generates marketing content, plans campaigns, and turns user feedback into developer prompts — so you can stop guessing and start shipping.',
+    'Recgon analyzes your product — from a GitHub repo or a plain-text idea — generates marketing content, plans campaigns, and turns user feedback into developer prompts, so you can stop guessing and start shipping.',
   keywords: [
     'AI for solo founders',
     'indie hacker tools',
-    'codebase analysis AI',
+    'product analysis AI',
     'marketing content generator',
     'feedback analysis tool',
     'AI mentor for startups',
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Recgon — The Coach Solo Founders Don't Have",
     description:
-      'AI-powered codebase analysis, marketing content, campaign planning, feedback analysis, and mentorship for solo founders and indie hackers.',
+      'AI-powered product analysis, marketing content, campaign planning, feedback analysis, and mentorship for solo founders and indie hackers.',
     type: 'website',
     url: `${BASE_URL}/landing`,
     siteName: 'Recgon',
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "Recgon — The Coach Solo Founders Don't Have",
     description:
-      'AI-powered codebase analysis, marketing content, feedback analysis, and mentorship for solo founders.',
+      'AI-powered product analysis, marketing content, feedback analysis, and mentorship for solo founders.',
     images: [`${BASE_URL}/og-image.png`],
   },
   robots: {
@@ -66,7 +66,7 @@ const jsonLd = {
         url: `${BASE_URL}/favicon.svg`,
       },
       description:
-        'Recgon is an AI-powered platform for solo founders and indie hackers — codebase analysis, marketing content generation, campaign planning, feedback analysis, and AI mentorship.',
+        'Recgon is an AI-powered platform for solo founders and indie hackers — product analysis (from a GitHub repo or a plain-text idea), marketing content generation, campaign planning, feedback analysis, and AI mentorship.',
     },
     {
       '@type': 'WebSite',
@@ -87,7 +87,7 @@ const jsonLd = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'AI-powered product platform for solo founders. Analyzes codebases, generates marketing content for Instagram, TikTok, and Google Ads, plans campaigns, analyzes user feedback, and provides AI mentorship.',
+        'AI-powered product platform for solo founders. Analyzes a GitHub repo or a plain-text idea, generates marketing content for Instagram, TikTok, and Google Ads, plans campaigns, analyzes user feedback, and provides AI mentorship.',
       offers: {
         '@type': 'Offer',
         price: '0',
@@ -95,7 +95,7 @@ const jsonLd = {
         description: 'Free to get started',
       },
       featureList: [
-        'Codebase analysis via AI',
+        'Product analysis via AI (GitHub repo or plain-text idea)',
         'Marketing content generation for Instagram, TikTok, and Google Ads',
         'Campaign planning and content calendars',
         'User feedback sentiment analysis',
@@ -113,15 +113,15 @@ const jsonLd = {
           name: 'What is Recgon?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Recgon is an AI-powered platform for solo founders and indie hackers. It analyzes your codebase to understand your product, generates platform-ready marketing content (Instagram, TikTok, Google Ads), plans campaigns, analyzes user feedback into actionable developer prompts, and provides an AI mentor that knows your product inside out.',
+            text: 'Recgon is an AI-powered platform for solo founders and indie hackers. It analyzes your product — from a GitHub repo or a plain-text idea — generates platform-ready marketing content (Instagram, TikTok, Google Ads), plans campaigns, analyzes user feedback into actionable developer prompts, and provides an AI mentor that knows your product inside out.',
           },
         },
         {
           '@type': 'Question',
-          name: 'How does Recgon analyze a codebase?',
+          name: 'How does Recgon analyze your product?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: "You point Recgon at a local directory or paste a GitHub URL. Recgon's AI walks your codebase, extracts the product's purpose, tech stack, features, and limitations, and builds a comprehensive product profile in seconds.",
+            text: "You paste a GitHub URL or describe your idea in plain text. Recgon's AI reads the repo (or brief), extracts the product's purpose, tech stack, features, and limitations, and builds a comprehensive product profile in seconds.",
           },
         },
         {
@@ -129,7 +129,7 @@ const jsonLd = {
           name: 'What marketing content can Recgon generate?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Recgon generates platform-ready copy for Instagram posts, TikTok captions, and Google Ads — all grounded in what your product actually does based on the codebase analysis. It also creates structured campaign timelines and content calendars.',
+            text: 'Recgon generates platform-ready copy for Instagram posts, TikTok captions, and Google Ads — all grounded in what your product actually does based on the product analysis. It also creates structured campaign timelines and content calendars.',
           },
         },
         {
@@ -191,13 +191,13 @@ export default function LandingPage() {
       >
         <h1>Recgon — The Coach Solo Founders Don&apos;t Have</h1>
         <p>
-          Recgon analyzes your codebase, generates marketing content, plans campaigns, and turns
-          user feedback into developer prompts — so solo founders, indie hackers, and small teams
-          can stop guessing and start shipping.
+          Recgon analyzes your product — from a GitHub repo or a plain-text idea — generates
+          marketing content, plans campaigns, and turns user feedback into developer prompts — so
+          solo founders, indie hackers, and small teams can stop guessing and start shipping.
         </p>
         <h2>Features</h2>
         <ul>
-          <li>Codebase Analysis — AI walks your codebase and extracts a full product profile</li>
+          <li>Product Analysis — paste a GitHub URL or describe your idea; AI extracts a full product profile</li>
           <li>Marketing Content — Instagram, TikTok, and Google Ads copy grounded in your product</li>
           <li>Campaign Planning — timelines, content calendars, and messaging strategies</li>
           <li>Feedback Analysis — sentiment breakdowns and actionable developer prompts</li>
@@ -206,8 +206,8 @@ export default function LandingPage() {
         </ul>
         <h2>How It Works</h2>
         <ol>
-          <li>Add Project — point Recgon at a local directory or paste a GitHub URL</li>
-          <li>Analyze — AI walks your codebase and builds a comprehensive product profile</li>
+          <li>Add Project — paste a GitHub URL or describe your idea in plain text</li>
+          <li>Analyze — AI reads your repo or brief and builds a comprehensive product profile</li>
           <li>Act — generate marketing content, plan campaigns, analyze feedback, and grow</li>
         </ol>
         <h2>Claude Code Integration</h2>

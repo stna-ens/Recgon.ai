@@ -73,11 +73,6 @@ export async function POST(
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const ip = request.headers.get('x-forwarded-for') ?? 'local';
-  if (await isRateLimited(`analyze:${ip}`, ANALYZE_LIMIT)) {
-    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
-  }
-
   try {
     validateEnv();
   } catch (err) {
@@ -91,6 +86,13 @@ export async function POST(
 
   const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
   if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+
+  // Rate limit per team — shared budget across all team members for expensive
+  // Gemini-backed analysis. Prevents a single power user on a shared IP from
+  // blowing the budget, and scales naturally with team size.
+  if (await isRateLimited(`analyze:team:${teamId}`, ANALYZE_LIMIT)) {
+    return NextResponse.json({ error: 'Your team has hit the analysis rate limit. Please wait a moment.' }, { status: 429 });
+  }
 
   // Enforce per-user analysis quota (3 total, 1 per 2 weeks)
   const quota = await checkAnalysisQuota(session.user.id, session.user.email ?? undefined);

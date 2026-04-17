@@ -16,15 +16,11 @@ export async function POST(
     return NextResponse.json({ error: 'Only owners and members can send invitations' }, { status: 403 });
   }
 
-  const { email, role } = await request.json();
-  if (!email || typeof email !== 'string') {
-    return NextResponse.json({ error: 'email is required' }, { status: 400 });
-  }
-
+  const { role } = await request.json().catch(() => ({}));
   const inviteRole = role === 'viewer' ? 'viewer' : 'member';
 
   try {
-    const invitation = await createInvitation(id, email.trim(), inviteRole, session.user.id);
+    const invitation = await createInvitation(id, inviteRole, session.user.id);
     return NextResponse.json(invitation, { status: 201 });
   } catch (error) {
     return serverError('POST /api/teams/[id]/invite', error);

@@ -25,7 +25,7 @@ export interface TeamMember {
 export interface TeamInvitation {
   id: string;
   teamId: string;
-  email: string;
+  email: string | null;   // null for new link-only invites; kept on legacy rows
   role: string;
   invitedBy: string;
   token: string;
@@ -195,7 +195,6 @@ export async function updateMemberRole(teamId: string, userId: string, role: 'ow
 
 export async function createInvitation(
   teamId: string,
-  email: string,
   role: 'member' | 'viewer',
   invitedBy: string
 ): Promise<TeamInvitation> {
@@ -208,7 +207,7 @@ export async function createInvitation(
     .insert({
       id,
       team_id: teamId,
-      email,
+      email: null,   // link-only invite — email is no longer collected
       role,
       invited_by: invitedBy,
       token,

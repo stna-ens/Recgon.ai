@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const role = await verifyTeamAccess(teamId, session.user.id);
   if (!role) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
-  const projects = await getAllProjects(teamId);
+  const projects = await getAllProjects(teamId, session.user.id);
   return NextResponse.json(projects);
 }
 
@@ -30,9 +30,19 @@ export async function POST(request: NextRequest) {
 
     if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     if (!rawPath && !description) {
-      return NextResponse.json({ error: 'Path or description is required' }, { status: 400 });
+      return NextResponse.json({ error: 'A GitHub URL or description is required' }, { status: 400 });
     }
     if (!teamId) return NextResponse.json({ error: 'teamId is required' }, { status: 400 });
+
+    // Local codebase paths are no longer supported — the app runs in a hosted
+    // environment and cannot read a user's filesystem. Only GitHub URLs and
+    // plain-text descriptions are accepted.
+    if (rawPath && !rawPath.startsWith('https://github.com/')) {
+      return NextResponse.json(
+        { error: 'Only GitHub URLs are supported. Use the "Import from GitHub" flow or describe your idea instead.' },
+        { status: 400 },
+      );
+    }
 
     const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
     if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -53,15 +63,10 @@ export async function POST(request: NextRequest) {
         createdAt,
       };
     } else {
-      let actualPath = rawPath;
-      let isGithub = false;
-
-      if (rawPath.startsWith('https://github.com/')) {
-        const user = await getUserById(session.user.id);
-        const token = user?.githubAccessToken ?? undefined;
-        actualPath = await cloneGitHubRepo(rawPath, projectId, token);
-        isGithub = true;
-      }
+      // rawPath is guaranteed to be a GitHub URL by the check above
+      const user = await getUserById(session.user.id);
+      const token = user?.githubAccessToken ?? undefined;
+      const actualPath = await cloneGitHubRepo(rawPath, projectId, token);
 
       project = {
         id: projectId,
@@ -69,9 +74,9 @@ export async function POST(request: NextRequest) {
         createdBy: session.user.id,
         name,
         path: actualPath,
-        sourceType: (isGithub ? 'github' : 'codebase') as 'github' | 'codebase',
-        isGithub,
-        ...(isGithub && { githubUrl: rawPath }),
+        sourceType: 'github' as const,
+        isGithub: true,
+        githubUrl: rawPath,
         createdAt,
       };
     }

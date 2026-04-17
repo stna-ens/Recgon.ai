@@ -9,11 +9,6 @@ import { serverError } from '@/lib/apiError';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for') ?? 'local';
-  if (await isRateLimited(`feedback:${ip}`, FEEDBACK_LIMIT)) {
-    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
-  }
-
   try {
     const body = await request.json();
     const { feedback, projectId, teamId } = body as { feedback: string[]; projectId?: string; teamId?: string };
@@ -23,6 +18,15 @@ export async function POST(request: NextRequest) {
         { error: 'feedback must be a non-empty array of strings' },
         { status: 400 }
       );
+    }
+
+    // Rate limit per team when scoped to a team; fall back to IP for unscoped
+    // analyses (e.g. preview/playground calls without a saved project)
+    const rateKey = teamId
+      ? `feedback:team:${teamId}`
+      : `feedback:ip:${request.headers.get('x-forwarded-for') ?? 'local'}`;
+    if (await isRateLimited(rateKey, FEEDBACK_LIMIT)) {
+      return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
     }
 
     validateEnv();

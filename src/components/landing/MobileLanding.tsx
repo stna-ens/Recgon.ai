@@ -776,11 +776,11 @@ export default function MobileLanding() {
           {[
             {
               q: 'What is Recgon?',
-              a: 'An AI platform for solo founders and indie hackers. It analyzes your codebase, generates marketing content, plans campaigns, turns user feedback into dev prompts, and mentors you through growth.',
+              a: 'An AI platform for solo founders and indie hackers. It analyzes your product (GitHub repo or plain-text idea), generates marketing content, plans campaigns, turns user feedback into dev prompts, and mentors you through growth.',
             },
             {
-              q: 'How does codebase analysis work?',
-              a: "Point Recgon at a local directory or GitHub URL. AI walks your code, extracts your product's purpose, stack, and features, and builds a full profile in seconds.",
+              q: 'How does product analysis work?',
+              a: "Paste a GitHub URL or describe your idea. AI reads your repo (or brief), extracts your product's purpose, stack, and features, and builds a full profile in seconds.",
             },
             {
               q: 'What marketing content can it generate?',

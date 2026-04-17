@@ -13,8 +13,8 @@ const FEATURES = [
         <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
       </svg>
     ),
-    title: 'Codebase Analysis',
-    desc: 'Point to any repo or local path — get a full product breakdown in seconds.',
+    title: 'Product Analysis',
+    desc: 'Paste a GitHub URL or describe your idea — get a full product breakdown in seconds.',
   },
   {
     icon: (
@@ -67,7 +67,10 @@ function LoginPageContent() {
     if (result?.error) {
       setError('Invalid email or password');
     } else {
-      router.push('/');
+      const raw = searchParams.get('callbackUrl') ?? '';
+      // Only honor relative paths to prevent open redirects.
+      const dest = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
+      router.push(dest);
       router.refresh();
     }
   }
@@ -103,7 +106,11 @@ function LoginPageContent() {
         </div>
         <button
           type="button"
-          onClick={() => signIn('github', { callbackUrl: '/' })}
+          onClick={() => {
+            const raw = searchParams.get('callbackUrl') ?? '';
+            const dest = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
+            signIn('github', { callbackUrl: dest });
+          }}
           style={{ width: '100%', padding: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', marginTop: '0.75rem' }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -114,7 +121,14 @@ function LoginPageContent() {
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--txt-muted)', marginBottom: 0 }}>
           Don&apos;t have an account?{' '}
-          <Link href="/register" style={{ color: 'var(--txt-pure)', fontWeight: 500, textDecoration: 'none' }}>Create one</Link>
+          <Link
+            href={(() => {
+              const raw = searchParams.get('callbackUrl') ?? '';
+              const dest = raw.startsWith('/') && !raw.startsWith('//') ? raw : '';
+              return dest ? `/register?callbackUrl=${encodeURIComponent(dest)}` : '/register';
+            })()}
+            style={{ color: 'var(--txt-pure)', fontWeight: 500, textDecoration: 'none' }}
+          >Create one</Link>
         </p>
       </div>
 

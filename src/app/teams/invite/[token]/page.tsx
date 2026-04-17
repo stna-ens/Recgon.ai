@@ -9,7 +9,7 @@ import { useTeam } from '@/components/TeamProvider';
 interface InviteInfo {
   teamName: string;
   role: string;
-  email: string;
+  email: string | null;
   expired: boolean;
 }
 
@@ -64,10 +64,8 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
     }
   }
 
-  if (status === 'unauthenticated') {
-    router.push(`/login?callbackUrl=/teams/invite/${token}`);
-    return null;
-  }
+  const inviteCallback = `/teams/invite/${token}`;
+  const encodedCallback = encodeURIComponent(inviteCallback);
 
   return (
     <div style={{ width: '100vw', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -95,7 +93,7 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
               as a <strong style={{ color: 'var(--txt-pure)' }}>{invite.role}</strong>
             </p>
             {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: '0 0 1rem' }}>{error}</p>}
-            {session?.user && (
+            {session?.user ? (
               <button onClick={handleAccept} disabled={accepting} style={{
                 padding: '0.75rem 2rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
                 border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '1rem',
@@ -103,7 +101,34 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
               }}>
                 {accepting ? 'Joining...' : 'Accept Invitation'}
               </button>
-            )}
+            ) : status === 'unauthenticated' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', margin: '0 0 0.25rem' }}>
+                  Sign in or create an account to join — you&apos;ll come right back here.
+                </p>
+                <a
+                  href={`/login?callbackUrl=${encodedCallback}`}
+                  style={{
+                    padding: '0.7rem 1.5rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
+                    borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem',
+                    textDecoration: 'none', textAlign: 'center',
+                  }}
+                >
+                  Sign in
+                </a>
+                <a
+                  href={`/register?callbackUrl=${encodedCallback}`}
+                  style={{
+                    padding: '0.7rem 1.5rem', background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)',
+                    border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)',
+                    fontWeight: 600, fontSize: '0.95rem',
+                    textDecoration: 'none', textAlign: 'center',
+                  }}
+                >
+                  Create account
+                </a>
+              </div>
+            ) : null}
           </>
         )}
 

@@ -11,6 +11,7 @@ export interface Project {
   isGithub?: boolean;
   githubUrl?: string;
   lastAnalyzedCommitSha?: string;
+  isShared?: boolean;
   createdAt: string;
   analysis?: ProductAnalysis;
   marketingContent?: MarketingContent[];
@@ -153,6 +154,7 @@ async function assembleProject(row: Record<string, unknown>): Promise<Project> {
     isGithub: row.is_github as boolean | undefined,
     githubUrl: row.github_url as string | undefined,
     lastAnalyzedCommitSha: row.last_analyzed_commit_sha as string | undefined,
+    isShared: (row.is_shared as boolean | null) ?? true,
     createdAt: row.created_at as string,
     socialProfiles: (row.social_profiles as { platform: string; url: string }[]) ?? [],
     analyticsPropertyId: row.analytics_property_id as string | undefined,
@@ -163,18 +165,30 @@ async function assembleProject(row: Record<string, unknown>): Promise<Project> {
   };
 }
 
-export async function getAllProjects(teamId: string): Promise<Project[]> {
-  const { data } = await supabase
+/**
+ * List projects in a team, applying per-project privacy:
+ * shared projects are returned to all team members; unshared projects are
+ * returned only to their creator. Pass the acting user's id to enforce this.
+ */
+export async function getAllProjects(teamId: string, userId?: string): Promise<Project[]> {
+  let query = supabase
     .from('projects')
     .select('*')
     .eq('team_id', teamId)
     .order('created_at', { ascending: false });
 
+  if (userId) {
+    // is_shared OR created_by = userId
+    query = query.or(`is_shared.eq.true,created_by.eq.${userId}`);
+  }
+
+  const { data } = await query;
+
   if (!data || data.length === 0) return [];
   return Promise.all(data.map((row) => assembleProject(row)));
 }
 
-export async function getProject(id: string, teamId: string): Promise<Project | undefined> {
+export async function getProject(id: string, teamId: string, userId?: string): Promise<Project | undefined> {
   const { data } = await supabase
     .from('projects')
     .select('*')
@@ -182,7 +196,25 @@ export async function getProject(id: string, teamId: string): Promise<Project | 
     .eq('team_id', teamId)
     .single();
   if (!data) return undefined;
+  // Enforce privacy: unshared project only visible to creator.
+  if (userId && data.is_shared === false && data.created_by !== userId) return undefined;
   return assembleProject(data);
+}
+
+export async function updateProjectShared(
+  projectId: string,
+  teamId: string,
+  userId: string,
+  isShared: boolean,
+): Promise<boolean> {
+  // Only the creator can flip the privacy toggle.
+  const { error } = await supabase
+    .from('projects')
+    .update({ is_shared: isShared })
+    .eq('id', projectId)
+    .eq('team_id', teamId)
+    .eq('created_by', userId);
+  return !error;
 }
 
 /**
@@ -232,6 +264,7 @@ export async function saveProject(project: Project): Promise<void> {
       is_github: core.isGithub ?? false,
       github_url: core.githubUrl,
       last_analyzed_commit_sha: core.lastAnalyzedCommitSha,
+      is_shared: core.isShared ?? true,
       social_profiles: core.socialProfiles ?? [],
       analytics_property_id: core.analyticsPropertyId,
       created_at: core.createdAt,

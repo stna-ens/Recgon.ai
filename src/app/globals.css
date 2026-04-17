@@ -13,6 +13,7 @@
   
   /* Liquid Glass (Light) */
   --glass-substrate: rgba(255, 255, 255, 0.75);
+  --modal-bg: rgba(252, 252, 253, 0.96);
   --glass-hover: rgba(255, 255, 255, 1);
   --glass-active: rgba(240, 240, 245, 0.95);
   
@@ -69,6 +70,7 @@
 
   /* Liquid Glass (Dark) */
   --glass-substrate: rgba(20, 20, 22, 0.6);
+  --modal-bg: rgba(24, 24, 27, 0.94);
   --glass-hover: rgba(30, 30, 34, 0.8);
   --glass-active: rgba(40, 40, 45, 0.9);
   
@@ -745,18 +747,19 @@ body {
 /* === MODAL === */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
   display: flex; align-items: center; justify-content: center;
   z-index: 99999;
   animation: fadeIn 0.3s ease forwards;
 }
 
 .modal {
-  background: var(--glass-substrate);
-  backdrop-filter: blur(50px) saturate(200%);
-  -webkit-backdrop-filter: blur(50px) saturate(200%);
+  /* More opaque substrate so content behind the blur stays fully unreadable */
+  background: var(--modal-bg);
+  backdrop-filter: blur(80px) saturate(200%);
+  -webkit-backdrop-filter: blur(80px) saturate(200%);
   border: 1px solid var(--edge-rim);
   border-radius: 28px;
   padding: 40px;

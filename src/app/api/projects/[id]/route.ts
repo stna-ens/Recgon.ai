@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProject, deleteProject, saveProject } from '@/lib/storage';
+import { getProject, deleteProject, saveProject, updateProjectShared } from '@/lib/storage';
 import { cloneGitHubRepo } from '@/lib/githubFetcher';
 import { auth } from '@/auth';
 import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
@@ -18,7 +18,7 @@ export async function GET(
   const role = await verifyTeamAccess(teamId, session.user.id);
   if (!role) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
-  const project = await getProject(id, teamId);
+  const project = await getProject(id, teamId, session.user.id);
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
@@ -39,7 +39,7 @@ export async function DELETE(
   const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
   if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
-  const project = await getProject(id, teamId);
+  const project = await getProject(id, teamId, session.user.id);
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
@@ -63,32 +63,45 @@ export async function PATCH(
   if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
   const body = await request.json();
-  const { description, path: rawPath } = body;
+  const { description, path: rawPath, isShared } = body;
 
-  if (!description && !rawPath) {
-    return NextResponse.json({ error: 'description or path is required' }, { status: 400 });
+  if (description === undefined && rawPath === undefined && isShared === undefined) {
+    return NextResponse.json({ error: 'description, path, or isShared is required' }, { status: 400 });
   }
 
-  const project = await getProject(id, teamId);
+  const project = await getProject(id, teamId, session.user.id);
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
-  if (rawPath) {
-    let actualPath = rawPath as string;
-    let isGithub = false;
-    if (actualPath.startsWith('https://github.com/')) {
-      actualPath = await cloneGitHubRepo(actualPath, id);
-      isGithub = true;
+  // Privacy toggle — only the creator may change it.
+  if (typeof isShared === 'boolean') {
+    if (project.createdBy !== session.user.id) {
+      return NextResponse.json({ error: 'Only the project creator can change privacy' }, { status: 403 });
     }
+    const ok = await updateProjectShared(id, teamId, session.user.id, isShared);
+    if (!ok) return NextResponse.json({ error: 'Failed to update privacy' }, { status: 500 });
+  }
+
+  if (rawPath) {
+    // Only GitHub URLs are supported — local paths were removed.
+    if (!rawPath.startsWith('https://github.com/')) {
+      return NextResponse.json(
+        { error: 'Only GitHub URLs are supported. Use the "Import from GitHub" flow.' },
+        { status: 400 },
+      );
+    }
+    const actualPath = await cloneGitHubRepo(rawPath, id);
     project.path = actualPath;
-    project.sourceType = isGithub ? 'github' : 'codebase';
-    project.isGithub = isGithub;
-    if (isGithub) project.githubUrl = rawPath as string;
+    project.sourceType = 'github';
+    project.isGithub = true;
+    project.githubUrl = rawPath as string;
   }
 
   if (description) {
     project.description = description as string;
   }
 
-  await saveProject(project);
+  if (rawPath || description) {
+    await saveProject(project);
+  }
   return NextResponse.json({ success: true });
 }

@@ -436,8 +436,20 @@ function SetupScreen({ onSave, oauthConfigured, needsPropertyId, onPropertyIdSav
       <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8, fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '-0.5px' }}>
         <span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>connect google-analytics
       </h1>
-      <p style={{ color: 'var(--txt-muted)', marginBottom: 40, lineHeight: 1.6 }}>
+      <p style={{ color: 'var(--txt-muted)', marginBottom: 12, lineHeight: 1.6 }}>
         Recgon reads your GA4 data to surface insights and recommendations.
+      </p>
+      <p style={{ color: 'var(--txt-faint)', marginBottom: 40, fontSize: '0.82rem', lineHeight: 1.6 }}>
+        No analytics yet?{' '}
+        <a
+          href="https://support.google.com/analytics/answer/9304153"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'var(--signature)', textDecoration: 'underline', fontWeight: 500 }}
+        >
+          Set up Google Analytics 4
+        </a>
+        {' '}in ~5 minutes, then come back here.
       </p>
 
       {/* OAuth — primary option */}

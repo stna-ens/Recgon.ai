@@ -69,8 +69,8 @@ function HeroText() {
         )}
       </h1>
       <p style={{ fontSize: '1.1rem', lineHeight: 1.7, color: 'rgba(255,255,255,0.6)', maxWidth: '560px', margin: '0 auto 48px', fontWeight: 400, animation: 'fadeInUp 0.8s ease 0.8s both' }}>
-        Recgon analyzes your codebase, generates marketing content, plans campaigns,
-        and turns user feedback into developer prompts — so you can stop guessing and start shipping.
+        Recgon analyzes your product — from a GitHub repo or a plain-text idea — generates
+        marketing content, plans campaigns, and turns user feedback into developer prompts, so you can stop guessing and start shipping.
       </p>
       <div className="cta-row" style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', animation: 'fadeInUp 0.8s ease 1.1s both' }}>
         <Link href="/register" className="btn-primary" style={{ padding: '16px 32px', borderRadius: '8px', fontSize: '16px', fontWeight: 600, color: '#000', textDecoration: 'none', background: PINK, display: 'inline-block' }}>
@@ -349,11 +349,11 @@ export default function LandingClientShell() {
             {[
               {
                 q: 'What is Recgon?',
-                a: 'Recgon is an AI-powered platform for solo founders and indie hackers. It analyzes your codebase to understand your product, generates marketing content for Instagram, TikTok, and Google Ads, plans campaigns, turns user feedback into actionable developer prompts, and provides an AI mentor that knows your product inside out.',
+                a: 'Recgon is an AI-powered platform for solo founders and indie hackers. It analyzes your product — from a GitHub repo or a plain-text idea — generates marketing content for Instagram, TikTok, and Google Ads, plans campaigns, turns user feedback into actionable developer prompts, and provides an AI mentor that knows your product inside out.',
               },
               {
-                q: 'How does the codebase analysis work?',
-                a: 'Point Recgon at a local directory or paste a GitHub URL. AI walks your codebase, extracts the product\'s purpose, tech stack, features, and limitations, and builds a full product profile in seconds — no config required.',
+                q: 'How does product analysis work?',
+                a: 'Paste a GitHub URL or describe your idea in plain text. AI reads your repo (or brief), extracts the product\'s purpose, tech stack, features, and limitations, and builds a full product profile in seconds — no config required.',
               },
               {
                 q: 'What marketing content can Recgon generate?',

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useTeam } from '@/components/TeamProvider';
 import { createPortal } from 'react-dom';
 
@@ -67,12 +68,14 @@ interface CommitInfo {
 interface Project {
   id: string;
   name: string;
+  createdBy?: string;
   path?: string;
   sourceType?: 'codebase' | 'github' | 'description';
   description?: string;
   isGithub?: boolean;
   githubUrl?: string;
   lastAnalyzedCommitSha?: string;
+  isShared?: boolean;
   createdAt: string;
   analysis?: ProductAnalysis;
 }
@@ -119,7 +122,9 @@ export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { currentTeam, refreshProjects } = useTeam();
+  const { data: session } = useSession();
   const [project, setProject] = useState<Project | null>(null);
+  const [togglingShared, setTogglingShared] = useState(false);
   const [hasUpdates, setHasUpdates] = useState(false);
   const [latestCommit, setLatestCommit] = useState<CommitInfo | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -234,6 +239,25 @@ export default function ProjectDetailPage() {
     router.push('/projects');
   };
 
+  const handleToggleShared = async () => {
+    if (!project || togglingShared) return;
+    const next = !(project.isShared ?? true);
+    setTogglingShared(true);
+    try {
+      const res = await fetch(`/api/projects/${params.id}?teamId=${currentTeam?.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isShared: next }),
+      });
+      if (res.ok) {
+        setProject({ ...project, isShared: next });
+        refreshProjects();
+      }
+    } finally {
+      setTogglingShared(false);
+    }
+  };
+
   const handleSaveDescription = async () => {
     if (!draftDescription.trim() || !project) return;
     setError('');
@@ -341,12 +365,31 @@ export default function ProjectDetailPage() {
               ) : a ? (
                 <><svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg> {project.sourceType === 'description' ? 'Re-analyze' : 'Re-analyze'}</>
               ) : (
-                <><svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg> {project.sourceType === 'description' ? 'Analyze Idea' : 'Analyze Codebase'}</>
+                <><svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg> {project.sourceType === 'description' ? 'Analyze Idea' : 'Analyze Repo'}</>
               )}
             </button>
             {a && (
               <button className="btn btn-secondary" onClick={() => router.push(`/projects/${params.id}/export`)}>
                 <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export PDF
+              </button>
+            )}
+            {session?.user?.id && project.createdBy === session.user.id && (
+              <button
+                className="btn btn-secondary"
+                title={project.isShared === false
+                  ? 'Private — only you can see this project. Click to share with your team.'
+                  : 'Shared — all team members can see this project. Click to make it private.'}
+                onClick={handleToggleShared}
+                disabled={togglingShared}
+                style={{ padding: '8px 10px' }}
+              >
+                {project.isShared === false ? (
+                  // Lock (private)
+                  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                ) : (
+                  // Users (shared)
+                  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                )}
               </button>
             )}
             <button className="btn btn-secondary" title="Delete project" onClick={handleDelete} style={{ padding: '8px 10px' }}>
@@ -667,24 +710,24 @@ export default function ProjectDetailPage() {
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           </span>
           <h3>Ready to analyze</h3>
-          <p>{project.sourceType === 'description' ? 'Click \u201cAnalyze Idea\u201d to get your full product strategy brief' : 'Click \u201cAnalyze Codebase\u201d to get your full product strategy brief'}</p>
+          <p>{project.sourceType === 'description' ? 'Click \u201cAnalyze Idea\u201d to get your full product strategy brief' : 'Click \u201cAnalyze Repo\u201d to get your full product strategy brief'}</p>
         </div>
       )}
 
-      {/* Connect codebase modal */}
+      {/* Connect GitHub repo modal (upgrade idea → full code analysis) */}
       {connectingCodebase && typeof document !== 'undefined' && createPortal(
         <div className="modal-overlay" onClick={() => setConnectingCodebase(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Connect Codebase</h3>
+            <h3>Connect GitHub Repo</h3>
             <p style={{ fontSize: 14, color: 'var(--txt-muted)', marginBottom: 16 }}>
-              Upgrade this idea project to a full codebase analysis. The existing idea analysis will be replaced.
+              Upgrade this idea project to a full code analysis by linking a GitHub repository. The existing idea analysis will be replaced.
             </p>
             <div className="form-group">
-              <label className="form-label">Codebase Path or GitHub URL</label>
+              <label className="form-label">GitHub URL</label>
               <input
                 className="form-input"
                 type="text"
-                placeholder="https://github.com/user/repo OR /Users/you/project"
+                placeholder="https://github.com/user/repo"
                 value={codebasePath}
                 onChange={(e) => setCodebasePath(e.target.value)}
                 autoFocus

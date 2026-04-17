@@ -19,9 +19,10 @@ interface Member {
 
 interface PendingInvite {
   id: string;
-  email: string;
+  email: string | null;
   role: string;
   expiresAt: string;
+  createdAt?: string;
 }
 
 interface TeamDetail {
@@ -214,7 +215,6 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'member' | 'viewer'>('member');
   const [inviteLink, setInviteLink] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -345,19 +345,18 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
     try {
       const res = await fetch(`/api/teams/${id}/invite`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+        body: JSON.stringify({ role: inviteRole }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       const link = `${window.location.origin}/teams/invite/${data.token}`;
       setInviteLink(link);
-      setInviteEmail('');
       const ir = await fetch(`/api/teams/${id}/invitations`);
       if (ir.ok) setPendingInvites(await ir.json());
       try { await navigator.clipboard.writeText(link); addToast('Invite link copied!', 'success'); }
       catch { addToast('Invite link generated — copy it below', 'info'); }
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'Failed to send invite', 'error');
+      addToast(err instanceof Error ? err.message : 'Failed to generate invite', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -689,8 +688,9 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
           }}>
             <form onSubmit={handleInvite}>
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="teammate@example.com" required style={{ ...inputStyle, flex: 1 }} />
+                <p style={{ flex: 1, margin: 0, fontSize: '0.85rem', color: 'var(--txt-muted)' }}>
+                  Generate a single-use invite link. Share it with someone you want to add to the team.
+                </p>
                 <RoleDropdown
                   value={inviteRole}
                   onChange={(v) => setInviteRole(v as 'member' | 'viewer')}
@@ -699,7 +699,7 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
                   padding: '0.55rem 1rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
                   border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.85rem',
                   cursor: actionLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
-                }}>{actionLoading ? 'Sending…' : 'Invite'}</button>
+                }}>{actionLoading ? 'Generating…' : 'Generate link'}</button>
               </div>
 
               {inviteLink && (
@@ -740,7 +740,13 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
                         background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                          <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--txt-pure)' }}>{inv.email}</span>
+                          <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--txt-pure)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--txt-muted)' }}>
+                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                            </svg>
+                            {inv.email ?? 'Invite link'}
+                          </span>
                           <span style={{
                             fontSize: '0.68rem', fontWeight: 600, padding: '1px 7px', borderRadius: 20,
                             background: 'var(--btn-secondary-bg)', color: 'var(--txt-muted)',

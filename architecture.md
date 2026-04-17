@@ -43,14 +43,23 @@ supabase/migrations/            # SQL migrations
 ```typescript
 Team:       { id, name, slug, description?, avatarColor?, avatarUrl?, createdBy, createdAt }
 TeamMember: { teamId, userId, role: 'owner'|'member'|'viewer', joinedAt, nickname?, email?, avatarUrl? }
-TeamInvitation: { id, teamId, email, role, invitedBy, token, expiresAt, acceptedAt, createdAt }
+TeamInvitation: { id, teamId, email: string|null, role, invitedBy, token, expiresAt, acceptedAt, createdAt }
+// email is null for new link-only invites. Accepting an invite only
+// requires a valid single-use token + authenticated session; the token
+// is marked accepted_at on first use.
 ```
 
 ### Project (`lib/storage.ts`)
 ```typescript
 Project: {
   id, teamId, createdBy, name, path?, sourceType?: 'codebase'|'github'|'description',
-  description?, isGithub?, githubUrl?, lastAnalyzedCommitSha?, createdAt,
+  // NOTE: 'codebase' is legacy (existing rows only). New projects are created
+  // as 'github' or 'description'. Local-path analysis is no longer supported
+  // in the hosted environment. POST /api/projects rejects any non-GitHub path.
+  description?, isGithub?, githubUrl?, lastAnalyzedCommitSha?,
+  isShared?: boolean,   // DB col `is_shared`. Default true. When false, only creator sees it
+                        // (filtered in getAllProjects + getProject via team + ownership check).
+  createdAt,
   // assembled from related tables:
   analysis?: ProductAnalysis, marketingContent?, feedbackAnalyses?, campaigns?,
   socialProfiles?, analyticsPropertyId?
@@ -91,7 +100,7 @@ Project: {
 |-------|--------|------|-------|
 | `/api/projects` | GET | Session | `?teamId=` required |
 | `/api/projects` | POST | Session | Body: `{name, path?, description?, teamId}` |
-| `/api/projects/[id]` | GET/PUT/DELETE | Session | `?teamId=` |
+| `/api/projects/[id]` | GET/PATCH/DELETE | Session | `?teamId=`. PATCH body: `{description?, path?, isShared?}`. `isShared` is creator-only. |
 | `/api/projects/[id]/analyze` | POST | Session | **SSE stream** — progress events then `{type:'done', project}` |
 | `/api/projects/[id]/check-updates` | POST | Session | GitHub diff check |
 | `/api/projects/[id]/pdf` | GET | Session | Binary PDF export |
@@ -205,7 +214,7 @@ Project: {
 | Source | Flow |
 |--------|------|
 | `description` | Text → `ANALYZE_IDEA_SYSTEM` prompt → `ProductAnalysis` |
-| `codebase`/`github` | File tree + top 20 files → `ANALYZE_SYSTEM` prompt → `ProductAnalysis` |
+| `github` (and legacy `codebase`) | File tree + top 20 files → `ANALYZE_SYSTEM` prompt → `ProductAnalysis` |
 | GitHub re-analysis | Diff + existing analysis → `ANALYZE_UPDATE_SYSTEM` → updated analysis with `improvements[]` + `nextStepsTaken[]` |
 
 **Streaming**: `/api/projects/[id]/analyze` uses SSE. UI receives progress events during long analysis runs.

@@ -8,7 +8,14 @@
 
 ## Env (`.env.local`)
 Required: `GEMINI_API_KEY`, `AUTH_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
-Optional (GA4 OAuth): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+Optional:
+- GA4 OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- GitHub OAuth (repo import): `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (or legacy `GITHUB_ID`)
+- Feedback scraping: `FIRECRAWL_API_KEY`
+- Deployment base URL (for emails + OAuth callbacks): `NEXT_PUBLIC_BASE_URL`
+- Logging: `LOG_LEVEL` (`debug` | `info` | `warn` | `error`; default `info`)
+- Quota bypass (comma-separated emails exempt from analysis quota): `QUOTA_EXEMPT_EMAILS`
+- MCP server auth (stdio server only): `RECGON_MCP_TOKEN`
 
 ## Stack
 Next.js 15 (App Router) + TypeScript + Tailwind. AI via Gemini 2.5 Flash (`@google/generative-ai`). Auth via NextAuth v5 (credentials + JWT). Database: Supabase (PostgreSQL), accessed via service-role key server-side.

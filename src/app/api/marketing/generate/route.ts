@@ -11,11 +11,6 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const ip = request.headers.get('x-forwarded-for') ?? 'local';
-  if (await isRateLimited(`generate:${ip}`, GENERATE_LIMIT)) {
-    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
-  }
-
   try {
     validateEnv();
     const body = await request.json();
@@ -28,6 +23,11 @@ export async function POST(request: NextRequest) {
 
     const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
     if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+
+    // Rate limit per team — shared Gemini budget across team members
+    if (await isRateLimited(`generate:team:${teamId}`, GENERATE_LIMIT)) {
+      return NextResponse.json({ error: 'Your team has hit the generation rate limit. Please wait a moment.' }, { status: 429 });
+    }
 
     const project = await getProject(projectId, teamId);
     if (!project) {
