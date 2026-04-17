@@ -214,7 +214,7 @@ export default async function OpengraphImage() {
             display: 'flex',
           }}
         >
-          recgon.com
+          recgon.app
         </div>
       </div>
     ),

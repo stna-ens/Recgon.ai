@@ -7,6 +7,9 @@ import { ToastProvider } from '@/components/Toast';
 import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
+  // Required for Next.js to generate absolute OG image URLs that WhatsApp /
+  // Telegram / Twitter scrapers can actually fetch.
+  metadataBase: new URL('https://recgon.app'),
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
@@ -20,12 +23,22 @@ export const metadata: Metadata = {
     title: 'Recgon — The Coach Solo Founders Don\'t Have',
     description: 'AI-powered product strategy, marketing content, feedback analysis, and mentorship for solo founders.',
     type: 'website',
+    url: 'https://recgon.app',
     siteName: 'Recgon',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'Recgon — The Coach Solo Founders Don\'t Have',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Recgon — The Coach Solo Founders Don\'t Have',
     description: 'AI-powered product strategy, marketing content, feedback analysis, and mentorship for solo founders.',
+    images: ['/opengraph-image'],
   },
   robots: {
     index: true,
