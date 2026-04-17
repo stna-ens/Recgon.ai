@@ -36,3 +36,4 @@ yarn-error.log*
 *.preview.html
 *-preview.png
 landing-*.png
+.claude/
