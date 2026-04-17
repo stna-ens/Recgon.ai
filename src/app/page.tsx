@@ -384,56 +384,88 @@ export default function OverviewPage() {
             </p>
           ) : (
             <div>
-              {actions.map((action, idx) => (
-                <div
-                  key={action.id}
-                  style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 11,
-                    padding: '11px 0',
-                    borderBottom: idx < actions.length - 1 ? '1px solid var(--btn-secondary-border)' : 'none',
-                  }}
-                >
-                  <div style={{
-                    width: 7, height: 7, borderRadius: '50%', marginTop: 5, flexShrink: 0,
-                    background: PRIORITY_COLOR[action.priority],
-                    boxShadow: PRIORITY_SHADOW[action.priority],
-                  }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 3, color: 'var(--txt-pure)' }}>
-                      {action.title}
-                    </div>
+              {(() => {
+                const groups: { projectName: string; items: Action[] }[] = [];
+                for (const a of actions) {
+                  const last = groups[groups.length - 1];
+                  if (last && last.projectName === a.projectName) last.items.push(a);
+                  else groups.push({ projectName: a.projectName, items: [a] });
+                }
+                return groups.map((group, gi) => (
+                  <div
+                    key={group.projectName + gi}
+                    style={{
+                      paddingTop: gi === 0 ? 4 : 14,
+                      paddingBottom: 4,
+                      borderTop: gi > 0 ? '1px solid var(--btn-secondary-border)' : 'none',
+                    }}
+                  >
                     <div style={{
-                      fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                      fontSize: 11, color: 'var(--txt-faint)',
-                      display: 'flex', alignItems: 'center', gap: 7,
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      marginBottom: 6,
                     }}>
                       <span style={{
                         background: 'rgba(var(--signature-rgb), 0.08)',
                         border: '1px solid rgba(var(--signature-rgb), 0.2)',
                         color: 'var(--signature)',
-                        padding: '1px 7px', borderRadius: 'var(--r-pill)',
-                        fontSize: 10, fontWeight: 600, letterSpacing: '0.3px',
+                        padding: '2px 9px', borderRadius: 'var(--r-pill)',
+                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                        fontSize: 10.5, fontWeight: 600, letterSpacing: '0.4px',
+                        textTransform: 'uppercase',
                       }}>
-                        {action.projectName}
+                        {group.projectName}
                       </span>
-                      {action.source}
-                      {action.surfacedAt && (() => {
-                        const ageDays = Math.floor((Date.now() - new Date(action.surfacedAt).getTime()) / 86400000);
-                        if (ageDays < 1) return null;
-                        const stale = ageDays >= 14;
-                        return (
-                          <span style={{
-                            color: stale ? 'var(--warning)' : 'var(--txt-faint)',
-                            fontWeight: stale ? 600 : 400,
-                          }}>
-                            · {ageDays}d
-                          </span>
-                        );
-                      })()}
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                        fontSize: 10.5, color: 'var(--txt-faint)',
+                      }}>
+                        {group.items.length} action{group.items.length !== 1 ? 's' : ''}
+                      </span>
                     </div>
+                    {group.items.map((action, idx) => (
+                      <div
+                        key={action.id}
+                        style={{
+                          display: 'flex', alignItems: 'flex-start', gap: 11,
+                          padding: '9px 0',
+                          borderBottom: idx < group.items.length - 1 ? '1px dashed var(--btn-secondary-border)' : 'none',
+                        }}
+                      >
+                        <div style={{
+                          width: 7, height: 7, borderRadius: '50%', marginTop: 5, flexShrink: 0,
+                          background: PRIORITY_COLOR[action.priority],
+                          boxShadow: PRIORITY_SHADOW[action.priority],
+                        }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 3, color: 'var(--txt-pure)' }}>
+                            {action.title}
+                          </div>
+                          <div style={{
+                            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                            fontSize: 11, color: 'var(--txt-faint)',
+                            display: 'flex', alignItems: 'center', gap: 7,
+                          }}>
+                            {action.source}
+                            {action.surfacedAt && (() => {
+                              const ageDays = Math.floor((Date.now() - new Date(action.surfacedAt).getTime()) / 86400000);
+                              if (ageDays < 1) return null;
+                              const stale = ageDays >= 14;
+                              return (
+                                <span style={{
+                                  color: stale ? 'var(--warning)' : 'var(--txt-faint)',
+                                  fontWeight: stale ? 600 : 400,
+                                }}>
+                                  · {ageDays}d
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           )}
         </div>
