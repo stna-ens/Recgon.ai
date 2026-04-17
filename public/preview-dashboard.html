@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recgon — Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep: #f5f5f7;
+      --bg-content: rgba(255,255,255,0.6);
+      --glass-substrate: rgba(255,255,255,0.75);
+      --edge-highlight: inset 0 1px 1px rgba(255,255,255,1);
+      --edge-shadow: inset 0 -1px 1px rgba(0,0,0,0.03);
+      --shadow-float: 0 12px 32px -8px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.02);
+      --shadow-deep: 0 24px 48px -12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.03);
+      --txt-pure: #1d1d1f;
+      --txt-muted: #86868b;
+      --txt-faint: #a1a1a6;
+      --btn-secondary-bg: rgba(0,0,0,0.04);
+      --btn-secondary-border: rgba(0,0,0,0.06);
+      --signature: #e8a8c4;
+      --signature-rgb: 232,168,196;
+      --success: #34C759;
+      --warning: #FF9F0A;
+      --danger: #FF3B30;
+      --r-sm: 14px;
+      --r-md: 24px;
+      --r-pill: 999px;
+    }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--txt-pure);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Subtle noise grain */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Floating top nav */
+    .top-nav {
+      position: fixed;
+      top: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px;
+      background: var(--glass-substrate);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border-radius: var(--r-pill);
+      box-shadow: var(--shadow-float), var(--edge-highlight), var(--edge-shadow);
+      z-index: 100;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 18px;
+      border-radius: var(--r-pill);
+      color: var(--txt-muted);
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .nav-link.active {
+      color: var(--signature);
+      background: rgba(var(--signature-rgb), 0.08);
+      box-shadow: var(--edge-highlight), var(--edge-shadow);
+    }
+
+    .nav-link svg { width: 15px; height: 15px; opacity: 0.7; }
+    .nav-link.active svg { opacity: 1; }
+
+    /* Brand logo */
+    .brand-logo {
+      position: fixed;
+      top: 36px;
+      left: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      color: var(--signature);
+    }
+
+    /* Main */
+    .main {
+      padding-top: 116px;
+      padding-bottom: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .content {
+      width: 100%;
+      max-width: 1100px;
+      padding: 0 40px;
+    }
+
+    /* Page header */
+    .page-header {
+      margin-bottom: 40px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .page-header h2 {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 5px;
+      color: var(--txt-pure);
+    }
+
+    .page-header p {
+      font-size: 13px;
+      color: var(--txt-muted);
+      font-weight: 400;
+    }
+
+    .page-header p strong { color: var(--txt-pure); font-weight: 500; }
+
+    /* Share btn */
+    .share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 20px;
+      background: var(--txt-pure);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: var(--r-sm);
+      border: none;
+      cursor: pointer;
+      letter-spacing: -0.2px;
+    }
+
+    /* Glass card */
+    .glass-card {
+      background: var(--bg-content) padding-box,
+        linear-gradient(135deg,
+          rgba(var(--signature-rgb), 0.35) 0%,
+          rgba(255,255,255,0.06) 50%,
+          rgba(var(--signature-rgb), 0.15) 100%) border-box;
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border: 1px solid transparent;
+      border-radius: var(--r-md);
+      padding: 28px 32px;
+      box-shadow: var(--shadow-float), var(--edge-highlight), var(--edge-shadow);
+    }
+
+    /* Brief card */
+    .brief-card {
+      margin-bottom: 32px;
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    .brief-body { flex: 1; }
+
+    .brief-label {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--signature);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .brief-label::before { content: '// '; opacity: 0.5; }
+
+    .brief-text {
+      font-size: 14.5px;
+      line-height: 1.65;
+      color: var(--txt-pure);
+    }
+
+    .brief-text strong { color: var(--signature); font-weight: 600; }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .stat-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(var(--signature-rgb), 0.07);
+      border: 1px solid rgba(var(--signature-rgb), 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--signature);
+      margin-bottom: 14px;
+    }
+
+    .stat-value {
+      font-size: 38px;
+      font-weight: 500;
+      letter-spacing: -1.5px;
+      color: var(--signature);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 12.5px;
+      color: var(--txt-muted);
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+
+    .delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: var(--r-pill);
+    }
+
+    .delta-up { background: rgba(52,199,89,0.1); color: var(--success); }
+    .delta-down { background: rgba(255,59,48,0.1); color: var(--danger); }
+    .delta-flat { background: rgba(255,159,10,0.1); color: var(--warning); }
+
+    /* 2-col grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    /* Card section header */
+    .card-label {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--signature);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-label::before { content: '// '; opacity: 0.5; }
+
+    .card-label-action {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      color: var(--txt-muted);
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+      cursor: pointer;
+    }
+
+    .card-label-action::before { content: none; }
+
+    /* Action items */
+    .action-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--btn-secondary-border);
+    }
+
+    .action-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .action-row:first-child { padding-top: 0; }
+
+    .priority-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    .dot-high { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
+    .dot-med { background: var(--warning); }
+    .dot-low { background: var(--success); }
+
+    .action-body { flex: 1; }
+    .action-title { font-size: 13.5px; font-weight: 500; margin-bottom: 3px; color: var(--txt-pure); }
+
+    .action-meta {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 11px;
+      color: var(--txt-faint);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .action-tag {
+      background: rgba(var(--signature-rgb), 0.08);
+      border: 1px solid rgba(var(--signature-rgb), 0.2);
+      color: var(--signature);
+      padding: 1px 7px;
+      border-radius: var(--r-pill);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .action-check {
+      width: 17px;
+      height: 17px;
+      border: 1.5px solid rgba(0,0,0,0.12);
+      border-radius: 5px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      cursor: pointer;
+    }
+
+    /* Project rows */
+    .project-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--btn-secondary-border);
+      cursor: pointer;
+    }
+
+    .project-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .project-row:first-child { padding-top: 0; }
+
+    .project-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .project-name { font-size: 13.5px; font-weight: 500; flex: 1; }
+    .project-since { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: var(--txt-faint); }
+
+    .status-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: var(--r-pill);
+    }
+
+    .status-urgent { background: rgba(255,59,48,0.08); color: var(--danger); border: 1px solid rgba(255,59,48,0.15); }
+    .status-ok { background: rgba(52,199,89,0.08); color: var(--success); border: 1px solid rgba(52,199,89,0.15); }
+    .status-stale { background: rgba(255,159,10,0.08); color: var(--warning); border: 1px solid rgba(255,159,10,0.15); }
+
+    /* Metrics */
+    .metric-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--btn-secondary-border);
+      gap: 10px;
+    }
+
+    .metric-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .metric-row:first-child { padding-top: 0; }
+
+    .metric-name { font-size: 13px; color: var(--txt-muted); flex: 1; }
+    .metric-val { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600; color: var(--txt-pure); }
+    .metric-change { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; min-width: 44px; text-align: right; }
+    .up { color: var(--success); }
+    .down { color: var(--danger); }
+
+    /* Digest */
+    .digest-row {
+      display: flex;
+      gap: 14px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--btn-secondary-border);
+    }
+
+    .digest-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .digest-row:first-child { padding-top: 0; }
+
+    .digest-time {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 10.5px;
+      color: var(--txt-faint);
+      padding-top: 2px;
+      white-space: nowrap;
+      min-width: 50px;
+    }
+
+    .digest-text { font-size: 13px; line-height: 1.55; color: var(--txt-muted); }
+    .digest-text strong { color: var(--txt-pure); font-weight: 500; }
+  </style>
+</head>
+<body>
+
+  <!-- Brand logo -->
+  <div class="brand-logo">
+    <svg class="brand-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="38" stroke="currentColor" stroke-width="6"/>
+      <circle cx="50" cy="50" r="18" fill="currentColor" opacity="0.18"/>
+      <line x1="50" y1="12" x2="50" y2="30" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+      <line x1="50" y1="70" x2="50" y2="88" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+      <line x1="12" y1="50" x2="30" y2="50" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+      <line x1="70" y1="50" x2="88" y2="50" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <!-- Floating nav -->
+  <nav class="top-nav">
+    <a class="nav-link active" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Overview
+    </a>
+    <a class="nav-link" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z" rx="2"/><path d="M8 12h8M8 8h5M8 16h3"/></svg>
+      Projects
+    </a>
+    <a class="nav-link" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Mentor
+    </a>
+    <a class="nav-link" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Analytics
+    </a>
+    <a class="nav-link" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Team
+    </a>
+  </nav>
+
+  <main class="main">
+    <div class="content">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div>
+          <h2>Good morning, Enes</h2>
+          <p>Wednesday, April 15 · <strong>3 projects active</strong> · Last analysis 2h ago</p>
+        </div>
+        <button class="share-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Share weekly report
+        </button>
+      </div>
+
+      <!-- CEO Brief -->
+      <div class="glass-card brief-card">
+        <div class="brief-body">
+          <span class="brief-label">CEO brief · this week</span>
+          <p class="brief-text">
+            Signup conversion dropped <strong>14%</strong> — friction at the GitHub connect step is the likely culprit based on recent feedback.
+            Your marketing pipeline has 3 untapped TikTok drafts ready to publish.
+            <strong>Focus: fix onboarding first, then push content.</strong>
+          </p>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="glass-card">
+          <div class="stat-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </div>
+          <div class="stat-value">284</div>
+          <div class="stat-label">weekly active users</div>
+          <span class="delta delta-up">↑ 12% vs last week</span>
+        </div>
+        <div class="glass-card">
+          <div class="stat-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="stat-value">47</div>
+          <div class="stat-label">unprocessed feedback</div>
+          <span class="delta delta-down">↑ 31% increase</span>
+        </div>
+        <div class="glass-card">
+          <div class="stat-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="stat-value">7.4</div>
+          <div class="stat-label">avg. analysis score</div>
+          <span class="delta delta-flat">↔ same as last week</span>
+        </div>
+      </div>
+
+      <!-- Actions + Projects -->
+      <div class="grid-2">
+
+        <!-- Priority actions -->
+        <div class="glass-card">
+          <div class="card-label">
+            priority actions
+            <span class="card-label-action">view all →</span>
+          </div>
+
+          <div class="action-row">
+            <div class="priority-dot dot-high"></div>
+            <div class="action-body">
+              <div class="action-title">Fix GitHub connect drop-off in onboarding</div>
+              <div class="action-meta">
+                <span class="action-tag">Recgon</span>
+                signup −14% · 12 complaints
+              </div>
+            </div>
+            <div class="action-check"></div>
+          </div>
+
+          <div class="action-row">
+            <div class="priority-dot dot-high"></div>
+            <div class="action-body">
+              <div class="action-title">Respond to 3 negative App Store reviews</div>
+              <div class="action-meta">
+                <span class="action-tag">Recgon</span>
+                "slow analysis" — reputation risk
+              </div>
+            </div>
+            <div class="action-check"></div>
+          </div>
+
+          <div class="action-row">
+            <div class="priority-dot dot-med"></div>
+            <div class="action-body">
+              <div class="action-title">Publish 3 pending TikTok drafts before Friday</div>
+              <div class="action-meta">
+                <span class="action-tag">Marketing</span>
+                high engagement window
+              </div>
+            </div>
+            <div class="action-check"></div>
+          </div>
+
+          <div class="action-row">
+            <div class="priority-dot dot-med"></div>
+            <div class="action-body">
+              <div class="action-title">Re-analyze Recgon after last deploy</div>
+              <div class="action-meta">
+                <span class="action-tag">Analysis</span>
+                14 commits since last run
+              </div>
+            </div>
+            <div class="action-check"></div>
+          </div>
+
+          <div class="action-row">
+            <div class="priority-dot dot-low"></div>
+            <div class="action-body">
+              <div class="action-title">Invite designer to Stna team</div>
+              <div class="action-meta">
+                <span class="action-tag">Team</span>
+                invite pending 3 days
+              </div>
+            </div>
+            <div class="action-check"></div>
+          </div>
+        </div>
+
+        <!-- Projects -->
+        <div class="glass-card">
+          <div class="card-label">
+            projects
+            <span class="card-label-action">all projects →</span>
+          </div>
+
+          <div class="project-row">
+            <div class="project-avatar" style="background:rgba(232,168,196,0.15);color:var(--signature);">R</div>
+            <div style="flex:1">
+              <div class="project-name">Recgon</div>
+              <div class="project-since">analyzed 2h ago · 14 new commits</div>
+            </div>
+            <span class="status-pill status-urgent">needs attention</span>
+          </div>
+
+          <div class="project-row">
+            <div class="project-avatar" style="background:rgba(10,132,255,0.12);color:#007AFF;">S</div>
+            <div style="flex:1">
+              <div class="project-name">Stna</div>
+              <div class="project-since">analyzed 1d ago · stable</div>
+            </div>
+            <span class="status-pill status-ok">healthy</span>
+          </div>
+
+          <div class="project-row">
+            <div class="project-avatar" style="background:rgba(255,159,10,0.12);color:var(--warning);">M</div>
+            <div style="flex:1">
+              <div class="project-name">Moonboard</div>
+              <div class="project-since">analyzed 6d ago</div>
+            </div>
+            <span class="status-pill status-stale">stale</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Metrics + Digest -->
+      <div class="grid-2">
+
+        <!-- Metrics -->
+        <div class="glass-card">
+          <div class="card-label">
+            metrics to watch
+            <span class="card-label-action">analytics →</span>
+          </div>
+
+          <div class="metric-row">
+            <div class="metric-name">Signup conversion</div>
+            <div class="metric-val">3.2%</div>
+            <div class="metric-change down">−14%</div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-name">Avg. analysis time</div>
+            <div class="metric-val">38s</div>
+            <div class="metric-change down">+8s</div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-name">Weekly active teams</div>
+            <div class="metric-val">18</div>
+            <div class="metric-change up">+22%</div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-name">Mentor chat sessions</div>
+            <div class="metric-val">142</div>
+            <div class="metric-change up">+40%</div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-name">7-day retention</div>
+            <div class="metric-val">41%</div>
+            <div class="metric-change up">+5%</div>
+          </div>
+        </div>
+
+        <!-- Digest -->
+        <div class="glass-card">
+          <div class="card-label">recent activity</div>
+
+          <div class="digest-row">
+            <div class="digest-time">2h ago</div>
+            <div class="digest-text"><strong>Recgon</strong> re-analyzed — score dropped 8.1 → 7.4. Onboarding friction flagged.</div>
+          </div>
+          <div class="digest-row">
+            <div class="digest-time">5h ago</div>
+            <div class="digest-text">3 new feedback items on <strong>Recgon</strong>: "slow", "confusing GitHub step", "love the chat".</div>
+          </div>
+          <div class="digest-row">
+            <div class="digest-time">Yesterday</div>
+            <div class="digest-text"><strong>Marketing</strong> generated 3 TikTok scripts — pending your review.</div>
+          </div>
+          <div class="digest-row">
+            <div class="digest-time">2d ago</div>
+            <div class="digest-text">Alara joined <strong>Stna</strong> team as member.</div>
+          </div>
+          <div class="digest-row">
+            <div class="digest-time">3d ago</div>
+            <div class="digest-text"><strong>Moonboard</strong> hasn't been analyzed in 6 days. Consider a re-run.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+</body>
+</html>

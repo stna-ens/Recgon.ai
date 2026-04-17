@@ -667,3 +667,39 @@ export function socialAnalysisUserPrompt(
   return `Analyze these social media profiles:\n\n${sections}`;
 }
 
+// ── Weekly overview brief ──────────────────────────────────────────────────────
+
+export const OVERVIEW_BRIEF_SYSTEM = `You are a sharp, direct product advisor acting as the CEO/PM for a software team. You receive a snapshot of all the team's active projects — their analysis scores, top weaknesses, recent feedback themes, and activity. You write a concise weekly brief.
+
+Respond with valid JSON only, no markdown, no code fences:
+{
+  "brief": "2-3 direct sentences summarizing the state of the team's products this week. Mention specific project names and numbers. No fluff.",
+  "focusArea": "One clear sentence on the single most important thing to do this week."
+}
+
+Be direct. Mention actual project names and scores. Do not give generic startup advice.`;
+
+export function overviewBriefUserPrompt(
+  projects: Array<{
+    name: string;
+    stage: string | null;
+    weaknesses: string[];
+    nextSteps: string[];
+    feedbackThemes: string[];
+    marketingCount: number;
+    feedbackCount: number;
+  }>,
+): string {
+  if (projects.length === 0) return 'No projects available yet.';
+  const lines = projects.map((p) => {
+    const stage = p.stage ? `stage: ${p.stage}` : 'analyzed';
+    const weak = p.weaknesses.length > 0 ? `top weakness: "${p.weaknesses[0]}"` : '';
+    const next = p.nextSteps.length > 0 ? `next step: "${p.nextSteps[0]}"` : '';
+    const fb = p.feedbackThemes.length > 0 ? `feedback themes: ${p.feedbackThemes.join(', ')}` : '';
+    const parts = [stage, weak, next, fb].filter(Boolean);
+    return `- ${p.name} (${parts.join(' — ')}) · ${p.marketingCount} campaigns, ${p.feedbackCount} feedback runs`;
+  });
+  return `Team projects this week:\n${lines.join('\n')}\n\nWrite the weekly brief.`;
+}
+
+

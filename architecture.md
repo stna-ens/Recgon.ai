@@ -119,6 +119,7 @@ Project: {
 | `/api/analytics/data` | GET | Session | GA4 raw data |
 | `/api/analytics/analyze` | POST | Session | AI insights from GA4 data |
 | `/api/social/profiles` | POST | Session | Scrape + analyze social profiles |
+| `/api/overview` | GET | Session | `?teamId=` → `{ brief, actions, signals, unreadFeedback, analytics }` — recgon pulse (Gemini), priority actions with `surfacedAt` staleness, recent domain signals, last-7d feedback count, per-project 7v7 session delta (cached 30min) |
 
 ### MCP OAuth
 | Route | Notes |

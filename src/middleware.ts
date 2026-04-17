@@ -37,7 +37,7 @@ export default auth((req) => {
   const isApiRoute = pathname.startsWith('/api/');
 
   // Block mobile users from accessing the app — redirect to landing page.
-  if (isMobileUA(req) && !isPublicPage && !isApiRoute && pathname !== '/') {
+  if (isMobileUA(req) && !isPublicPage && !isApiRoute && pathname !== '/' && pathname !== '/mentor') {
     return NextResponse.redirect(new URL('/landing', req.url));
   }
   const isTeamSetup = pathname === '/teams/setup' || pathname.startsWith('/teams/invite/');
