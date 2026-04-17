@@ -1,5 +1,11 @@
 import { supabase } from './supabase';
 
+function isMissingColumnError(error: unknown, column: string): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const message = 'message' in error ? String(error.message ?? '').toLowerCase() : '';
+  return message.includes('column') && message.includes(column.toLowerCase()) && message.includes('does not exist');
+}
+
 export interface Project {
   id: string;
   teamId: string;
@@ -171,18 +177,40 @@ async function assembleProject(row: Record<string, unknown>): Promise<Project> {
  * returned only to their creator. Pass the acting user's id to enforce this.
  */
 export async function getAllProjects(teamId: string, userId?: string): Promise<Project[]> {
-  let query = supabase
-    .from('projects')
-    .select('*')
-    .eq('team_id', teamId)
-    .order('created_at', { ascending: false });
+  let data: Record<string, unknown>[] | null;
+  let error: { message: string } | null;
 
   if (userId) {
-    // is_shared OR created_by = userId
-    query = query.or(`is_shared.eq.true,created_by.eq.${userId}`);
+    const result = await supabase
+      .from('projects')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false })
+      .or(`is_shared.eq.true,created_by.eq.${userId}`);
+    data = result.data;
+    error = result.error;
+  } else {
+    const result = await supabase
+      .from('projects')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false });
+    data = result.data;
+    error = result.error;
   }
 
-  const { data } = await query;
+  // Backward-compatibility for databases that haven't added projects.is_shared yet.
+  if (error && isMissingColumnError(error, 'is_shared')) {
+    const fallback = await supabase
+      .from('projects')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false });
+    data = fallback.data;
+    error = fallback.error;
+  }
+
+  if (error) throw new Error(`Failed to list projects: ${error.message}`);
 
   if (!data || data.length === 0) return [];
   return Promise.all(data.map((row) => assembleProject(row)));
@@ -250,25 +278,37 @@ export async function getProjectForTeams(id: string, teamIds: string[]): Promise
 export async function saveProject(project: Project): Promise<void> {
   const { analysis, marketingContent, feedbackAnalyses, campaigns, ...core } = project;
 
-  // Upsert the core project row
-  const { error } = await supabase
+  const basePayload = {
+    id: core.id,
+    team_id: core.teamId,
+    created_by: core.createdBy,
+    name: core.name,
+    path: core.path ?? null,
+    source_type: core.sourceType ?? 'codebase',
+    description: core.description ?? null,
+    is_github: core.isGithub ?? false,
+    github_url: core.githubUrl,
+    last_analyzed_commit_sha: core.lastAnalyzedCommitSha,
+    social_profiles: core.socialProfiles ?? [],
+    analytics_property_id: core.analyticsPropertyId,
+    created_at: core.createdAt,
+  };
+
+  // Upsert the core project row (with compatibility fallback for legacy schema).
+  let { error } = await supabase
     .from('projects')
     .upsert({
-      id: core.id,
-      team_id: core.teamId,
-      created_by: core.createdBy,
-      name: core.name,
-      path: core.path ?? null,
-      source_type: core.sourceType ?? 'codebase',
-      description: core.description ?? null,
-      is_github: core.isGithub ?? false,
-      github_url: core.githubUrl,
-      last_analyzed_commit_sha: core.lastAnalyzedCommitSha,
+      ...basePayload,
       is_shared: core.isShared ?? true,
-      social_profiles: core.socialProfiles ?? [],
-      analytics_property_id: core.analyticsPropertyId,
-      created_at: core.createdAt,
     });
+
+  if (error && isMissingColumnError(error, 'is_shared')) {
+    const fallback = await supabase
+      .from('projects')
+      .upsert(basePayload);
+    error = fallback.error;
+  }
+
   if (error) throw new Error(`Failed to save project: ${error.message}`);
 
   // Upsert analysis if present
