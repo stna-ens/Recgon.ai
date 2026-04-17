@@ -295,7 +295,7 @@ export default function ProjectDetailPage() {
     setProject({
       ...project,
       path: codebasePath,
-      sourceType: isGithub ? 'github' : 'codebase',
+      sourceType: isGithub ? 'github' : 'description',
       isGithub,
     });
     setConnectingCodebase(false);

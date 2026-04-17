@@ -74,17 +74,14 @@
       "Bash(vercel domains:*)",
       "Bash(vercel inspect:*)",
       "mcp__supabase__apply_migration",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "mcp__supabase__list_migrations"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "firecrawl"
   ],
-  "sandbox": {
-    "enabled": false,
-    "autoAllowBashIfSandboxed": false
-  },
   "hooks": {
     "SessionStart": [
       {
@@ -109,5 +106,9 @@
         ]
       }
     ]
+  },
+  "sandbox": {
+    "enabled": false,
+    "autoAllowBashIfSandboxed": false
   }
 }
