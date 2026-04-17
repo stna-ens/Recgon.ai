@@ -3,7 +3,11 @@ import { supabase } from './supabase';
 function isMissingColumnError(error: unknown, column: string): boolean {
   if (!error || typeof error !== 'object') return false;
   const message = 'message' in error ? String(error.message ?? '').toLowerCase() : '';
-  return message.includes('column') && message.includes(column.toLowerCase()) && message.includes('does not exist');
+  return (
+    message.includes('column')
+    && message.includes(column.toLowerCase())
+    && (message.includes('does not exist') || message.includes('schema cache'))
+  );
 }
 
 export interface Project {
