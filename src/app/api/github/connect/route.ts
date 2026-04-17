@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import { getUserById, updateUser } from '@/lib/userStorage';
 import { cookies } from 'next/headers';
 
-export async function GET(_request: Request) {
+export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -22,8 +22,8 @@ export async function GET(_request: Request) {
     path: '/',
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://recgon.app';
-  const redirectUri = `${baseUrl}/api/github/connect/callback`;
+  const { protocol, host } = new URL(request.url);
+  const redirectUri = `${protocol}//${host}/api/auth/callback/github`;
   const params = new URLSearchParams({
     client_id: clientId,
     scope: 'read:user user:email repo',

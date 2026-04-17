@@ -132,6 +132,13 @@ Project: {
 | `/api/overview/brief` | GET | Session | `?teamId=` → `{ brief: { brief, focusArea } \| null }` — Gemini recgon pulse, in-memory cache per team (2h TTL) |
 | `/api/overview/analytics` | GET | Session | `?teamId=` → `{ analytics, analyticsConfigured }` — per-property 7v7 session delta with project fallback to user default, in-memory cache per team (30min TTL) |
 
+### GitHub Account Connect
+| Route | Method | Auth | Notes |
+|-------|--------|------|-------|
+| `/api/github/connect` | GET | Session | Starts OAuth with `repo` scope; sets `github_connect_state` cookie |
+| `/api/github/connect` | DELETE | Session | Revokes token via GitHub API, clears `githubAccessToken` |
+| `/api/auth/callback/github` | GET | — | **Unified callback**: if `github_connect_state` cookie present → account-linking flow; otherwise → NextAuth sign-in handler |
+
 ### MCP OAuth
 | Route | Notes |
 |-------|-------|
