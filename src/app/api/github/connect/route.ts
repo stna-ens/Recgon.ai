@@ -12,7 +12,8 @@ export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (!process.env.GITHUB_ID) {
+  const clientId = process.env.GITHUB_CLIENT_ID || process.env.GITHUB_ID;
+  if (!clientId) {
     return NextResponse.json({ error: 'GitHub OAuth not configured' }, { status: 500 });
   }
 
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
 
   const redirectUri = `${getBaseUrl(request)}/api/github/connect/callback`;
   const params = new URLSearchParams({
-    client_id: process.env.GITHUB_ID,
+    client_id: clientId,
     scope: 'read:user user:email repo',
     state,
     redirect_uri: redirectUri,
