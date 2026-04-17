@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -48,7 +48,7 @@ const FEATURES = [
   },
 ];
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Preserve callbackUrl across registration → login (e.g. team invite links).
@@ -293,5 +293,13 @@ export default function RegisterPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div style={{ width: '100vw', minHeight: '100vh' }} />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }
