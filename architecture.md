@@ -119,7 +119,9 @@ Project: {
 | `/api/analytics/data` | GET | Session | GA4 raw data |
 | `/api/analytics/analyze` | POST | Session | AI insights from GA4 data |
 | `/api/social/profiles` | POST | Session | Scrape + analyze social profiles |
-| `/api/overview` | GET | Session | `?teamId=` → `{ brief, actions, signals, unreadFeedback, analytics }` — recgon pulse (Gemini), priority actions with `surfacedAt` staleness, recent domain signals, last-7d feedback count, per-project 7v7 session delta (cached 30min) |
+| `/api/overview` | GET | Session | `?teamId=` → `{ actions, signals, unreadFeedback }` — fast-path: priority actions with `surfacedAt` staleness, recent domain signals, last-7d feedback count |
+| `/api/overview/brief` | GET | Session | `?teamId=` → `{ brief: { brief, focusArea } \| null }` — Gemini recgon pulse, in-memory cache per team (2h TTL) |
+| `/api/overview/analytics` | GET | Session | `?teamId=` → `{ analytics, analyticsConfigured }` — per-property 7v7 session delta with project fallback to user default, in-memory cache per team (30min TTL) |
 
 ### MCP OAuth
 | Route | Notes |

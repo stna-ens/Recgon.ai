@@ -70,7 +70,10 @@ export default function OverviewPage() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [unreadFeedback, setUnreadFeedback] = useState(0);
   const [analytics, setAnalytics] = useState<AnalyticsDelta[]>([]);
-  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [analyticsConfigured, setAnalyticsConfigured] = useState<boolean | null>(null);
+  const [coreLoading, setCoreLoading] = useState(true);
+  const [briefLoading, setBriefLoading] = useState(true);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   const [ask, setAsk] = useState('');
 
@@ -80,7 +83,9 @@ export default function OverviewPage() {
     if (!teamId) return;
 
     setProjectsLoading(true);
-    setOverviewLoading(true);
+    setCoreLoading(true);
+    setBriefLoading(true);
+    setAnalyticsLoading(true);
 
     fetch(`/api/projects?teamId=${teamId}`)
       .then((r) => r.ok ? r.json() : [])
@@ -91,15 +96,32 @@ export default function OverviewPage() {
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data) {
-          if (data.brief) setBrief(data.brief);
           setActions(data.actions ?? []);
           setSignals(data.signals ?? []);
           setUnreadFeedback(data.unreadFeedback ?? 0);
-          setAnalytics(data.analytics ?? []);
         }
-        setOverviewLoading(false);
+        setCoreLoading(false);
       })
-      .catch(() => setOverviewLoading(false));
+      .catch(() => setCoreLoading(false));
+
+    fetch(`/api/overview/brief?teamId=${teamId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.brief) setBrief(data.brief);
+        setBriefLoading(false);
+      })
+      .catch(() => setBriefLoading(false));
+
+    fetch(`/api/overview/analytics?teamId=${teamId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setAnalytics(data.analytics ?? []);
+          setAnalyticsConfigured(data.analyticsConfigured ?? null);
+        }
+        setAnalyticsLoading(false);
+      })
+      .catch(() => setAnalyticsLoading(false));
   }, [teamId]);
 
   const analyzed = projects.filter((p) => p.analysis).length;
@@ -110,8 +132,9 @@ export default function OverviewPage() {
     : null;
   const needsAttention = scoredProjects.filter((p) => p.analysis!.overallScore! < 6).length;
 
-  const analyticsConnected = projects.filter((p) => p.analyticsPropertyId).length;
-  const showAnalyticsNudge = !projectsLoading && analyzed > 0 && analyticsConnected === 0;
+  const showAnalyticsNudge = !projectsLoading && !analyticsLoading
+    && analyticsConfigured === false
+    && analyzed > 0;
 
   function submitAsk(e: FormEvent) {
     e.preventDefault();
@@ -203,7 +226,7 @@ export default function OverviewPage() {
             </span>
           )}
         </div>
-        {overviewLoading ? (
+        {briefLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[100, 80, 60].map((w) => (
               <div key={w} style={{
@@ -306,7 +329,7 @@ export default function OverviewPage() {
           <input
             value={ask}
             onChange={(e) => setAsk(e.target.value)}
-            placeholder="Ask the mentor…"
+            placeholder="Ask Recgon…"
             style={{
               flex: 1,
               padding: '10px 14px',
@@ -335,7 +358,7 @@ export default function OverviewPage() {
             <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
             </svg>
-            {ask.trim() ? 'Ask' : 'Open mentor'}
+            {ask.trim() ? 'Ask' : 'Open terminal'}
           </button>
         </form>
       </div>
@@ -346,7 +369,7 @@ export default function OverviewPage() {
         {/* Priority Actions */}
         <div className="glass-card">
           <span className="recgon-label">priority actions</span>
-          {overviewLoading ? (
+          {coreLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[1, 2, 3].map((i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -418,7 +441,7 @@ export default function OverviewPage() {
         {/* Recent Signals */}
         <div className="glass-card">
           <span className="recgon-label">recent signals</span>
-          {overviewLoading ? (
+          {coreLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} style={{ display: 'flex', gap: 12 }}>

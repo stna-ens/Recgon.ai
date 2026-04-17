@@ -3,24 +3,10 @@ import { auth } from '@/auth';
 import { verifyTeamAccess } from '@/lib/teamStorage';
 import { getAllProjects } from '@/lib/storage';
 import { getRecentActivities } from '@/lib/activityLog';
-import { supabase } from '@/lib/supabase';
-import { chat } from '@/lib/gemini';
-import { OVERVIEW_BRIEF_SYSTEM, overviewBriefUserPrompt } from '@/lib/prompts';
 import { serverError } from '@/lib/apiError';
-import { getAnalyticsConfig } from '@/lib/analyticsStorage';
-import { fetchAnalyticsData } from '@/lib/analyticsEngine';
 
-// ── In-process brief cache (per team, 2-hour TTL) ────────────────────────────
-const briefCache = new Map<string, { brief: { brief: string; focusArea: string }; expiresAt: number }>();
-const BRIEF_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
-
-// ── Analytics delta cache (per team, 30-min TTL) ─────────────────────────────
-type AnalyticsDelta = { projectName: string; sessionsCurrent: number; sessionsPrevious: number; deltaPct: number };
-const analyticsCache = new Map<string, { deltas: AnalyticsDelta[]; expiresAt: number }>();
-const ANALYTICS_TTL_MS = 30 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Only domain-signal events — audit-trail style tool calls are filtered out.
 const SIGNAL_LABELS: Record<string, string> = {
   analyze_code: 'analysis completed',
   query_feedback: 'feedback analyzed',
@@ -45,28 +31,8 @@ export async function GET(request: NextRequest) {
       getRecentActivities(teamId, { sinceHours: 7 * 24, limit: 30 }),
     ]);
 
-    // ── Resolve user names for activity feed ──────────────────────────────────
-    const userIds = [...new Set(activities.map((a) => a.userId))];
-    let userMap: Record<string, string> = {};
-    if (userIds.length > 0) {
-      const { data: users } = await supabase
-        .from('users')
-        .select('id, nickname, email')
-        .in('id', userIds);
-      if (users) {
-        userMap = Object.fromEntries(
-          users.map((u: { id: string; nickname: string; email: string }) => [
-            u.id,
-            u.nickname || u.email.split('@')[0],
-          ])
-        );
-      }
-    }
-
-    // ── Resolve project names for activity feed ───────────────────────────────
     const projectMap = Object.fromEntries(projects.map((p) => [p.id, p.name]));
 
-    // ── Build recent signals (domain events only, succeeded) ──────────────────
     const signals = activities
       .filter((a) => a.status === 'succeeded' && SIGNAL_LABELS[a.toolName])
       .slice(0, 6)
@@ -77,7 +43,6 @@ export async function GET(request: NextRequest) {
         createdAt: a.createdAt,
       }));
 
-    // ── Build priority actions from analyses + feedback ───────────────────────
     type Action = {
       id: string;
       title: string;
@@ -141,101 +106,31 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Sort: high → med → low
     const priorityOrder = { high: 0, med: 1, low: 2 };
-    actions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
-    // ── Generate CEO brief via Gemini (cached per team, 2h TTL) ──────────────
-    let brief: { brief: string; focusArea: string } | null = null;
+    const projectBestPriority = new Map<string, number>();
+    const projectFirstIdx = new Map<string, number>();
+    actions.forEach((a, idx) => {
+      const best = projectBestPriority.get(a.projectName);
+      const p = priorityOrder[a.priority];
+      if (best === undefined || p < best) projectBestPriority.set(a.projectName, p);
+      if (!projectFirstIdx.has(a.projectName)) projectFirstIdx.set(a.projectName, idx);
+    });
 
-    const cached = briefCache.get(teamId);
-    if (cached && cached.expiresAt > Date.now()) {
-      brief = cached.brief;
-    }
-
-    const analyzedProjects = projects.filter((p) => p.analysis);
-
-    if (!brief && analyzedProjects.length > 0) {
-      const briefInput = analyzedProjects.map((p) => {
-        const analysis = p.analysis as {
-          currentStage?: string;
-          swot?: { weaknesses?: string[] };
-          prioritizedNextSteps?: string[];
-        } | undefined;
-        const feedbackAnalyses = p.feedbackAnalyses as Array<{
-          result?: { themes?: string[] };
-        }> | undefined;
-        const latestFeedback = feedbackAnalyses?.[feedbackAnalyses.length - 1];
-        return {
-          name: p.name,
-          stage: analysis?.currentStage ?? null,
-          weaknesses: analysis?.swot?.weaknesses?.slice(0, 2) ?? [],
-          nextSteps: analysis?.prioritizedNextSteps?.slice(0, 2) ?? [],
-          feedbackThemes: latestFeedback?.result?.themes?.slice(0, 2) ?? [],
-          marketingCount: (p.marketingContent as unknown[])?.length ?? 0,
-          feedbackCount: feedbackAnalyses?.length ?? 0,
-        };
-      });
-
-      try {
-        const raw = await chat(OVERVIEW_BRIEF_SYSTEM, overviewBriefUserPrompt(briefInput), { temperature: 0.5, maxTokens: 4096 });
-        const sanitized = raw.replace(/[\r\n]+/g, ' ').trim();
-        const parsed = JSON.parse(sanitized);
-        briefCache.set(teamId, { brief: parsed, expiresAt: Date.now() + BRIEF_TTL_MS });
-        brief = parsed;
-      } catch (err) {
-        console.error('[overview] brief generation failed:', err);
+    actions.sort((a, b) => {
+      const pa = projectBestPriority.get(a.projectName)!;
+      const pb = projectBestPriority.get(b.projectName)!;
+      if (pa !== pb) return pa - pb;
+      if (a.projectName !== b.projectName) {
+        return projectFirstIdx.get(a.projectName)! - projectFirstIdx.get(b.projectName)!;
       }
-    }
-
-    // ── Analytics deltas (7d vs prior 7d, per connected project) ──────────────
-    let analyticsDeltas: AnalyticsDelta[] = [];
-    const analyticsCached = analyticsCache.get(teamId);
-    if (analyticsCached && analyticsCached.expiresAt > Date.now()) {
-      analyticsDeltas = analyticsCached.deltas;
-    } else {
-      const connected = projects.filter((p) => p.analyticsPropertyId);
-      if (connected.length > 0) {
-        const config = await getAnalyticsConfig(session.user.id);
-        if (config && (config.authMethod === 'oauth' ? !!config.oauth : !!config.serviceAccountJson)) {
-          const authOptions = config.authMethod === 'oauth' && config.oauth
-            ? { oauth: config.oauth, userId: session.user.id }
-            : { serviceAccountJson: config.serviceAccountJson };
-
-          const results = await Promise.all(
-            connected.map(async (p) => {
-              try {
-                const data = await fetchAnalyticsData(p.analyticsPropertyId!, authOptions, 14);
-                const trend = data.trend;
-                if (trend.length < 2) return null;
-                const half = Math.floor(trend.length / 2);
-                const prior = trend.slice(0, half);
-                const current = trend.slice(-half);
-                const sum = (arr: typeof trend) => arr.reduce((s, d) => s + d.sessions, 0);
-                const sessionsPrevious = sum(prior);
-                const sessionsCurrent = sum(current);
-                const deltaPct = sessionsPrevious > 0
-                  ? Math.round(((sessionsCurrent - sessionsPrevious) / sessionsPrevious) * 100)
-                  : 0;
-                return { projectName: p.name, sessionsCurrent, sessionsPrevious, deltaPct };
-              } catch (err) {
-                console.error(`[overview] analytics fetch failed for ${p.name}:`, err);
-                return null;
-              }
-            }),
-          );
-          analyticsDeltas = results.filter((r): r is AnalyticsDelta => r !== null);
-          analyticsCache.set(teamId, { deltas: analyticsDeltas, expiresAt: Date.now() + ANALYTICS_TTL_MS });
-        }
-      }
-    }
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
 
     return NextResponse.json({
-      brief,
       actions: actions.slice(0, 5),
       signals,
       unreadFeedback,
-      analytics: analyticsDeltas,
     });
   } catch (err) {
     return serverError('GET /api/overview', err);
