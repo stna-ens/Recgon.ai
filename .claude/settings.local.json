@@ -75,7 +75,9 @@
       "Bash(vercel inspect:*)",
       "mcp__supabase__apply_migration",
       "Bash(gh pr:*)",
-      "mcp__supabase__list_migrations"
+      "mcp__supabase__list_migrations",
+      "Bash(echo \"EXIT: $?\")",
+      "Read(//Users/eneskis/**)"
     ]
   },
   "enableAllProjectMcpServers": true,

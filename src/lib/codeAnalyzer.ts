@@ -35,7 +35,7 @@ function walkDir(dir: string, prefix = '', depth = 0, maxDepth = 4): FileEntry[]
     const items = fs.readdirSync(dir);
     for (const item of items) {
       if (IGNORED_DIRS.has(item) || item.startsWith('.')) continue;
-      const fullPath = path.join(dir, item);
+      const fullPath = path.join(/*turbopackIgnore: true*/ dir, item);
       const relPath = prefix ? `${prefix}/${item}` : item;
 
       try {
@@ -62,7 +62,7 @@ function readKeyFiles(dir: string): Record<string, string> {
 
   // Read known key files
   for (const keyFile of KEY_FILES) {
-    const fullPath = path.join(dir, keyFile);
+    const fullPath = path.join(/*turbopackIgnore: true*/ dir, keyFile);
     if (fs.existsSync(fullPath)) {
       try {
         const content = fs.readFileSync(fullPath, 'utf-8');
@@ -118,7 +118,7 @@ function readKeyFiles(dir: string): Record<string, string> {
 
   // Take top 12 most relevant code files
   for (const codeFile of scored.slice(0, 12)) {
-    const fullPath = path.join(dir, codeFile.path);
+    const fullPath = path.join(/*turbopackIgnore: true*/ dir, codeFile.path);
     try {
       const content = fs.readFileSync(fullPath, 'utf-8');
       result[codeFile.path] = content.substring(0, 2000);
