@@ -47,8 +47,8 @@ export const AnalysisResultSchema = z.object({
   improvements: z.array(z.string()).optional(),
   nextStepsTaken: z.array(z.object({
     step: z.string(),
-    taken: z.boolean(),
-    evidence: z.string(),
+    taken: z.boolean().default(false),
+    evidence: z.string().default(''),
   })).optional(),
 });
 
