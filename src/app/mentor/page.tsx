@@ -125,7 +125,7 @@ export default function DashboardPage() {
   }, [currentTeam]);
 
   const refreshConversations = useCallback(async () => {
-    const res = await fetch('/api/chat/conversations?_t=' + Date.now(), { cache: 'no-store' });
+    const res = await fetch('/api/chat/conversations', { cache: 'no-store' });
     if (!res.ok) return [] as ChatConversation[];
     const data = await res.json() as { conversations: ChatConversation[] };
     setConversations(data.conversations ?? []);
@@ -169,12 +169,9 @@ export default function DashboardPage() {
       ]);
       if (cancelled) return;
       if (chatRes?.suggestions?.length > 0) setSuggestions(chatRes.suggestions);
-      if (convs.length > 0) {
-        await loadConversation(convs[0].id);
-      } else {
-        setActiveConvId(null);
-        setMessages([]);
-      }
+      // Always start with a blank new chat — previous conversations are accessible via ⌘K
+      setActiveConvId(null);
+      setMessages([]);
     })();
     return () => { cancelled = true; };
   }, [currentTeam, refreshConversations, loadConversation]);

@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
   if (!role) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
   const projects = await getAllProjects(teamId, session.user.id);
-  return NextResponse.json(projects);
+  return NextResponse.json(projects, {
+    headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=60' },
+  });
 }
 
 export async function POST(request: NextRequest) {
