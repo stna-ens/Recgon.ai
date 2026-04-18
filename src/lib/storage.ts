@@ -137,68 +137,55 @@ export interface FeedbackAnalysis {
   completedPrompts?: { promptIndex: number; completedAt: string; completedBy: string }[];
 }
 
-// Single embedded select that fetches all related rows in one HTTP request.
-// PostgREST follows FK relationships declared in the database schema.
-const PROJECT_SELECT = `
-  *,
-  project_analyses ( data, analyzed_at ),
-  marketing_content ( * ),
-  feedback_analyses ( * ),
-  campaigns ( * )
-`.trim();
+type ProjectRow = Record<string, unknown>;
 
-type EmbeddedRow = Record<string, unknown> & {
-  project_analyses: Array<{ data: unknown; analyzed_at: string }> | null;
-  marketing_content: Array<Record<string, unknown>> | null;
-  feedback_analyses: Array<Record<string, unknown>> | null;
-  campaigns: Array<Record<string, unknown>> | null;
-};
+async function assembleProject(row: ProjectRow): Promise<Project> {
+  const projectId = row.id as string;
 
-function mapProjectRow(row: EmbeddedRow): Project {
-  const analysisArr = row.project_analyses;
-  const analysis: ProductAnalysis | undefined = analysisArr && analysisArr.length > 0
-    ? { ...(analysisArr[0].data as ProductAnalysis), analyzedAt: analysisArr[0].analyzed_at }
+  const [analysisRes, marketingRes, feedbackRes, campaignsRes] = await Promise.all([
+    supabase.from('project_analyses').select('data, analyzed_at').eq('project_id', projectId).maybeSingle(),
+    supabase.from('marketing_content').select('*').eq('project_id', projectId).order('generated_at', { ascending: false }),
+    supabase.from('feedback_analyses').select('*').eq('project_id', projectId).order('analyzed_at', { ascending: false }),
+    supabase.from('campaigns').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
+  ]);
+
+  const analysis: ProductAnalysis | undefined = analysisRes.data
+    ? { ...(analysisRes.data.data as ProductAnalysis), analyzedAt: analysisRes.data.analyzed_at as string }
     : undefined;
 
-  const marketingContent: MarketingContent[] = (row.marketing_content ?? [])
-    .map((r) => ({
-      id: r.id as string,
-      platform: r.platform as string,
-      content: r.content as Record<string, string>,
-      generatedAt: r.generated_at as string,
-    }))
-    .sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime());
+  const marketingContent: MarketingContent[] = (marketingRes.data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    platform: r.platform as string,
+    content: r.content as Record<string, string>,
+    generatedAt: r.generated_at as string,
+  }));
 
-  const feedbackAnalyses: FeedbackAnalysis[] = (row.feedback_analyses ?? [])
-    .map((r) => ({
-      id: r.id as string,
-      rawFeedback: r.raw_feedback as string[],
-      sentiment: r.sentiment as string,
-      sentimentBreakdown: r.sentiment_breakdown as FeedbackAnalysis['sentimentBreakdown'],
-      themes: r.themes as string[],
-      featureRequests: r.feature_requests as string[],
-      bugs: r.bugs as string[],
-      praises: r.praises as string[],
-      developerPrompts: r.developer_prompts as string[],
-      analyzedAt: r.analyzed_at as string,
-      completedPrompts: (r.completed_prompts as FeedbackAnalysis['completedPrompts']) ?? [],
-    }))
-    .sort((a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime());
+  const feedbackAnalyses: FeedbackAnalysis[] = (feedbackRes.data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    rawFeedback: r.raw_feedback as string[],
+    sentiment: r.sentiment as string,
+    sentimentBreakdown: r.sentiment_breakdown as FeedbackAnalysis['sentimentBreakdown'],
+    themes: r.themes as string[],
+    featureRequests: r.feature_requests as string[],
+    bugs: r.bugs as string[],
+    praises: r.praises as string[],
+    developerPrompts: r.developer_prompts as string[],
+    analyzedAt: r.analyzed_at as string,
+    completedPrompts: (r.completed_prompts as FeedbackAnalysis['completedPrompts']) ?? [],
+  }));
 
-  const campaigns: Campaign[] = (row.campaigns ?? [])
-    .map((r) => ({
-      id: r.id as string,
-      type: r.type as string,
-      goal: r.goal as string,
-      duration: r.duration as string,
-      name: r.name as string,
-      plan: r.plan as Record<string, unknown>,
-      createdAt: r.created_at as string,
-    }))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const campaigns: Campaign[] = (campaignsRes.data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    type: r.type as string,
+    goal: r.goal as string,
+    duration: r.duration as string,
+    name: r.name as string,
+    plan: r.plan as Record<string, unknown>,
+    createdAt: r.created_at as string,
+  }));
 
   return {
-    id: row.id as string,
+    id: projectId,
     teamId: row.team_id as string,
     createdBy: row.created_by as string,
     name: row.name as string,
@@ -225,39 +212,38 @@ function mapProjectRow(row: EmbeddedRow): Project {
  * returned only to their creator. Pass the acting user's id to enforce this.
  */
 async function _getAllProjects(teamId: string, userId?: string): Promise<Project[]> {
-  let data: EmbeddedRow[] | null;
+  let data: ProjectRow[] | null;
   let error: { message: string } | null;
 
   const base = supabase
     .from('projects')
-    .select(PROJECT_SELECT)
+    .select('*')
     .eq('team_id', teamId)
     .order('created_at', { ascending: false });
 
   if (userId) {
     const result = await base.or(`is_shared.eq.true,created_by.eq.${userId}`);
-    data = result.data as unknown as EmbeddedRow[] | null;
+    data = result.data as ProjectRow[] | null;
     error = result.error;
   } else {
     const result = await base;
-    data = result.data as unknown as EmbeddedRow[] | null;
+    data = result.data as ProjectRow[] | null;
     error = result.error;
   }
 
-  // Backward-compatibility for databases that haven't added projects.is_shared yet.
   if (error && isMissingColumnError(error, 'is_shared')) {
     const fallback = await supabase
       .from('projects')
-      .select(PROJECT_SELECT)
+      .select('*')
       .eq('team_id', teamId)
       .order('created_at', { ascending: false });
-    data = fallback.data as unknown as EmbeddedRow[] | null;
+    data = fallback.data as ProjectRow[] | null;
     error = fallback.error;
   }
 
   if (error) throw new Error(`Failed to list projects: ${error.message}`);
   if (!data || data.length === 0) return [];
-  return data.map(mapProjectRow);
+  return Promise.all(data.map(assembleProject));
 }
 
 export function getAllProjects(teamId: string, userId?: string): Promise<Project[]> {
@@ -271,15 +257,14 @@ export function getAllProjects(teamId: string, userId?: string): Promise<Project
 async function _getProject(id: string, teamId: string, userId?: string): Promise<Project | undefined> {
   const { data } = await supabase
     .from('projects')
-    .select(PROJECT_SELECT)
+    .select('*')
     .eq('id', id)
     .eq('team_id', teamId)
     .single();
   if (!data) return undefined;
-  const row = data as unknown as EmbeddedRow;
-  // Enforce privacy: unshared project only visible to creator.
+  const row = data as ProjectRow;
   if (userId && row.is_shared === false && row.created_by !== userId) return undefined;
-  return mapProjectRow(row);
+  return assembleProject(row);
 }
 
 export function getProject(id: string, teamId: string, userId?: string): Promise<Project | undefined> {
@@ -329,12 +314,12 @@ export async function getProjectForTeams(id: string, teamIds: string[]): Promise
   if (teamIds.length === 0) return undefined;
   const { data } = await supabase
     .from('projects')
-    .select(PROJECT_SELECT)
+    .select('*')
     .eq('id', id)
     .in('team_id', teamIds)
     .single();
   if (!data) return undefined;
-  return mapProjectRow(data as unknown as EmbeddedRow);
+  return assembleProject(data as ProjectRow);
 }
 
 export async function saveProject(project: Project): Promise<void> {
