@@ -10,6 +10,9 @@ import { checkAnalysisQuota, recordAnalysis } from '@/lib/analysisQuota';
 import { auth } from '@/auth';
 import { verifyTeamWriteAccess } from '@/lib/teamStorage';
 import { getUserById } from '@/lib/userStorage';
+import { isRecoverable } from '@/lib/llm/utils';
+import { enqueueJob } from '@/lib/llm/jobQueue';
+import { logger } from '@/lib/logger';
 
 function formatDiff(diff: import('@/lib/githubFetcher').CommitDiff): string {
   const MAX_PATCH_CHARS = 3000;
@@ -231,6 +234,62 @@ export async function POST(
 
         send({ type: 'done', project });
       } catch (err) {
+        // Inline-first / enqueue-on-overload: if the LLM layer is reporting
+        // transient provider failure (every provider overloaded, rate-limited,
+        // etc.), push the work onto the queue so the cron drain can retry over
+        // a multi-hour horizon instead of failing the user.
+        //
+        // Local-path projects can't be queued — the worker runs in a separate
+        // function with no access to the caller's fs. Surface the error inline.
+        if (isRecoverable(err)) {
+          try {
+            if (project.sourceType === 'description' && project.description) {
+              const job = await enqueueJob({
+                teamId,
+                userId: session.user!.id!,
+                kind: 'idea_analysis',
+                payload: {
+                  projectId: project.id,
+                  teamId,
+                  description: project.description,
+                },
+              });
+              logger.warn('idea analysis enqueued due to provider overload', { jobId: job.id, projectId: project.id });
+              send({
+                type: 'queued',
+                jobId: job.id,
+                message: 'All AI providers are busy right now — your analysis is queued and will run automatically. Check back in a minute.',
+              });
+              return;
+            }
+            if (project.isGithub && project.githubUrl) {
+              const job = await enqueueJob({
+                teamId,
+                userId: session.user!.id!,
+                kind: 'codebase_analysis',
+                payload: {
+                  projectId: project.id,
+                  teamId,
+                  userId: session.user!.id!,
+                  githubUrl: project.githubUrl,
+                },
+              });
+              logger.warn('codebase analysis enqueued due to provider overload', { jobId: job.id, projectId: project.id });
+              send({
+                type: 'queued',
+                jobId: job.id,
+                message: 'All AI providers are busy right now — your analysis is queued and will run automatically. Check back in a minute.',
+              });
+              return;
+            }
+          } catch (enqueueErr) {
+            logger.error('failed to enqueue analysis job after provider overload', {
+              projectId: project.id,
+              err: enqueueErr instanceof Error ? enqueueErr.message : String(enqueueErr),
+            });
+            // fall through to the inline error path
+          }
+        }
         send({ type: 'error', message: err instanceof Error ? err.message : 'Analysis failed' });
       } finally {
         controller.close();

@@ -12,6 +12,7 @@
     "validate": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@google-analytics/data": "^5.2.1",
     "@google/generative-ai": "0.24.1",
     "@modelcontextprotocol/sdk": "^1.29.0",

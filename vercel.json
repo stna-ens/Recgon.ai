@@ -25,6 +25,15 @@
     },
     "src/app/api/analytics/analyze/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/cron/llm-jobs/route.ts": {
+      "maxDuration": 300
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/llm-jobs",
+      "schedule": "* * * * *"
+    }
+  ]
 }
