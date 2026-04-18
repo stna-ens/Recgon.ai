@@ -8,6 +8,9 @@
 
 ## Env (`.env.local`)
 Required: `GEMINI_API_KEY`, `AUTH_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+Recommended in production:
+- `ANTHROPIC_API_KEY` — Claude Haiku fallback. Without it, Gemini outages cause user-visible failures.
+- `CRON_SECRET` — bearer token that authenticates Vercel cron → `/api/cron/llm-jobs`. Local dev skips the check.
 Optional:
 - GA4 OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 - GitHub OAuth (repo import): `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (or legacy `GITHUB_ID`)
@@ -18,7 +21,7 @@ Optional:
 - MCP server auth (stdio server only): `RECGON_MCP_TOKEN`
 
 ## Stack
-Next.js 15 (App Router) + TypeScript + Tailwind. AI via Gemini 2.5 Flash (`@google/generative-ai`). Auth via NextAuth v5 (credentials + JWT). Database: Supabase (PostgreSQL), accessed via service-role key server-side.
+Next.js 15 (App Router) + TypeScript + Tailwind. AI via multi-provider chain: Gemini 2.5 Flash (`@google/generative-ai`) with Claude Haiku 4.5 fallback (`@anthropic-ai/sdk`). Auth via NextAuth v5 (credentials + JWT). Database: Supabase (PostgreSQL), accessed via service-role key server-side.
 
 ## File map
 
@@ -36,8 +39,13 @@ Next.js 15 (App Router) + TypeScript + Tailwind. AI via Gemini 2.5 Flash (`@goog
 - `src/lib/analysisQuota.ts` — per-user analysis quota enforcement (3 total, 1 per 2 weeks) → Supabase `analysis_quotas` table
 
 ### AI (all prompts in `src/lib/prompts.ts`, all schemas in `src/lib/schemas.ts`)
-- `src/lib/gemini.ts` — Gemini wrapper, always JSON response mode
-- `src/lib/codeAnalyzer.ts` — walks codebase, sends top files to Gemini
+- `src/lib/llm/providers.ts` — `LLMProvider` interface, Gemini + Claude adapters, `chatViaChain()` / `chatViaProviders()` cross-provider fallback, `chatHedged()` opt-in adaptive hedging for interactive non-streaming calls
+- `src/lib/llm/utils.ts` — shared `withRetry`, `withTimeout`, overload/rate-limit detection
+- `src/lib/llm/circuitBreaker.ts` — shared Supabase-backed breaker (`llm_health` table): `shouldTry` / `recordSuccess` / `recordFailure`. 5 failures in 30s opens for 60s; fail-open on breaker errors; 10s in-process cache for happy path
+- `src/lib/llm/jobQueue.ts` — persistent queue (`llm_jobs` table) for batch LLM work: `enqueueJob`, `claimNextJob`, `completeJob`, `failJob` (exponential backoff, ~7.5h retry horizon), `releaseStuckJobs`
+- `src/lib/llm/workers.ts` — per-kind workers. Wired: `feedback_analysis`, `idea_analysis`, `codebase_analysis` (GitHub-backed only; local-path projects still fail inline), `competitor_analysis`
+- `src/lib/gemini.ts` — thin facade re-exporting `chat`, `getGeminiClient`, `withRetry` for historical callers
+- `src/lib/codeAnalyzer.ts` — walks codebase, sends top files to the LLM chain
 - `src/lib/contentGenerator.ts` — marketing content (Instagram/TikTok/Google Ads)
 - `src/lib/feedbackEngine.ts` — feedback → sentiment + dev prompts
 - `src/lib/analyticsEngine.ts` — GA4 Data API fetcher (6 parallel reports)
@@ -50,6 +58,8 @@ Next.js 15 (App Router) + TypeScript + Tailwind. AI via Gemini 2.5 Flash (`@goog
 - `analytics/data` + `analytics/analyze` — GA4 data + AI insights
 - `analytics/oauth/` + `analytics/oauth/callback/` — Google OAuth flow
 - `chat/` — mentor chatbot (streaming, persists history)
+- `llm/jobs/[id]/` — GET status of a queued LLM job (team-access-checked)
+- `cron/llm-jobs/` — Vercel cron (every minute) draining `llm_jobs`; `CRON_SECRET` bearer auth
 
 ### Pages (`src/app/`)
 `page.tsx` (dashboard) · `landing/` · `login/` · `register/` · `account/` · `projects/[id]/` + `export/` · `marketing/` · `feedback/` · `analytics/` · `teams/` · `teams/setup/` · `teams/[id]/` · `teams/invite/[token]/`
