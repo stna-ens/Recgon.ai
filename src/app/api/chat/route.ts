@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAllProjects } from '@/lib/storage';
-import { getGeminiClient, withRetry } from '@/lib/gemini';
+import { getGeminiClient, withRetry, isOverloaded } from '@/lib/gemini';
 import { mentorSystemPrompt, generateSuggestions, classifyChatProjectPrompt } from '@/lib/prompts';
 import {
   getConversationMessages,
@@ -116,11 +116,7 @@ export async function POST(request: NextRequest) {
     const client = getGeminiClient();
     const functionDeclarations = geminiFunctionDeclarations();
 
-    const model = client.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: systemPrompt,
-      tools: [{ functionDeclarations }],
-    });
+    const CHAT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
 
     const contents: Content[] = [
       ...(history ?? []).map<Content>((msg) => ({
@@ -139,15 +135,36 @@ export async function POST(request: NextRequest) {
         const emit = (s: string) => controller.enqueue(encoder.encode(s));
         let fullResponse = '';
 
+        let modelIndex = 0;
+        const getModel = () => client.getGenerativeModel({
+          model: CHAT_MODELS[modelIndex],
+          systemInstruction: systemPrompt,
+          tools: [{ functionDeclarations }],
+        });
+
+        const generateWithFallback = async (cts: Content[]) => {
+          while (true) {
+            try {
+              return await withRetry(() => getModel().generateContent({
+                contents: cts,
+                generationConfig: { temperature: 0.85, maxOutputTokens: 4096 },
+              }));
+            } catch (err) {
+              if (isOverloaded(err) && modelIndex < CHAT_MODELS.length - 1) {
+                modelIndex++;
+                continue;
+              }
+              throw err;
+            }
+          }
+        };
+
         try {
           let iterations = 0;
           while (iterations < MAX_TOOL_ITERATIONS) {
             iterations += 1;
 
-            const result = await withRetry(() => model.generateContent({
-              contents,
-              generationConfig: { temperature: 0.85, maxOutputTokens: 4096 },
-            }));
+            const result = await generateWithFallback(contents);
 
             const response = result.response;
             const calls = response.functionCalls() ?? [];
@@ -237,7 +254,7 @@ export async function POST(request: NextRequest) {
           if (currentProjectId === null && projects.length > 0) {
             try {
               const classifier = client.getGenerativeModel({
-                model: 'gemini-2.5-flash',
+                model: CHAT_MODELS[modelIndex],
                 generationConfig: { responseMimeType: 'application/json', temperature: 0 },
               });
               const res = await classifier.generateContent(
