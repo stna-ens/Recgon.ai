@@ -10,36 +10,6 @@ function isMissingColumnError(error: unknown, column: string): boolean {
   );
 }
 
-// --- Next.js cache helpers (guarded for MCP server / test contexts) ---
-
-function tryRevalidate(...tags: string[]): void {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { revalidateTag } = require('next/cache') as { revalidateTag: (tag: string) => void };
-    tags.forEach(revalidateTag);
-  } catch {
-    // Not in a Next.js context (MCP server, tests) — safe to ignore
-  }
-}
-
-function cachedOr<R>(
-  fn: () => Promise<R>,
-  key: string[],
-  tags: string[],
-  revalidate = 60,
-): Promise<R> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { unstable_cache } = require('next/cache') as typeof import('next/cache');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (unstable_cache as any)(fn, key, { tags, revalidate })();
-  } catch {
-    return fn();
-  }
-}
-
-// -------------------------------------------------------------------
-
 export interface Project {
   id: string;
   teamId: string;
@@ -247,11 +217,7 @@ async function _getAllProjects(teamId: string, userId?: string): Promise<Project
 }
 
 export function getAllProjects(teamId: string, userId?: string): Promise<Project[]> {
-  return cachedOr(
-    () => _getAllProjects(teamId, userId),
-    ['getAllProjects', teamId, userId ?? 'anon'],
-    [`team:${teamId}`],
-  );
+  return _getAllProjects(teamId, userId);
 }
 
 async function _getProject(id: string, teamId: string, userId?: string): Promise<Project | undefined> {
@@ -268,11 +234,7 @@ async function _getProject(id: string, teamId: string, userId?: string): Promise
 }
 
 export function getProject(id: string, teamId: string, userId?: string): Promise<Project | undefined> {
-  return cachedOr(
-    () => _getProject(id, teamId, userId),
-    ['getProject', id, teamId, userId ?? 'anon'],
-    [`project:${id}`, `team:${teamId}`],
-  );
+  return _getProject(id, teamId, userId);
 }
 
 export async function updateProjectShared(
@@ -288,7 +250,6 @@ export async function updateProjectShared(
     .eq('id', projectId)
     .eq('team_id', teamId)
     .eq('created_by', userId);
-  if (!error) tryRevalidate(`project:${projectId}`, `team:${teamId}`);
   return !error;
 }
 
@@ -415,13 +376,10 @@ export async function saveProject(project: Project): Promise<void> {
     }));
     await supabase.from('campaigns').upsert(rows);
   }
-
-  tryRevalidate(`team:${core.teamId}`, `project:${core.id}`);
 }
 
 export async function deleteProject(id: string, teamId: string): Promise<void> {
   await supabase.from('projects').delete().eq('id', id).eq('team_id', teamId);
-  tryRevalidate(`team:${teamId}`, `project:${id}`);
 }
 
 export async function saveCampaignToProject(projectId: string, campaign: Campaign, teamId: string): Promise<boolean> {
@@ -438,7 +396,6 @@ export async function saveCampaignToProject(projectId: string, campaign: Campaig
     plan: campaign.plan,
     created_at: campaign.createdAt,
   });
-  if (!error) tryRevalidate(`team:${teamId}`, `project:${projectId}`);
   return !error;
 }
 
@@ -452,7 +409,6 @@ export async function saveSocialProfilesToProject(
     .update({ social_profiles: profiles })
     .eq('id', projectId)
     .eq('team_id', teamId);
-  if (!error) tryRevalidate(`project:${projectId}`);
   return !error;
 }
 
@@ -466,7 +422,6 @@ export async function updateProjectAnalyticsProperty(
     .update({ analytics_property_id: analyticsPropertyId })
     .eq('id', projectId)
     .eq('team_id', teamId);
-  if (!error) tryRevalidate(`project:${projectId}`);
   return !error;
 }
 
@@ -487,7 +442,6 @@ export async function saveFeedbackToProject(projectId: string, analysis: Feedbac
     developer_prompts: analysis.developerPrompts,
     analyzed_at: analysis.analyzedAt,
   });
-  if (!error) tryRevalidate(`team:${teamId}`, `project:${projectId}`);
   return !error;
 }
 
