@@ -40,8 +40,10 @@ export function validateBootEnv(): void {
   if (bootValidated) return;
   bootValidated = true;
 
-  // In test/dev tooling we don't want this to throw — only enforce in prod.
+  // Skip in non-prod and during the Next.js build phase (page data collection
+  // runs before Vercel injects runtime env vars).
   if (process.env.NODE_ENV !== 'production') return;
+  if (process.env.NEXT_PHASE === 'phase-production-build') return;
 
   const missing = BOOT_REQUIRED.filter((key) => !process.env[key]);
   if (missing.length > 0) {
