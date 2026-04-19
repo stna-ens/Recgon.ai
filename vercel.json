@@ -33,7 +33,7 @@
   "crons": [
     {
       "path": "/api/cron/llm-jobs",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
