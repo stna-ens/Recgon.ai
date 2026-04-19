@@ -85,7 +85,7 @@ export default function DashboardPane() {
           style={{ marginTop: 18, display: 'flex', gap: 8, alignItems: 'stretch' }}
         >
           <input
-            placeholder="Ask Recgon…"
+            placeholder="sign up to ask freely →"
             disabled
             style={{
               flex: 1,
