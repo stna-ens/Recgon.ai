@@ -8,6 +8,7 @@ import DecryptedText from '@/components/landing/DecryptedText';
 import SpotlightCard from '@/components/landing/SpotlightCard';
 import BlurText from '@/components/landing/BlurText';
 import MobileLanding from '@/components/landing/MobileLanding';
+import DemoSection from '@/app/landing/demo/DemoSection';
 import { AUDIENCE, MONO, PINK, features, steps } from '@/components/landing/constants';
 const FaultyTerminal = dynamic(() => import('@/components/landing/FaultyTerminal'), { ssr: false });
 const Aurora = dynamic(() => import('@/components/landing/Aurora'), { ssr: false });
@@ -208,6 +209,9 @@ export default function LandingClientShell() {
           </div>
         </div>
       </section>
+
+      {/* ── Demo ──────────────────────────────────────────────────────────── */}
+      <DemoSection />
 
       {/* ── How It Works ──────────────────────────────────────────────────── */}
       <section className="section-pad" style={{ background: '#050505', padding: '120px 40px' }}>
