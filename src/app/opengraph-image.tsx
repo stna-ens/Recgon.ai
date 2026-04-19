@@ -1,31 +1,27 @@
 import { ImageResponse } from 'next/og';
+import fs from 'fs';
+import path from 'path';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const alt = 'Recgon — The Coach Solo Founders Don\'t Have';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-async function loadFont(family: string, weight: number): Promise<ArrayBuffer | null> {
+function loadFont(filename: string): Buffer | null {
   try {
-    const css = await fetch(
-      `https://fonts.googleapis.com/css2?family=${family}:wght@${weight}&display=swap`,
-      { headers: { 'User-Agent': 'Mozilla/5.0' } }
-    ).then((r) => r.text());
-    const match = css.match(/src:\s*url\((https:\/\/[^)]+\.(?:woff2?|ttf))\)/);
-    if (!match) return null;
-    return fetch(match[1]).then((r) => r.arrayBuffer());
+    return fs.readFileSync(
+      path.join(process.cwd(), 'node_modules/@fontsource', filename)
+    );
   } catch {
     return null;
   }
 }
 
 export default async function OpengraphImage() {
-  const [inter400, inter600, inter700, mono500] = await Promise.all([
-    loadFont('Inter', 400),
-    loadFont('Inter', 600),
-    loadFont('Inter', 700),
-    loadFont('JetBrains+Mono', 500),
-  ]);
+  const inter400 = loadFont('inter/files/inter-latin-400-normal.woff');
+  const inter600 = loadFont('inter/files/inter-latin-600-normal.woff');
+  const inter700 = loadFont('inter/files/inter-latin-700-normal.woff');
+  const mono500 = loadFont('jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff');
 
   const SIGNATURE = '#f0b8d0';
   const BG = '#000000';
@@ -225,7 +221,7 @@ export default async function OpengraphImage() {
         inter600 && { name: 'Inter', data: inter600, weight: 600 as const, style: 'normal' as const },
         inter700 && { name: 'Inter', data: inter700, weight: 700 as const, style: 'normal' as const },
         mono500 && { name: 'JetBrainsMono', data: mono500, weight: 500 as const, style: 'normal' as const },
-      ].filter(Boolean) as { name: string; data: ArrayBuffer; weight: 400 | 600 | 700 | 500; style: 'normal' }[],
+      ].filter(Boolean) as { name: string; data: Buffer; weight: 400 | 600 | 700 | 500; style: 'normal' }[],
     }
   );
 }
