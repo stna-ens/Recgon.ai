@@ -55,7 +55,7 @@ function RegisterPageContent() {
   // Only accept relative paths to prevent open redirects.
   const rawCallback = searchParams.get('callbackUrl') ?? '';
   const callbackUrl = rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '';
-  const [step, setStep] = useState<'form' | 'verify'>('form');
+  const [step, setStep] = useState<'form' | 'verify' | 'waitlist'>('form');
 
   // Form fields
   const [nickname, setNickname] = useState('');
@@ -66,6 +66,7 @@ function RegisterPageContent() {
   // OTP step
   const [otp, setOtp] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [waitlistMessage, setWaitlistMessage] = useState('');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -73,11 +74,6 @@ function RegisterPageContent() {
   async function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-
-    if (!email.toLowerCase().endsWith('@metu.edu.tr')) {
-      setError('Only METU email addresses (@metu.edu.tr) are allowed during beta.');
-      return;
-    }
 
     if (password !== confirm) {
       setError('Passwords do not match');
@@ -88,12 +84,20 @@ function RegisterPageContent() {
     const res = await fetch('/api/auth/send-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, nickname }),
     });
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
 
+    if (res.status === 202 || data.status === 'waitlisted') {
+      setWaitlistMessage(
+        data.message || 'This email has been added to the waitlist. Once approved, come back and continue with the same email.',
+      );
+      setStep('waitlist');
+      return;
+    }
+
     if (!res.ok) {
-      const data = await res.json();
       setError(data.error || 'Unable to send verification code');
       return;
     }
@@ -161,7 +165,10 @@ function RegisterPageContent() {
           {step === 'form' ? (
             <>
               <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>Create account</h1>
-              <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>Get started with Recgon</p>
+              <p style={{ color: 'var(--txt-muted)', margin: '0 0 0.5rem', fontSize: '0.875rem' }}>Get started with Recgon</p>
+              <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.8rem', lineHeight: 1.55 }}>
+                METU emails go straight through. Other emails join a founder-reviewed waitlist until approved.
+              </p>
 
               <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
@@ -170,7 +177,7 @@ function RegisterPageContent() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@metu.edu.tr" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
@@ -207,7 +214,7 @@ function RegisterPageContent() {
                 <Link href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'} style={{ color: 'var(--txt-pure)', fontWeight: 500, textDecoration: 'none' }}>Sign in</Link>
               </p>
             </>
-          ) : (
+          ) : step === 'verify' ? (
             <>
               <button
                 type="button"
@@ -258,6 +265,45 @@ function RegisterPageContent() {
                   {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
                 </button>
               </p>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => { setStep('form'); setError(''); setWaitlistMessage(''); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', color: 'var(--txt-muted)', fontSize: '0.85rem', cursor: 'pointer', padding: 0, marginBottom: '1.5rem' }}
+              >
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+
+              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>You&apos;re on the waitlist</h1>
+              <p style={{ color: 'var(--txt-muted)', margin: '0 0 1.25rem', fontSize: '0.875rem', lineHeight: 1.6 }}>
+                {waitlistMessage}
+              </p>
+              <div style={{
+                padding: '1rem',
+                borderRadius: 'var(--r-sm)',
+                border: '1px solid var(--btn-secondary-border)',
+                background: 'var(--btn-secondary-bg)',
+                marginBottom: '1.25rem',
+              }}>
+                <p style={{ margin: '0 0 0.45rem', color: 'var(--txt-pure)', fontSize: '0.88rem', fontWeight: 600 }}>
+                  {email}
+                </p>
+                <p style={{ margin: 0, color: 'var(--txt-muted)', fontSize: '0.8rem', lineHeight: 1.55 }}>
+                  Once approved, come back here and continue with the same email to receive your verification code.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setStep('form'); setWaitlistMessage(''); }}
+                style={{ padding: '0.7rem', width: '100%', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer' }}
+              >
+                Use a different email
+              </button>
             </>
           )}
         </div>

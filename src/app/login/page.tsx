@@ -48,6 +48,7 @@ const FEATURES = [
 
 const URL_ERRORS: Record<string, string> = {
   metuonly: 'Only METU email addresses (@metu.edu.tr) can sign in with GitHub.',
+  waitlisted: 'This email is on the waitlist and is not approved to sign in yet.',
 };
 
 function LoginPageContent() {

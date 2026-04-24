@@ -361,6 +361,7 @@ export const FEEDBACK_SYSTEM = `You are an expert product manager and user feedb
 Respond with valid JSON only, no markdown, no code fences. Example structure (use actual values, not placeholders):
 {
   "overallSentiment": "mixed",
+  "summary": "Users like the core workflow, but the strongest frustration is around playback reliability and confusing error states. Most of the near-term work should focus on stabilizing those flows before expanding sharing features.",
   "sentimentBreakdown": {
     "positive": 60,
     "neutral": 20,
@@ -381,7 +382,9 @@ IMPORTANT: The developerPrompts should be SPECIFIC, ACTIONABLE prompts that a de
 - Describe exactly what to implement or fix
 - Reference specific components or areas if possible
 - Include the user's perspective and expected behavior
-- Be self-contained so the AI agent has full context`;
+- Be self-contained so the AI agent has full context
+
+IMPORTANT: The summary should be a real 2-3 sentence summary of the feedback itself. It must be grounded in the actual comments, not a restatement of the sentiment percentages. Call out the main friction, the main request or expectation if there is one, and any positive signal worth protecting.`;
 
 export function feedbackUserPrompt(feedbackStr: string): string {
   return `Analyze the following user feedback and generate developer prompts:\n\n${feedbackStr}`;
@@ -701,5 +704,4 @@ export function overviewBriefUserPrompt(
   });
   return `Team projects this week:\n${lines.join('\n')}\n\nWrite the weekly brief.`;
 }
-
 

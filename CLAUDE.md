@@ -86,3 +86,55 @@ Next.js 15 (App Router) + TypeScript + Tailwind. AI via multi-provider chain: Ge
 - All prompts in `prompts.ts`, all schemas in `schemas.ts` — never inline
 - Tests in `src/__tests__/` (vitest, globals enabled, `@` → `./src`)
 - Detailed conventions auto-load from `.claude/rules/` when editing relevant files
+
+## Feedback page memory
+
+### Product / UX constraints
+- `/feedback` should feel like a dense product workspace, not a marketing page and not a decorative dashboard.
+- Match the rest of the app’s vibe. Do not introduce a one-off visual language that breaks theme consistency or light/dark mode behavior.
+- Avoid explanatory or self-referential UI copy. The page should not explain what the product is, how the page works, or what “workspace state” means unless strictly necessary.
+- The summary and output area are the priority. Sources/history/manual tools are secondary support context.
+- Hide add-source UI until the user explicitly chooses to add a source.
+- History items need meaningful labels derived from analysis content, not generic labels like `Mixed`.
+- Unsupported/unavailable sources may appear in menus with `coming soon`, but they must not be selectable as active collection targets.
+
+### Summary requirements
+- The feedback summary must be a real model-written summary, not a frontend-composed summary from `bugs` / `themes` / `sentiment`.
+- If a page section looks like AI reasoning, it must actually come from the model output.
+- The summary block should be a concise summary paragraph, not a cluster of mini-cards pretending to be insight.
+- Older saved analyses may not have a real summary until re-run; new analyses should persist the model summary.
+
+### Current implementation notes
+- Feedback analysis now has a real `summary` field in the schema/prompt/storage pipeline.
+- Relevant files:
+  - `src/lib/schemas.ts`
+  - `src/lib/prompts.ts`
+  - `src/lib/feedbackEngine.ts`
+  - `src/lib/storage.ts`
+  - `src/app/api/feedback/analyze/route.ts`
+  - `src/lib/llm/workers.ts`
+  - `src/components/FeedbackPanel.tsx`
+- Supabase migration for persisted summaries:
+  - `supabase/migrations/20260423_feedback_summary.sql`
+- Storage code is intentionally backward-compatible if the `summary` column is missing.
+
+### Known source-collection problem: YouTube
+- Current source collection is generic scraping via Firecrawl, not platform-native collection.
+- For YouTube, the app does **not** use the YouTube API or comments API.
+- Current path:
+  - scrape public URL as markdown in `src/lib/firecrawl.ts`
+  - extract text segments in `src/lib/feedbackWorkspace.ts`
+  - score segments heuristically with regexes (`love`, `bug`, `issue`, `wish`, etc.)
+- Actual test against `https://www.youtube.com/@OpenAI` returned mostly YouTube shell / error text, e.g.:
+  - `Error 403 (Forbidden)`
+  - `We're sorry, but you do not have access to this page`
+  - `If playback doesn't begin shortly, try restarting your device`
+  - `An error occurred while retrieving sharing information`
+- Conclusion: YouTube feedback collection is currently low-confidence / misleading. It is not reliably extracting real user comments. Treat it as unreliable until there is a dedicated YouTube-specific collector/integration.
+
+### Practical guardrails for future edits
+- Do not fake intelligence in the UI.
+- Do not present derived heuristics as if they are first-class AI output.
+- If a source is unreliable, the UI should say so or downgrade it instead of implying trustworthy feedback collection.
+- Prefer fewer, clearer sections over more cards.
+- When in doubt, reduce chrome and prioritize scan speed.

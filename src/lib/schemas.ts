@@ -98,6 +98,7 @@ export type SocialAnalysisResponse = z.infer<typeof SocialAnalysisResponseSchema
 
 export const FeedbackResultSchema = z.object({
   overallSentiment: z.enum(['positive', 'neutral', 'negative', 'mixed']),
+  summary: z.string(),
   sentimentBreakdown: z.object({
     positive: z.number().min(0).max(100),
     neutral: z.number().min(0).max(100),

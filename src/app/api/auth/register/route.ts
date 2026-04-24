@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { getUserByEmail, createUser } from '@/lib/userStorage';
 import { isRateLimited, REGISTER_LIMIT } from '@/lib/rateLimit';
 import { logger } from '@/lib/logger';
+import { canSelfRegister, requestWaitlistAccess } from '@/lib/waitlist';
 
 const RegisterSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
@@ -27,8 +28,12 @@ export async function POST(request: NextRequest) {
     }
     const { email, password, nickname, otp } = parsed.data;
 
-    if (!email.endsWith('@metu.edu.tr')) {
-      return NextResponse.json({ error: 'Only metu.edu.tr email addresses are allowed' }, { status: 403 });
+    if (!(await canSelfRegister(email))) {
+      await requestWaitlistAccess(email, nickname);
+      return NextResponse.json({
+        error: 'This email is still waiting for approval. We added it to the waitlist.',
+        status: 'waitlisted',
+      }, { status: 403 });
     }
 
     // Validate OTP

@@ -16,6 +16,7 @@ type Input = z.infer<typeof parameters>;
 
 interface FeedbackOutput {
   projectName: string;
+  summary: string;
   sentiment: string;
   sentimentBreakdown: { positive: number; neutral: number; negative: number };
   themes: string[];
@@ -42,6 +43,7 @@ export const queryFeedbackTool: ToolDefinition<Input, FeedbackOutput> = {
         id: generateId(),
         rawFeedback: input.feedback,
         sentiment: result.overallSentiment,
+        summary: result.summary,
         sentimentBreakdown: result.sentimentBreakdown,
         themes: result.themes,
         featureRequests: result.featureRequests,
@@ -55,6 +57,7 @@ export const queryFeedbackTool: ToolDefinition<Input, FeedbackOutput> = {
 
     return {
       projectName: project.name,
+      summary: result.summary,
       sentiment: result.overallSentiment,
       sentimentBreakdown: result.sentimentBreakdown,
       themes: result.themes,

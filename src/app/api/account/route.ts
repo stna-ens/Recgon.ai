@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { auth } from '@/auth';
 import { getUserById, getUserByEmail, updateUser } from '@/lib/userStorage';
+import { isWaitlistAdminEmail } from '@/lib/waitlist';
 
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const user = await getUserById(session.user.id);
-  return NextResponse.json({ avatarUrl: user?.avatarUrl ?? null });
+  return NextResponse.json({
+    avatarUrl: user?.avatarUrl ?? null,
+    isWaitlistAdmin: isWaitlistAdminEmail(session.user.email),
+  });
 }
 
 export async function PATCH(request: NextRequest) {

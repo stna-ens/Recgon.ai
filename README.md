@@ -41,6 +41,8 @@ GEMINI_API_KEY=your_gemini_api_key
 AUTH_SECRET=your_nextauth_secret  # openssl rand -base64 32
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+RESEND_API_KEY=your_resend_api_key
+WAITLIST_ADMIN_EMAILS=you@example.com
 ```
 
 ```bash

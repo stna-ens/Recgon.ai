@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { getUserByEmail, findOrCreateOAuthUser, updateUser } from '@/lib/userStorage';
 import { authConfig } from './auth.config';
 import { validateBootEnv } from '@/lib/env';
+import { canSelfRegister, requestWaitlistAccess } from '@/lib/waitlist';
 
 validateBootEnv();
 
@@ -28,7 +29,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        if (!(credentials.email as string).endsWith('@metu.edu.tr')) return null;
         const user = await getUserByEmail(credentials.email as string);
         if (!user) return null;
         if (!user.passwordHash) return null;
@@ -43,11 +43,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider !== 'github') return true;
       if (!user.email) return false;
-      if (!user.email.endsWith('@metu.edu.tr')) return '/login?error=metuonly';
-      const existing = await findOrCreateOAuthUser(
-        user.email,
-        (user.name ?? user.email.split('@')[0]).slice(0, 32),
-      );
+      const email = user.email.trim().toLowerCase();
+      const nickname = (user.name ?? email.split('@')[0]).slice(0, 32);
+      let existing = await getUserByEmail(email);
+
+      if (!existing && !(await canSelfRegister(email))) {
+        await requestWaitlistAccess(email, nickname);
+        return '/login?error=waitlisted';
+      }
+
+      existing = existing ?? await findOrCreateOAuthUser(email, nickname);
       user.id = existing.id;
       (user as { nickname?: string }).nickname = existing.nickname;
       // Set avatarUrl on user object so it lands in the JWT

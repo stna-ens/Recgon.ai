@@ -22,6 +22,7 @@ export default function TeamSwitcher() {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
+        className="team-switcher-trigger"
         onClick={() => setOpen(!open)}
         style={{
           padding: '7px 14px',

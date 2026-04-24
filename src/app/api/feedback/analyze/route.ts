@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
               id: generateId(),
               rawFeedback: feedback,
               sentiment: result.overallSentiment,
+              summary: result.summary,
               sentimentBreakdown: result.sentimentBreakdown,
               themes: result.themes,
               featureRequests: result.featureRequests,

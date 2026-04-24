@@ -14,6 +14,17 @@ CREATE TABLE users (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE registration_waitlist (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  nickname TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  requested_at TIMESTAMPTZ DEFAULT now(),
+  approved_at TIMESTAMPTZ,
+  approved_by_email TEXT,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Teams
 CREATE TABLE teams (
   id TEXT PRIMARY KEY,

@@ -10,11 +10,6 @@ import TeamSwitcher from './TeamSwitcher';
 
 const NAV_ITEMS = [
   {
-    href: '/',
-    label: 'Overview',
-    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-  },
-  {
     href: '/mentor',
     label: 'Terminal',
     icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
@@ -24,10 +19,15 @@ const NAV_ITEMS = [
     label: 'Projects',
     icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
   },
-  { 
-    href: '/marketing', 
-    label: 'Marketing', 
-    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><circle cx="12" cy="12" r="3"/></svg>
+  {
+    href: '/marketing',
+    label: 'Marketing',
+    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="20" height="13" rx="2"/><line x1="11" y1="15" x2="11" y2="22"/><line x1="6" y1="22" x2="16" y2="22"/><path d="M22 6h1m0 4h-1"/></svg>
+  },
+  {
+    href: '/',
+    label: 'Overview',
+    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
   },
   {
     href: '/analytics',
@@ -109,7 +109,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <a href="/" className="brand-logo" style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}>
+      <a href="/" className="brand-logo" style={{ cursor: 'pointer', textDecoration: 'none' }}>
         <RecgonLogo size={42} uid="logo-sidebar" />
       </a>
 
@@ -119,9 +119,9 @@ export default function Sidebar() {
             ? pathname === item.href
             : pathname.startsWith(item.href);
           return (
-            <Link key={item.href} href={item.href} className={`nav-link ${isActive ? 'active' : ''}`}>
+            <Link key={item.href} href={item.href} className={`nav-link ${isActive ? 'active' : ''}`} title={item.label}>
               {item.icon}
-              {item.label}
+              <span className="nav-link-label">{item.label}</span>
             </Link>
           );
         })}
@@ -132,9 +132,23 @@ export default function Sidebar() {
             title="Toggle theme"
           >
             {theme === 'dark' ? (
-              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              <svg className="theme-icon theme-icon-sun" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="12" cy="12" r="4" />
+                <g className="sun-rays" strokeLinecap="round">
+                  <line x1="12" y1="2.5" x2="12" y2="4.5" />
+                  <line x1="12" y1="19.5" x2="12" y2="21.5" />
+                  <line x1="2.5" y1="12" x2="4.5" y2="12" />
+                  <line x1="19.5" y1="12" x2="21.5" y2="12" />
+                  <line x1="5.2" y1="5.2" x2="6.6" y2="6.6" />
+                  <line x1="17.4" y1="17.4" x2="18.8" y2="18.8" />
+                  <line x1="5.2" y1="18.8" x2="6.6" y2="17.4" />
+                  <line x1="17.4" y1="6.6" x2="18.8" y2="5.2" />
+                </g>
+              </svg>
             ) : (
-              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+              <svg className="theme-icon theme-icon-moon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
             )}
           </button>
         )}
@@ -148,7 +162,7 @@ export default function Sidebar() {
           zIndex: 100,
         }}>
           <TeamSwitcher />
-          <Link href="/account" title={session.user.nickname || session.user.email || 'Account'} style={{
+          <Link href="/account" className="account-avatar-link" title={session.user.nickname || session.user.email || 'Account'} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: '36px', height: '36px',
             borderRadius: '50%',

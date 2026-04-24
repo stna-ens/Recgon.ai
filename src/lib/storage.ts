@@ -97,6 +97,7 @@ export interface FeedbackAnalysis {
   id: string;
   rawFeedback: string[];
   sentiment: string;
+  summary?: string;
   sentimentBreakdown: { positive: number; neutral: number; negative: number };
   themes: string[];
   featureRequests: string[];
@@ -134,6 +135,7 @@ async function assembleProject(row: ProjectRow): Promise<Project> {
     id: r.id as string,
     rawFeedback: r.raw_feedback as string[],
     sentiment: r.sentiment as string,
+    summary: (r.summary as string | null) ?? undefined,
     sentimentBreakdown: r.sentiment_breakdown as FeedbackAnalysis['sentimentBreakdown'],
     themes: r.themes as string[],
     featureRequests: r.feature_requests as string[],
@@ -350,6 +352,7 @@ export async function saveProject(project: Project): Promise<void> {
       project_id: core.id,
       raw_feedback: fa.rawFeedback,
       sentiment: fa.sentiment,
+      summary: fa.summary ?? null,
       sentiment_breakdown: fa.sentimentBreakdown,
       themes: fa.themes,
       feature_requests: fa.featureRequests,
@@ -359,7 +362,14 @@ export async function saveProject(project: Project): Promise<void> {
       analyzed_at: fa.analyzedAt,
       completed_prompts: fa.completedPrompts ?? [],
     }));
-    await supabase.from('feedback_analyses').upsert(rows);
+    const { error } = await supabase.from('feedback_analyses').upsert(rows);
+    if (error && isMissingColumnError(error, 'summary')) {
+      const fallbackRows = rows.map(({ summary, ...row }) => row);
+      const fallback = await supabase.from('feedback_analyses').upsert(fallbackRows);
+      if (fallback.error) throw new Error(`Failed to save feedback analyses: ${fallback.error.message}`);
+    } else if (error) {
+      throw new Error(`Failed to save feedback analyses: ${error.message}`);
+    }
   }
 
   // Upsert campaigns if present
@@ -429,11 +439,12 @@ export async function saveFeedbackToProject(projectId: string, analysis: Feedbac
   const project = await getProject(projectId, teamId);
   if (!project) return false;
 
-  const { error } = await supabase.from('feedback_analyses').insert({
+  const row = {
     id: analysis.id,
     project_id: projectId,
     raw_feedback: analysis.rawFeedback,
     sentiment: analysis.sentiment,
+    summary: analysis.summary ?? null,
     sentiment_breakdown: analysis.sentimentBreakdown,
     themes: analysis.themes,
     feature_requests: analysis.featureRequests,
@@ -441,7 +452,14 @@ export async function saveFeedbackToProject(projectId: string, analysis: Feedbac
     praises: analysis.praises,
     developer_prompts: analysis.developerPrompts,
     analyzed_at: analysis.analyzedAt,
-  });
+  };
+
+  let { error } = await supabase.from('feedback_analyses').insert(row);
+  if (error && isMissingColumnError(error, 'summary')) {
+    const { summary, ...fallbackRow } = row;
+    const fallback = await supabase.from('feedback_analyses').insert(fallbackRow);
+    error = fallback.error;
+  }
   return !error;
 }
 

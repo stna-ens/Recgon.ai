@@ -1,0 +1,2411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recgon · Founder Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f4efe8;
+      --bg-panel: rgba(255, 251, 246, 0.84);
+      --bg-panel-strong: rgba(255, 250, 245, 0.98);
+      --bg-dark: #1f1b18;
+      --txt: #261f1a;
+      --txt-soft: #6d6258;
+      --txt-faint: #9a8d83;
+      --line: rgba(58, 43, 32, 0.12);
+      --line-strong: rgba(58, 43, 32, 0.18);
+      --accent: #c95d3c;
+      --accent-soft: rgba(201, 93, 60, 0.12);
+      --moss: #406b50;
+      --moss-soft: rgba(64, 107, 80, 0.12);
+      --ink-blue: #3d536a;
+      --ink-blue-soft: rgba(61, 83, 106, 0.12);
+      --warning: #9d6a17;
+      --warning-soft: rgba(157, 106, 23, 0.12);
+      --danger: #9b4437;
+      --danger-soft: rgba(155, 68, 55, 0.12);
+      --shadow: 0 24px 60px rgba(69, 42, 24, 0.12);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+      --font-ui: "Sora", system-ui, sans-serif;
+      --font-editorial: "Newsreader", Georgia, serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(201, 93, 60, 0.12), transparent 28%),
+        radial-gradient(circle at 85% 10%, rgba(61, 83, 106, 0.14), transparent 24%),
+        linear-gradient(180deg, #fbf6f0 0%, #f4efe8 42%, #efe7de 100%);
+      color: var(--txt);
+      font-family: var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.22;
+      background-image:
+        linear-gradient(rgba(58, 43, 32, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(58, 43, 32, 0.04) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: radial-gradient(circle at center, black 30%, transparent 90%);
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: 292px minmax(0, 1fr);
+      gap: 24px;
+      width: min(1480px, calc(100vw - 40px));
+      margin: 20px auto;
+    }
+
+    .rail {
+      position: sticky;
+      top: 20px;
+      align-self: start;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      min-height: calc(100vh - 40px);
+      padding: 24px 22px;
+      border: 1px solid rgba(38, 31, 26, 0.08);
+      border-radius: 32px;
+      background: rgba(255, 251, 245, 0.86);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 30% 30%, #f1baa8, transparent 44%),
+        linear-gradient(135deg, #c95d3c, #8e3e24);
+      color: #fff8f4;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--txt-soft);
+      font-size: 12px;
+    }
+
+    .prototype-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(38, 31, 26, 0.04);
+      border: 1px solid rgba(38, 31, 26, 0.08);
+      color: var(--txt-soft);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .prototype-tag .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(201, 93, 60, 0.12);
+    }
+
+    .section-label {
+      margin: 0 0 10px;
+      color: var(--txt-faint);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 14px;
+      border: 0;
+      border-radius: 16px;
+      color: var(--txt-soft);
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+      transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+
+    .nav button:hover {
+      background: rgba(38, 31, 26, 0.04);
+      color: var(--txt);
+    }
+
+    .nav button.active {
+      background: linear-gradient(135deg, rgba(201, 93, 60, 0.14), rgba(201, 93, 60, 0.08));
+      color: var(--txt);
+      box-shadow: inset 0 0 0 1px rgba(201, 93, 60, 0.18);
+    }
+
+    .nav-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(38, 31, 26, 0.05);
+      font-size: 14px;
+      color: var(--txt);
+      flex-shrink: 0;
+    }
+
+    .nav button.active .nav-icon {
+      background: rgba(255, 251, 245, 0.74);
+      color: var(--accent);
+    }
+
+    .nav-copy strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+
+    .nav-copy span {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--txt-soft);
+    }
+
+    .project-picker {
+      display: grid;
+      gap: 10px;
+    }
+
+    .project-option {
+      padding: 14px 14px;
+      border: 1px solid transparent;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+    }
+
+    .project-option:hover {
+      border-color: rgba(38, 31, 26, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .project-option.active {
+      border-color: rgba(201, 93, 60, 0.28);
+      background: rgba(201, 93, 60, 0.08);
+    }
+
+    .project-topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .project-topline strong {
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .stage-pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(38, 31, 26, 0.06);
+      color: var(--txt-soft);
+      flex-shrink: 0;
+    }
+
+    .project-option p {
+      margin: 0;
+      color: var(--txt-soft);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .rail-footer {
+      margin-top: auto;
+      padding: 16px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(61, 83, 106, 0.1), rgba(64, 107, 80, 0.08));
+      border: 1px solid rgba(61, 83, 106, 0.14);
+    }
+
+    .rail-footer h3 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+
+    .rail-footer p {
+      margin: 0 0 14px;
+      color: var(--txt-soft);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .rail-footer .mini-note {
+      color: var(--ink-blue);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .workspace {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      padding: 24px 26px 0;
+    }
+
+    .topbar-copy .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 251, 245, 0.72);
+      border: 1px solid rgba(38, 31, 26, 0.08);
+      color: var(--txt-soft);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .eyebrow .chip {
+      color: var(--accent);
+    }
+
+    .topbar-copy h2 {
+      margin: 16px 0 10px;
+      max-width: 11ch;
+      font-family: var(--font-editorial);
+      font-size: clamp(42px, 5vw, 66px);
+      font-weight: 700;
+      letter-spacing: -0.045em;
+      line-height: 0.95;
+    }
+
+    .topbar-copy p {
+      margin: 0;
+      max-width: 56ch;
+      color: var(--txt-soft);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill-button,
+    .outline-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      padding: 0 16px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .pill-button {
+      border: 0;
+      color: #fff7f3;
+      background: linear-gradient(135deg, #c95d3c, #a24d32);
+      box-shadow: 0 14px 28px rgba(201, 93, 60, 0.22);
+    }
+
+    .outline-button {
+      border: 1px solid rgba(38, 31, 26, 0.1);
+      color: var(--txt);
+      background: rgba(255, 251, 245, 0.72);
+    }
+
+    .board {
+      display: grid;
+      gap: 18px;
+      padding: 0 24px 24px;
+    }
+
+    .panel {
+      border-radius: var(--radius-xl);
+      background: var(--bg-panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(38, 31, 26, 0.08);
+      box-shadow: 0 14px 34px rgba(69, 42, 24, 0.08);
+    }
+
+    .panel-inner {
+      padding: 22px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 0.9fr;
+      gap: 18px;
+    }
+
+    .brief-card {
+      padding: 24px;
+      background:
+        radial-gradient(circle at top right, rgba(201, 93, 60, 0.12), transparent 32%),
+        linear-gradient(135deg, rgba(255, 251, 245, 0.96), rgba(255, 247, 241, 0.92));
+      overflow: hidden;
+      position: relative;
+    }
+
+    .brief-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -80px -120px auto;
+      width: 280px;
+      height: 280px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(201, 93, 60, 0.12), transparent 70%);
+    }
+
+    .brief-card .section-label {
+      margin-bottom: 16px;
+    }
+
+    .brief-title {
+      margin: 0 0 12px;
+      font-family: var(--font-editorial);
+      font-size: 33px;
+      line-height: 1.02;
+      letter-spacing: -0.05em;
+    }
+
+    .brief-text {
+      margin: 0 0 18px;
+      max-width: 58ch;
+      color: var(--txt-soft);
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .highlight-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .highlight-pill {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255, 251, 246, 0.86);
+      border: 1px solid rgba(38, 31, 26, 0.08);
+      color: var(--txt-soft);
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+
+    .highlight-pill strong {
+      color: var(--txt);
+      font-weight: 600;
+    }
+
+    .mini-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .pulse-card {
+      padding: 22px;
+    }
+
+    .pulse-card h3 {
+      margin: 12px 0 10px;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+    }
+
+    .pulse-card p {
+      margin: 0 0 16px;
+      color: var(--txt-soft);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .focus-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      background: rgba(64, 107, 80, 0.12);
+      color: var(--moss);
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .metric-card {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255, 251, 246, 0.72);
+      border: 1px solid rgba(38, 31, 26, 0.08);
+    }
+
+    .metric-card .label {
+      color: var(--txt-faint);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric-card .value {
+      display: block;
+      margin: 12px 0 8px;
+      font-family: var(--font-editorial);
+      font-size: 34px;
+      line-height: 0.92;
+      letter-spacing: -0.05em;
+    }
+
+    .metric-card .delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--txt-soft);
+    }
+
+    .delta .up { color: var(--moss); }
+    .delta .down { color: var(--danger); }
+    .delta .flat { color: var(--warning); }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .panel-head h3 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+    }
+
+    .panel-head p {
+      margin: 8px 0 0;
+      color: var(--txt-soft);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .panel-head .meta {
+      color: var(--txt-faint);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+
+    .signal-list,
+    .action-list,
+    .timeline,
+    .cluster-list,
+    .chat-list,
+    .artifact-list,
+    .matrix-list,
+    .sequence-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .signal-row,
+    .action-card,
+    .timeline-row,
+    .cluster-card,
+    .chat-bubble,
+    .artifact-card,
+    .matrix-card,
+    .sequence-card {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 251, 246, 0.7);
+      border: 1px solid rgba(38, 31, 26, 0.08);
+    }
+
+    .signal-row {
+      display: grid;
+      grid-template-columns: 124px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .signal-tag,
+    .priority-tag,
+    .status-tag,
+    .owner-tag,
+    .mini-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(38, 31, 26, 0.06);
+      color: var(--txt-soft);
+    }
+
+    .signal-content strong,
+    .action-card h4,
+    .cluster-card h4,
+    .artifact-card h4,
+    .matrix-card h4,
+    .sequence-card h4,
+    .workspace-title {
+      display: block;
+      margin: 0 0 6px;
+      font-size: 14px;
+      line-height: 1.45;
+      letter-spacing: -0.02em;
+    }
+
+    .signal-content p,
+    .action-card p,
+    .cluster-card p,
+    .artifact-card p,
+    .matrix-card p,
+    .sequence-card p,
+    .workspace-copy,
+    .list-copy {
+      margin: 0;
+      color: var(--txt-soft);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .row-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .priority-high {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .priority-medium {
+      background: var(--warning-soft);
+      color: var(--warning);
+    }
+
+    .priority-low {
+      background: var(--moss-soft);
+      color: var(--moss);
+    }
+
+    .signal-product { background: var(--accent-soft); color: var(--accent); }
+    .signal-feedback { background: var(--warning-soft); color: var(--warning); }
+    .signal-traffic { background: var(--ink-blue-soft); color: var(--ink-blue); }
+    .signal-ship { background: var(--moss-soft); color: var(--moss); }
+
+    .action-card {
+      display: grid;
+      gap: 12px;
+    }
+
+    .action-topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .action-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 8px;
+    }
+
+    .checkline {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: var(--txt-soft);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .checkline .bullet {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      margin-top: 1px;
+      background: rgba(38, 31, 26, 0.06);
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .project-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+    }
+
+    .detail-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-hero {
+      padding: 24px;
+      background:
+        linear-gradient(135deg, rgba(61, 83, 106, 0.1), rgba(201, 93, 60, 0.08)),
+        rgba(255, 251, 246, 0.92);
+    }
+
+    .detail-hero .project-title {
+      margin: 8px 0 10px;
+      font-family: var(--font-editorial);
+      font-size: 40px;
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+    }
+
+    .detail-hero .workspace-copy {
+      max-width: 60ch;
+      font-size: 14px;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .info-box {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 251, 246, 0.78);
+      border: 1px solid rgba(38, 31, 26, 0.08);
+    }
+
+    .info-box .title {
+      margin: 0 0 10px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--txt-faint);
+    }
+
+    .info-box p {
+      margin: 0;
+      color: var(--txt-soft);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .stat-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      color: var(--txt-soft);
+      font-size: 12px;
+    }
+
+    .stat-line strong {
+      color: var(--txt);
+      font-size: 13px;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(38, 31, 26, 0.06);
+      color: var(--txt-soft);
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .timeline-date {
+      color: var(--txt-faint);
+      font-size: 10px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding-top: 2px;
+    }
+
+    .timeline-body strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(38, 31, 26, 0.05);
+      border: 1px solid transparent;
+      color: var(--txt-soft);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+
+    .filter-chip.active {
+      background: rgba(201, 93, 60, 0.1);
+      border-color: rgba(201, 93, 60, 0.16);
+      color: var(--accent);
+    }
+
+    .cluster-card {
+      display: grid;
+      gap: 14px;
+    }
+
+    .cluster-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .cluster-metric {
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(38, 31, 26, 0.04);
+    }
+
+    .cluster-metric span {
+      display: block;
+      color: var(--txt-faint);
+      font-size: 10px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .cluster-metric strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 18px;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .evidence-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .evidence-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(255, 251, 246, 0.78);
+      border: 1px dashed rgba(38, 31, 26, 0.12);
+      color: var(--txt-soft);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .evidence-item .marker {
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .growth-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .launch-card {
+      padding: 24px;
+      background:
+        radial-gradient(circle at top right, rgba(64, 107, 80, 0.14), transparent 36%),
+        linear-gradient(135deg, rgba(255, 251, 246, 0.94), rgba(247, 253, 249, 0.92));
+    }
+
+    .launch-card h3 {
+      margin: 10px 0 10px;
+      font-family: var(--font-editorial);
+      font-size: 31px;
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+    }
+
+    .launch-card p {
+      margin: 0 0 16px;
+      color: var(--txt-soft);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .channel-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(38, 31, 26, 0.08);
+      background: rgba(255, 251, 246, 0.72);
+    }
+
+    .channel-card .mini-tag {
+      margin-bottom: 12px;
+    }
+
+    .channel-card h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .calendar {
+      display: grid;
+      gap: 10px;
+    }
+
+    .calendar-row {
+      display: grid;
+      grid-template-columns: 92px 1fr 126px;
+      gap: 14px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 251, 246, 0.72);
+      border: 1px solid rgba(38, 31, 26, 0.08);
+    }
+
+    .calendar-row .week {
+      font-family: var(--font-mono);
+      color: var(--txt-faint);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .calendar-row strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .calendar-row span {
+      color: var(--txt-soft);
+      font-size: 12px;
+    }
+
+    .copilot-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+    }
+
+    .terminal {
+      padding: 0;
+      overflow: hidden;
+      background: linear-gradient(180deg, #231d18, #161310);
+      border-color: rgba(24, 20, 17, 0.4);
+    }
+
+    .terminal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255, 246, 240, 0.82);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .terminal-body {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+    }
+
+    .chat-bubble {
+      border-color: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .chat-bubble.user {
+      background: rgba(201, 93, 60, 0.12);
+      border-color: rgba(201, 93, 60, 0.14);
+    }
+
+    .chat-role {
+      margin-bottom: 8px;
+      color: rgba(255, 246, 240, 0.72);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .chat-bubble p {
+      margin: 0;
+      color: rgba(255, 248, 244, 0.88);
+      font-size: 13px;
+      line-height: 1.72;
+    }
+
+    .terminal-input {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255, 246, 240, 0.6);
+      font-size: 12px;
+      font-family: var(--font-mono);
+    }
+
+    .terminal-prompt {
+      color: #efb499;
+    }
+
+    .evidence-panel {
+      display: grid;
+      gap: 18px;
+    }
+
+    .artifact-card,
+    .matrix-card,
+    .sequence-card {
+      display: grid;
+      gap: 10px;
+    }
+
+    .artifact-body {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .artifact-body .chip {
+      background: rgba(61, 83, 106, 0.08);
+      color: var(--ink-blue);
+    }
+
+    .empty-note {
+      padding: 24px;
+      border-radius: 20px;
+      background: rgba(255, 251, 246, 0.72);
+      border: 1px dashed rgba(38, 31, 26, 0.12);
+      color: var(--txt-soft);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .muted {
+      color: var(--txt-faint);
+    }
+
+    @media (max-width: 1220px) {
+      .page {
+        grid-template-columns: 1fr;
+      }
+
+      .rail {
+        position: relative;
+        top: 0;
+        min-height: auto;
+      }
+
+      .nav {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 980px) {
+      .topbar {
+        flex-direction: column;
+      }
+
+      .hero-grid,
+      .split-grid,
+      .project-grid,
+      .growth-grid,
+      .copilot-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .cluster-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .signal-row,
+      .calendar-row,
+      .timeline-row {
+        grid-template-columns: 1fr;
+      }
+
+      .row-meta {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 16px, 1480px);
+        margin: 8px auto;
+        gap: 12px;
+      }
+
+      .rail {
+        border-radius: 24px;
+        padding: 18px;
+      }
+
+      .nav {
+        grid-template-columns: 1fr;
+      }
+
+      .board {
+        padding: 0 8px 20px;
+      }
+
+      .topbar {
+        padding: 18px 8px 0;
+      }
+
+      .topbar-copy h2,
+      .brief-title,
+      .detail-hero .project-title,
+      .launch-card h3 {
+        max-width: none;
+      }
+
+      .metrics-grid,
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="rail">
+      <div class="brand">
+        <div class="brand-mark">R</div>
+        <div>
+          <h1>Recgon</h1>
+          <p>Founder workspace</p>
+        </div>
+      </div>
+
+      <div class="prototype-tag">
+        <span class="dot"></span>
+        atlas foundry / weekly pulse
+      </div>
+
+      <section>
+        <p class="section-label">Navigation</p>
+        <div class="nav" id="nav"></div>
+      </section>
+
+      <section>
+        <p class="section-label">Projects</p>
+        <div class="project-picker" id="projects"></div>
+      </section>
+
+      <div class="rail-footer">
+        <h3>Team snapshot</h3>
+        <p>3 active products. 2 urgent signal clusters. 1 launch cycle in progress.</p>
+        <div class="mini-note">Last sync: 22 Apr · 09:40</div>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar-copy">
+          <div class="eyebrow">
+            <span class="chip">atlas foundry</span>
+            weekly operating view
+          </div>
+          <h2 id="view-title">Mission Control</h2>
+          <p id="view-description"></p>
+        </div>
+        <div class="topbar-actions">
+          <button class="outline-button" type="button">Launch memo</button>
+          <button class="outline-button" type="button">This week</button>
+          <button class="pill-button" type="button">New Recgon thread</button>
+        </div>
+      </header>
+
+      <section class="board" id="app"></section>
+    </main>
+  </div>
+
+  <script>
+    const views = [
+      {
+        id: "mission",
+        label: "Mission Control",
+        icon: "◧",
+        blurb: "Weekly brief, health, signals, and next moves across your products."
+      },
+      {
+        id: "workspace",
+        label: "Project Workspace",
+        icon: "⌘",
+        blurb: "Strategy, evidence, risks, and execution for the active product."
+      },
+      {
+        id: "inbox",
+        label: "Signal Inbox",
+        icon: "◎",
+        blurb: "Feedback, traffic shifts, and shipping activity translated into action."
+      },
+      {
+        id: "growth",
+        label: "Growth Lab",
+        icon: "↗",
+        blurb: "Campaigns, launch assets, and channel plans for the current product."
+      },
+      {
+        id: "copilot",
+        label: "Copilot",
+        icon: "›_",
+        blurb: "A project-scoped assistant with evidence and execution context."
+      }
+    ];
+
+    const projects = [
+      {
+        id: "signaldesk",
+        name: "SignalDesk",
+        stage: "beta",
+        oneLiner: "Turns raw founder feedback into ranked product and messaging decisions.",
+        score: 7.6,
+        momentum: "+18%",
+        focusArea: "Onboarding clarity",
+        health: {
+          conviction: "High",
+          risk: "Medium",
+          readiness: "Strong",
+          bottleneck: "First-session understanding"
+        },
+        brief: {
+          title: "SignalDesk is close to a breakout loop, but the value story lands too late.",
+          body: "Traffic quality is improving and feedback themes are consistent: founders like the intelligence layer, but they do not understand the first action fast enough. The next week should focus on compressing time-to-value, tightening the first-run narrative, and turning recent customer language into launch proof."
+        },
+        headline: "The product feels smarter than its onboarding. Fix that and growth compounds.",
+        summary: "A feedback intelligence workspace for solo founders. It turns user comments, analytics shifts, and code changes into a ranked list of what to do next.",
+        audience: "Solo founders and tiny product teams shipping weekly with limited research bandwidth.",
+        promise: "Know what changed, why it matters, and what to do next without stitching tools together.",
+        problem: "Founders collect feedback in too many places and struggle to turn it into strategy, prioritization, and messaging.",
+        moat: "Cross-surface intelligence: project analysis, feedback clustering, traffic interpretation, and copilot execution in one workspace.",
+        positioning: "Not another analytics tool and not another chatbot. It is a founder operating layer.",
+        channels: ["Founder Twitter/X", "Indie Hackers", "Launch partners", "Founder newsletters"],
+        growthMetrics: ["Activation to first brief", "Workspace return rate", "Prompt-to-action completion", "ICP signup rate"],
+        risks: [
+          "New users still need too much orientation before the first insight feels earned.",
+          "The product breadth can read as scattered unless the narrative is anchored to one founder workflow.",
+          "If signals are not ranked ruthlessly, the app becomes noise instead of leverage."
+        ],
+        nextMoves: [
+          {
+            title: "Rewrite first-run flow around one urgent question",
+            priority: "high",
+            owner: "Product",
+            why: "Users should immediately answer “what should I do next?” instead of exploring features.",
+            checklist: [
+              "Replace tool-first onboarding with a 3-step mission setup",
+              "Generate one founder brief immediately after import",
+              "Delay secondary navigation until the first action card is visible"
+            ]
+          },
+          {
+            title: "Turn recent customer language into homepage proof",
+            priority: "medium",
+            owner: "Growth",
+            why: "Your best recent feedback already explains the product better than the landing copy.",
+            checklist: [
+              "Promote two quotes into the hero and launch memo",
+              "Frame Recgon as a founder workspace, not an AI toolkit",
+              "Use “what changed / what matters / what to do next” as the message spine"
+            ]
+          },
+          {
+            title: "Productize the signal inbox as the core retention surface",
+            priority: "medium",
+            owner: "Design",
+            why: "The inbox is the strongest evidence-driven surface in the concept.",
+            checklist: [
+              "Cluster feedback, traffic, and commit events into one list",
+              "Attach recommended action and confidence on every cluster",
+              "Allow one-click jump from signal to project workspace or copilot"
+            ]
+          }
+        ],
+        signals: [
+          {
+            type: "feedback",
+            tag: "cluster",
+            title: "Seven founders said the product is smart but unclear in the first minute",
+            body: "The value prop lands after the user explores the workspace. Strong product belief, weak first-turn orientation.",
+            time: "3h ago",
+            meta: ["confidence 0.88", "7 mentions"]
+          },
+          {
+            type: "traffic",
+            tag: "traffic",
+            title: "Homepage sessions up 18% after founder thread, but activation stayed flat",
+            body: "Acquisition improved. The leak remains between interest and first meaningful action.",
+            time: "Yesterday",
+            meta: ["346 sessions", "1.9% activation"]
+          },
+          {
+            type: "ship",
+            tag: "ship",
+            title: "New commit introduced a cleaner import flow but no guided first outcome",
+            body: "Import experience is smoother. The product still does not immediately answer what the founder should do next.",
+            time: "Today",
+            meta: ["2 commits", "workspace/import"]
+          }
+        ],
+        timeline: [
+          { date: "Mon", title: "Imported 2 new repositories", body: "Users completed repo imports faster after reducing the form fields." },
+          { date: "Tue", title: "Founder thread outperformed baseline", body: "Traffic came from a sharper pain-first hook instead of broad “AI startup coach” language." },
+          { date: "Wed", title: "Feedback cluster formed around onboarding clarity", body: "The same issue appeared in product interviews, support notes, and session recordings." },
+          { date: "Thu", title: "Recgon pulse recommended onboarding focus", body: "Momentum remains positive, but the current growth ceiling is comprehension." }
+        ],
+        inboxClusters: [
+          {
+            type: "feedback",
+            title: "Onboarding clarity",
+            why: "Users love the promise but don’t know which surface to trust first.",
+            counts: { mentions: 7, severity: "medium", confidence: "0.88" },
+            evidence: [
+              "\"I can tell this is powerful, but I’m not sure where to start.\"",
+              "\"The brief is great once I get there. I just need it sooner.\"",
+              "Activation stayed flat while top-of-funnel traffic improved."
+            ],
+            action: "Generate the first founder brief automatically right after project import."
+          },
+          {
+            type: "traffic",
+            title: "Acquisition quality improving",
+            why: "Traffic source quality is rising, which means the messaging direction is working.",
+            counts: { mentions: 3, severity: "low", confidence: "0.72" },
+            evidence: [
+              "Founder thread drove +18% weekly sessions.",
+              "Visitors spent longer on the landing page sections about signal ranking.",
+              "Direct signups increased from visitors mentioning “what should I do next?”."
+            ],
+            action: "Double down on the core positioning in launch content and product onboarding."
+          },
+          {
+            type: "ship",
+            title: "Feature sprawl risk",
+            why: "Breadth is becoming visible before hierarchy is clear.",
+            counts: { mentions: 4, severity: "high", confidence: "0.81" },
+            evidence: [
+              "Current concept spans projects, marketing, analytics, feedback, mentor, and teams.",
+              "New users browse before they commit to a specific next action.",
+              "Recent commit history favors features over core journey compression."
+            ],
+            action: "Reframe the product around a single workflow: signals → interpretation → next move → execution."
+          }
+        ],
+        growth: {
+          brief: "Launch SignalDesk as the founder workspace that tells you what changed, why it matters, and what to do next.",
+          thesis: "The strongest hook is not AI or reporting. It is relief from fragmented decision-making.",
+          channels: [
+            {
+              name: "Founder Twitter/X",
+              role: "Demand capture",
+              idea: "Narratives about bad feedback loops and how founders miss the signal."
+            },
+            {
+              name: "Indie Hackers",
+              role: "Credibility",
+              idea: "Transparent build logs showing how Recgon clusters real signals into action."
+            },
+            {
+              name: "Email launch memo",
+              role: "Conversion",
+              idea: "A sharp “this week in your product” sample brief with one call to action."
+            }
+          ],
+          calendar: [
+            { week: "Week 1", title: "Pain-first essay", body: "Why solo founders drown in scattered evidence before they ever make a decision.", output: "Long-form thread" },
+            { week: "Week 1", title: "Workspace walkthrough", body: "Show the signal inbox and how it reduces noise to one next move.", output: "2-minute demo" },
+            { week: "Week 2", title: "Launch memo template", body: "Publish the exact weekly brief founders wish they had.", output: "PDF / post" },
+            { week: "Week 2", title: "Customer language campaign", body: "Turn real quotes into homepage proof and short-form launch assets.", output: "Carousel + site copy" }
+          ],
+          sequence: [
+            {
+              title: "Hook with the pain",
+              body: "Founders don’t lack data. They lack a trustworthy next move."
+            },
+            {
+              title: "Show the evidence layer",
+              body: "Feedback, commits, and traffic shift into one ranked signal inbox."
+            },
+            {
+              title: "Show the outcome",
+              body: "Recgon writes the weekly brief, recommends the move, and helps ship it."
+            }
+          ]
+        },
+        copilot: {
+          title: "Workspace copilot",
+          messages: [
+            {
+              role: "user",
+              text: "Given this week’s signals, what should I fix before launch?"
+            },
+            {
+              role: "assistant",
+              text: "Fix first-session comprehension before anything else. Traffic quality is improving, so acquisition isn’t the bottleneck. The best move is to generate one founder brief immediately after import, then use the onboarding copy to explain the next action card."
+            },
+            {
+              role: "user",
+              text: "Turn that into a launch-ready product task and a homepage messaging change."
+            },
+            {
+              role: "assistant",
+              text: "Product task: add a post-import “Your Recgon Brief” state that auto-populates one focus area, one risk, and one next move. Messaging change: replace broad AI language with “Recgon tells you what changed, why it matters, and what to do next.”"
+            }
+          ],
+          evidence: [
+            "Feedback cluster: “smart but unclear”",
+            "Traffic up +18%, activation flat",
+            "Recent import flow shipped without a guided outcome"
+          ],
+          suggestions: [
+            "Draft the new onboarding state",
+            "Write a launch memo from this week’s brief",
+            "Turn the onboarding issue into a product spec"
+          ]
+        }
+      },
+      {
+        id: "gitscope",
+        name: "GitScope",
+        stage: "mvp",
+        oneLiner: "Repository intelligence for small product teams shipping faster with less coordination drag.",
+        score: 6.9,
+        momentum: "+6%",
+        focusArea: "Sharpen ICP",
+        health: {
+          conviction: "Medium",
+          risk: "High",
+          readiness: "Early",
+          bottleneck: "Positioning"
+        },
+        brief: {
+          title: "GitScope has useful mechanics, but the customer story is still too broad to convert well.",
+          body: "The product is doing several interesting things, yet the current narrative blends developer tooling, project memory, and product ops into one ambiguous pitch. The immediate priority is not feature expansion; it is choosing the sharpest wedge and making the workspace feel essential for that exact user."
+        },
+        headline: "This product needs a narrower door in before it deserves a wider platform story.",
+        summary: "A repo intelligence workspace that tracks changes, explains impact, and keeps teams aligned on what matters.",
+        audience: "Technical founders and product-minded engineers with one to five people shipping from a shared codebase.",
+        promise: "Understand code change impact without reading every diff or chasing everyone for context.",
+        problem: "Teams move fast, but the meaning of changes gets lost across pull requests, chats, and context switching.",
+        moat: "Maps shipping activity to product implications instead of stopping at raw code diffs.",
+        positioning: "A decision layer on top of shipping activity, not a code review replacement.",
+        channels: ["Dev Twitter/X", "Product engineers on LinkedIn", "Engineer-founder podcasts"],
+        growthMetrics: ["Repo import completion", "Weekly active reviewers", "Insight-to-PR follow-through"],
+        risks: [
+          "Positioning overlaps with analytics, observability, code review, and PM tooling.",
+          "The product might feel like a nice-to-have unless it produces a clear weekly operational win.",
+          "Feature surface can outpace the proof that people need the workspace repeatedly."
+        ],
+        nextMoves: [
+          {
+            title: "Choose a single wedge",
+            priority: "high",
+            owner: "Founder",
+            why: "Current narrative is too broad to feel urgent.",
+            checklist: [
+              "Test “ship impact radar” against “repo memory”",
+              "Pick one ideal customer job",
+              "Rewrite onboarding around that job only"
+            ]
+          },
+          {
+            title: "Prove weekly value",
+            priority: "medium",
+            owner: "Product",
+            why: "Retention will come from operational usefulness, not curiosity.",
+            checklist: [
+              "Create a Monday recap artifact",
+              "Summarize risky changes and unresolved decisions",
+              "Make that recap shareable outside the product"
+            ]
+          }
+        ],
+        signals: [
+          {
+            type: "ship",
+            tag: "positioning",
+            title: "More product surfaces shipped than onboarding simplifications",
+            body: "Useful features landed, but the narrative spine remains soft.",
+            time: "1d ago",
+            meta: ["feature creep", "ICP unclear"]
+          },
+          {
+            type: "feedback",
+            tag: "persona",
+            title: "Users disagree on whether GitScope is for PMs, EMs, or engineers",
+            body: "That disagreement usually means the pitch is still too wide.",
+            time: "2d ago",
+            meta: ["5 interviews", "message mismatch"]
+          }
+        ],
+        timeline: [
+          { date: "Mon", title: "Repo change summary improved", body: "The summaries are more readable, but they still feel detached from a business consequence." },
+          { date: "Tue", title: "Interview notes split across personas", body: "PMs liked the translation layer. Engineers liked the faster context. Nobody felt the product spoke specifically to them." }
+        ],
+        inboxClusters: [
+          {
+            type: "feedback",
+            title: "Positioning ambiguity",
+            why: "Different users describe different core jobs.",
+            counts: { mentions: 5, severity: "high", confidence: "0.84" },
+            evidence: [
+              "\"Is this for engineering managers or product people?\"",
+              "\"I like it, but I’m not sure if my team would live in it.\"",
+              "Homepage copy currently mixes workflow memory, change intelligence, and project visibility."
+            ],
+            action: "Pick one wedge and rewrite the first-run story around that single operational win."
+          }
+        ],
+        growth: {
+          brief: "Do not launch as a platform. Launch as a very opinionated weekly change-impact radar for tiny teams.",
+          thesis: "The narrow promise is stronger than the broad one.",
+          channels: [
+            {
+              name: "Engineer-founder feeds",
+              role: "Signal validation",
+              idea: "Talk about missing the meaning of a change, not code review itself."
+            }
+          ],
+          calendar: [
+            { week: "Week 1", title: "Wedge test", body: "Run positioning experiments with 3 alternate headlines.", output: "Landing variants" }
+          ],
+          sequence: [
+            {
+              title: "Lead with operational anxiety",
+              body: "Teams don’t need more diffs; they need clearer consequences."
+            }
+          ]
+        },
+        copilot: {
+          title: "Positioning copilot",
+          messages: [
+            {
+              role: "user",
+              text: "What would you cut from the pitch?"
+            },
+            {
+              role: "assistant",
+              text: "Cut the platform ambition. Keep one promise: every week, GitScope tells a tiny team which shipped changes matter and what they should discuss."
+            }
+          ],
+          evidence: [
+            "User interviews split across personas",
+            "Landing page language currently mixes multiple jobs"
+          ],
+          suggestions: [
+            "Generate 3 wedge statements",
+            "Rewrite the onboarding headline",
+            "Draft a Monday recap artifact"
+          ]
+        }
+      },
+      {
+        id: "lattice",
+        name: "LatticeFlow",
+        stage: "idea",
+        oneLiner: "A lightweight operating canvas for founder decisions before code exists.",
+        score: 5.8,
+        momentum: "-",
+        focusArea: "Validate problem depth",
+        health: {
+          conviction: "Low",
+          risk: "High",
+          readiness: "Concept",
+          bottleneck: "Market evidence"
+        },
+        brief: {
+          title: "The concept is elegant, but it needs stronger evidence that founders feel this pain sharply enough.",
+          body: "LatticeFlow has a coherent shape, but the difference between a neat planning canvas and a must-have operating product is still unproven. Before polishing the experience, validate whether the pain is frequent, expensive, and urgent."
+        },
+        headline: "Validation is still incomplete. Stay disciplined.",
+        summary: "A canvas for mapping assumptions, decisions, and momentum before a founder writes code.",
+        audience: "Early-stage founders still clarifying a problem, market, and wedge.",
+        promise: "Make product decisions feel visible and deliberate before building.",
+        problem: "Ideas stay fuzzy too long, and early decisions rarely get tracked with enough discipline.",
+        moat: "Could become the upstream planning layer that feeds later product work, but that is not yet validated.",
+        positioning: "Decision scaffolding for the zero-to-one stage.",
+        channels: ["Founder communities", "Accelerator cohorts"],
+        growthMetrics: ["Interview-to-activation rate", "Repeat weekly use", "Problem validation completion"],
+        risks: [
+          "The pain may not be strong enough to support recurring use.",
+          "This could become a planning novelty unless tied to a weekly founder ritual.",
+          "Differentiation against docs, whiteboards, and generic AI note tools is still thin."
+        ],
+        nextMoves: [
+          {
+            title: "Run 10 problem interviews before building further",
+            priority: "high",
+            owner: "Research",
+            why: "The core unknown is urgency, not UI.",
+            checklist: [
+              "Interview idea-stage founders",
+              "Map current decision rituals",
+              "Test whether they revisit structured decision notes weekly"
+            ]
+          }
+        ],
+        signals: [
+          {
+            type: "product",
+            tag: "hypothesis",
+            title: "No code yet, strong structure, weak proof",
+            body: "This concept is promising on paper but still lacks hard evidence.",
+            time: "just now",
+            meta: ["idea stage", "validation needed"]
+          }
+        ],
+        timeline: [
+          { date: "Now", title: "Concept drafted", body: "The shape is coherent, but the market signal is not yet strong enough." }
+        ],
+        inboxClusters: [
+          {
+            type: "feedback",
+            title: "Validation gap",
+            why: "The market need is still mostly inferred.",
+            counts: { mentions: 1, severity: "high", confidence: "0.61" },
+            evidence: [
+              "Strong concept articulation, limited interview evidence.",
+              "No weekly behavior loop validated yet."
+            ],
+            action: "Prioritize founder interviews over interface expansion."
+          }
+        ],
+        growth: {
+          brief: "Do not launch. Validate the ritual first.",
+          thesis: "A weekly decision review habit is the real product.",
+          channels: [],
+          calendar: [],
+          sequence: [
+            {
+              title: "Validate the ritual",
+              body: "If founders will not revisit this weekly, the product has no durable loop."
+            }
+          ]
+        },
+        copilot: {
+          title: "Idea-stage copilot",
+          messages: [
+            {
+              role: "assistant",
+              text: "Before you build further, test whether founders feel enough pain from fuzzy decision-making to actually change behavior."
+            }
+          ],
+          evidence: [
+            "No recurring workflow validated yet"
+          ],
+          suggestions: [
+            "Draft interview questions",
+            "Turn the idea into a one-page founder brief"
+          ]
+        }
+      }
+    ];
+
+    const state = {
+      view: "mission",
+      projectId: "signaldesk",
+      filter: "all"
+    };
+
+    const navRoot = document.getElementById("nav");
+    const projectsRoot = document.getElementById("projects");
+    const appRoot = document.getElementById("app");
+    const viewTitle = document.getElementById("view-title");
+    const viewDescription = document.getElementById("view-description");
+
+    function currentProject() {
+      return projects.find((project) => project.id === state.projectId) || projects[0];
+    }
+
+    function stageTone(stage) {
+      if (stage === "beta") return "signal-ship";
+      if (stage === "mvp") return "signal-traffic";
+      return "signal-feedback";
+    }
+
+    function tagTone(type) {
+      if (type === "feedback") return "signal-feedback";
+      if (type === "traffic") return "signal-traffic";
+      if (type === "ship") return "signal-ship";
+      return "signal-product";
+    }
+
+    function priorityTone(priority) {
+      if (priority === "high") return "priority-high";
+      if (priority === "medium") return "priority-medium";
+      return "priority-low";
+    }
+
+    function renderNav() {
+      navRoot.innerHTML = views.map((view) => `
+        <button class="${state.view === view.id ? "active" : ""}" data-view="${view.id}" type="button">
+          <span class="nav-icon">${view.icon}</span>
+          <span class="nav-copy">
+            <strong>${view.label}</strong>
+            <span>${view.blurb}</span>
+          </span>
+        </button>
+      `).join("");
+
+      navRoot.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.view = button.dataset.view;
+          render();
+        });
+      });
+    }
+
+    function renderProjects() {
+      projectsRoot.innerHTML = projects.map((project) => `
+        <div class="project-option ${state.projectId === project.id ? "active" : ""}" data-project="${project.id}">
+          <div class="project-topline">
+            <strong>${project.name}</strong>
+            <span class="stage-pill ${stageTone(project.stage)}">${project.stage}</span>
+          </div>
+          <p>${project.oneLiner}</p>
+        </div>
+      `).join("");
+
+      projectsRoot.querySelectorAll(".project-option").forEach((card) => {
+        card.addEventListener("click", () => {
+          state.projectId = card.dataset.project;
+          render();
+        });
+      });
+    }
+
+    function renderMission(project) {
+      const metricCards = [
+        {
+          label: "Product Health",
+          value: project.score.toFixed(1),
+          delta: `${project.momentum} this week`,
+          deltaClass: project.momentum.startsWith("+") ? "up" : project.momentum === "-" ? "flat" : "down"
+        },
+        {
+          label: "Focus Area",
+          value: project.focusArea,
+          delta: "Highest leverage constraint",
+          deltaClass: "flat"
+        },
+        {
+          label: "Risk Level",
+          value: project.health.risk,
+          delta: "Strategic exposure",
+          deltaClass: project.health.risk === "High" ? "down" : "flat"
+        },
+        {
+          label: "Readiness",
+          value: project.health.readiness,
+          delta: "Launch confidence",
+          deltaClass: project.health.readiness === "Strong" ? "up" : "flat"
+        }
+      ];
+
+      return `
+        <div class="hero-grid">
+          <div class="panel brief-card">
+            <div class="section-label">Weekly founder brief</div>
+            <h3 class="brief-title">${project.brief.title}</h3>
+            <p class="brief-text">${project.brief.body}</p>
+            <div class="highlight-strip">
+              <div class="highlight-pill"><strong>Project</strong>${project.name}</div>
+              <div class="highlight-pill"><strong>Stage</strong>${project.stage}</div>
+              <div class="highlight-pill"><strong>Main move</strong>${project.focusArea}</div>
+              <div class="highlight-pill"><strong>Momentum</strong>${project.momentum}</div>
+            </div>
+          </div>
+
+          <div class="mini-stack">
+            <div class="panel pulse-card">
+              <div class="section-label">Recgon pulse</div>
+              <h3>${project.headline}</h3>
+              <p>${project.brief.body}</p>
+              <div class="focus-chip">Focus now / ${project.focusArea}</div>
+            </div>
+            <div class="panel pulse-card">
+              <div class="section-label">Current bottleneck</div>
+              <h3>${project.health.bottleneck}</h3>
+              <p>${project.problem}</p>
+              <div class="focus-chip" style="background: var(--ink-blue-soft); color: var(--ink-blue);">Resolve in current sprint</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          ${metricCards.map((card) => `
+            <div class="panel metric-card">
+              <span class="label">${card.label}</span>
+              <span class="value">${card.value}</span>
+              <span class="delta"><span class="${card.deltaClass}">${card.delta}</span></span>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="split-grid">
+          <div class="panel">
+            <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h3>Signals that matter</h3>
+                  <p>Feedback, traffic, and shipping changes ranked as one evidence layer.</p>
+                </div>
+                <div class="meta">last 7 days</div>
+              </div>
+              <div class="signal-list">
+                ${project.signals.map((signal) => `
+                  <div class="signal-row">
+                    <div><span class="signal-tag ${tagTone(signal.type)}">${signal.tag}</span></div>
+                    <div class="signal-content">
+                      <strong>${signal.title}</strong>
+                      <p>${signal.body}</p>
+                    </div>
+                    <div class="row-meta">
+                      ${signal.meta.map((item) => `<span class="mini-tag">${item}</span>`).join("")}
+                      <span class="mini-tag">${signal.time}</span>
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h3>Next moves</h3>
+                  <p>Highest leverage work from product, feedback, and traffic signals.</p>
+                </div>
+                <div class="meta">current sprint</div>
+              </div>
+              <div class="action-list">
+                ${project.nextMoves.map((move) => `
+                  <div class="action-card">
+                    <div class="action-topline">
+                      <div>
+                        <h4>${move.title}</h4>
+                        <p>${move.why}</p>
+                      </div>
+                      <div class="action-meta">
+                        <span class="priority-tag ${priorityTone(move.priority)}">${move.priority}</span>
+                        <span class="owner-tag">${move.owner}</span>
+                      </div>
+                    </div>
+                    <div class="checklist">
+                      ${move.checklist.map((item, index) => `
+                        <div class="checkline">
+                          <span class="bullet">${index + 1}</span>
+                          <span>${item}</span>
+                        </div>
+                      `).join("")}
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderWorkspace(project) {
+      return `
+        <div class="project-grid">
+          <div class="detail-stack">
+            <div class="panel detail-hero">
+              <div class="section-label">Project dossier</div>
+              <div class="project-title">${project.name}</div>
+              <p class="workspace-copy">${project.summary}</p>
+              <div class="hero-meta">
+                <span class="mini-tag ${stageTone(project.stage)}">${project.stage}</span>
+                <span class="mini-tag">focus / ${project.focusArea}</span>
+                <span class="mini-tag">health / ${project.score.toFixed(1)}</span>
+                <span class="mini-tag">momentum / ${project.momentum}</span>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h3>Strategy snapshot</h3>
+                  <p>Audience, promise, problem, and positioning for the active product.</p>
+                </div>
+              </div>
+                <div class="two-col">
+                  <div class="info-box">
+                    <div class="title">Audience</div>
+                    <p>${project.audience}</p>
+                  </div>
+                  <div class="info-box">
+                    <div class="title">Core promise</div>
+                    <p>${project.promise}</p>
+                  </div>
+                  <div class="info-box">
+                    <div class="title">Problem</div>
+                    <p>${project.problem}</p>
+                  </div>
+                  <div class="info-box">
+                    <div class="title">Positioning</div>
+                    <p>${project.positioning}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h3>Operating timeline</h3>
+                  <p>Latest product and market events tied to this workspace.</p>
+                </div>
+                <div class="meta">last 4 moments</div>
+              </div>
+                <div class="timeline">
+                  ${project.timeline.map((item) => `
+                    <div class="timeline-row">
+                      <div class="timeline-date">${item.date}</div>
+                      <div class="timeline-body">
+                        <strong>${item.title}</strong>
+                        <div class="list-copy">${item.body}</div>
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-stack">
+            <div class="panel">
+              <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h3>Decision frame</h3>
+                  <p>Current constraints and operating assumptions.</p>
+                </div>
+              </div>
+                <div class="stat-line"><span>Current bottleneck</span><strong>${project.health.bottleneck}</strong></div>
+                <div class="stat-line"><span>Conviction</span><strong>${project.health.conviction}</strong></div>
+                <div class="stat-line"><span>Moat hypothesis</span><strong>${project.moat}</strong></div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h3>Channels worth earning</h3>
+                  <p>Best-fit attention channels for the current wedge.</p>
+                </div>
+              </div>
+                <div class="chip-row">
+                  ${project.channels.map((channel) => `<span class="chip">${channel}</span>`).join("")}
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h3>Growth metrics</h3>
+                  <p>Metrics to watch this cycle.</p>
+                </div>
+              </div>
+                <div class="checklist">
+                  ${project.growthMetrics.map((metric, index) => `
+                    <div class="checkline">
+                      <span class="bullet">${index + 1}</span>
+                      <span>${metric}</span>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-inner">
+              <div class="panel-head">
+                <div>
+                  <h3>Top risks</h3>
+                  <p>Risks most likely to slow adoption or blur focus.</p>
+                </div>
+              </div>
+                <div class="checklist">
+                  ${project.risks.map((risk, index) => `
+                    <div class="checkline">
+                      <span class="bullet">${index + 1}</span>
+                      <span>${risk}</span>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderInbox(project) {
+      const filters = ["all", "feedback", "traffic", "ship"];
+      const visible = state.filter === "all"
+        ? project.inboxClusters
+        : project.inboxClusters.filter((cluster) => cluster.type === state.filter);
+
+      return `
+        <div class="panel">
+          <div class="panel-inner">
+            <div class="panel-head">
+              <div>
+                <h3>Signal inbox</h3>
+                <p>Ranked product and market signals from the last 7 days.</p>
+              </div>
+              <div class="meta">last 7 days</div>
+            </div>
+            <div class="filters" id="filters">
+              ${filters.map((filter) => `
+                <button class="filter-chip ${state.filter === filter ? "active" : ""}" type="button" data-filter="${filter}">
+                  ${filter}
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+
+        ${visible.length === 0 ? `
+          <div class="empty-note">No signals in this view for <strong>${project.name}</strong>.</div>
+        ` : `
+          <div class="cluster-list">
+            ${visible.map((cluster) => `
+              <div class="panel cluster-card">
+                <div class="panel-inner">
+                  <div class="panel-head">
+                    <div>
+                      <span class="signal-tag ${tagTone(cluster.type)}">${cluster.type}</span>
+                      <h3 style="margin-top: 12px;">${cluster.title}</h3>
+                      <p>${cluster.why}</p>
+                    </div>
+                    <div class="row-meta">
+                      <span class="mini-tag">mentions / ${cluster.counts.mentions}</span>
+                      <span class="mini-tag">severity / ${cluster.counts.severity}</span>
+                      <span class="mini-tag">confidence / ${cluster.counts.confidence}</span>
+                    </div>
+                  </div>
+
+                  <div class="cluster-grid">
+                    <div class="cluster-metric">
+                      <span>Why it matters</span>
+                      <strong>${cluster.counts.severity}</strong>
+                    </div>
+                    <div class="cluster-metric">
+                      <span>Evidence strength</span>
+                      <strong>${cluster.counts.confidence}</strong>
+                    </div>
+                    <div class="cluster-metric">
+                      <span>Recommended move</span>
+                      <strong>1 next action</strong>
+                    </div>
+                  </div>
+
+                  <div class="panel-head" style="margin-top: 18px;">
+                    <div>
+                      <h3>Evidence</h3>
+                      <p>Quotes, traffic shifts, and recent activity behind this cluster.</p>
+                    </div>
+                  </div>
+                  <div class="evidence-list">
+                    ${cluster.evidence.map((item) => `
+                      <div class="evidence-item">
+                        <span class="marker">›</span>
+                        <span>${item}</span>
+                      </div>
+                    `).join("")}
+                  </div>
+
+                  <div class="panel-head" style="margin-top: 18px;">
+                    <div>
+                      <h3>Recommended action</h3>
+                    </div>
+                  </div>
+                  <div class="artifact-card">
+                    <h4>${cluster.action}</h4>
+                    <p>Open in workspace or send to copilot.</p>
+                  </div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `}
+      `;
+    }
+
+    function renderGrowth(project) {
+      return `
+        <div class="growth-grid">
+          <div class="detail-stack">
+            <div class="panel launch-card">
+              <div class="section-label">Launch brief</div>
+              <h3>${project.growth.brief}</h3>
+              <p>${project.growth.thesis}</p>
+              <div class="chip-row">
+                <span class="chip">stage / ${project.stage}</span>
+                <span class="chip">focus / ${project.focusArea}</span>
+                <span class="chip">project / ${project.name}</span>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-inner">
+                <div class="panel-head">
+                  <div>
+                    <h3>Channel logic</h3>
+                    <p>Best-fit channels for the current story and audience.</p>
+                  </div>
+                </div>
+                <div class="artifact-list">
+                  ${project.growth.channels.length === 0 ? `
+                    <div class="empty-note">No launch channels recommended yet.</div>
+                  ` : project.growth.channels.map((channel) => `
+                    <div class="channel-card">
+                      <div class="mini-tag">${channel.role}</div>
+                      <h4>${channel.name}</h4>
+                      <p>${channel.idea}</p>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-stack">
+            <div class="panel">
+              <div class="panel-inner">
+                <div class="panel-head">
+                  <div>
+                    <h3>Two-week launch calendar</h3>
+                    <p>What to ship over the next two weeks.</p>
+                  </div>
+                  <div class="meta">next 14 days</div>
+                </div>
+                <div class="calendar">
+                  ${project.growth.calendar.length === 0 ? `
+                    <div class="empty-note">No scheduled launch work yet.</div>
+                  ` : project.growth.calendar.map((item) => `
+                    <div class="calendar-row">
+                      <div class="week">${item.week}</div>
+                      <div>
+                        <strong>${item.title}</strong>
+                        <span>${item.body}</span>
+                      </div>
+                      <div class="row-meta">
+                        <span class="mini-tag">${item.output}</span>
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-inner">
+                <div class="panel-head">
+                  <div>
+                    <h3>Launch sequence</h3>
+                    <p>Narrative order across launch assets.</p>
+                  </div>
+                </div>
+                <div class="sequence-list">
+                  ${project.growth.sequence.map((step) => `
+                    <div class="sequence-card">
+                      <h4>${step.title}</h4>
+                      <p>${step.body}</p>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCopilot(project) {
+      return `
+        <div class="copilot-grid">
+          <div class="panel terminal">
+            <div class="terminal-head">
+              <span>copilot / ${project.name.toLowerCase()}</span>
+              <span>live context</span>
+            </div>
+            <div class="terminal-body">
+              ${project.copilot.messages.map((message) => `
+                <div class="chat-bubble ${message.role}">
+                  <div class="chat-role">${message.role}</div>
+                  <p>${message.text}</p>
+                </div>
+              `).join("")}
+              <div class="terminal-input">
+                <span class="terminal-prompt">›</span>
+                Ask Recgon to turn the strongest signal into a plan, prompt, memo, or launch asset.
+              </div>
+            </div>
+          </div>
+
+          <div class="evidence-panel">
+            <div class="panel">
+              <div class="panel-inner">
+                <div class="panel-head">
+                  <div>
+                    <h3>Attached evidence</h3>
+                    <p>Signals, analysis, and recent activity in scope for this thread.</p>
+                  </div>
+                </div>
+                <div class="matrix-list">
+                  ${project.copilot.evidence.map((item) => `
+                    <div class="matrix-card">
+                      <h4>${item}</h4>
+                      <p>Pinned to this thread.</p>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-inner">
+                <div class="panel-head">
+                  <div>
+                    <h3>Suggested asks</h3>
+                    <p>Fast starts for the current project context.</p>
+                  </div>
+                </div>
+                <div class="artifact-list">
+                  ${project.copilot.suggestions.map((item) => `
+                    <div class="artifact-card">
+                      <h4>${item}</h4>
+                      <p>Prefill this thread.</p>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderView() {
+      const project = currentProject();
+      const activeView = views.find((view) => view.id === state.view);
+      viewTitle.textContent = activeView.label;
+      viewDescription.textContent = activeView.blurb;
+
+      if (state.view === "mission") {
+        appRoot.innerHTML = renderMission(project);
+      } else if (state.view === "workspace") {
+        appRoot.innerHTML = renderWorkspace(project);
+      } else if (state.view === "inbox") {
+        appRoot.innerHTML = renderInbox(project);
+        const filterRoot = document.getElementById("filters");
+        if (filterRoot) {
+          filterRoot.querySelectorAll(".filter-chip").forEach((chip) => {
+            chip.addEventListener("click", () => {
+              state.filter = chip.dataset.filter;
+              render();
+            });
+          });
+        }
+      } else if (state.view === "growth") {
+        appRoot.innerHTML = renderGrowth(project);
+      } else {
+        appRoot.innerHTML = renderCopilot(project);
+      }
+    }
+
+    function render() {
+      renderNav();
+      renderProjects();
+      renderView();
+    }
+
+    render();
+  </script>
+</body>
+</html>

@@ -5,12 +5,14 @@ import { getUserByEmail } from '@/lib/userStorage';
 import { sendOtpEmail } from '@/lib/email';
 import { isRateLimited } from '@/lib/rateLimit';
 import { logger } from '@/lib/logger';
+import { canSelfRegister, requestWaitlistAccess } from '@/lib/waitlist';
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const SEND_OTP_LIMIT = { limit: 3, windowMs: 60 * 60_000 }; // 3/hour per IP
 
 const SendOtpSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
+  nickname: z.string().trim().min(2).max(60).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -25,10 +27,15 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
     }
-    const { email } = parsed.data;
+    const { email, nickname } = parsed.data;
 
-    if (!email.endsWith('@metu.edu.tr')) {
-      return NextResponse.json({ error: 'Only metu.edu.tr email addresses are allowed' }, { status: 403 });
+    if (!(await canSelfRegister(email))) {
+      await requestWaitlistAccess(email, nickname);
+      return NextResponse.json({
+        ok: true,
+        status: 'waitlisted',
+        message: 'This email has been added to the waitlist. Once approved, come back and continue with the same email.',
+      }, { status: 202 });
     }
 
     // Don't reveal if email is already registered
@@ -53,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     await sendOtpEmail(email, code);
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, status: 'otp_sent' });
   } catch (err) {
     logger.error('send-otp failed', err);
     return NextResponse.json({ error: 'Unable to send code' }, { status: 500 });

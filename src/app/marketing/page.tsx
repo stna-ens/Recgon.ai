@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Select from '@/components/Select';
 import MarketingPreview from '@/components/MarketingPreview';
 import { useTeam } from '@/components/TeamProvider';
+import { isMarketingEligibleSource } from '@/lib/sourceProfiles';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -410,9 +411,10 @@ export default function MarketingPage() {
 
   const BLOCKED_PLATFORMS = ['Instagram', 'TikTok', 'Twitter / X', 'LinkedIn', 'Facebook'];
   const SOCIAL_PLATFORMS = ['Instagram', 'TikTok', 'LinkedIn', 'Twitter / X', 'YouTube', 'Reddit'];
+  const marketingProfiles = socialProfiles.filter(isMarketingEligibleSource);
 
   const handleAnalyzeSocial = async () => {
-    const accessible = socialProfiles.filter((p) => !BLOCKED_PLATFORMS.includes(p.platform));
+    const accessible = marketingProfiles.filter((p) => !BLOCKED_PLATFORMS.includes(p.platform));
     if (!accessible.length) return;
     setIsAnalyzingSocial(true);
     setSocialError('');
@@ -460,9 +462,9 @@ export default function MarketingPage() {
             <path d="M17 2a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3"/><path d="M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0-6 0"/><path d="M16.5 7.5v.01"/>
           </svg>
           <span style={{ fontSize: 12, fontWeight: 600, flex: 1, textAlign: 'left' }}>Social Profiles</span>
-          {socialProfiles.length > 0 && (
+          {marketingProfiles.length > 0 && (
             <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--signature)', background: 'rgba(var(--signature-rgb), 0.12)', borderRadius: 10, padding: '1px 7px' }}>
-              {socialProfiles.length}
+              {marketingProfiles.length}
             </span>
           )}
           <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
@@ -498,9 +500,9 @@ export default function MarketingPage() {
             </div>
 
             {/* Profile list */}
-            {socialProfiles.length > 0 && (
+            {marketingProfiles.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {socialProfiles.map((p) => {
+                {marketingProfiles.map((p) => {
                   const blocked = BLOCKED_PLATFORMS.includes(p.platform);
                   return (
                     <div key={p.url} className="sidebar-profile-item" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 8px', fontSize: 11, opacity: blocked ? 0.65 : 1, transition: 'background 0.15s, border-color 0.15s', cursor: 'default' }}>
@@ -527,7 +529,7 @@ export default function MarketingPage() {
             <button
               className="btn btn-secondary"
               onClick={handleAnalyzeSocial}
-              disabled={isAnalyzingSocial || socialProfiles.filter((p) => !BLOCKED_PLATFORMS.includes(p.platform)).length === 0}
+              disabled={isAnalyzingSocial || marketingProfiles.filter((p) => !BLOCKED_PLATFORMS.includes(p.platform)).length === 0}
               style={{ gap: 6, fontSize: 11, padding: '6px 12px' }}
             >
               {isAnalyzingSocial ? (

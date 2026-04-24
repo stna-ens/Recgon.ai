@@ -32,9 +32,29 @@ interface GitHubStatus {
   username: string | null;
 }
 
+interface WaitlistEntry {
+  id: string;
+  email: string;
+  nickname: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string;
+  approvedAt: string | null;
+  approvedByEmail: string | null;
+  updatedAt: string;
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
 function AccountPageInner() {
   const { data: session, update } = useSession();
   const searchParams = useSearchParams();
+  const sessionAvatarUrl = (session?.user as { avatarUrl?: string } | undefined)?.avatarUrl;
 
   const [nicknameValue, setNicknameValue] = useState('');
   const [nicknameStatus, setNicknameStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
@@ -46,19 +66,29 @@ function AccountPageInner() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isWaitlistAdmin, setIsWaitlistAdmin] = useState(false);
+  const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([]);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistStatus, setWaitlistStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [waitlistUpdating, setWaitlistUpdating] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const url = (session?.user as { avatarUrl?: string } | undefined)?.avatarUrl;
-    if (url) {
-      setAvatarUrl(url);
-    } else if (session?.user) {
-      // JWT may be stale — fetch the current value from the DB
-      fetch('/api/account')
-        .then((r) => r.json())
-        .then((d) => { if (d.avatarUrl) setAvatarUrl(d.avatarUrl); })
-        .catch(() => {});
-    }
-  }, [session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (sessionAvatarUrl) setAvatarUrl(sessionAvatarUrl);
+    if (!session?.user) return;
+
+    fetch('/api/account')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        setIsWaitlistAdmin(!!data.isWaitlistAdmin);
+        if (data.avatarUrl) {
+          setAvatarUrl(data.avatarUrl);
+        } else if (!sessionAvatarUrl) {
+          setAvatarUrl(null);
+        }
+      })
+      .catch(() => {});
+  }, [session?.user?.id, sessionAvatarUrl]);
 
   useEffect(() => {
     fetch('/api/github/status')
@@ -66,6 +96,11 @@ function AccountPageInner() {
       .then((data) => data && setGithubStatus(data))
       .catch(() => null);
   }, []);
+
+  useEffect(() => {
+    if (!isWaitlistAdmin) return;
+    void loadWaitlist();
+  }, [isWaitlistAdmin]);
 
   // Show feedback after GitHub OAuth redirect
   useEffect(() => {
@@ -95,6 +130,57 @@ function AccountPageInner() {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [passwordStatus, setPasswordStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const pendingWaitlistEntries = waitlistEntries.filter((entry) => entry.status === 'pending');
+  const approvedWaitlistEntries = waitlistEntries.filter((entry) => entry.status === 'approved').slice(0, 8);
+
+  async function loadWaitlist() {
+    setWaitlistLoading(true);
+    setWaitlistStatus(null);
+    const res = await fetch('/api/admin/waitlist');
+    const data = await res.json().catch(() => ({}));
+    setWaitlistLoading(false);
+
+    if (!res.ok) {
+      setWaitlistStatus({ type: 'error', msg: data.error || 'Failed to load waitlist' });
+      return;
+    }
+
+    setWaitlistEntries(data.entries ?? []);
+  }
+
+  async function updateWaitlistEntry(id: string, status: 'approved' | 'rejected') {
+    setWaitlistStatus(null);
+    setWaitlistUpdating((prev) => ({ ...prev, [id]: true }));
+
+    const res = await fetch('/api/admin/waitlist', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    setWaitlistUpdating((prev) => ({ ...prev, [id]: false }));
+
+    if (!res.ok) {
+      setWaitlistStatus({ type: 'error', msg: data.error || 'Failed to update waitlist' });
+      return;
+    }
+
+    const updatedEntry = data.entry as WaitlistEntry;
+    setWaitlistEntries((prev) => {
+      const next = prev.map((entry) => entry.id === updatedEntry.id ? updatedEntry : entry);
+      return next.sort((a, b) => {
+        if (a.status === b.status) {
+          return new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime();
+        }
+        if (a.status === 'pending') return -1;
+        if (b.status === 'pending') return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+    });
+    setWaitlistStatus({ type: 'success', msg: status === 'approved' ? 'Email approved for registration' : 'Email removed from the approval queue' });
+  }
 
   async function handleNicknameChange(e: React.FormEvent) {
     e.preventDefault();
@@ -476,6 +562,138 @@ function AccountPageInner() {
           </button>
         </div>
       </Section>
+
+      {isWaitlistAdmin && (
+        <Section title="Waitlist">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
+            <div>
+              <p style={{ margin: '0 0 0.25rem', color: 'var(--txt-pure)', fontSize: '0.92rem', fontWeight: 600 }}>
+                Pending approvals: {pendingWaitlistEntries.length}
+              </p>
+              <p style={{ margin: 0, color: 'var(--txt-muted)', fontSize: '0.8rem', lineHeight: 1.5 }}>
+                Non-METU emails land here first. Approving one lets that email complete registration immediately.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadWaitlist()}
+              disabled={waitlistLoading}
+              style={{
+                flexShrink: 0, padding: '0.45rem 0.95rem',
+                background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)',
+                border: '1px solid var(--btn-secondary-border)',
+                borderRadius: 'var(--r-sm)', fontWeight: 600,
+                fontSize: '0.8rem', cursor: waitlistLoading ? 'not-allowed' : 'pointer',
+                opacity: waitlistLoading ? 0.7 : 1,
+              }}
+            >
+              {waitlistLoading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+
+          {waitlistStatus && (
+            <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: waitlistStatus.type === 'error' ? 'var(--danger)' : 'var(--success)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+              {waitlistStatus.type === 'error' ? '! ' : '› '}{waitlistStatus.msg}
+            </p>
+          )}
+
+          {waitlistLoading && waitlistEntries.length === 0 ? (
+            <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: 0 }}>Loading waitlist…</p>
+          ) : pendingWaitlistEntries.length === 0 ? (
+            <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: 0 }}>No pending requests right now.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: approvedWaitlistEntries.length > 0 ? '1.25rem' : 0 }}>
+              {pendingWaitlistEntries.map((entry) => {
+                const updating = !!waitlistUpdating[entry.id];
+                return (
+                  <div
+                    key={entry.id}
+                    style={{
+                      border: '1px solid var(--btn-secondary-border)',
+                      background: 'var(--btn-secondary-bg)',
+                      borderRadius: 'var(--r-sm)',
+                      padding: '0.9rem 1rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                      <div>
+                        <p style={{ margin: '0 0 0.3rem', color: 'var(--txt-pure)', fontSize: '0.9rem', fontWeight: 600 }}>
+                          {entry.email}
+                        </p>
+                        <p style={{ margin: '0 0 0.25rem', color: 'var(--txt-muted)', fontSize: '0.8rem' }}>
+                          {entry.nickname ? `Name: ${entry.nickname}` : 'No nickname provided'}
+                        </p>
+                        <p style={{ margin: 0, color: 'var(--txt-faint)', fontSize: '0.75rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                          requested {formatDateTime(entry.requestedAt)}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => void updateWaitlistEntry(entry.id, 'approved')}
+                          disabled={updating}
+                          style={{
+                            padding: '0.45rem 0.95rem',
+                            background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
+                            border: 'none', borderRadius: 'var(--r-sm)',
+                            fontWeight: 600, fontSize: '0.8rem',
+                            cursor: updating ? 'not-allowed' : 'pointer',
+                            opacity: updating ? 0.7 : 1,
+                          }}
+                        >
+                          {updating ? 'Saving…' : 'Approve'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void updateWaitlistEntry(entry.id, 'rejected')}
+                          disabled={updating}
+                          style={{
+                            padding: '0.45rem 0.95rem',
+                            background: 'transparent', color: 'var(--danger)',
+                            border: '1px solid var(--danger)', borderRadius: 'var(--r-sm)',
+                            fontWeight: 600, fontSize: '0.8rem',
+                            cursor: updating ? 'not-allowed' : 'pointer',
+                            opacity: updating ? 0.65 : 1,
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {approvedWaitlistEntries.length > 0 && (
+            <>
+              <p style={{ margin: '0 0 0.75rem', color: 'var(--txt-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Recently approved
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                {approvedWaitlistEntries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    style={{
+                      border: '1px solid var(--btn-secondary-border)',
+                      borderRadius: 'var(--r-sm)',
+                      padding: '0.75rem 0.9rem',
+                    }}
+                  >
+                    <p style={{ margin: '0 0 0.25rem', color: 'var(--txt-pure)', fontSize: '0.86rem', fontWeight: 600 }}>
+                      {entry.email}
+                    </p>
+                    <p style={{ margin: 0, color: 'var(--txt-faint)', fontSize: '0.75rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                      approved {formatDateTime(entry.approvedAt)}{entry.approvedByEmail ? ` by ${entry.approvedByEmail}` : ''}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Section>
+      )}
 
       {/* Sign Out */}
       <Section title="Sign Out">

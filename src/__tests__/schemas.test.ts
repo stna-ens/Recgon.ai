@@ -17,6 +17,7 @@ describe('parseAIResponse', () => {
 
   const validFeedback = {
     overallSentiment: 'positive',
+    summary: 'Users are happy with speed, but they want dark mode.',
     sentimentBreakdown: { positive: 80, neutral: 15, negative: 5 },
     themes: ['usability'],
     featureRequests: ['dark mode'],
@@ -127,6 +128,7 @@ describe('FeedbackResultSchema', () => {
     for (const s of ['positive', 'neutral', 'negative', 'mixed']) {
       const result = FeedbackResultSchema.parse({
         overallSentiment: s,
+        summary: 'Test summary',
         sentimentBreakdown: { positive: 50, neutral: 30, negative: 20 },
         themes: [], featureRequests: [], bugs: [], praises: [], developerPrompts: [],
       });
@@ -137,6 +139,7 @@ describe('FeedbackResultSchema', () => {
   it('rejects sentiment breakdown out of range', () => {
     expect(() => FeedbackResultSchema.parse({
       overallSentiment: 'positive',
+      summary: 'Test summary',
       sentimentBreakdown: { positive: 150, neutral: 0, negative: 0 },
       themes: [], featureRequests: [], bugs: [], praises: [], developerPrompts: [],
     })).toThrow();

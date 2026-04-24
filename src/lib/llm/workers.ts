@@ -47,6 +47,7 @@ async function runFeedbackAnalysis(job: LLMJob): Promise<WorkerResult> {
       id: generateId(),
       rawFeedback: payload.feedback,
       sentiment: result.overallSentiment,
+      summary: result.summary,
       sentimentBreakdown: result.sentimentBreakdown,
       themes: result.themes,
       featureRequests: result.featureRequests,

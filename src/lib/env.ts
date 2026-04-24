@@ -22,6 +22,7 @@ const OPTIONAL = [
   'AUTH_URL', // NextAuth v5 base URL (set this on Vercel to your production domain)
   'LOG_LEVEL',
   'RESEND_API_KEY', // Required for email verification on registration
+  'WAITLIST_ADMIN_EMAILS', // Comma-separated founder/admin emails allowed to approve waitlist entries
 ] as const;
 
 export function validateEnv(): void {
