@@ -235,11 +235,11 @@ body {
   font-size: 14px;
   font-weight: 500;
   letter-spacing: -0.2px;
-  transition: padding 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              gap 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              color 0.2s ease,
-              background 0.2s ease,
-              box-shadow 0.2s ease;
+  transition: padding 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              gap 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.28s ease,
+              background 0.28s ease,
+              box-shadow 0.28s ease;
 }
 
 .nav-link-label {
@@ -248,8 +248,8 @@ body {
   opacity: 0;
   overflow: hidden;
   white-space: nowrap;
-  transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.2s ease;
+  transition: max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.28s ease;
 }
 
 .nav-link:hover {
@@ -268,13 +268,13 @@ body {
 
 .nav-link.active .nav-link-label,
 .nav-link:hover .nav-link-label {
-  max-width: 140px;
+  max-width: 110px;
   opacity: 1;
 }
 
 .nav-link:hover {
-  padding: 10px 20px;
-  gap: 8px;
+  padding: 8px 16px;
+  gap: 7px;
 }
 
 .nav-link.active .nav-icon {
