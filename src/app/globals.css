@@ -57,6 +57,15 @@
   --r-lg: 32px;
   --r-pill: 999px;
   --max-w: 1100px;
+
+  /* Motion vocabulary — single source of truth for all transitions/animations */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-instant: 0.08s;
+  --dur-fast: 0.15s;
+  --dur-base: 0.22s;
+  --dur-slow: 0.4s;
+  --dur-page: 0.6s;
 }
 
 /* === LIGHT MODE OVERRIDE (for demo shell — forces light vars even inside html.dark) === */
@@ -917,13 +926,22 @@ body {
   width: 90%;
   max-width: 540px;
   box-shadow: var(--shadow-deep), var(--edge-highlight);
-  animation: modalScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: modalScaleUp var(--dur-slow) var(--ease-out) forwards;
   opacity: 0;
   transform: scale(0.95);
 }
 
+.modal[data-closing="true"] {
+  animation: modalScaleDown var(--dur-base) var(--ease-out) forwards;
+}
+
 @keyframes modalScaleUp {
   to { opacity: 1; transform: scale(1) translate3d(0,0,0); }
+}
+
+@keyframes modalScaleDown {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.96); }
 }
 
 .modal h3 { color: var(--signature); margin-bottom: 24px; font-size: 26px; font-weight: 600; letter-spacing: -0.8px; }
@@ -2313,7 +2331,95 @@ button:hover .avatar-hover-overlay {
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 0.35s;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-timing-function: var(--ease-out);
+}
+
+/* === Reusable polish utilities (Phase 1 vocabulary) === */
+
+/* Surface-rise: lift on hover with depth + edge highlight. Apply to cards/list rows. */
+.surface-rise {
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+  will-change: transform;
+}
+.surface-rise:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-float);
+}
+.surface-rise:active {
+  transform: translateY(0);
+  transition-duration: var(--dur-instant);
+}
+
+/* Enter-fade-up: page/section entrance. Set --enter-delay (e.g. 0.05s) on children to stagger. */
+@keyframes enterFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.enter-fade-up {
+  animation: enterFadeUp var(--dur-slow) var(--ease-out) both;
+  animation-delay: var(--enter-delay, 0s);
+}
+
+/* Skeleton shimmer for loading placeholders.
+   .skeleton — full-blown shimmer block (defines its own background).
+   .skeleton-pulse — non-destructive opacity pulse, preserves existing background. */
+@keyframes skeletonShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+/* Alias used by inline styles across the dashboard (e.g. `animation: pulse 1.5s ...`). */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--btn-secondary-bg) 0%,
+    var(--btn-secondary-hover) 50%,
+    var(--btn-secondary-bg) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.6s linear infinite;
+  border-radius: var(--r-sm);
+  display: block;
+}
+.skeleton-pulse {
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+
+/* Global focus ring — pink halo on any focusable input/textarea/select/button-with-tabindex. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="textbox"]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgba(var(--signature-rgb), 0.45),
+    0 0 14px rgba(var(--signature-rgb), 0.25);
+  border-color: rgba(var(--signature-rgb), 0.4);
+  transition:
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+/* Reduced-motion: kill the polish utilities when the user opts out. */
+@media (prefers-reduced-motion: reduce) {
+  .surface-rise,
+  .enter-fade-up,
+  .skeleton,
+  .skeleton-pulse {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
 }
 
 /* feedbackDotPulse — used by FeedbackPanel sentiment indicator */

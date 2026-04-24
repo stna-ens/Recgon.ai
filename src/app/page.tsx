@@ -370,7 +370,7 @@ export default function OverviewPage() {
         <div className="glass-card">
           <span className="recgon-label">priority actions</span>
           {coreLoading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="skeleton-pulse" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[1, 2, 3].map((i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(var(--signature-rgb), 0.2)', marginTop: 5, flexShrink: 0 }} />
@@ -474,7 +474,7 @@ export default function OverviewPage() {
         <div className="glass-card">
           <span className="recgon-label">recent signals</span>
           {coreLoading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="skeleton-pulse" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} style={{ display: 'flex', gap: 12 }}>
                   <div style={{ width: 44, height: 11, borderRadius: 4, background: 'rgba(var(--signature-rgb), 0.08)', flexShrink: 0 }} />

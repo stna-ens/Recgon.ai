@@ -9,6 +9,7 @@ import { AUDIENCE, MONO, PINK, features, steps } from '@/components/landing/cons
 const Aurora = dynamic(() => import('@/components/landing/Aurora'), { ssr: false });
 
 const MATRIX_CHARS = '01{}[]()<>/\\|+-=*#@$%&!?.,:;';
+const DEVICE_WORDS = ['laptop.', 'Mac.', 'desktop.', 'PC.'];
 
 type MatrixColumn = {
   left: string;
@@ -142,6 +143,9 @@ export default function MobileLanding() {
   const [audIndex, setAudIndex] = useState(0);
   const [audKey, setAudKey] = useState(0);
   const [audStarted, setAudStarted] = useState(false);
+  const [deviceIndex, setDeviceIndex] = useState(0);
+  const [deviceKey, setDeviceKey] = useState(0);
+  const [deviceStarted, setDeviceStarted] = useState(false);
 
   useEffect(() => {
     if (!heroDone) return;
@@ -152,6 +156,15 @@ export default function MobileLanding() {
     }, 2800);
     return () => clearInterval(interval);
   }, [heroDone]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDeviceStarted(true);
+      setDeviceIndex((i) => (i + 1) % DEVICE_WORDS.length);
+      setDeviceKey((k) => k + 1);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div style={{ background: '#000', color: '#fff', overflowX: 'hidden', WebkitTapHighlightColor: 'rgba(240,184,208,0.2)' }}>
@@ -867,7 +880,13 @@ export default function MobileLanding() {
             >
               Built for your
               <br />
-              <span style={{ color: PINK }}>laptop.</span>
+              <span style={{ color: PINK }}>
+                <RotatingWord
+                  word={DEVICE_WORDS[deviceIndex]}
+                  decryptKey={deviceKey}
+                  started={deviceStarted}
+                />
+              </span>
             </h2>
             <p
               style={{

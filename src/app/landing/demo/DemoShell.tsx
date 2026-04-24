@@ -36,15 +36,14 @@ const NAV: { id: DemoTab; label: string; icon: React.ReactNode }[] = [
       <circle cx="12" cy="12" r="3"/>
     </svg>
   ) },
+  { id: 'analytics', label: 'Analytics', icon: (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  ) },
   { id: 'feedback', label: 'Feedback', icon: (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-    </svg>
-  ) },
-  { id: 'analytics', label: 'Analytics', icon: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
-      <line x1="6" y1="20" x2="6" y2="14"/>
     </svg>
   ) },
 ];
@@ -156,6 +155,7 @@ export default function DemoShell() {
 
         {/* Floating pill nav */}
         <div
+          className="demo-app-nav"
           style={{
             position: 'absolute',
             top: 22,
@@ -164,16 +164,13 @@ export default function DemoShell() {
             zIndex: 10,
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
-            padding: 6,
-            background: isDark ? 'rgba(20, 20, 22, 0.6)' : 'rgba(255,255,255,0.75)',
-            backdropFilter: 'blur(40px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+            gap: 8,
+            padding: 8,
+            background: 'var(--nav-glass-substrate)',
+            backdropFilter: 'blur(48px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(48px) saturate(180%)',
             borderRadius: 999,
-            border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)',
-            boxShadow: isDark
-              ? '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)'
-              : '0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)',
+            boxShadow: 'var(--shadow-float), var(--edge-highlight), var(--edge-shadow)',
           }}
         >
           {NAV.map((n) => {
@@ -186,7 +183,7 @@ export default function DemoShell() {
                 style={{ border: 'none', background: 'transparent', appearance: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 <span className="nav-icon" style={{ display: 'flex' }}>{n.icon}</span>
-                {n.label}
+                <span className="nav-link-label">{n.label}</span>
               </button>
             );
           })}

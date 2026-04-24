@@ -65,7 +65,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
     requestAnimationFrame(() => setVisible(true));
     const timer = setTimeout(() => {
       setVisible(false);
-      setTimeout(() => onDismiss(toast.id), 300);
+      setTimeout(() => onDismiss(toast.id), 400);
     }, 5000);
     return () => clearTimeout(timer);
   }, [toast.id, onDismiss]);
@@ -91,13 +91,13 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
       transform: visible ? 'translateX(0)' : 'translateX(120%)',
       opacity: visible ? 1 : 0,
-      transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease',
+      transition: 'transform var(--dur-slow) var(--ease-out), opacity var(--dur-base) ease',
       cursor: 'pointer',
       fontFamily: "'JetBrains Mono', ui-monospace, monospace",
     }}
       onClick={() => {
         setVisible(false);
-        setTimeout(() => onDismiss(toast.id), 300);
+        setTimeout(() => onDismiss(toast.id), 400);
       }}
     >
       {toast.type === 'error' && (
