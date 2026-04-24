@@ -1,8 +1,8 @@
-import { chat } from './gemini';
 import { ProductAnalysis } from './storage';
 import { MARKETING_SYSTEM, marketingUserPrompt, CAMPAIGN_SYSTEM, campaignUserPrompt, CampaignType } from './prompts';
-import { parseAIResponse, InstagramContentSchema, TikTokContentSchema, GoogleAdsContentSchema, CampaignPlanResponseSchema, CampaignPlanResponse } from './schemas';
+import { InstagramContentSchema, TikTokContentSchema, GoogleAdsContentSchema, CampaignPlanResponseSchema, CampaignPlanResponse } from './schemas';
 import { scrapeWebsite } from './firecrawl';
+import { generateStructuredOutput } from './llm/quality';
 
 export type Platform = 'instagram' | 'tiktok' | 'google-ads';
 export type { CampaignType };
@@ -175,10 +175,16 @@ export async function generateMarketingContent(
     ? TikTokContentSchema
     : GoogleAdsContentSchema) as import('zod').ZodType<Record<string, string>>;
 
-  const response = await chat(systemPrompt, userPrompt, { temperature: 0.8, maxTokens: 8192 });
   let content: Record<string, string>;
   try {
-    content = parseAIResponse(response, schema) as Record<string, string>;
+    content = await generateStructuredOutput({
+      taskKind: 'marketing_content',
+      schema,
+      systemPrompt,
+      userPrompt,
+      options: { temperature: 0.8, maxTokens: 8192 },
+      qualityProfile: 'marketing',
+    }) as Record<string, string>;
   } catch {
     content = fallbackMarketingContent(analysis, platform, customPrompt);
   }
@@ -213,9 +219,15 @@ export async function generateCampaignPlan(
     websiteContent ?? undefined,
   );
 
-  const response = await chat(CAMPAIGN_SYSTEM, userPrompt, { temperature: 0.8, maxTokens: 16384 });
   try {
-    return parseAIResponse(response, CampaignPlanResponseSchema);
+    return await generateStructuredOutput({
+      taskKind: 'campaign_plan',
+      schema: CampaignPlanResponseSchema,
+      systemPrompt: CAMPAIGN_SYSTEM,
+      userPrompt,
+      options: { temperature: 0.8, maxTokens: 16384 },
+      qualityProfile: 'campaign',
+    });
   } catch {
     return fallbackCampaignPlan(analysis, campaignType, goal, duration);
   }

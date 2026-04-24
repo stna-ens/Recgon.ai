@@ -1,8 +1,8 @@
-import { chat } from './gemini';
 import { scrapeWebsite } from './firecrawl';
 import { COMPETITOR_ANALYSIS_SYSTEM, competitorAnalysisUserPrompt } from './prompts';
-import { parseAIResponse, CompetitorInsightsResponseSchema, CompetitorInsight } from './schemas';
+import { CompetitorInsightsResponseSchema, CompetitorInsight } from './schemas';
 import { ProductAnalysis } from './storage';
+import { generateStructuredOutput } from './llm/quality';
 
 export async function analyzeCompetitors(
   competitors: { name: string; url?: string; differentiator: string }[],
@@ -29,7 +29,13 @@ export async function analyzeCompetitors(
     scraped,
   );
 
-  const response = await chat(COMPETITOR_ANALYSIS_SYSTEM, userPrompt, { temperature: 0.3, maxTokens: 8192 });
-  const result = parseAIResponse(response, CompetitorInsightsResponseSchema);
+  const result = await generateStructuredOutput({
+    taskKind: 'competitor_analysis',
+    schema: CompetitorInsightsResponseSchema,
+    systemPrompt: COMPETITOR_ANALYSIS_SYSTEM,
+    userPrompt,
+    options: { temperature: 0.3, maxTokens: 8192 },
+    qualityProfile: 'competitor',
+  });
   return result.insights;
 }

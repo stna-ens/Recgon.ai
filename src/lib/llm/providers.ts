@@ -13,6 +13,10 @@ import { shouldTry, recordSuccess, recordFailure } from './circuitBreaker';
 export type ChatOptions = {
   temperature?: number;
   maxTokens?: number;
+  taskKind?: string;
+  promptVersion?: string;
+  qualityProfile?: string;
+  allowRepairRetry?: boolean;
 };
 
 export type LLMProvider = {
@@ -66,13 +70,26 @@ export const geminiProvider: LLMProvider = {
         );
         const text = content.response.text();
         if (modelName !== GEMINI_MODEL_CHAIN[0]) {
-          logger.warn('gemini fallback model served request', { model: modelName });
+          logger.warn('gemini fallback model served request', {
+            model: modelName,
+            taskKind: options?.taskKind,
+            promptVersion: options?.promptVersion,
+          });
         }
+        logger.debug('gemini response received', {
+          model: modelName,
+          taskKind: options?.taskKind,
+          promptVersion: options?.promptVersion,
+        });
         return text;
       } catch (err) {
         lastErr = err;
         if (isOverloaded(err)) {
-          logger.warn('gemini model overloaded, trying next', { model: modelName });
+          logger.warn('gemini model overloaded, trying next', {
+            model: modelName,
+            taskKind: options?.taskKind,
+            promptVersion: options?.promptVersion,
+          });
           continue;
         }
         throw err;
@@ -130,11 +147,20 @@ export const claudeProvider: LLMProvider = {
         );
         const block = res.content.find((b) => b.type === 'text');
         const body = block && block.type === 'text' ? block.text : '';
+        logger.debug('claude response received', {
+          model: modelName,
+          taskKind: options?.taskKind,
+          promptVersion: options?.promptVersion,
+        });
         return '{' + body;
       } catch (err) {
         lastErr = err;
         if (isOverloaded(err)) {
-          logger.warn('claude model overloaded, trying next', { model: modelName });
+          logger.warn('claude model overloaded, trying next', {
+            model: modelName,
+            taskKind: options?.taskKind,
+            promptVersion: options?.promptVersion,
+          });
           continue;
         }
         throw err;
@@ -198,9 +224,17 @@ export async function chatViaChain(
     try {
       const result = await provider.chat(systemPrompt, userPrompt, options);
       if (i > 0) {
-        logger.warn('LLM served by fallback provider', { provider: provider.name });
+        logger.warn('LLM served by fallback provider', {
+          provider: provider.name,
+          taskKind: options?.taskKind,
+          promptVersion: options?.promptVersion,
+        });
       } else {
-        logger.debug('LLM response received', { provider: provider.name });
+        logger.debug('LLM response received', {
+          provider: provider.name,
+          taskKind: options?.taskKind,
+          promptVersion: options?.promptVersion,
+        });
       }
       void breaker.recordSuccess(provider.name);
       return result;
@@ -209,6 +243,8 @@ export async function chatViaChain(
       if (isOverloaded(err) || isRateLimited(err)) {
         logger.warn('provider unavailable, trying next', {
           provider: provider.name,
+          taskKind: options?.taskKind,
+          promptVersion: options?.promptVersion,
           reason: err instanceof Error ? err.message.slice(0, 120) : String(err).slice(0, 120),
         });
         void breaker.recordFailure(provider.name);

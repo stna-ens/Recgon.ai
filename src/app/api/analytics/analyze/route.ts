@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { chat } from '@/lib/gemini';
 import { ANALYTICS_SYSTEM, analyticsUserPrompt } from '@/lib/prompts';
-import { AnalyticsInsightsSchema, parseAIResponse } from '@/lib/schemas';
+import { AnalyticsInsightsSchema } from '@/lib/schemas';
 import { serverError } from '@/lib/apiError';
+import { generateStructuredOutput } from '@/lib/llm/quality';
 
 function fallbackInsightsFromRaw(raw: string) {
   const compact = raw.replace(/\s+/g, ' ').trim();
@@ -39,15 +39,19 @@ export async function POST(req: NextRequest) {
   if (!data) return NextResponse.json({ error: 'Missing analytics data' }, { status: 400 });
 
   try {
-    const raw = await chat(ANALYTICS_SYSTEM, analyticsUserPrompt(data, days ?? 30), {
-      temperature: 0.5,
-      maxTokens: 4096,
-    });
+    const userPrompt = analyticsUserPrompt(data, days ?? 30);
     let insights;
     try {
-      insights = parseAIResponse(raw, AnalyticsInsightsSchema);
+      insights = await generateStructuredOutput({
+        taskKind: 'analytics_insights',
+        schema: AnalyticsInsightsSchema,
+        systemPrompt: ANALYTICS_SYSTEM,
+        userPrompt,
+        options: { temperature: 0.5, maxTokens: 4096 },
+        qualityProfile: 'analytics',
+      });
     } catch {
-      insights = fallbackInsightsFromRaw(raw);
+      insights = fallbackInsightsFromRaw('Analytics summary generated, but structured insight formatting failed.');
     }
     return NextResponse.json(insights);
   } catch (err) {

@@ -212,6 +212,15 @@ export const AnalyticsInsightsSchema = z.object({
 
 export type AnalyticsInsights = z.infer<typeof AnalyticsInsightsSchema>;
 
+// ── Overview brief ───────────────────────────────────────────────────────────
+
+export const OverviewBriefSchema = z.object({
+  brief: z.string(),
+  focusArea: z.string(),
+});
+
+export type OverviewBrief = z.infer<typeof OverviewBriefSchema>;
+
 // ── Shared parse helper ───────────────────────────────────────────────────────
 
 /**

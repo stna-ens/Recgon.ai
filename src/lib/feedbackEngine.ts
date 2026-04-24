@@ -1,6 +1,6 @@
-import { chat } from './gemini';
 import { FEEDBACK_SYSTEM, feedbackUserPrompt } from './prompts';
-import { FeedbackResultSchema, parseAIResponse } from './schemas';
+import { FeedbackResultSchema } from './schemas';
+import { generateStructuredOutput } from './llm/quality';
 
 export type { FeedbackResult } from './schemas';
 
@@ -9,6 +9,12 @@ export async function analyzeFeedback(feedbackItems: string[]): Promise<import('
     .map((item, i) => `[Feedback ${i + 1}]: ${item}`)
     .join('\n\n');
 
-  const response = await chat(FEEDBACK_SYSTEM, feedbackUserPrompt(feedbackStr), { temperature: 0.5, maxTokens: 8192 });
-  return parseAIResponse(response, FeedbackResultSchema);
+  return generateStructuredOutput({
+    taskKind: 'feedback_analysis',
+    schema: FeedbackResultSchema,
+    systemPrompt: FEEDBACK_SYSTEM,
+    userPrompt: feedbackUserPrompt(feedbackStr),
+    options: { temperature: 0.5, maxTokens: 8192 },
+    qualityProfile: 'feedback',
+  });
 }

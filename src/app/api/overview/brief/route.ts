@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { verifyTeamAccess } from '@/lib/teamStorage';
 import { getAllProjects } from '@/lib/storage';
-import { chat } from '@/lib/gemini';
 import { OVERVIEW_BRIEF_SYSTEM, overviewBriefUserPrompt } from '@/lib/prompts';
 import { serverError } from '@/lib/apiError';
+import { OverviewBriefSchema } from '@/lib/schemas';
+import { generateStructuredOutput } from '@/lib/llm/quality';
 
 const briefCache = new Map<string, { brief: { brief: string; focusArea: string }; expiresAt: number }>();
 const BRIEF_TTL_MS = 2 * 60 * 60 * 1000;
@@ -54,9 +55,14 @@ export async function GET(request: NextRequest) {
     });
 
     try {
-      const raw = await chat(OVERVIEW_BRIEF_SYSTEM, overviewBriefUserPrompt(briefInput), { temperature: 0.5, maxTokens: 4096 });
-      const sanitized = raw.replace(/[\r\n]+/g, ' ').trim();
-      const parsed = JSON.parse(sanitized);
+      const parsed = await generateStructuredOutput({
+        taskKind: 'overview_brief',
+        schema: OverviewBriefSchema,
+        systemPrompt: OVERVIEW_BRIEF_SYSTEM,
+        userPrompt: overviewBriefUserPrompt(briefInput),
+        options: { temperature: 0.5, maxTokens: 4096 },
+        qualityProfile: 'brief',
+      });
       briefCache.set(teamId, { brief: parsed, expiresAt: Date.now() + BRIEF_TTL_MS });
       return NextResponse.json({ brief: parsed });
     } catch (err) {

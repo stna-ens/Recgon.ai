@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { scrapeWebsite } from '@/lib/firecrawl';
-import { chat } from '@/lib/gemini';
 import { SOCIAL_ANALYSIS_SYSTEM, socialAnalysisUserPrompt } from '@/lib/prompts';
-import { parseAIResponse, SocialAnalysisResponseSchema, SocialAnalysisResponse } from '@/lib/schemas';
+import { SocialAnalysisResponseSchema, SocialAnalysisResponse } from '@/lib/schemas';
 import { serverError } from '@/lib/apiError';
+import { generateStructuredOutput } from '@/lib/llm/quality';
 
 // These platforms block automated scraping — scraping will always fail
 const UNSCRAPPABLE_PLATFORMS = ['linkedin', 'facebook'];
@@ -55,8 +55,14 @@ export async function POST(request: NextRequest) {
     }
 
     const userPrompt = socialAnalysisUserPrompt(scraped);
-    const response = await chat(SOCIAL_ANALYSIS_SYSTEM, userPrompt, { temperature: 0.4, maxTokens: 4096 });
-    const result: SocialAnalysisResponse = parseAIResponse(response, SocialAnalysisResponseSchema);
+    const result: SocialAnalysisResponse = await generateStructuredOutput({
+      taskKind: 'social_analysis',
+      schema: SocialAnalysisResponseSchema,
+      systemPrompt: SOCIAL_ANALYSIS_SYSTEM,
+      userPrompt,
+      options: { temperature: 0.4, maxTokens: 4096 },
+      qualityProfile: 'social',
+    });
 
     return NextResponse.json(result);
   } catch (error) {

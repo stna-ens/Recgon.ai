@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { getAnalyticsConfig } from '../analyticsStorage';
 import { fetchAnalyticsData } from '../analyticsEngine';
-import { chat } from '../gemini';
 import { ANALYTICS_SYSTEM, analyticsUserPrompt } from '../prompts';
-import { AnalyticsInsightsSchema, parseAIResponse } from '../schemas';
+import { AnalyticsInsightsSchema } from '../schemas';
+import { generateStructuredOutput } from '../llm/quality';
 import { resolveProject } from './resolveProject';
 import type { ToolDefinition } from './types';
 
@@ -60,11 +60,14 @@ export const fetchAnalyticsTool: ToolDefinition<Input, AnalyticsOutput> = {
     const data = await fetchAnalyticsData(project.analyticsPropertyId, authOptions, input.days);
 
     // Run AI insights on the raw data
-    const raw = await chat(ANALYTICS_SYSTEM, analyticsUserPrompt(data, input.days), {
-      temperature: 0.5,
-      maxTokens: 4096,
+    const insights = await generateStructuredOutput({
+      taskKind: 'analytics_insights',
+      schema: AnalyticsInsightsSchema,
+      systemPrompt: ANALYTICS_SYSTEM,
+      userPrompt: analyticsUserPrompt(data, input.days),
+      options: { temperature: 0.5, maxTokens: 4096 },
+      qualityProfile: 'analytics',
     });
-    const insights = parseAIResponse(raw, AnalyticsInsightsSchema);
 
     return {
       projectName: project.name,

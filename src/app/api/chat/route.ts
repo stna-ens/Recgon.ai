@@ -21,6 +21,8 @@ import { validateEnv } from '@/lib/env';
 import { geminiFunctionDeclarations } from '@/lib/tools/registry';
 import { runTool } from '@/lib/tools/runTool';
 import { getRecentActivities, formatActivitiesForPrompt } from '@/lib/activityLog';
+import { logger } from '@/lib/logger';
+import { PROMPT_VERSIONS } from '@/lib/llm/quality';
 import type { Content } from '@google/generative-ai';
 
 const MAX_TOOL_ITERATIONS = 5;
@@ -109,7 +111,15 @@ export async function POST(request: NextRequest) {
       ? `\n\nRECENT ACTIVITY ACROSS THIS TEAM (both GUI and terminal, most recent first):\n${formatActivitiesForPrompt(recentActivities)}\n`
       : '';
 
-    const toolGuidance = `\n\nYou have access to tools that read and modify the user's workspace. The system prompt above already contains a full summary of every analyzed project — use that for general questions and advice. Only call a tool when you need data NOT already in the system prompt: recent feedback analyses, campaigns, marketing content, or live GA4 metrics. Do NOT call get_project_details just because someone asks a general question about their project — if the answer is in the project summary above, answer from it directly. Call tools for: running a new analysis, fetching live analytics, querying feedback, generating content, or when the user explicitly asks to "show" or "fetch" something. Do not fabricate data; if a tool is needed, call it once and use the result. If the user just wants advice or brainstorming, answer directly without any tool call. When you do call a tool, keep any text before the call brief.`;
+    const toolGuidance = `\n\nAI OUTPUT QUALITY CONTRACT:
+- Ground every answer in the project summaries, conversation history, recent activity, or tool results visible in this prompt.
+- Do not fabricate metrics, campaigns, feedback, files, implementation status, revenue, user counts, or analytics. If the needed fact is missing, say what is missing or call the correct tool.
+- Only call a tool when you need data NOT already in the system prompt: recent feedback analyses, campaigns, marketing content, or live GA4 metrics.
+- Do NOT call get_project_details just because someone asks a general question about their project. If the answer is in the project summary above, answer from it directly.
+- Call tools for: running a new analysis, fetching live analytics, querying feedback, generating content, or when the user explicitly asks to "show" or "fetch" something.
+- If you call a tool, use the tool result as the source of truth and do not add unsupported details.
+- If the user just wants advice or brainstorming, answer directly without any tool call.
+- Before a final answer, check that every concrete claim is supported by known context or a tool result.`;
 
     const systemPrompt = mentorSystemPrompt(projects, memoryContext) + activitiesBlock + toolGuidance;
 
@@ -151,10 +161,11 @@ export async function POST(request: NextRequest) {
 
             const response = result.response;
             const calls = response.functionCalls() ?? [];
-            console.log('[chat]', {
+            logger.debug('mentor chat model turn', {
               iteration: iterations,
               calls: calls.map((c) => c.name),
               finishReason: response.candidates?.[0]?.finishReason,
+              promptVersion: PROMPT_VERSIONS.mentor_chat,
               promptFeedback: response.promptFeedback,
             });
 
