@@ -899,7 +899,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Input */}
-        <div style={{ borderTop: '1px solid var(--btn-secondary-border)', padding: '12px 20px', display: 'flex', alignItems: 'center', flexShrink: 0, position: 'relative' }}>
+        <div className="terminal-input-row" style={{ borderTop: '1px solid var(--btn-secondary-border)', padding: '12px 20px', display: 'flex', alignItems: 'center', flexShrink: 0, position: 'relative' }}>
           {(() => {
             const cmdMatches = input.startsWith('/')
               ? COMMANDS.filter((c) => c.name.startsWith(input.split(' ')[0].toLowerCase()))
@@ -932,6 +932,7 @@ export default function DashboardPage() {
             {streaming ? <svg className="loader-spinner" style={{ width: 14, height: 14, borderWidth: 1.5, borderRightColor: 'transparent' }} /> : '›'}
           </span>
           <textarea
+            className="terminal-input-field"
             ref={textareaRef}
             placeholder="type a message and press enter…"
             value={input}
@@ -942,7 +943,8 @@ export default function DashboardPage() {
             rows={1}
             style={{
               flex: 1, resize: 'none', overflow: 'hidden', background: 'transparent',
-              border: 'none', outline: 'none', color: 'var(--txt-pure)',
+              border: '0', outline: '0', boxShadow: 'none', color: 'var(--txt-pure)',
+              WebkitAppearance: 'none', appearance: 'none', borderRadius: 0,
               fontFamily: "'JetBrains Mono', ui-monospace, monospace",
               fontSize: 13.5, lineHeight: 1.6, minHeight: 24, paddingTop: 2,
             }}
