@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import ErrorBoundary from './ErrorBoundary';
 import TeamProvider from './TeamProvider';
+import RouteTransitions from './RouteTransitions';
 
 const AUTH_PATHS = ['/login', '/register', '/landing'];
 const TEAM_SETUP_PATHS = ['/teams/setup'];
@@ -24,6 +25,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <TeamProvider>
+      <RouteTransitions />
       <div className="app-layout">
         <Sidebar />
         <main className="main-content">

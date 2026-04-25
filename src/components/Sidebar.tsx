@@ -77,31 +77,33 @@ export default function Sidebar() {
 
   const handleThemeToggle = useCallback(() => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
+
+    // Prefer the native View Transitions API when available (Chromium/Safari 18+).
+    // Animation is driven by ::view-transition-old(root) / ::view-transition-new(root)
+    // rules in globals.css, which already use the signature easing.
+    type DocVT = Document & { startViewTransition?: (cb: () => void) => unknown };
+    const docVT = document as DocVT;
+    if (typeof docVT.startViewTransition === 'function') {
+      docVT.startViewTransition(() => setTheme(newTheme));
+      return;
+    }
+
+    // Fallback: opacity-overlay trick for browsers without the VT API.
     const overlay = overlayRef.current;
-    
     if (!overlay) {
       setTheme(newTheme);
       return;
     }
 
-    // Get the current background color to use as the overlay
     const currentBg = getComputedStyle(document.documentElement).getPropertyValue('--bg-deep').trim();
     overlay.style.background = currentBg;
-    
-    // Snap overlay to fully visible (blocks the old look)
     overlay.style.transition = 'none';
     overlay.style.opacity = '1';
-    
-    // Force a synchronous layout so the browser renders the overlay at opacity:1
-    overlay.offsetHeight;
-    
-    // Switch theme instantly underneath the overlay
+    overlay.offsetHeight; // force layout
     setTheme(newTheme);
-    
-    // Next frame: fade the overlay out — this is ONE property (opacity) on ONE element = pure GPU compositor = 120fps
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        overlay.style.transition = 'opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+        overlay.style.transition = 'opacity var(--dur-base) var(--ease-out)';
         overlay.style.opacity = '0';
       });
     });

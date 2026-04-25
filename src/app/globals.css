@@ -2327,11 +2327,36 @@ button:hover .avatar-hover-overlay {
   opacity: 1 !important;
 }
 
-/* Smooth Hardware-Accelerated View Transitions */
+/* Smooth Hardware-Accelerated View Transitions
+   Used by:
+   1. Theme toggle (Sidebar.tsx → document.startViewTransition)
+   2. Future: route-level transitions
+   The browser cross-fades old↔new snapshots; we just tune timing + curve. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 0.35s;
+  animation-duration: var(--dur-base);
   animation-timing-function: var(--ease-out);
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  animation-name: vtFadeOut;
+}
+::view-transition-new(root) {
+  animation-name: vtFadeIn;
+}
+@keyframes vtFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes vtFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.001s;
+  }
 }
 
 /* === Reusable polish utilities (Phase 1 vocabulary) === */
@@ -2410,12 +2435,28 @@ select:focus-visible,
     border-color var(--dur-base) var(--ease-out);
 }
 
+/* List-item entrance via @starting-style (Chromium-supported, gracefully
+   no-ops elsewhere). Apply `.list-enter` to a child of any list container.
+   Each child fades + slides up to its final position the first time it appears. */
+.list-enter {
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out);
+}
+@starting-style {
+  .list-enter {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 /* Reduced-motion: kill the polish utilities when the user opts out. */
 @media (prefers-reduced-motion: reduce) {
   .surface-rise,
   .enter-fade-up,
   .skeleton,
-  .skeleton-pulse {
+  .skeleton-pulse,
+  .list-enter {
     animation: none !important;
     transition: none !important;
     transform: none !important;

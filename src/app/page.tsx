@@ -491,6 +491,7 @@ export default function OverviewPage() {
               {signals.map((item, idx) => (
                 <div
                   key={item.id}
+                  className="list-enter"
                   style={{
                     display: 'flex', gap: 14, padding: '10px 0',
                     borderBottom: idx < signals.length - 1 ? '1px solid var(--btn-secondary-border)' : 'none',
