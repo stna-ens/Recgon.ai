@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { analyzeFeedback } from '@/lib/feedbackEngine';
 import { validateEnv } from '@/lib/env';
 import { isRateLimited, FEEDBACK_LIMIT } from '@/lib/rateLimit';
-import { saveFeedbackToProject, generateId } from '@/lib/storage';
+import { getProject, saveFeedbackToProject, generateId } from '@/lib/storage';
 import { auth } from '@/auth';
-import { verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
 import { logger } from '@/lib/logger';
 import { isRecoverable } from '@/lib/llm/utils';
 import { enqueueJob } from '@/lib/llm/jobQueue';
+import { buildProjectAppContext } from '@/lib/appContext';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,16 +35,25 @@ export async function POST(request: NextRequest) {
     validateEnv();
     logger.debug('analyzing feedback', { count: feedback.length });
 
+    const session = await auth();
+    let appContext: string | undefined;
+    if (projectId && teamId && session?.user?.id) {
+      const role = await verifyTeamAccess(teamId, session.user.id);
+      if (role) {
+        const project = await getProject(projectId, teamId, session.user.id);
+        if (project) appContext = buildProjectAppContext(project);
+      }
+    }
+
     // Inline-first: try to return the result in the request/response cycle.
     // If every LLM provider is overloaded or rate-limited, enqueue a job so
     // the cron drain can retry the analysis over a multi-hour window and
     // the user sees "queued" instead of a failure.
     try {
-      const result = await analyzeFeedback(feedback);
+      const result = await analyzeFeedback(feedback, appContext);
       logger.debug('feedback analysis complete');
 
       if (projectId && teamId) {
-        const session = await auth();
         if (session?.user?.id) {
           const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
           if (hasWrite) {
@@ -72,7 +82,6 @@ export async function POST(request: NextRequest) {
       // Falling back to the queue requires a signed-in user (we need a
       // user_id for the row). For anonymous playground calls we surface
       // the original error.
-      const session = await auth();
       if (!session?.user?.id || !teamId) {
         throw err;
       }

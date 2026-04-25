@@ -13,6 +13,7 @@ import { getUserById } from '@/lib/userStorage';
 import { isRecoverable } from '@/lib/llm/utils';
 import { enqueueJob } from '@/lib/llm/jobQueue';
 import { logger } from '@/lib/logger';
+import { buildProjectAppContext } from '@/lib/appContext';
 
 function formatDiff(diff: import('@/lib/githubFetcher').CommitDiff): string {
   const MAX_PATCH_CHARS = 3000;
@@ -114,6 +115,7 @@ export async function POST(
   if (!project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
+  const appContext = buildProjectAppContext(project);
 
   const encoder = new TextEncoder();
 
@@ -132,7 +134,7 @@ export async function POST(
             send({ type: 'error', message: 'No description to analyze' });
             return;
           }
-          analysis = await analyzeIdea(project.description, (msg) => send({ type: 'progress', message: msg }));
+          analysis = await analyzeIdea(project.description, (msg) => send({ type: 'progress', message: msg }), appContext);
           project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
           await saveProject(project);
           await recordAnalysis(session.user.id, session.user.email ?? undefined);
@@ -171,7 +173,7 @@ export async function POST(
               const { analyzedAt: _, improvements: _imp, nextStepsTaken: _nst, ...existingAnalysis } = project.analysis! as ProductAnalysis & { improvements?: unknown; nextStepsTaken?: unknown };
               analysis = await analyzeCodebaseUpdate(existingAnalysis, diffStr, (message) => {
                 send({ type: 'progress', message });
-              });
+              }, appContext);
               project.lastAnalyzedCommitSha = latestCommit.sha;
             } else {
               // Diff unavailable — re-clone and do full re-analysis
@@ -179,7 +181,7 @@ export async function POST(
               project.path = clonePath;
               analysis = await analyzeCodebase(clonePath, (message) => {
                 send({ type: 'progress', message });
-              });
+              }, appContext);
               project.lastAnalyzedCommitSha = latestCommit.sha;
             }
           } else {
@@ -188,7 +190,7 @@ export async function POST(
             project.path = clonePath;
             analysis = await analyzeCodebase(clonePath, (message) => {
               send({ type: 'progress', message });
-            });
+            }, appContext);
           }
         } else {
           // First analysis or local project
@@ -204,7 +206,7 @@ export async function POST(
           }
           analysis = await analyzeCodebase(analyzePath, (message) => {
             send({ type: 'progress', message });
-          });
+          }, appContext);
 
           if (project.isGithub && project.githubUrl) {
             // Retry up to 2 times to ensure SHA is always saved after first analysis

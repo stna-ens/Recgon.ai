@@ -5,6 +5,7 @@ import { analyzeIdea } from '../ideaAnalyzer';
 import { getLatestCommit, getCommitDiff, cloneGitHubRepo } from '../githubFetcher';
 import { checkAnalysisQuota, recordAnalysis } from '../analysisQuota';
 import { getUserById } from '../userStorage';
+import { buildProjectAppContext } from '../appContext';
 import { resolveProject } from './resolveProject';
 import type { ToolDefinition } from './types';
 
@@ -29,21 +30,22 @@ export const analyzeCodeTool: ToolDefinition<Input, AnalyzeOutput> = {
   parameters,
   summarize: (_input, output) => `${output.projectName}: ${output.summary}`,
   handler: async (input, ctx) => {
-    const project = await resolveProject(input.project, ctx.teamId);
+    const project = await resolveProject(input.project, ctx.teamId, ctx.userId);
+    const user = await getUserById(ctx.userId);
 
-    const quota = await checkAnalysisQuota(ctx.userId);
+    const quota = await checkAnalysisQuota(ctx.userId, user?.email);
     if (!quota.allowed) {
       throw new Error(quota.reason ?? 'Analysis quota exceeded');
     }
 
-    const user = await getUserById(ctx.userId);
     const githubToken = user?.githubAccessToken;
+    const appContext = buildProjectAppContext(project);
 
     let analysis;
 
     if (project.sourceType === 'description') {
       if (!project.description) throw new Error('No description to analyze');
-      analysis = await analyzeIdea(project.description);
+      analysis = await analyzeIdea(project.description, undefined, appContext);
     } else if (project.isGithub && project.githubUrl) {
       const latestCommit = await getLatestCommit(project.githubUrl, githubToken);
 
@@ -72,7 +74,7 @@ export const analyzeCodeTool: ToolDefinition<Input, AnalyzeOutput> = {
           });
           const { analyzedAt: _, improvements: _i, nextStepsTaken: _n, ...existing } =
             project.analysis as typeof project.analysis & { improvements?: unknown; nextStepsTaken?: unknown };
-          analysis = await analyzeCodebaseUpdate(existing, diffLines.join('\n'));
+          analysis = await analyzeCodebaseUpdate(existing, diffLines.join('\n'), undefined, appContext);
           project.lastAnalyzedCommitSha = latestCommit.sha;
         }
       }
@@ -80,17 +82,17 @@ export const analyzeCodeTool: ToolDefinition<Input, AnalyzeOutput> = {
       if (!analysis) {
         const clonePath = await cloneGitHubRepo(project.githubUrl, project.id, githubToken);
         project.path = clonePath;
-        analysis = await analyzeCodebase(clonePath);
+        analysis = await analyzeCodebase(clonePath, undefined, appContext);
         if (latestCommit) project.lastAnalyzedCommitSha = latestCommit.sha;
       }
     } else {
       if (!project.path) throw new Error('No path to analyze');
-      analysis = await analyzeCodebase(project.path);
+      analysis = await analyzeCodebase(project.path, undefined, appContext);
     }
 
     project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
     await saveProject(project);
-    await recordAnalysis(ctx.userId);
+    await recordAnalysis(ctx.userId, user?.email);
 
     const refetched = await getProject(project.id, ctx.teamId);
     return {

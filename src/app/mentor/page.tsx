@@ -30,7 +30,9 @@ const COMMANDS = [
   { name: '/analyze', description: '/analyze [project] — run codebase analysis' },
   { name: '/analytics', description: '/analytics [project] — fetch GA4 insights' },
   { name: '/feedback', description: '/feedback [project] — query feedback & sentiment' },
+  { name: '/collect-feedback', description: '/collect-feedback [project] — collect saved feedback sources' },
   { name: '/content', description: '/content [project] — generate marketing content' },
+  { name: '/campaign', description: '/campaign [project] — generate a campaign plan' },
   { name: '/clear', description: 'clear the current conversation' },
 ];
 
@@ -75,7 +77,7 @@ function MarkdownText({ text }: { text: string }) {
 }
 
 export default function DashboardPage() {
-  const { currentTeam, loading: teamLoading } = useTeam();
+  const { currentTeam, loading: teamLoading, refreshProjects } = useTeam();
   const [mounted, setMounted] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -117,13 +119,22 @@ export default function DashboardPage() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  useEffect(() => {
+  const refreshMentorProjects = useCallback(() => {
     if (!currentTeam) return;
-    fetch(`/api/projects?teamId=${currentTeam.id}`)
+    fetch(`/api/projects?teamId=${currentTeam.id}`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : [])
       .then(setProjects)
       .catch(() => {});
   }, [currentTeam]);
+
+  useEffect(() => {
+    refreshMentorProjects();
+  }, [refreshMentorProjects]);
+
+  const refreshProjectSurfaces = useCallback(() => {
+    refreshMentorProjects();
+    refreshProjects();
+  }, [refreshMentorProjects, refreshProjects]);
 
   const refreshConversations = useCallback(async () => {
     const res = await fetch('/api/chat/conversations', { cache: 'no-store' });
@@ -425,7 +436,9 @@ export default function DashboardPage() {
       '/analyze': (arg) => arg ? `Run a codebase analysis for the project "${arg}".` : 'Run a codebase analysis for my main project.',
       '/analytics': (arg) => arg ? `Fetch GA4 analytics data for the project "${arg}".` : 'Fetch analytics data for my main project.',
       '/feedback': (arg) => arg ? `Show me the feedback analysis for the project "${arg}".` : 'Show me the feedback analysis for my main project.',
+      '/collect-feedback': (arg) => arg ? `Collect feedback from saved sources for the project "${arg}".` : 'Collect feedback from saved sources for my main project.',
       '/content': (arg) => arg ? `Generate marketing content for the project "${arg}".` : 'Generate marketing content for my main project.',
+      '/campaign': (arg) => arg ? `Generate a marketing campaign plan for the project "${arg}".` : 'Generate a marketing campaign plan for my main project.',
     };
     const [cmd, ...rest] = trimmed.split(' ');
     if (SLASH_MAP[cmd]) {
@@ -487,7 +500,9 @@ export default function DashboardPage() {
 
       // All HTTP data received — tell the typewriter to flush and finish
       streamDoneRef.current = true;
-      // (Sidebar is already refreshed immediately before starting the stream)
+      // Tool calls can update project analysis, feedback, or marketing content.
+      // Refresh both the mentor counters and the shared Projects-page cache.
+      refreshProjectSurfaces();
     } catch (err) {
       stopTypewriter();
       if ((err as Error).name === 'AbortError') {
@@ -504,7 +519,7 @@ export default function DashboardPage() {
       });
       setStreaming(false);
     }
-  }, [messages, streaming, currentTeam, activeConvId, startTypewriter, stopTypewriter, refreshConversations, deleteCurrentChat]);
+  }, [messages, streaming, currentTeam, activeConvId, startTypewriter, stopTypewriter, refreshConversations, deleteCurrentChat, refreshProjectSurfaces]);
 
   // Pick up a prefilled prompt handed off from /overview and auto-send it once.
   useEffect(() => {

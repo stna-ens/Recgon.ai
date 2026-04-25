@@ -48,6 +48,18 @@ interface AnalyticsInsights {
   topConcern: string;
 }
 
+interface SavedAnalyticsInsight {
+  id: string;
+  projectId?: string;
+  propertyId: string;
+  days: number;
+  dateRange?: string;
+  overview: Record<string, number>;
+  insights: AnalyticsInsights;
+  source: 'gui' | 'terminal' | 'system';
+  createdAt: string;
+}
+
 interface ProjectSummary {
   id: string;
   name: string;
@@ -762,6 +774,8 @@ export default function AnalyticsPage() {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [insights, setInsights] = useState<AnalyticsInsights | null>(null);
+  const [savedInsights, setSavedInsights] = useState<SavedAnalyticsInsight[]>([]);
+  const [activeSavedInsightId, setActiveSavedInsightId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(false);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [error, setError] = useState('');
@@ -828,10 +842,44 @@ export default function AnalyticsPage() {
   // Load project list
   useEffect(() => {
     if (!currentTeam) return;
-    fetch(`/api/projects?teamId=${currentTeam.id}`).then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
+    fetch(`/api/projects?teamId=${currentTeam.id}`, { cache: 'no-store' }).then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
   }, [currentTeam]);
 
   const teamId = currentTeam?.id;
+  const loadSavedInsights = useCallback(async () => {
+    if (!teamId || !activePropertyId) {
+      setSavedInsights([]);
+      return;
+    }
+    const params = new URLSearchParams({ teamId, propertyId: activePropertyId });
+    if (selectedProjectId) params.set('projectId', selectedProjectId);
+    try {
+      const res = await fetch(`/api/analytics/insights?${params.toString()}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json() as { insights: SavedAnalyticsInsight[] };
+      setSavedInsights(json.insights ?? []);
+      const matching = (json.insights ?? []).find((item) => item.days === days) ?? json.insights?.[0];
+      if (matching) {
+        setInsights(matching.insights);
+        setActiveSavedInsightId(matching.id);
+      }
+    } catch {
+      setSavedInsights([]);
+    }
+  }, [activePropertyId, days, selectedProjectId, teamId]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (currentTeam) {
+        fetch(`/api/projects?teamId=${currentTeam.id}`, { cache: 'no-store' }).then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
+      }
+      void loadSavedInsights();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [currentTeam, loadSavedInsights]);
+
   const fetchData = useCallback(async (selectedDays: number, pId?: string | null) => {
     setLoadingData(true);
     setError('');
@@ -855,8 +903,9 @@ export default function AnalyticsPage() {
     if (!configLoaded) return;
     if (hasCredentials && activePropertyId) {
       fetchData(days, selectedProjectId);
+      loadSavedInsights();
     }
-  }, [configLoaded, hasCredentials, activePropertyId, fetchData, days, selectedProjectId]);
+  }, [configLoaded, hasCredentials, activePropertyId, fetchData, days, selectedProjectId, loadSavedInsights]);
 
   async function handleSaveProperty(id: string, serviceAccountJson: string) {
     const res = await fetch('/api/analytics/property', {
@@ -908,17 +957,19 @@ export default function AnalyticsPage() {
     if (!data) return;
     setLoadingInsights(true);
     setInsights(null);
+    setActiveSavedInsightId(null);
     if (insightsKey) localStorage.removeItem(insightsKey);
     try {
       const res = await fetch('/api/analytics/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, days }),
+        body: JSON.stringify({ data, days, projectId: selectedProjectId, teamId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Analysis failed');
       setInsights(json);
       if (insightsKey) localStorage.setItem(insightsKey, JSON.stringify(json));
+      await loadSavedInsights();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Analysis failed');
     } finally {
@@ -1282,6 +1333,46 @@ export default function AnalyticsPage() {
             loading={loadingInsights}
             onAnalyze={handleAnalyze}
           />
+
+          {savedInsights.length > 0 && (
+            <SectionCard title="Saved Insight Runs" style={{ marginTop: 24 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+                {savedInsights.slice(0, 6).map((run) => {
+                  const active = activeSavedInsightId === run.id;
+                  return (
+                    <button
+                      key={run.id}
+                      type="button"
+                      onClick={() => {
+                        setInsights(run.insights);
+                        setActiveSavedInsightId(run.id);
+                      }}
+                      style={{
+                        textAlign: 'left',
+                        border: `1px solid ${active ? 'var(--signature)' : 'var(--border)'}`,
+                        background: active ? 'rgba(var(--signature-rgb), 0.08)' : 'var(--bg-content)',
+                        borderRadius: 10,
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt-pure)' }}>
+                          {run.insights.summary}
+                        </span>
+                        <span style={{ fontSize: 10, color: run.source === 'terminal' ? 'var(--signature)' : 'var(--txt-muted)', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>
+                          {run.source}
+                        </span>
+                      </div>
+                      <div style={{ marginTop: 5, fontSize: 11, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', monospace" }}>
+                        {run.dateRange ?? `${run.days} days`} · {new Date(run.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          )}
 
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </>

@@ -21,16 +21,26 @@ export async function GET(request: NextRequest) {
   if (!role) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
   try {
-    const cached = briefCache.get(teamId);
-    if (cached && cached.expiresAt > Date.now()) {
-      return NextResponse.json({ brief: cached.brief });
-    }
-
-    const projects = await getAllProjects(teamId);
+    const projects = await getAllProjects(teamId, session.user.id);
     const analyzedProjects = projects.filter((p) => p.analysis);
 
     if (analyzedProjects.length === 0) {
       return NextResponse.json({ brief: null });
+    }
+
+    const fingerprint = analyzedProjects
+      .map((p) => [
+        p.id,
+        p.analysis?.analyzedAt ?? '',
+        p.feedbackAnalyses?.[0]?.analyzedAt ?? '',
+        p.marketingContent?.[0]?.generatedAt ?? '',
+        p.campaigns?.[0]?.createdAt ?? '',
+      ].join(':'))
+      .join('|');
+    const cacheKey = `${teamId}:${session.user.id}:${fingerprint}`;
+    const cached = briefCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json({ brief: cached.brief });
     }
 
     const briefInput = analyzedProjects.map((p) => {
@@ -40,15 +50,16 @@ export async function GET(request: NextRequest) {
         prioritizedNextSteps?: string[];
       } | undefined;
       const feedbackAnalyses = p.feedbackAnalyses as Array<{
+        themes?: string[];
         result?: { themes?: string[] };
       }> | undefined;
-      const latestFeedback = feedbackAnalyses?.[feedbackAnalyses.length - 1];
+      const latestFeedback = feedbackAnalyses?.[0];
       return {
         name: p.name,
         stage: analysis?.currentStage ?? null,
         weaknesses: analysis?.swot?.weaknesses?.slice(0, 2) ?? [],
         nextSteps: analysis?.prioritizedNextSteps?.slice(0, 2) ?? [],
-        feedbackThemes: latestFeedback?.result?.themes?.slice(0, 2) ?? [],
+        feedbackThemes: (latestFeedback?.themes ?? latestFeedback?.result?.themes ?? []).slice(0, 2),
         marketingCount: (p.marketingContent as unknown[])?.length ?? 0,
         feedbackCount: feedbackAnalyses?.length ?? 0,
       };
@@ -63,7 +74,7 @@ export async function GET(request: NextRequest) {
         options: { temperature: 0.5, maxTokens: 4096 },
         qualityProfile: 'brief',
       });
-      briefCache.set(teamId, { brief: parsed, expiresAt: Date.now() + BRIEF_TTL_MS });
+      briefCache.set(cacheKey, { brief: parsed, expiresAt: Date.now() + BRIEF_TTL_MS });
       return NextResponse.json({ brief: parsed });
     } catch (err) {
       console.error('[overview/brief] generation failed:', err);

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { generateMarketingContent, type Platform } from '../contentGenerator';
 import { saveProject, generateId } from '../storage';
+import { buildProjectAppContext } from '../appContext';
 import { resolveProject } from './resolveProject';
 import type { ToolDefinition } from './types';
 
@@ -34,7 +35,7 @@ export const generateContentTool: ToolDefinition<Input, ContentOutput> = {
   parameters,
   summarize: (input, output) => `${output.projectName} — ${input.platform} content generated`,
   handler: async (input, ctx) => {
-    const project = await resolveProject(input.project, ctx.teamId);
+    const project = await resolveProject(input.project, ctx.teamId, ctx.userId);
 
     if (!project.analysis) {
       throw new Error(
@@ -46,6 +47,8 @@ export const generateContentTool: ToolDefinition<Input, ContentOutput> = {
       project.analysis,
       input.platform as Platform,
       input.customPrompt,
+      undefined,
+      buildProjectAppContext(project),
     );
 
     // Persist to project

@@ -10,7 +10,9 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const SIGNAL_LABELS: Record<string, string> = {
   analyze_code: 'analysis completed',
   query_feedback: 'feedback analyzed',
+  collect_feedback: 'feedback collected',
   generate_content: 'content generated',
+  generate_campaign: 'campaign planned',
   fetch_analytics: 'analytics refreshed',
   mark_item_complete: 'action marked complete',
 };
@@ -27,7 +29,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const [projects, activities] = await Promise.all([
-      getAllProjects(teamId),
+      getAllProjects(teamId, session.user.id),
       getRecentActivities(teamId, { sinceHours: 7 * 24, limit: 30 }),
     ]);
 
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
 
     const signals = activities
       .filter((a) => a.status === 'succeeded' && SIGNAL_LABELS[a.toolName])
+      .filter((a) => !a.projectId || projectMap[a.projectId])
       .slice(0, 6)
       .map((a) => ({
         id: a.id,
@@ -80,15 +83,17 @@ export async function GET(request: NextRequest) {
       }
 
       const feedbackAnalyses = project.feedbackAnalyses as Array<{
+        developerPrompts?: string[];
         result?: { developerPrompts?: string[] };
         analyzedAt?: string;
         createdAt?: string;
       }> | undefined;
 
       if (feedbackAnalyses && feedbackAnalyses.length > 0) {
-        const latest = feedbackAnalyses[feedbackAnalyses.length - 1];
+        const latest = feedbackAnalyses[0];
         const latestAt = latest.analyzedAt ?? latest.createdAt ?? null;
-        for (const prompt of (latest.result?.developerPrompts ?? []).slice(0, 2)) {
+        const developerPrompts = latest.developerPrompts ?? latest.result?.developerPrompts ?? [];
+        for (const prompt of developerPrompts.slice(0, 2)) {
           actions.push({
             id: `${project.id}-fb-${actions.length}`,
             title: prompt,

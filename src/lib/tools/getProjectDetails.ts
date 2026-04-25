@@ -17,7 +17,7 @@ export const getProjectDetailsTool: ToolDefinition<Input, Record<string, unknown
   parameters,
   summarize: (_input, output) => `project ${(output as { name?: string }).name ?? 'unknown'}`,
   handler: async (input, ctx) => {
-    const project = await resolveProject(input.project, ctx.teamId);
+    const project = await resolveProject(input.project, ctx.teamId, ctx.userId);
     return {
       id: project.id,
       name: project.name,

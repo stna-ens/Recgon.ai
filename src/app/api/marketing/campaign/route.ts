@@ -6,6 +6,7 @@ import { validateEnv } from '@/lib/env';
 import { isRateLimited, GENERATE_LIMIT } from '@/lib/rateLimit';
 import { verifyTeamWriteAccess } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
+import { buildProjectAppContext } from '@/lib/appContext';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -51,7 +52,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const plan = await generateCampaignPlan(project.analysis, campaignType, goal, duration, websiteUrl);
+    const plan = await generateCampaignPlan(
+      project.analysis,
+      campaignType,
+      goal,
+      duration,
+      websiteUrl,
+      buildProjectAppContext(project),
+    );
 
     const campaign = {
       id: generateId(),

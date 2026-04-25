@@ -73,7 +73,7 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
   const refreshProjects = useCallback(() => {
     const team = currentTeamRef.current;
     if (!team) return;
-    fetch(`/api/projects?teamId=${team.id}`)
+    fetch(`/api/projects?teamId=${team.id}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((ps: CachedProject[]) => {
         setProjects(ps);

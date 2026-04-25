@@ -273,7 +273,7 @@ export async function getProjectTeamId(projectId: string): Promise<string | unde
  * Use this only when the caller has been independently authorized for ALL teamIds
  * (e.g. MCP server with a session-derived team list).
  */
-export async function getProjectForTeams(id: string, teamIds: string[]): Promise<Project | undefined> {
+export async function getProjectForTeams(id: string, teamIds: string[], userId?: string): Promise<Project | undefined> {
   if (teamIds.length === 0) return undefined;
   const { data } = await supabase
     .from('projects')
@@ -282,7 +282,9 @@ export async function getProjectForTeams(id: string, teamIds: string[]): Promise
     .in('team_id', teamIds)
     .single();
   if (!data) return undefined;
-  return assembleProject(data as ProjectRow);
+  const row = data as ProjectRow;
+  if (userId && row.is_shared === false && row.created_by !== userId) return undefined;
+  return assembleProject(row);
 }
 
 export async function saveProject(project: Project): Promise<void> {

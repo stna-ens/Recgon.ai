@@ -6,6 +6,7 @@ import { validateEnv } from '@/lib/env';
 import { isRateLimited, GENERATE_LIMIT } from '@/lib/rateLimit';
 import { verifyTeamWriteAccess } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
+import { buildProjectAppContext } from '@/lib/appContext';
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -38,7 +39,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Project has not been analyzed yet. Analyze it first.' }, { status: 400 });
     }
 
-    const result = await generateMarketingContent(project.analysis, platform, customPrompt, websiteUrl);
+    const result = await generateMarketingContent(
+      project.analysis,
+      platform,
+      customPrompt,
+      websiteUrl,
+      buildProjectAppContext(project),
+    );
 
     if (!project.marketingContent) project.marketingContent = [];
     project.marketingContent.push({

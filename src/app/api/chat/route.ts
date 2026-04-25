@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   }
 
   const conversationId = request.nextUrl.searchParams.get('conversationId');
-  const projects = await getAllProjects(teamId);
+  const projects = await getAllProjects(teamId, session.user.id);
   const suggestions = generateSuggestions(projects);
 
   let history: Awaited<ReturnType<typeof getConversationMessages>> = [];
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const projects = await getAllProjects(teamId);
+    const projects = await getAllProjects(teamId, session.user.id);
 
     let convId = incomingConvId ?? null;
     let createdNew = false;
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 - Do not fabricate metrics, campaigns, feedback, files, implementation status, revenue, user counts, or analytics. If the needed fact is missing, say what is missing or call the correct tool.
 - Only call a tool when you need data NOT already in the system prompt: recent feedback analyses, campaigns, marketing content, or live GA4 metrics.
 - Do NOT call get_project_details just because someone asks a general question about their project. If the answer is in the project summary above, answer from it directly.
-- Call tools for: running a new analysis, fetching live analytics, querying feedback, generating content, or when the user explicitly asks to "show" or "fetch" something.
+- Call tools for: running a new analysis, fetching live analytics, querying pasted feedback, collecting feedback from saved sources, generating content, generating campaigns, or when the user explicitly asks to "show" or "fetch" something.
 - If you call a tool, use the tool result as the source of truth and do not add unsupported details.
 - If the user just wants advice or brainstorming, answer directly without any tool call.
 - Before a final answer, check that every concrete claim is supported by known context or a tool result.`;

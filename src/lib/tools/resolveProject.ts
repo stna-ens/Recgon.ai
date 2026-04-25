@@ -11,15 +11,15 @@ import { getProject, getAllProjects, type Project } from '../storage';
  *   3. Case-insensitive partial name match (substring)
  *   4. If multiple matches in step 3, throw with a disambiguation hint
  */
-export async function resolveProject(ref: string, teamId: string): Promise<Project> {
+export async function resolveProject(ref: string, teamId: string, userId?: string): Promise<Project> {
   const trimmed = ref.trim();
   if (!trimmed) throw new Error('Project reference is empty');
 
   // 1. UUID lookup
-  const byId = await getProject(trimmed, teamId).catch(() => undefined);
+  const byId = await getProject(trimmed, teamId, userId).catch(() => undefined);
   if (byId) return byId;
 
-  const all = await getAllProjects(teamId);
+  const all = await getAllProjects(teamId, userId);
   const needle = trimmed.toLowerCase();
 
   // 2. Exact name match

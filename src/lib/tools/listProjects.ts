@@ -23,7 +23,7 @@ export const listProjectsTool: ToolDefinition<Input, { projects: ProjectSummary[
   parameters,
   summarize: (_input, output) => `${output.projects.length} project(s)`,
   handler: async (_input, ctx) => {
-    const projects = await getAllProjects(ctx.teamId);
+    const projects = await getAllProjects(ctx.teamId, ctx.userId);
     return {
       projects: projects.map((p) => ({
         id: p.id,

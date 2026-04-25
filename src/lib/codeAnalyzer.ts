@@ -169,13 +169,14 @@ export async function analyzeCodebaseUpdate(
   existingAnalysis: import('./schemas').AnalysisResult,
   diffStr: string,
   onProgress?: (message: string) => void,
+  appContext?: string,
 ): Promise<import('./schemas').AnalysisResult> {
   onProgress?.('Analyzing code changes...');
   const analysis = await generateStructuredOutput({
     taskKind: 'codebase_analysis',
     schema: AnalysisResultSchema,
     systemPrompt: ANALYZE_UPDATE_SYSTEM,
-    userPrompt: analyzeUpdateUserPrompt(existingAnalysis, diffStr),
+    userPrompt: analyzeUpdateUserPrompt(existingAnalysis, diffStr, appContext),
     options: { temperature: 0.4, maxTokens: 16384 },
     qualityProfile: 'analysis',
   });
@@ -186,6 +187,7 @@ export async function analyzeCodebaseUpdate(
 export async function analyzeCodebase(
   projectPath: string,
   onProgress?: (message: string) => void,
+  appContext?: string,
 ): Promise<import('./schemas').AnalysisResult> {
   onProgress?.('Reading project structure...');
   const tree = walkDir(projectPath);
@@ -207,7 +209,7 @@ export async function analyzeCodebase(
     taskKind: 'codebase_analysis',
     schema: AnalysisResultSchema,
     systemPrompt: ANALYZE_SYSTEM,
-    userPrompt: analyzeUserPrompt(treeStr, filesStr),
+    userPrompt: analyzeUserPrompt(treeStr, filesStr, appContext),
     options: { temperature: 0.4, maxTokens: 16384 },
     qualityProfile: 'analysis',
   });

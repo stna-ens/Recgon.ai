@@ -77,11 +77,17 @@ interface Project {
   name: string;
   analysis?: { name: string; description: string };
   campaigns?: Campaign[];
+  marketingContent?: MarketingContent[];
 }
 
 interface GeneratedContentEntry {
   content: Record<string, string>;
   platform: Platform;
+}
+
+interface MarketingContent extends GeneratedContentEntry {
+  id: string;
+  generatedAt: string;
 }
 
 interface SocialProfileInsight {
@@ -227,7 +233,7 @@ function SocialPlatformPicker({ value, onChange, platforms, blocked }: {
         <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '100%', background: 'var(--glass-active)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 50, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '100%', maxHeight: 220, background: 'var(--glass-active)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid var(--border)', borderRadius: 10, zIndex: 200, overflowY: 'auto', overscrollBehavior: 'contain', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
           {platforms.map((p) => {
             const isBlocked = blocked.includes(p);
             return (
@@ -292,7 +298,7 @@ export default function MarketingPage() {
 
   const loadProjects = useCallback(() => {
     if (!currentTeam) return;
-    fetch(`/api/projects?teamId=${currentTeam.id}`)
+    fetch(`/api/projects?teamId=${currentTeam.id}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((ps: Project[]) => {
         const analyzed = ps.filter((p) => p.analysis);
@@ -332,6 +338,7 @@ export default function MarketingPage() {
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
   const campaigns = selectedProject?.campaigns ?? [];
+  const savedMarketingContent = selectedProject?.marketingContent ?? [];
   const typeConfig = CAMPAIGN_TYPES.find((t) => t.id === campaignType) ?? null;
 
   const handlePlan = async () => {
@@ -382,6 +389,7 @@ export default function MarketingPage() {
         ...prev,
         [itemKey]: { content: data.content, platform },
       }));
+      loadProjects();
     } catch (err) {
       setContentErrors((prev) => ({
         ...prev,
@@ -451,7 +459,7 @@ export default function MarketingPage() {
       </div>
 
       {/* Social profiles — collapsible */}
-      <div style={{ background: 'var(--bg-content)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-content)', border: '1px solid var(--border)', borderRadius: 12, overflow: socialExpanded ? 'visible' : 'hidden', position: 'relative', zIndex: socialExpanded ? 20 : 1 }}>
         <button
           onClick={() => setSocialExpanded((v) => !v)}
           onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--btn-secondary-hover)'; }}
@@ -571,9 +579,55 @@ export default function MarketingPage() {
         )}
       </div>
 
+      {/* Saved content */}
+      {savedMarketingContent.length > 0 && (
+        <div style={{ marginTop: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '0.03em' }}>
+              // content
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--signature)', background: 'rgba(var(--signature-rgb), 0.12)', borderRadius: 10, padding: '1px 7px' }}>
+              {savedMarketingContent.length}
+            </span>
+          </div>
+          <div className="list-enter" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {savedMarketingContent.slice(0, 8).map((entry, idx) => (
+              <button
+                key={entry.id}
+                onClick={() => setPreviewEntry(entry)}
+                style={{
+                  animationDelay: `${Math.min(idx, 8) * 35}ms`,
+                  textAlign: 'left',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-content)',
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  width: '100%',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ background: platformBadgeColor(entry.platform), color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
+                    {entry.platform}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt-pure)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.2px' }}>
+                      {String(entry.content.caption ?? entry.content.headline1 ?? 'Generated marketing content')}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--txt-muted)', marginTop: 1, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                      {new Date(entry.generatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Past campaigns */}
       {campaigns.length > 0 && (
-        <div>
+        <div style={{ marginTop: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '0.03em' }}>
               // campaigns

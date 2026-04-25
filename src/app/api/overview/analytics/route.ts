@@ -5,6 +5,7 @@ import { getAllProjects } from '@/lib/storage';
 import { getAnalyticsConfig } from '@/lib/analyticsStorage';
 import { fetchAnalyticsData } from '@/lib/analyticsEngine';
 import { serverError } from '@/lib/apiError';
+import { getRecentActivities } from '@/lib/activityLog';
 
 type AnalyticsDelta = { projectName: string; sessionsCurrent: number; sessionsPrevious: number; deltaPct: number };
 const analyticsCache = new Map<string, { deltas: AnalyticsDelta[]; expiresAt: number }>();
@@ -21,13 +22,7 @@ export async function GET(request: NextRequest) {
   if (!role) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
   try {
-    const cached = analyticsCache.get(teamId);
-    if (cached && cached.expiresAt > Date.now()) {
-      const hasConfig = cached.deltas.length > 0 || !!(await getAnalyticsConfig(session.user.id));
-      return NextResponse.json({ analytics: cached.deltas, analyticsConfigured: hasConfig });
-    }
-
-    const projects = await getAllProjects(teamId);
+    const projects = await getAllProjects(teamId, session.user.id);
     if (projects.length === 0) {
       return NextResponse.json({ analytics: [], analyticsConfigured: false });
     }
@@ -42,6 +37,22 @@ export async function GET(request: NextRequest) {
     const authOptions = config.authMethod === 'oauth' && config.oauth
       ? { oauth: config.oauth, userId: session.user.id }
       : { serviceAccountJson: config.serviceAccountJson };
+
+    const projectMap = Object.fromEntries(projects.map((p) => [p.id, p.name]));
+    const recentAnalyticsActivity = (await getRecentActivities(teamId, { sinceHours: 7 * 24, limit: 20 }))
+      .find((a) => (
+        a.status === 'succeeded'
+        && a.toolName === 'fetch_analytics'
+        && (!a.projectId || projectMap[a.projectId])
+      ));
+    const fingerprint = projects
+      .map((p) => `${p.id}:${p.analyticsPropertyId ?? config.propertyId ?? ''}`)
+      .join('|');
+    const cacheKey = `${teamId}:${session.user.id}:${fingerprint}:${recentAnalyticsActivity?.createdAt ?? ''}`;
+    const cached = analyticsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json({ analytics: cached.deltas, analyticsConfigured: true });
+    }
 
     const byProperty = new Map<string, string[]>();
     for (const p of projects) {
@@ -75,7 +86,7 @@ export async function GET(request: NextRequest) {
       }),
     );
     const deltas = results.filter((r): r is AnalyticsDelta => r !== null);
-    analyticsCache.set(teamId, { deltas, expiresAt: Date.now() + ANALYTICS_TTL_MS });
+    analyticsCache.set(cacheKey, { deltas, expiresAt: Date.now() + ANALYTICS_TTL_MS });
 
     return NextResponse.json({ analytics: deltas, analyticsConfigured: true });
   } catch (err) {

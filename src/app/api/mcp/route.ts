@@ -21,7 +21,7 @@ function unauthorized() {
   );
 }
 
-async function resolveTeamIds(request: Request): Promise<string[] | null> {
+async function resolveMcpAccess(request: Request): Promise<{ userId: string; teamIds: string[] } | null> {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader?.startsWith('Bearer ')) return null;
 
@@ -30,15 +30,15 @@ async function resolveTeamIds(request: Request): Promise<string[] | null> {
   if (!tokenData) return null;
 
   const teams = await getUserTeams(tokenData.userId);
-  return teams.map((t) => t.id);
+  return { userId: tokenData.userId, teamIds: teams.map((t) => t.id) };
 }
 
 async function handleMcpRequest(request: Request): Promise<Response> {
-  const teamIds = await resolveTeamIds(request);
-  if (!teamIds) return unauthorized();
+  const access = await resolveMcpAccess(request);
+  if (!access) return unauthorized();
 
   const server = new McpServer({ name: 'recgon', version: '1.0.0' });
-  registerTools(server, teamIds);
+  registerTools(server, access.teamIds, access.userId);
 
   const transport = new WebStandardStreamableHTTPServerTransport();
   await server.connect(transport);

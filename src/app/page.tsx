@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useCallback, useEffect, useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/components/TeamProvider';
@@ -79,20 +79,19 @@ export default function OverviewPage() {
 
   const teamId = currentTeam?.id ?? null;
 
-  useEffect(() => {
+  const loadOverview = useCallback(() => {
     if (!teamId) return;
-
     setProjectsLoading(true);
     setCoreLoading(true);
     setBriefLoading(true);
     setAnalyticsLoading(true);
 
-    fetch(`/api/projects?teamId=${teamId}`)
+    fetch(`/api/projects?teamId=${teamId}`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : [])
       .then((data) => { setProjects(data); setProjectsLoading(false); })
       .catch(() => setProjectsLoading(false));
 
-    fetch(`/api/overview?teamId=${teamId}`)
+    fetch(`/api/overview?teamId=${teamId}`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data) {
@@ -104,7 +103,7 @@ export default function OverviewPage() {
       })
       .catch(() => setCoreLoading(false));
 
-    fetch(`/api/overview/brief?teamId=${teamId}`)
+    fetch(`/api/overview/brief?teamId=${teamId}`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.brief) setBrief(data.brief);
@@ -112,7 +111,7 @@ export default function OverviewPage() {
       })
       .catch(() => setBriefLoading(false));
 
-    fetch(`/api/overview/analytics?teamId=${teamId}`)
+    fetch(`/api/overview/analytics?teamId=${teamId}`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data) {
@@ -123,6 +122,23 @@ export default function OverviewPage() {
       })
       .catch(() => setAnalyticsLoading(false));
   }, [teamId]);
+
+  useEffect(() => {
+    loadOverview();
+  }, [loadOverview]);
+
+  useEffect(() => {
+    if (!teamId) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadOverview();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', loadOverview);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', loadOverview);
+    };
+  }, [loadOverview, teamId]);
 
   const analyzed = projects.filter((p) => p.analysis).length;
   const analyzedProjects = projects.filter((p) => p.analysis);

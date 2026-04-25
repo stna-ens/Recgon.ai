@@ -21,6 +21,7 @@ import {
 } from '../storage';
 import { getUserById } from '../userStorage';
 import { logger } from '../logger';
+import { buildProjectAppContext } from '../appContext';
 import type { JobKind, LLMJob } from './jobQueue';
 
 export type WorkerResult = Record<string, unknown>;
@@ -39,7 +40,15 @@ async function runFeedbackAnalysis(job: LLMJob): Promise<WorkerResult> {
     throw new Error('feedback_analysis job missing feedback array');
   }
 
-  const result = await analyzeFeedback(payload.feedback);
+  let project: Awaited<ReturnType<typeof getProject>> = undefined;
+  if (payload.projectId && payload.teamId) {
+    project = await getProject(payload.projectId, payload.teamId);
+  }
+
+  const result = await analyzeFeedback(
+    payload.feedback,
+    project ? buildProjectAppContext(project) : undefined,
+  );
 
   // Persist to project if we were told which project this belongs to.
   if (payload.projectId && payload.teamId) {
@@ -85,11 +94,11 @@ async function runIdeaAnalysis(job: LLMJob): Promise<WorkerResult> {
     throw new Error('idea_analysis job missing projectId or description');
   }
 
-  const analysis = await analyzeIdea(payload.description);
-
   const project = await getProject(payload.projectId, payload.teamId);
   if (!project) throw new Error(`project ${payload.projectId} not found`);
-  project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
+  const appContext = buildProjectAppContext(project);
+  const analysisWithContext = await analyzeIdea(payload.description, undefined, appContext);
+  project.analysis = { ...analysisWithContext, analyzedAt: new Date().toISOString() };
   await saveProject(project);
 
   return { projectId: project.id } as WorkerResult;
@@ -118,6 +127,7 @@ async function runCodebaseAnalysis(job: LLMJob): Promise<WorkerResult> {
 
   const project = await getProject(payload.projectId, payload.teamId);
   if (!project) throw new Error(`project ${payload.projectId} not found`);
+  const appContext = buildProjectAppContext(project);
 
   // Re-fetch GitHub token from the user row. Tokens are never stored in
   // the job payload (they'd sit at rest in plaintext in the queue).
@@ -126,11 +136,11 @@ async function runCodebaseAnalysis(job: LLMJob): Promise<WorkerResult> {
 
   let analysis;
   if (payload.existingAnalysis && payload.diffStr) {
-    analysis = await analyzeCodebaseUpdate(payload.existingAnalysis, payload.diffStr);
+    analysis = await analyzeCodebaseUpdate(payload.existingAnalysis, payload.diffStr, undefined, appContext);
   } else {
     const clonePath = await cloneGitHubRepo(payload.githubUrl, project.id, token);
     project.path = clonePath;
-    analysis = await analyzeCodebase(clonePath);
+    analysis = await analyzeCodebase(clonePath, undefined, appContext);
     // Record the SHA we just analyzed so the next re-analysis is diff-based.
     const commit = await getLatestCommit(payload.githubUrl, token).catch(() => null);
     if (commit) project.lastAnalyzedCommitSha = commit.sha;

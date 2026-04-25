@@ -274,7 +274,7 @@ export default function FeedbackPage() {
 
     setProjectsLoading(true);
     try {
-      const res = await fetch(`/api/projects?teamId=${currentTeam.id}`);
+      const res = await fetch(`/api/projects?teamId=${currentTeam.id}`, { cache: 'no-store' });
       const data = res.ok ? await res.json() as Project[] : [];
       setProjects(data);
 
@@ -315,6 +315,14 @@ export default function FeedbackPage() {
     selectedProjectRef.current = '';
     void loadProjects(undefined, true);
   }, [currentTeam?.id, loadProjects]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadProjects(selectedProjectRef.current, true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [loadProjects]);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,

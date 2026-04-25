@@ -4,6 +4,8 @@ import { fetchAnalyticsData } from '../analyticsEngine';
 import { ANALYTICS_SYSTEM, analyticsUserPrompt } from '../prompts';
 import { AnalyticsInsightsSchema } from '../schemas';
 import { generateStructuredOutput } from '../llm/quality';
+import { saveAnalyticsInsight } from '../analyticsInsightsStorage';
+import { logger } from '../logger';
 import { resolveProject } from './resolveProject';
 import type { ToolDefinition } from './types';
 
@@ -31,7 +33,7 @@ export const fetchAnalyticsTool: ToolDefinition<Input, AnalyticsOutput> = {
   summarize: (_input, output) =>
     `${output.projectName}: ${output.overview.sessions ?? '?'} sessions over ${output.dateRange}`,
   handler: async (input, ctx) => {
-    const project = await resolveProject(input.project, ctx.teamId);
+    const project = await resolveProject(input.project, ctx.teamId, ctx.userId);
 
     if (!project.analyticsPropertyId) {
       throw new Error(
@@ -68,6 +70,26 @@ export const fetchAnalyticsTool: ToolDefinition<Input, AnalyticsOutput> = {
       options: { temperature: 0.5, maxTokens: 4096 },
       qualityProfile: 'analytics',
     });
+
+    try {
+      await saveAnalyticsInsight({
+        projectId: project.id,
+        teamId: ctx.teamId,
+        userId: ctx.userId,
+        propertyId: data.propertyId,
+        days: input.days,
+        dateRange: data.dateRange,
+        overview: data.overview as unknown as Record<string, unknown>,
+        insights,
+        rawData: data,
+        source: ctx.source,
+      });
+    } catch (err) {
+      logger.warn('failed to persist analytics insights from tool', {
+        projectId: project.id,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
 
     return {
       projectName: project.name,

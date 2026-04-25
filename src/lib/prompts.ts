@@ -55,8 +55,10 @@ Be the mentor the founder can't afford to hire. Be specific, honest, and direct.
 ${STRUCTURED_QUALITY_RULES}
 For codebase analysis, explicitly use file paths and file roles from the context pack when judging features, maturity, integrations, storage, auth, monetization, or risks.`;
 
-export function analyzeUserPrompt(treeStr: string, filesStr: string): string {
-  return `Analyze this codebase and give me a deep product and strategy analysis.
+export function analyzeUserPrompt(treeStr: string, filesStr: string, appContext?: string): string {
+  return `${appContext ? `${appContext}\n\n` : ''}Analyze this codebase and give me a deep product and strategy analysis.
+
+Use the app context above to keep the analysis connected to the founder's saved feedback, marketing, campaigns, source profiles, and analytics setup. The codebase evidence is still the source of truth for what exists in the product; the app context explains how the rest of Recgon currently understands and uses that product.
 
 FILE TREE:
 ${treeStr}
@@ -129,14 +131,20 @@ Where information is not provided, make reasonable assumptions based on the idea
 ${STRUCTURED_QUALITY_RULES}
 For idea analysis, distinguish stated facts from assumptions. Focus next steps on validation, willingness to pay, distribution, and a smallest useful build.`;
 
-export function analyzeIdeaUserPrompt(description: string): string {
-  return `Analyze this product idea and give me a deep product and strategy analysis.\n\nIDEA DESCRIPTION:\n${description}`;
+export function analyzeIdeaUserPrompt(description: string, appContext?: string): string {
+  return `${appContext ? `${appContext}\n\n` : ''}Analyze this product idea and give me a deep product and strategy analysis.
+
+Use the app context above to keep the analysis connected to any saved feedback, marketing, campaigns, source profiles, and analytics setup. If the idea text and existing app context disagree, explain the current best interpretation through the analysis fields instead of pretending the conflict does not exist.
+
+IDEA DESCRIPTION:
+${description}`;
 }
 
-export function analyzeUpdateUserPrompt(existingAnalysis: object, diffStr: string): string {
-  return `Below is the current product analysis and a git diff showing recent changes. Update the analysis to accurately reflect the current state of the codebase, and populate the "improvements" and "nextStepsTaken" fields.
+export function analyzeUpdateUserPrompt(existingAnalysis: object, diffStr: string, appContext?: string): string {
+  return `${appContext ? `${appContext}\n\n` : ''}Below is the current product analysis and a git diff showing recent changes. Update the analysis to accurately reflect the current state of the codebase, and populate the "improvements" and "nextStepsTaken" fields.
 
 Pay special attention to DELETED FILES — if a whole file is removed, the features/technologies it provided must be removed from the analysis unless they exist elsewhere.
+Use the app context above to connect the updated analysis to saved feedback, marketing, campaigns, source profiles, and analytics setup. The diff is the source of truth for product/code changes; the app context helps prioritize and interpret those changes.
 
 CURRENT ANALYSIS:
 ${JSON.stringify(existingAnalysis, null, 2)}
@@ -400,8 +408,13 @@ IMPORTANT: The developerPrompts should be SPECIFIC, ACTIONABLE prompts that a de
 
 IMPORTANT: The summary should be a real 2-3 sentence summary of the feedback itself. It must be grounded in the actual comments, not a restatement of the sentiment percentages. Call out the main friction, the main request or expectation if there is one, and any positive signal worth protecting.`;
 
-export function feedbackUserPrompt(feedbackStr: string): string {
-  return `Analyze the following user feedback and generate developer prompts:\n\n${feedbackStr}`;
+export function feedbackUserPrompt(feedbackStr: string, appContext?: string): string {
+  return `${appContext ? `${appContext}\n\n` : ''}Analyze the following user feedback and generate developer prompts.
+
+Use the app context above to connect this feedback to the product analysis, previous feedback, marketing, campaigns, sources, and analytics setup when available. If the new feedback contradicts old context, trust the newer feedback but call out the shift in the summary or prompts.
+
+NEW FEEDBACK:
+${feedbackStr}`;
 }
 
 // ── Marketing content ─────────────────────────────────────────────────────────
@@ -454,8 +467,9 @@ export function marketingUserPrompt(
   uniqueSellingPoints: string[],
   customPrompt?: string,
   websiteContent?: string,
+  appContext?: string,
 ): string {
-  return `Generate marketing content for this product:
+  return `${appContext ? `${appContext}\n\n` : ''}Generate marketing content for this product:
 
 Product: ${name}
 Description: ${description}
@@ -464,7 +478,9 @@ Key Features: ${features.join(', ')}
 Target Audience: ${targetAudience}
 Unique Selling Points: ${uniqueSellingPoints.join(', ')}
 ${websiteContent ? `\nLIVE WEBSITE CONTENT (use this for authentic messaging and tone):\n${websiteContent}` : ''}
-${customPrompt ? `\nUser's Custom Instructions: ${customPrompt}\nMAKE SURE TO FOLLOW THESE INSTRUCTIONS CLOSELY.` : ''}`;
+${customPrompt ? `\nUser's Custom Instructions: ${customPrompt}\nMAKE SURE TO FOLLOW THESE INSTRUCTIONS CLOSELY.` : ''}
+
+Use the app context above to avoid repeating stale angles, reflect current feedback themes, and keep messaging consistent with the latest product analysis and campaigns.`;
 }
 
 // ── Campaign planning ─────────────────────────────────────────────────────────
@@ -569,8 +585,9 @@ export function campaignUserPrompt(
   goal: string,
   duration: string,
   websiteContent?: string,
+  appContext?: string,
 ): string {
-  return `Create ${CAMPAIGN_TYPE_DESCRIPTIONS[campaignType]} for this product.
+  return `${appContext ? `${appContext}\n\n` : ''}Create ${CAMPAIGN_TYPE_DESCRIPTIONS[campaignType]} for this product.
 
 PRODUCT:
 Name: ${name}
@@ -589,7 +606,7 @@ Type: ${campaignType}
 Goal: ${goal}
 Duration: ${duration}
 
-Create a comprehensive, product-specific campaign plan.`;
+Create a comprehensive, product-specific campaign plan. Use the app context above to adapt the plan to current feedback themes, previous campaigns, available source channels, analytics setup, and the latest product analysis.`;
 }
 
 // ── Analytics insights ────────────────────────────────────────────────────────

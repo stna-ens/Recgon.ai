@@ -20,6 +20,11 @@ export default function ProjectsPage() {
   const { currentTeam, projects, projectUpdateStatuses, refreshProjects } = useTeam();
 
   useEffect(() => { refreshProjects(); }, [refreshProjects]);
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshProjects(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshProjects]);
   const [showModal, setShowModal] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');

@@ -3,7 +3,7 @@ import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getAllProjects, getProjectForTeams, saveProject } from './storage';
 import type { ProductAnalysis, FeedbackAnalysis } from './storage';
 
-export function registerTools(server: McpServer, teamIds: string[]): void {
+export function registerTools(server: McpServer, teamIds: string[], userId?: string): void {
   server.registerTool(
     'list_projects',
     {
@@ -13,7 +13,7 @@ export function registerTools(server: McpServer, teamIds: string[]): void {
       inputSchema: z.object({}),
     },
     async () => {
-      const allProjects = await Promise.all(teamIds.map((tid) => getAllProjects(tid)));
+      const allProjects = await Promise.all(teamIds.map((tid) => getAllProjects(tid, userId)));
       const projects = allProjects.flat();
       const summary = projects.map((p) => ({
         id: p.id,
@@ -43,7 +43,7 @@ export function registerTools(server: McpServer, teamIds: string[]): void {
       }),
     },
     async ({ projectId }) => {
-      const project = await getProjectForTeams(projectId, teamIds);
+      const project = await getProjectForTeams(projectId, teamIds, userId);
       if (!project) {
         return { content: [{ type: 'text' as const, text: `Project not found or access denied.` }], isError: true };
       }
@@ -89,7 +89,7 @@ export function registerTools(server: McpServer, teamIds: string[]): void {
       }),
     },
     async ({ projectId }) => {
-      const project = await getProjectForTeams(projectId, teamIds);
+      const project = await getProjectForTeams(projectId, teamIds, userId);
       if (!project) {
         return { content: [{ type: 'text' as const, text: `Project not found or access denied.` }], isError: true };
       }
@@ -126,7 +126,7 @@ export function registerTools(server: McpServer, teamIds: string[]): void {
       }),
     },
     async ({ projectId, itemType, index, feedbackId, evidence }) => {
-      const project = await getProjectForTeams(projectId, teamIds);
+      const project = await getProjectForTeams(projectId, teamIds, userId);
       if (!project) {
         return { content: [{ type: 'text' as const, text: `Project not found or access denied.` }], isError: true };
       }

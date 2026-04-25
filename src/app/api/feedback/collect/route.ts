@@ -15,6 +15,7 @@ import { logger } from '@/lib/logger';
 import { FEEDBACK_LIMIT, isRateLimited } from '@/lib/rateLimit';
 import { getProject, saveFeedbackToProject } from '@/lib/storage';
 import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { buildProjectAppContext } from '@/lib/appContext';
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,9 +83,10 @@ export async function POST(request: NextRequest) {
 
     validateEnv();
     const canWrite = await verifyTeamWriteAccess(teamId, session.user.id);
+    const appContext = buildProjectAppContext(project);
 
     try {
-      const result = await analyzeFeedback(feedback);
+      const result = await analyzeFeedback(feedback, appContext);
       const analysis = buildFeedbackAnalysisRecord(result, feedback);
 
       if (canWrite) {

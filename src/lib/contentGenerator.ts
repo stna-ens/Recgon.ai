@@ -150,6 +150,7 @@ export async function generateMarketingContent(
   platform: Platform,
   customPrompt?: string,
   websiteUrl?: string,
+  appContext?: string,
 ): Promise<GeneratedContent> {
   const systemPrompt = MARKETING_SYSTEM[platform];
   if (!systemPrompt) {
@@ -167,6 +168,7 @@ export async function generateMarketingContent(
     analysis.uniqueSellingPoints,
     customPrompt,
     websiteContent ?? undefined,
+    appContext,
   );
 
   const schema = (platform === 'instagram'
@@ -200,6 +202,7 @@ export async function generateCampaignPlan(
   goal: string,
   duration: string,
   websiteUrl?: string,
+  appContext?: string,
 ): Promise<CampaignPlanResponse> {
   const websiteContent = websiteUrl ? await scrapeWebsite(websiteUrl) : null;
 
@@ -217,6 +220,7 @@ export async function generateCampaignPlan(
     goal,
     duration,
     websiteContent ?? undefined,
+    appContext,
   );
 
   try {
