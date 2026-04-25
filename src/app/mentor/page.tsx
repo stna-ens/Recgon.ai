@@ -45,6 +45,17 @@ const DEFAULT_SUGGESTIONS = [
   'How do I validate product-market fit quickly?',
 ];
 
+function normalizeMessages(value: unknown): Message[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): Message[] => {
+    if (!item || typeof item !== 'object') return [];
+    const message = item as { role?: unknown; content?: unknown };
+    const role = message.role === 'assistant' ? 'assistant' : message.role === 'user' ? 'user' : null;
+    if (!role) return [];
+    return [{ role, content: typeof message.content === 'string' ? message.content : '' }];
+  });
+}
+
 function MarkdownText({ text }: { text: string }) {
   const lines = text.split('\n');
   return (
@@ -154,10 +165,7 @@ export default function DashboardPage() {
     const res = await fetch(`/api/chat?teamId=${currentTeam.id}&conversationId=${convId}&_t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return;
     const data = await res.json();
-    setMessages((data.history ?? []).map((m: { role: 'user' | 'assistant'; content: string }) => ({
-      role: m.role,
-      content: m.content,
-    })));
+    setMessages(normalizeMessages(data.history));
     if (data.suggestions?.length > 0) setSuggestions(data.suggestions);
   }, [currentTeam]);
 
@@ -216,6 +224,7 @@ export default function DashboardPage() {
       setMessages((prev) => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
+        if (!last) return [{ role: 'assistant', content: chars }];
         updated[updated.length - 1] = { ...last, content: last.content + chars };
         return updated;
       });
@@ -511,6 +520,7 @@ export default function DashboardPage() {
       }
       setMessages((prev) => {
         const updated = [...prev];
+        if (updated.length === 0) return [{ role: 'assistant', content: `Sorry, something went wrong: ${(err as Error).message}` }];
         updated[updated.length - 1] = {
           role: 'assistant',
           content: `Sorry, something went wrong: ${(err as Error).message}`,

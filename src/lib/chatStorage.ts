@@ -124,11 +124,15 @@ export async function getConversationMessages(convId: string): Promise<StoredMes
     .eq('conversation_id', convId)
     .order('ts', { ascending: true });
 
-  return (data ?? []).map((r) => ({
-    role: r.role as 'user' | 'assistant',
-    content: r.content,
-    ts: r.ts,
-  }));
+  return (data ?? []).flatMap((r) => {
+    const role = r.role === 'assistant' ? 'assistant' : r.role === 'user' ? 'user' : null;
+    if (!role) return [];
+    return [{
+      role,
+      content: typeof r.content === 'string' ? r.content : '',
+      ts: typeof r.ts === 'number' ? r.ts : Date.now(),
+    }];
+  });
 }
 
 export async function saveMessages(userId: string, convId: string, msgs: StoredMessage[]) {
