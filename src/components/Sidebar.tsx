@@ -121,7 +121,14 @@ export default function Sidebar() {
             ? pathname === item.href
             : pathname.startsWith(item.href);
           return (
-            <Link key={item.href} href={item.href} className={`nav-link ${isActive ? 'active' : ''}`} title={item.label}>
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`nav-link ${isActive ? 'active' : ''}`}
+              title={item.label}
+              aria-current={isActive ? 'page' : undefined}
+              style={isActive ? { viewTransitionName: 'nav-active-pill' } as React.CSSProperties : undefined}
+            >
               {item.icon}
               <span className="nav-link-label">{item.label}</span>
             </Link>

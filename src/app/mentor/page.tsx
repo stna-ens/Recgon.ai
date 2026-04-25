@@ -100,6 +100,7 @@ export default function DashboardPage() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollPill, setShowScrollPill] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const loadedTeamRef = useRef<string | null>(null);
@@ -382,8 +383,24 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const container = messagesContainerRef.current;
-    if (container) container.scrollTop = container.scrollHeight;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distanceFromBottom < 120) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [messages]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      setShowScrollPill(distanceFromBottom > 160);
+    };
+    container.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => container.removeEventListener('scroll', onScroll);
+  }, []);
 
   const stats = {
     totalProjects: projects.length,
@@ -769,7 +786,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Messages */}
-        <div ref={messagesContainerRef} style={{ flex: 1, minHeight: 400, maxHeight: 520, overflowY: paletteOpen ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'relative', flex: 1, minHeight: 400, maxHeight: 520, display: 'flex', flexDirection: 'column' }}>
+        <div ref={messagesContainerRef} style={{ flex: 1, overflowY: paletteOpen ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
           {messages.length === 0 && mounted && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div className="chat-line-assistant">
@@ -837,6 +855,22 @@ export default function DashboardPage() {
             </div>
           ))}
           <div ref={messagesEndRef} />
+        </div>
+          {showScrollPill && (
+            <button
+              onClick={() => {
+                const c = messagesContainerRef.current;
+                if (c) c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' });
+              }}
+              className="scroll-to-latest-pill"
+              aria-label="Scroll to latest message"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+              Latest
+            </button>
+          )}
         </div>
 
         {/* Input */}

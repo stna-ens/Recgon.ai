@@ -582,8 +582,8 @@ export default function MarketingPage() {
               {campaigns.length}
             </span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {campaigns.map((c) => {
+          <div className="list-enter" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {campaigns.map((c, idx) => {
               const ctConf = CAMPAIGN_TYPES.find((t) => t.id === c.type);
               const isActive = activeCampaign?.id === c.id;
               return (
@@ -608,6 +608,7 @@ export default function MarketingPage() {
                     }
                   }}
                   style={{
+                    animationDelay: `${Math.min(idx, 8) * 35}ms`,
                     textAlign: 'left',
                     border: `1px solid ${isActive ? 'var(--signature)' : 'var(--border)'}`,
                     background: isActive ? 'rgba(var(--signature-rgb), 0.06)' : 'var(--bg-content)',

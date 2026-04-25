@@ -616,9 +616,12 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
   if (loading) {
     return (
       <SectionCard title="Recgon Insights">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 0' }}>
-          <div className="loader-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
-          <span style={{ color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: '0.85rem' }}>analyzing your data…</span>
+        <div className="skeleton-pulse" style={{ height: 14, width: '85%', borderRadius: 6, background: 'rgba(var(--signature-rgb), 0.10)', marginBottom: 10 }} />
+        <div className="skeleton-pulse" style={{ height: 14, width: '72%', borderRadius: 6, background: 'rgba(var(--signature-rgb), 0.08)', marginBottom: 10 }} />
+        <div className="skeleton-pulse" style={{ height: 14, width: '55%', borderRadius: 6, background: 'rgba(var(--signature-rgb), 0.06)', marginBottom: 18 }} />
+        <div className="stage-progress">
+          <span>analyzing your data</span>
+          <div className="stage-progress-bar" />
         </div>
       </SectionCard>
     );
@@ -828,13 +831,14 @@ export default function AnalyticsPage() {
     fetch(`/api/projects?teamId=${currentTeam.id}`).then((r) => r.ok ? r.json() : []).then(setProjects).catch(() => {});
   }, [currentTeam]);
 
+  const teamId = currentTeam?.id;
   const fetchData = useCallback(async (selectedDays: number, pId?: string | null) => {
     setLoadingData(true);
     setError('');
     try {
       const projectParam = pId ? `&projectId=${pId}` : '';
       const res = await fetch(`/api/analytics/data?days=${selectedDays}${projectParam}`, {
-        headers: currentTeam ? { 'x-team-id': currentTeam.id } : {},
+        headers: teamId ? { 'x-team-id': teamId } : {},
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Failed to fetch');
@@ -844,7 +848,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoadingData(false);
     }
-  }, [currentTeam]);
+  }, [teamId]);
 
   // Auto-fetch when config or selected project changes
   useEffect(() => {
@@ -1102,10 +1106,29 @@ export default function AnalyticsPage() {
 
       {/* Loading skeleton */}
       {loadingData && (
-        <div className="loader">
-          <div className="loader-spinner" />
-          <div className="loader-text" style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>fetching analytics data…</div>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gap: 16,
+            marginBottom: 24,
+          }}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="glass-card" style={{ padding: 18 }}>
+                <div className="skeleton-pulse" style={{ height: 11, width: 72, borderRadius: 4, background: 'rgba(var(--signature-rgb), 0.08)', marginBottom: 14 }} />
+                <div className="skeleton-pulse" style={{ height: 22, width: '60%', borderRadius: 6, background: 'rgba(var(--signature-rgb), 0.10)', marginBottom: 8 }} />
+                <div className="skeleton-pulse" style={{ height: 10, width: '40%', borderRadius: 4, background: 'rgba(var(--signature-rgb), 0.06)' }} />
+              </div>
+            ))}
+          </div>
+          <div className="glass-card" style={{ padding: 20, marginBottom: 16 }}>
+            <div className="skeleton-pulse" style={{ height: 11, width: 88, borderRadius: 4, background: 'rgba(var(--signature-rgb), 0.08)', marginBottom: 16 }} />
+            <div className="skeleton-pulse" style={{ height: 180, borderRadius: 8, background: 'rgba(var(--signature-rgb), 0.05)' }} />
+          </div>
+          <div className="stage-progress" style={{ marginTop: 8 }}>
+            <span>fetching analytics data</span>
+            <div className="stage-progress-bar" />
+          </div>
         </div>
       )}
 

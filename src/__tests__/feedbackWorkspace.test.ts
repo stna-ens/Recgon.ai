@@ -29,6 +29,22 @@ Privacy policy
     expect(items.some((item) => item === 'Pricing')).toBe(false);
   });
 
+  it('rejects browser and video-player chrome from scraped pages', () => {
+    const markdown = `
+If playback doesn't begin shortly, try restarting your device.
+An error occurred while retrieving sharing information. Please try again later.
+We're sorry, but you do not have access to this page. That's all we know.
+I love the project dashboard, but export is confusing.
+`;
+
+    const items = extractFeedbackItemsFromMarkdown(markdown, {
+      platform: 'Review Page',
+      url: 'https://example.com/reviews',
+    });
+
+    expect(items).toEqual(['I love the project dashboard, but export is confusing.']);
+  });
+
   it('normalizes list prefixes and whitespace', () => {
     expect(normalizeFeedbackItem('  -   Please add dark mode   ')).toBe('Please add dark mode');
   });

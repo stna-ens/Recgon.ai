@@ -2468,3 +2468,206 @@ select:focus-visible,
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.15); opacity: 0.85; }
 }
+
+/* === Phase-2 polish primitives === */
+
+/* Smooth theme switch — colors crossfade instead of snapping. */
+html {
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  html { transition: none; }
+}
+
+/* Form invalid state — applies to any [aria-invalid="true"] form control. */
+.form-input[aria-invalid="true"],
+.form-textarea[aria-invalid="true"],
+.form-select[aria-invalid="true"] {
+  border-color: rgba(255, 59, 48, 0.55);
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.12), inset 0 2px 4px rgba(0,0,0,0.02);
+}
+.form-input[aria-invalid="true"]:focus,
+.form-textarea[aria-invalid="true"]:focus,
+.form-select[aria-invalid="true"]:focus {
+  border-color: rgba(255, 59, 48, 0.75);
+  box-shadow: 0 0 0 4px rgba(255, 59, 48, 0.18), inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+/* FieldError — inline error message under a form field. */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--danger);
+  letter-spacing: -0.1px;
+  animation: fieldErrorEnter var(--dur-base) var(--ease-out) both;
+}
+@keyframes fieldErrorEnter {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-error { animation: none; }
+}
+
+/* Recovery banner — surfaces quota / provider-fallback / soft errors. */
+.recovery-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(var(--signature-rgb), 0.06);
+  border: 1px solid rgba(var(--signature-rgb), 0.18);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--txt-pure);
+}
+.recovery-banner.tone-warning {
+  background: rgba(255, 159, 10, 0.08);
+  border-color: rgba(255, 159, 10, 0.25);
+}
+.recovery-banner.tone-danger {
+  background: rgba(255, 59, 48, 0.07);
+  border-color: rgba(255, 59, 48, 0.22);
+}
+.recovery-banner-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--signature);
+}
+.recovery-banner.tone-warning .recovery-banner-icon { color: var(--warning); }
+.recovery-banner.tone-danger .recovery-banner-icon  { color: var(--danger); }
+.recovery-banner-body { flex: 1; min-width: 0; }
+.recovery-banner-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+  letter-spacing: -0.2px;
+}
+.recovery-banner-detail {
+  color: var(--txt-muted);
+  font-size: 12.5px;
+}
+.recovery-banner-action {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: transparent;
+  border: 1px solid var(--btn-secondary-border);
+  color: var(--txt-pure);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+}
+.recovery-banner-action:hover {
+  background: var(--btn-secondary-hover);
+  border-color: rgba(var(--signature-rgb), 0.4);
+}
+
+/* Sidebar nav focus ring (keyboard-only). */
+.nav-link:focus-visible,
+.theme-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--bg-deep),
+    0 0 0 4px rgba(var(--signature-rgb), 0.55);
+}
+
+/* Stage progress — for streaming/long async ops (LLM job polling). */
+.stage-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--txt-muted);
+  letter-spacing: 0.2px;
+}
+.stage-progress-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--r-pill);
+  background: var(--btn-secondary-bg);
+  overflow: hidden;
+  position: relative;
+}
+.stage-progress-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--signature-rgb), 0.7) 50%,
+    transparent 100%
+  );
+  animation: stageProgressSlide 1.6s var(--ease-out) infinite;
+}
+@keyframes stageProgressSlide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-progress-bar::after { animation: none; opacity: 0.5; }
+}
+
+/* Page-transition fallback for browsers without view transitions API.
+   AppShell layers a key on <main>, allowing a subtle fade-up entrance. */
+.page-fade-in {
+  animation: pageFadeIn var(--dur-page) var(--ease-out) both;
+}
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-fade-in { animation: none; }
+}
+
+/* ── Scroll-to-latest pill (mentor chat) ─────────────────────────────────── */
+.scroll-to-latest-pill {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--btn-primary-txt);
+  background: var(--btn-primary-bg);
+  border: 1px solid rgba(var(--signature-rgb), 0.45);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(var(--signature-rgb), 0.28), 0 0 0 1px rgba(255,255,255,0.06) inset;
+  z-index: 5;
+  animation: pillRise 220ms var(--ease-out) both;
+  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+.scroll-to-latest-pill:hover {
+  transform: translateX(-50%) translateY(-1px);
+  box-shadow: 0 10px 22px rgba(var(--signature-rgb), 0.36), 0 0 0 1px rgba(255,255,255,0.08) inset;
+}
+@keyframes pillRise {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-to-latest-pill { animation: none; }
+}

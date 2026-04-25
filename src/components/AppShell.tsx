@@ -28,7 +28,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <RouteTransitions />
       <div className="app-layout">
         <Sidebar />
-        <main className="main-content">
+        <main className="main-content page-fade-in">
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>

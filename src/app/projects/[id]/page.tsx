@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTeam } from '@/components/TeamProvider';
 import { createPortal } from 'react-dom';
+import Modal from '@/components/Modal';
 
 interface Competitor {
   name: string;
@@ -716,66 +717,65 @@ export default function ProjectDetailPage() {
 
       {/* Connect GitHub repo modal (upgrade idea → full code analysis) */}
       {connectingCodebase && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay" onClick={() => setConnectingCodebase(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Connect GitHub Repo</h3>
-            <p style={{ fontSize: 14, color: 'var(--txt-muted)', marginBottom: 16 }}>
-              Upgrade this idea project to a full code analysis by linking a GitHub repository. The existing idea analysis will be replaced.
-            </p>
-            <div className="form-group">
-              <label className="form-label">GitHub URL</label>
-              <input
-                className="form-input"
-                type="text"
-                placeholder="https://github.com/user/repo"
-                value={codebasePath}
-                onChange={(e) => setCodebasePath(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="modal-actions" style={{ marginTop: 20 }}>
-              <button className="btn btn-secondary" onClick={() => setConnectingCodebase(false)}>Cancel</button>
-              <button
-                className="btn btn-primary"
-                onClick={handleConnectCodebase}
-                disabled={connectLoading || !codebasePath.trim()}
-              >
-                {connectLoading ? 'Connecting...' : 'Connect & Analyze'}
-              </button>
-            </div>
+        <Modal
+          open={connectingCodebase}
+          onClose={() => setConnectingCodebase(false)}
+          title="Connect GitHub Repo"
+          description="Upgrade this idea project to a full code analysis by linking a GitHub repository. The existing idea analysis will be replaced."
+        >
+          <div className="form-group">
+            <label className="form-label" htmlFor="github-url-input">GitHub URL</label>
+            <input
+              id="github-url-input"
+              className="form-input"
+              type="text"
+              placeholder="https://github.com/user/repo"
+              value={codebasePath}
+              onChange={(e) => setCodebasePath(e.target.value)}
+            />
           </div>
-        </div>,
+          <div className="modal-actions" style={{ marginTop: 20 }}>
+            <button className="btn btn-secondary" onClick={() => setConnectingCodebase(false)}>Cancel</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleConnectCodebase}
+              disabled={connectLoading || !codebasePath.trim()}
+            >
+              {connectLoading ? 'Connecting...' : 'Connect & Analyze'}
+            </button>
+          </div>
+        </Modal>,
         document.body
       )}
 
       {/* Edit description modal */}
-      {editingDescription && (
-        <div className="modal-overlay" onClick={() => setEditingDescription(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Edit Idea Description</h3>
-            <div className="form-group">
-              <label className="form-label">Description</label>
-              <textarea
-                className="form-input"
-                rows={8}
-                value={draftDescription}
-                onChange={(e) => setDraftDescription(e.target.value)}
-                style={{ resize: 'vertical', fontFamily: 'inherit' }}
-              />
-            </div>
-            <div className="modal-actions" style={{ marginTop: 20 }}>
-              <button className="btn btn-secondary" onClick={() => setEditingDescription(false)}>Cancel</button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSaveDescription}
-                disabled={!draftDescription.trim()}
-              >
-                Save & Re-analyze
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={editingDescription}
+        onClose={() => setEditingDescription(false)}
+        title="Edit Idea Description"
+      >
+        <div className="form-group">
+          <label className="form-label" htmlFor="idea-desc-input">Description</label>
+          <textarea
+            id="idea-desc-input"
+            className="form-input"
+            rows={8}
+            value={draftDescription}
+            onChange={(e) => setDraftDescription(e.target.value)}
+            style={{ resize: 'vertical', fontFamily: 'inherit' }}
+          />
         </div>
-      )}
+        <div className="modal-actions" style={{ marginTop: 20 }}>
+          <button className="btn btn-secondary" onClick={() => setEditingDescription(false)}>Cancel</button>
+          <button
+            className="btn btn-primary"
+            onClick={handleSaveDescription}
+            disabled={!draftDescription.trim()}
+          >
+            Save & Re-analyze
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

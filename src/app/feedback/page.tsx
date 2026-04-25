@@ -12,6 +12,7 @@ import {
   getFeedbackPlatformAvailability,
   getSourceMeta,
   isFeedbackSupportedSource,
+  normalizeSourceProfile,
   type SourceProfile,
 } from '@/lib/sourceProfiles';
 
@@ -539,7 +540,11 @@ export default function FeedbackPage() {
       });
       const data = await res.json() as { candidates?: DiscoveredSource[]; error?: string };
       if (!res.ok) throw new Error(data.error || 'Could not discover feedback sources');
-      setDiscoveredSources(data.candidates ?? []);
+      const candidates = data.candidates ?? [];
+      setDiscoveredSources(candidates);
+      setBanner(candidates.length > 0
+        ? { tone: 'success', message: `Found ${candidates.length} public feedback source${candidates.length === 1 ? '' : 's'} to review.` }
+        : { tone: 'info', message: 'No public review or community sources were found for this project.' });
     } catch (error) {
       setBanner({
         tone: 'warning',
@@ -602,9 +607,14 @@ export default function FeedbackPage() {
     }
 
     try {
+      const normalizedSource = normalizeSourceProfile({ platform: sourcePlatformInput, url: sourceUrlInput.trim() });
+      if (!normalizedSource) {
+        setBanner({ tone: 'warning', message: 'Enter a valid public URL, like https://producthunt.com/products/your-product.' });
+        return;
+      }
       const next = dedupeSourceProfiles([
         ...(selectedProject.socialProfiles ?? []),
-        { platform: sourcePlatformInput, url: sourceUrlInput.trim() },
+        normalizedSource,
       ]);
       await persistSources(next);
       setSourceUrlInput('');
@@ -809,7 +819,7 @@ export default function FeedbackPage() {
             <button
               className="btn btn-secondary"
               onClick={() => void handleAddSource()}
-              disabled={!sourceUrlInput.trim() || selectedSourcePlatformAvailability !== 'supported'}
+              disabled={!normalizeSourceProfile({ platform: sourcePlatformInput, url: sourceUrlInput }) || selectedSourcePlatformAvailability !== 'supported'}
             >
               Save
             </button>
@@ -855,8 +865,8 @@ export default function FeedbackPage() {
   const historyPanel = selectedProject ? (
     <div className="feedback-control-stack">
       {history.length > 0 ? (
-        <div className="feedback-history-grid">
-          {history.map((entry) => {
+        <div className="feedback-history-grid list-enter">
+          {history.map((entry, idx) => {
             const active = !ephemeralAnalysis && entry.id === (activeSavedAnalysisId ?? history[0].id);
             const historyLabel = buildFeedbackRunLabel({
               sentiment: entry.sentiment,
@@ -873,6 +883,7 @@ export default function FeedbackPage() {
                   setActiveSavedAnalysisId(entry.id);
                 }}
                 className={`feedback-history-item${active ? ' feedback-history-item--active' : ''}`}
+                style={{ animationDelay: `${Math.min(idx, 8) * 35}ms` } as React.CSSProperties}
               >
                 <div className="feedback-history-item__top">
                   <span className="feedback-history-item__title">{historyLabel}</span>
@@ -1103,7 +1114,7 @@ export default function FeedbackPage() {
               className={`btn btn-secondary btn-sm${historyOpen ? ' feedback-toolbar__btn--active' : ''}`}
               onClick={() => { setHistoryOpen((o) => !o); setSourcesOpen(false); setManualFallbackOpen(false); }}
             >
-              History{history.length > 0 ? ` (${history.length})` : ''}
+              History
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getProject, saveSocialProfilesToProject } from '@/lib/storage';
+import { dedupeSourceProfiles } from '@/lib/sourceProfiles';
 import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
 
 export async function GET(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   const role = await verifyTeamAccess(teamId, session.user.id);
   if (!role) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
-  const project = await getProject(projectId, teamId);
+  const project = await getProject(projectId, teamId, session.user.id);
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   return NextResponse.json({ profiles: project.socialProfiles ?? [] });
@@ -35,7 +36,15 @@ export async function POST(request: NextRequest) {
   const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
   if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
-  const saved = await saveSocialProfilesToProject(projectId, profiles, teamId);
+  const project = await getProject(projectId, teamId, session.user.id);
+  if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+
+  const normalizedProfiles = dedupeSourceProfiles(profiles);
+  if (profiles.length > 0 && normalizedProfiles.length === 0) {
+    return NextResponse.json({ error: 'At least one valid public URL is required' }, { status: 400 });
+  }
+
+  const saved = await saveSocialProfilesToProject(projectId, normalizedProfiles, teamId);
   if (!saved) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   return NextResponse.json({ ok: true });
@@ -52,7 +61,7 @@ export async function DELETE(request: NextRequest) {
   const hasWrite = await verifyTeamWriteAccess(teamId, session.user.id);
   if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
-  const project = await getProject(projectId, teamId);
+  const project = await getProject(projectId, teamId, session.user.id);
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 
   const filteredProfiles = (project.socialProfiles ?? []).filter((p) => p.url !== url);

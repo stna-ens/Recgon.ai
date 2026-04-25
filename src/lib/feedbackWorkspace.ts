@@ -35,6 +35,7 @@ const README_FILENAMES = [
 const URL_RE = /https?:\/\/[^\s<>()"'`]+/g;
 const IGNORE_DISCOVERY_HOSTS = ['github.com'];
 const NOISE_RE = /(privacy|terms|cookies|sign in|log in|follow|share|menu|pricing|features|download|get started|contact us|skip to content|copyright|install app|join now|try for free|open app|subscribe)/i;
+const SCRAPE_CHROME_RE = /(if playback doesn't begin shortly|an error occurred while retrieving sharing information|we're sorry, but you do not have access to this page|that's all we know|enable javascript|disable any ad blockers|try restarting your device|watch later|copy link|more options|transcript|captions)/i;
 const FEEDBACK_SIGNAL_RE = /(love|like|enjoy|great|amazing|helpful|useful|intuitive|wish|please|need|want|can you|would be great|issue|bug|crash|broken|problem|slow|confusing|difficult|hate|frustrat|recommend|review|rating|stars?|improve|support)/i;
 const PRODUCT_SIGNAL_RE = /\b(app|product|tool|site|platform|feature|support|team|onboarding|search|upload|login|export|dashboard|workflow|experience|ui|ux)\b/i;
 
@@ -133,6 +134,7 @@ function scoreSegment(segment: string, source: SourceProfile): number {
   const words = segment.split(/\s+/).length;
 
   if (segment.length < 18 || segment.length > 280 || words < 4) return -10;
+  if (SCRAPE_CHROME_RE.test(segment)) return -10;
 
   let score = 0;
 

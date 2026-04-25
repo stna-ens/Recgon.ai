@@ -25,10 +25,10 @@ interface SourceDescriptor {
 }
 
 const SOURCE_DESCRIPTORS: SourceDescriptor[] = [
-  { label: 'Twitter / X', category: 'social', marketingEligible: true, availability: 'supported', domains: ['x.com', 'twitter.com'] },
+  { label: 'Twitter / X', category: 'social', marketingEligible: true, availability: 'coming_soon', domains: ['x.com', 'twitter.com'] },
   { label: 'Instagram', category: 'social', marketingEligible: true, availability: 'coming_soon', domains: ['instagram.com'] },
   { label: 'TikTok', category: 'social', marketingEligible: true, availability: 'coming_soon', domains: ['tiktok.com'] },
-  { label: 'YouTube', category: 'social', marketingEligible: true, availability: 'supported', domains: ['youtube.com', 'youtu.be'] },
+  { label: 'YouTube', category: 'social', marketingEligible: true, availability: 'coming_soon', domains: ['youtube.com', 'youtu.be'] },
   { label: 'Reddit', category: 'social', marketingEligible: true, availability: 'supported', domains: ['reddit.com'] },
   { label: 'LinkedIn', category: 'social', marketingEligible: true, availability: 'blocked', domains: ['linkedin.com'] },
   { label: 'Facebook', category: 'social', marketingEligible: true, availability: 'blocked', domains: ['facebook.com', 'fb.com'] },
@@ -76,6 +76,7 @@ export function sanitizeUrl(raw: string): string | null {
   try {
     const url = new URL(input);
     if (!['http:', 'https:'].includes(url.protocol)) return null;
+    if (!url.hostname.includes('.')) return null;
     url.hash = '';
     return url.toString().replace(/\/$/, '');
   } catch {

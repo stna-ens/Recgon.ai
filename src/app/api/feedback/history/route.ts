@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const role = await verifyTeamAccess(teamId, session.user.id);
   if (!role) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
-  const projects = await getAllProjects(teamId);
+  const projects = await getAllProjects(teamId, session.user.id);
   const history = projects.flatMap((p) =>
     (p.feedbackAnalyses ?? []).map((a) => ({
       ...a,
