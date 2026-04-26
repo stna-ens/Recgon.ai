@@ -404,11 +404,11 @@ body {
 }
 
 .team-switcher-menu {
-  background: rgba(12, 12, 14, 0.96) !important;
+  background: var(--modal-bg) !important;
   border-color: rgba(var(--signature-rgb), 0.18) !important;
   box-shadow:
-    0 18px 48px rgba(0, 0, 0, 0.46),
-    0 0 0 1px rgba(255, 255, 255, 0.04),
+    var(--shadow-deep),
+    var(--edge-rim),
     0 0 24px rgba(var(--signature-rgb), 0.08) !important;
   transform-origin: top right;
   animation: teamMenuIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -439,7 +439,7 @@ body {
 }
 
 .team-switcher-section-label {
-  color: rgba(255, 255, 255, 0.68) !important;
+  color: var(--txt-muted) !important;
 }
 
 .team-switcher-section-label:hover {
@@ -448,21 +448,21 @@ body {
 }
 
 .team-switcher-team-row {
-  color: rgba(255, 255, 255, 0.92) !important;
+  color: var(--txt-pure) !important;
 }
 
 .team-switcher-team-row:hover,
 .team-switcher-team-row:focus-visible {
   background: rgba(var(--signature-rgb), 0.13) !important;
-  color: #fff !important;
+  color: var(--txt-pure) !important;
   transform: translateX(2px);
   box-shadow: inset 2px 0 0 rgba(var(--signature-rgb), 0.72);
   outline: none;
 }
 
 .team-switcher-manage-link {
-  color: rgba(255, 255, 255, 0.88) !important;
-  background: rgba(255, 255, 255, 0.02);
+  color: var(--txt-pure) !important;
+  background: var(--btn-secondary-bg);
 }
 
 .team-switcher-manage-link:hover,

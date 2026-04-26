@@ -166,7 +166,7 @@ export default function OverviewPage() {
     return (
       <div>
         <div className="page-header" style={{ marginBottom: 40 }}>
-          <h2>Overview</h2>
+          <h2><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>overview</h2>
           <p>{currentTeam?.name ? <strong>{currentTeam.name}</strong> : 'Loading…'}</p>
         </div>
         <div className="glass-card" style={{ textAlign: 'center', padding: '64px 32px' }}>
@@ -206,7 +206,7 @@ export default function OverviewPage() {
       {/* Header */}
       <div className="page-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32 }}>
         <div>
-          <h2>Overview</h2>
+          <h2><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>overview</h2>
           <p>
             {currentTeam?.name
               ? <><strong>{currentTeam.name}</strong> · {projects.length} project{projects.length !== 1 ? 's' : ''}</>
