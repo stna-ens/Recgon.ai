@@ -403,6 +403,77 @@ body {
     0 0 18px rgba(var(--signature-rgb), 0.12) !important;
 }
 
+.team-switcher-menu {
+  background: rgba(12, 12, 14, 0.96) !important;
+  border-color: rgba(var(--signature-rgb), 0.18) !important;
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.46),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 24px rgba(var(--signature-rgb), 0.08) !important;
+  transform-origin: top right;
+  animation: teamMenuIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes teamMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.team-switcher-section-label,
+.team-switcher-team-row,
+.team-switcher-manage-link {
+  transition:
+    color 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.16s ease !important;
+}
+
+.team-switcher-section-label {
+  color: rgba(255, 255, 255, 0.68) !important;
+}
+
+.team-switcher-section-label:hover {
+  color: var(--signature) !important;
+  background: rgba(var(--signature-rgb), 0.08);
+}
+
+.team-switcher-team-row {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.team-switcher-team-row:hover,
+.team-switcher-team-row:focus-visible {
+  background: rgba(var(--signature-rgb), 0.13) !important;
+  color: #fff !important;
+  transform: translateX(2px);
+  box-shadow: inset 2px 0 0 rgba(var(--signature-rgb), 0.72);
+  outline: none;
+}
+
+.team-switcher-manage-link {
+  color: rgba(255, 255, 255, 0.88) !important;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.team-switcher-manage-link:hover,
+.team-switcher-manage-link:focus-visible {
+  color: var(--signature) !important;
+  background: rgba(var(--signature-rgb), 0.12) !important;
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(var(--signature-rgb), 0.18);
+  outline: none;
+}
+
 .account-avatar-link:hover {
   transform: translateY(-1px) scale(1.08) translateZ(0);
   border-color: rgba(var(--signature-rgb), 0.52) !important;

@@ -72,7 +72,7 @@ export default function TeamSwitcher() {
       </button>
 
       {open && (
-        <div style={{
+        <div className="team-switcher-menu" style={{
           position: 'absolute',
           top: '100%',
           right: 0,
@@ -85,7 +85,7 @@ export default function TeamSwitcher() {
           zIndex: 1000,
           boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
         }}>
-          <div style={{
+          <div className="team-switcher-section-label" style={{
             padding: '8px 12px 4px',
             fontSize: '0.65rem',
             fontWeight: 600,
@@ -98,6 +98,7 @@ export default function TeamSwitcher() {
           {teams.map((team) => (
             <button
               key={team.id}
+              className="team-switcher-team-row"
               onClick={() => {
                 setCurrentTeam(team);
                 setOpen(false);
@@ -148,6 +149,7 @@ export default function TeamSwitcher() {
           ))}
           <Link
             href="/teams"
+            className="team-switcher-manage-link"
             onClick={() => setOpen(false)}
             style={{
               display: 'flex',
