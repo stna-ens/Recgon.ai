@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
+import RecgonAdminPanel from '@/components/recgon/RecgonAdminPanel';
 
 interface Member {
   teamId: string;
@@ -64,6 +65,117 @@ function relativeExpiry(iso: string): string {
   const ms = new Date(iso).getTime() - Date.now();
   const hours = Math.round(ms / 3_600_000);
   return hours < 24 ? `${hours}h left` : `${Math.round(hours / 24)}d left`;
+}
+
+// ── Dominant-color extraction ────────────────────────────────────────────────
+// Loads an image file into a small canvas, samples pixels, buckets them into
+// HSL bins (skipping near-white/near-black/low-saturation), and returns the
+// most populous bin as a hex color. Pure client-side, no deps.
+function extractDominantColor(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const SIZE = 48; // tiny canvas — plenty for a dominant-color read
+        const canvas = document.createElement('canvas');
+        canvas.width = SIZE;
+        canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(null);
+        ctx.drawImage(img, 0, 0, SIZE, SIZE);
+        const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
+
+        // Bin by hue (12 buckets) × lightness (3 buckets), weighted by saturation.
+        const bins = new Map<string, { r: number; g: number; b: number; weight: number }>();
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+          if (a < 200) continue;
+          const { h, s, l } = rgbToHsl(r, g, b);
+          // Skip near-white, near-black, or washed-out pixels.
+          if (l > 0.92 || l < 0.08 || s < 0.18) continue;
+          const hueBin = Math.floor((h * 12) % 12);
+          const lightBin = l < 0.4 ? 0 : l < 0.7 ? 1 : 2;
+          const key = `${hueBin}-${lightBin}`;
+          const cur = bins.get(key) ?? { r: 0, g: 0, b: 0, weight: 0 };
+          const w = s; // saturation = vividness, weight populous + vivid bins higher
+          cur.r += r * w;
+          cur.g += g * w;
+          cur.b += b * w;
+          cur.weight += w;
+          bins.set(key, cur);
+        }
+
+        if (bins.size === 0) return resolve(null);
+        // Pick the bin with the highest accumulated weight.
+        let best: { r: number; g: number; b: number; weight: number } | null = null;
+        for (const v of bins.values()) {
+          if (!best || v.weight > best.weight) best = v;
+        }
+        if (!best || best.weight === 0) return resolve(null);
+        const r = Math.round(best.r / best.weight);
+        const g = Math.round(best.g / best.weight);
+        const b = Math.round(best.b / best.weight);
+        // Nudge mid-light colors toward more vivid territory so they read well as accents.
+        const { h, s, l } = rgbToHsl(r, g, b);
+        const adjusted = hslToRgb(h, Math.min(1, Math.max(s, 0.5)), Math.min(0.62, Math.max(l, 0.42)));
+        resolve(rgbToHex(adjusted.r, adjusted.g, adjusted.b));
+      } catch {
+        resolve(null);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  switch (max) {
+    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+    case g: h = (b - r) / d + 2; break;
+    case b: h = (r - g) / d + 4; break;
+  }
+  return { h: h / 6, s, l };
+}
+
+function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+  if (s === 0) {
+    const v = Math.round(l * 255);
+    return { r: v, g: v, b: v };
+  }
+  const hue2rgb = (p: number, q: number, t: number) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return {
+    r: Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+    g: Math.round(hue2rgb(p, q, h) * 255),
+    b: Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
+  };
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const h = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${h(r)}${h(g)}${h(b)}`;
 }
 
 // ── Compact inline role dropdown ─────────────────────────────────────────────
@@ -280,12 +392,25 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
     if (!file) return;
     e.target.value = '';
     setAvatarUploading(true);
+
+    // Kick off dominant-color extraction in parallel with the upload.
+    const colorPromise = extractDominantColor(file).catch(() => null);
+
     const formData = new FormData();
     formData.append('file', file);
     const res = await fetch(`/api/teams/${id}/avatar`, { method: 'POST', body: formData });
     if (res.ok) {
       const d = await res.json();
-      setTeam((p) => p ? { ...p, avatarUrl: d.avatarUrl } : p);
+      const dominantColor = await colorPromise;
+      setTeam((p) => p ? { ...p, avatarUrl: d.avatarUrl, ...(dominantColor ? { avatarColor: dominantColor } : {}) } : p);
+      // Persist the derived color so other pages (sidebar, /teams list, etc.) get it too.
+      if (dominantColor) {
+        fetch(`/api/teams/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatarColor: dominantColor }),
+        }).catch(() => {});
+      }
       await refreshTeams();
       addToast('Avatar updated', 'success');
     } else {
@@ -412,9 +537,24 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '3rem 0', color: 'var(--txt-muted)', fontSize: '0.9rem' }}>
-      <div style={{ width: 16, height: 16, border: '2px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      Loading team…
+    <div className="tdp-loading">
+      <div className="tdp-loading-spinner" />
+      <span>Loading team…</span>
+      <style>{`
+        .tdp-loading {
+          display: flex; align-items: center; gap: 12px;
+          padding: 48px 0; color: var(--txt-muted); font-size: 14px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.5px;
+        }
+        .tdp-loading-spinner {
+          width: 14px; height: 14px;
+          border: 2px solid rgba(var(--signature-rgb), 0.18);
+          border-top-color: var(--signature);
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
   if (!team) return <p style={{ color: 'var(--danger)', padding: '2rem 0' }}>Team not found</p>;
@@ -424,72 +564,600 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
   const avatarColor = team.avatarColor ?? defaultColor(team.name);
   const avatarUrl = team.avatarUrl;
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '0.55rem 0.75rem',
-    background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)',
-    borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.9rem',
-    outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
-  };
-
-  const ghostBtn: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer',
-    color: 'var(--txt-muted)', padding: '2px', borderRadius: 4,
-    display: 'inline-flex', alignItems: 'center', opacity: 0.55,
-  };
-
-  const sectionLabel: React.CSSProperties = {
-    fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em',
-    textTransform: 'uppercase', color: 'var(--txt-muted)', margin: '0 0 0.6rem',
-  };
-
   return (
-    <div style={{ maxWidth: 580 }}>
+    <div className="tdp-page" style={{ maxWidth: 960 }}>
+      <style>{`
+        @keyframes tdpSurfaceIn {
+          from { opacity: 0; transform: translateY(10px); filter: blur(6px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        .tdp-page > * { animation: tdpSurfaceIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .tdp-page > *:nth-child(2) { animation-delay: 0.05s; }
+        .tdp-page > *:nth-child(3) { animation-delay: 0.10s; }
+
+        .tdp-shell {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          margin-top: 22px;
+        }
+
+        .tdp-section {
+          padding: 0;
+          overflow: visible;
+        }
+        .tdp-section-head {
+          padding: 22px 26px 14px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+        }
+        .tdp-section-head .recgon-label { margin-bottom: 4px; }
+        .tdp-section-title {
+          margin: 0;
+          font-size: 17px;
+          font-weight: 600;
+          letter-spacing: -0.3px;
+          color: var(--txt-pure);
+        }
+        .tdp-section-count {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px;
+          letter-spacing: 0.8px;
+          color: var(--txt-muted);
+          padding: 4px 9px;
+          background: rgba(0,0,0,0.04);
+          border: 1px solid var(--btn-secondary-border);
+          border-radius: 999px;
+        }
+
+        /* === HERO === */
+        .tdp-hero {
+          padding: 28px 30px;
+          display: flex;
+          gap: 22px;
+          align-items: flex-start;
+          position: relative;
+          overflow: hidden;
+        }
+        .tdp-hero::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 60px;
+          width: 280px;
+          height: 280px;
+          transform: translate(-50%, -50%);
+          background: radial-gradient(circle, var(--tdp-accent, rgba(var(--signature-rgb), 0.22)) 0%, transparent 65%);
+          z-index: 0;
+          pointer-events: none;
+          opacity: 0.9;
+          filter: blur(2px);
+        }
+        .tdp-hero > * { position: relative; z-index: 1; }
+
+        .tdp-avatar-wrap {
+          position: relative;
+          flex-shrink: 0;
+        }
+        .tdp-avatar-btn {
+          position: relative;
+          width: 88px;
+          height: 88px;
+          border-radius: 22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Inter', sans-serif;
+          font-weight: 800;
+          font-size: 32px;
+          color: #fff;
+          letter-spacing: -1.2px;
+          border: none;
+          font-family: inherit;
+          overflow: hidden;
+          box-shadow:
+            0 12px 30px -8px var(--tdp-avatar-glow, rgba(0,0,0,0.25)),
+            inset 0 1px 0 rgba(255,255,255,0.22),
+            inset 0 -3px 8px rgba(0,0,0,0.12),
+            0 0 0 1px rgba(255,255,255,0.08);
+          transition: box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .tdp-avatar-btn[data-clickable="1"]:hover {
+          box-shadow:
+            0 0 0 5px rgba(var(--signature-rgb), 0.20),
+            0 0 32px 4px rgba(var(--signature-rgb), 0.55),
+            0 14px 38px -8px rgba(var(--signature-rgb), 0.45),
+            inset 0 1px 0 rgba(255,255,255,0.28),
+            inset 0 -3px 8px rgba(0,0,0,0.12),
+            0 0 0 1px rgba(255,255,255,0.08);
+        }
+        .tdp-avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .tdp-avatar-overlay {
+          position: absolute; inset: 0;
+          background: rgba(0,0,0,0.55);
+          backdrop-filter: blur(2px);
+          display: flex; align-items: center; justify-content: center;
+          opacity: 0;
+          transition: opacity 0.18s;
+          color: #fff;
+          border-radius: inherit;
+        }
+        .tdp-avatar-btn[data-clickable="1"]:hover .tdp-avatar-overlay { opacity: 1; }
+
+        .tdp-color-badge {
+          position: absolute;
+          bottom: -4px; right: -4px;
+          width: 26px; height: 26px;
+          border-radius: 50%;
+          border: 3px solid var(--bg-deep);
+          cursor: pointer;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          box-shadow: 0 4px 10px -2px rgba(0,0,0,0.22);
+          transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .tdp-color-badge:hover { transform: rotate(45deg) scale(1.1); }
+
+        .tdp-color-pop {
+          position: absolute;
+          top: 100%; left: 0;
+          margin-top: 14px;
+          z-index: 9999;
+          padding: 12px;
+          background: var(--glass-substrate);
+          backdrop-filter: blur(40px) saturate(180%);
+          -webkit-backdrop-filter: blur(40px) saturate(180%);
+          border: 1px solid rgba(var(--signature-rgb), 0.18);
+          border-radius: 16px;
+          box-shadow: 0 12px 36px -8px rgba(0,0,0,0.3);
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 8px;
+          animation: tdpSurfaceIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .tdp-color-swatch {
+          width: 32px; height: 32px;
+          border-radius: 10px;
+          border: none;
+          cursor: pointer;
+          transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -2px 4px rgba(0,0,0,0.1);
+        }
+        .tdp-color-swatch:hover { transform: scale(1.12) rotate(-4deg); }
+        .tdp-color-swatch[data-active="1"] {
+          box-shadow: 0 0 0 2px var(--bg-deep), 0 0 0 4px var(--txt-pure), inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+
+        .tdp-id { flex: 1; min-width: 0; padding-top: 2px; }
+        .tdp-name-row {
+          display: flex; align-items: center; gap: 8px;
+          margin-bottom: 6px; flex-wrap: wrap;
+        }
+        .tdp-name {
+          margin: 0;
+          font-size: 30px;
+          font-weight: 600;
+          letter-spacing: -1.1px;
+          line-height: 1.05;
+          color: var(--txt-pure);
+        }
+        .tdp-edit-btn {
+          background: none;
+          border: none;
+          color: var(--txt-faint);
+          padding: 6px;
+          border-radius: 8px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          opacity: 0;
+          transition: opacity 0.18s, background 0.15s, color 0.15s;
+        }
+        .tdp-name-row:hover .tdp-edit-btn,
+        .tdp-desc-row:hover .tdp-edit-btn { opacity: 1; }
+        .tdp-edit-btn:hover {
+          background: rgba(var(--signature-rgb), 0.10);
+          color: var(--signature);
+        }
+
+        .tdp-desc-row {
+          display: flex; align-items: center; gap: 6px;
+          margin-bottom: 14px;
+        }
+        .tdp-desc {
+          font-size: 14px;
+          color: var(--txt-muted);
+          line-height: 1.5;
+          max-width: 540px;
+        }
+        .tdp-desc[data-empty="1"] { font-style: italic; opacity: 0.55; }
+
+        .tdp-meta-row {
+          display: inline-flex; align-items: center; gap: 8px;
+          flex-wrap: wrap;
+        }
+        .tdp-slug {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px;
+          color: var(--txt-muted);
+          background: rgba(0,0,0,0.04);
+          border: 1px solid var(--btn-secondary-border);
+          padding: 3px 9px;
+          border-radius: 7px;
+          letter-spacing: 0.3px;
+        }
+        .tdp-slug::before { content: '/'; opacity: 0.55; margin-right: 1px; }
+
+        .tdp-role-pill {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 3px 10px;
+          border-radius: 999px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+        }
+        .tdp-role-pill .dot {
+          width: 5px; height: 5px; border-radius: 50%;
+          background: currentColor;
+          box-shadow: 0 0 6px currentColor;
+        }
+
+        /* === EDIT FORMS (rename / desc) === */
+        .tdp-edit-form {
+          display: flex; gap: 8px; align-items: center;
+          margin-bottom: 6px;
+          flex: 1;
+        }
+        .tdp-edit-input {
+          flex: 1;
+          padding: 8px 12px;
+          background: var(--glass-hover);
+          border: 1px solid rgba(var(--signature-rgb), 0.32);
+          border-radius: 10px;
+          color: var(--txt-pure);
+          font-family: inherit;
+          outline: none;
+          box-shadow: 0 0 0 4px rgba(var(--signature-rgb), 0.10);
+        }
+        .tdp-edit-input.is-name { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+        .tdp-edit-input.is-desc { font-size: 14px; }
+        .tdp-edit-save {
+          padding: 8px 14px;
+          background: var(--btn-primary-bg);
+          color: var(--btn-primary-txt);
+          border: none;
+          border-radius: 10px;
+          font-weight: 600;
+          font-size: 12px;
+          cursor: pointer;
+          font-family: inherit;
+        }
+        .tdp-edit-cancel {
+          padding: 8px 12px;
+          background: none;
+          border: 1px solid var(--btn-secondary-border);
+          border-radius: 10px;
+          color: var(--txt-muted);
+          font-size: 12px;
+          cursor: pointer;
+          font-family: inherit;
+        }
+
+        /* === MEMBERS === */
+        .tdp-members-list {
+          display: flex;
+          flex-direction: column;
+          padding: 0 14px 18px;
+        }
+        .tdp-member-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 14px;
+          border-radius: 14px;
+          transition: background 0.15s;
+        }
+        .tdp-member-row:hover { background: rgba(var(--signature-rgb), 0.04); }
+        .tdp-member-row + .tdp-member-row { border-top: 1px solid var(--btn-secondary-border); }
+        .tdp-member-avatar {
+          width: 40px; height: 40px;
+          border-radius: 12px;
+          flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center;
+          font-weight: 700;
+          font-size: 13px;
+          color: #fff;
+          letter-spacing: -0.3px;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -2px 4px rgba(0,0,0,0.1);
+          overflow: hidden;
+        }
+        .tdp-member-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .tdp-member-body { flex: 1; min-width: 0; }
+        .tdp-member-name {
+          margin: 0;
+          font-weight: 600;
+          font-size: 14px;
+          color: var(--txt-pure);
+          letter-spacing: -0.1px;
+        }
+        .tdp-member-email {
+          margin: 2px 0 0;
+          font-size: 12px;
+          color: var(--txt-muted);
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          letter-spacing: 0.1px;
+        }
+        .tdp-member-actions {
+          display: flex; align-items: center; gap: 8px;
+          flex-shrink: 0;
+        }
+        .tdp-static-role {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+          padding: 4px 10px;
+          border-radius: 999px;
+          background: rgba(0,0,0,0.04);
+          color: var(--txt-muted);
+          border: 1px solid var(--btn-secondary-border);
+        }
+        .tdp-icon-danger-btn {
+          background: none;
+          border: 1px solid transparent;
+          color: var(--txt-faint);
+          padding: 7px;
+          border-radius: 9px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .tdp-icon-danger-btn:hover {
+          background: rgba(255, 59, 48, 0.08);
+          color: var(--danger);
+          border-color: rgba(255, 59, 48, 0.22);
+        }
+        .tdp-confirm-strip {
+          margin: 8px 0 0 54px;
+          padding: 10px 12px;
+          background: rgba(255, 59, 48, 0.06);
+          border: 1px solid rgba(255, 59, 48, 0.18);
+          border-radius: 12px;
+          display: flex; align-items: center; gap: 8px;
+          font-size: 13px;
+        }
+        .tdp-confirm-strip .msg { flex: 1; color: var(--txt); }
+        .tdp-btn-danger {
+          padding: 6px 12px;
+          background: var(--danger);
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 12px;
+          cursor: pointer;
+          font-family: inherit;
+        }
+        .tdp-btn-ghost {
+          padding: 6px 11px;
+          background: none;
+          border: 1px solid var(--btn-secondary-border);
+          border-radius: 8px;
+          color: var(--txt-muted);
+          font-size: 12px;
+          cursor: pointer;
+          font-family: inherit;
+        }
+
+        /* === INVITE === */
+        .tdp-invite-body { padding: 0 26px 20px; }
+        .tdp-invite-blurb {
+          margin: 0 0 14px;
+          font-size: 13px;
+          color: var(--txt-muted);
+          line-height: 1.55;
+        }
+        .tdp-invite-controls {
+          display: flex; gap: 10px; align-items: center;
+        }
+        .tdp-invite-submit {
+          padding: 11px 18px;
+          background: var(--btn-primary-bg);
+          color: var(--btn-primary-txt);
+          border: none;
+          border-radius: 10px;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          white-space: nowrap;
+          font-family: inherit;
+          transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .tdp-invite-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -4px rgba(0,0,0,0.25); }
+        .tdp-invite-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .tdp-link-display {
+          margin-top: 14px;
+          padding: 12px 14px;
+          background: linear-gradient(135deg, rgba(var(--signature-rgb), 0.10), rgba(var(--signature-rgb), 0.04));
+          border: 1px solid rgba(var(--signature-rgb), 0.28);
+          border-radius: 12px;
+          display: flex; align-items: center; gap: 10px;
+          animation: tdpSurfaceIn 0.35s cubic-bezier(0.16,1,0.3,1) both;
+          position: relative;
+        }
+        .tdp-link-display::before {
+          content: '✓ link generated';
+          position: absolute;
+          top: -8px; left: 12px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.8px;
+          text-transform: uppercase;
+          color: var(--signature);
+          background: var(--bg-deep);
+          padding: 0 6px;
+        }
+        .tdp-link-code {
+          flex: 1;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 12px;
+          color: var(--signature);
+          word-break: break-all;
+          letter-spacing: 0.1px;
+        }
+        .tdp-copy-btn {
+          flex-shrink: 0;
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 6px 11px;
+          background: var(--btn-secondary-bg);
+          border: 1px solid var(--btn-secondary-border);
+          border-radius: 8px;
+          color: var(--txt);
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: inherit;
+          transition: background 0.15s;
+        }
+        .tdp-copy-btn:hover { background: var(--btn-secondary-hover); }
+
+        .tdp-pending {
+          margin: 18px 26px 0;
+          padding-top: 16px;
+          border-top: 1px dashed var(--btn-secondary-border);
+        }
+        .tdp-pending-list {
+          display: flex; flex-direction: column; gap: 6px;
+          margin-top: 8px;
+        }
+        .tdp-pending-row {
+          padding: 10px 14px;
+          background: rgba(0,0,0,0.025);
+          border: 1px solid var(--btn-secondary-border);
+          border-radius: 10px;
+        }
+        .tdp-pending-head {
+          display: flex; align-items: center; gap: 10px;
+        }
+        .tdp-pending-label {
+          flex: 1;
+          font-size: 13px;
+          color: var(--txt-pure);
+          display: inline-flex; align-items: center; gap: 8px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          letter-spacing: 0.1px;
+        }
+        .tdp-pending-label svg { color: var(--txt-faint); }
+        .tdp-pending-meta {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 10px;
+          color: var(--txt-muted);
+          letter-spacing: 0.5px;
+        }
+        .tdp-revoke-link {
+          background: none;
+          border: none;
+          color: var(--danger);
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 600;
+          padding: 4px 8px;
+          border-radius: 7px;
+          font-family: inherit;
+          transition: background 0.15s;
+        }
+        .tdp-revoke-link:hover { background: rgba(255, 59, 48, 0.08); }
+
+        /* === DANGER / LEAVE === */
+        .tdp-zone {
+          padding: 18px 24px;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 16px;
+        }
+        .tdp-zone-copy { margin: 0; font-size: 13px; color: var(--txt-muted); }
+        .tdp-leave-card {
+          background: var(--bg-content) padding-box,
+            linear-gradient(135deg,
+              rgba(255, 159, 10, 0.28) 0%,
+              rgba(255, 255, 255, 0.04) 50%,
+              rgba(255, 159, 10, 0.10) 100%) border-box;
+        }
+        .tdp-danger-card {
+          background: var(--bg-content) padding-box,
+            linear-gradient(135deg,
+              rgba(255, 59, 48, 0.32) 0%,
+              rgba(255, 255, 255, 0.04) 50%,
+              rgba(255, 59, 48, 0.12) 100%) border-box;
+        }
+        .tdp-zone-action-leave {
+          padding: 9px 16px;
+          background: none;
+          color: var(--warning);
+          border: 1px solid rgba(255, 159, 10, 0.45);
+          border-radius: 10px;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          font-family: inherit;
+          transition: background 0.15s;
+        }
+        .tdp-zone-action-leave:hover { background: rgba(255, 159, 10, 0.08); }
+        .tdp-zone-action-delete {
+          padding: 9px 16px;
+          background: var(--danger);
+          color: #fff;
+          border: none;
+          border-radius: 10px;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          font-family: inherit;
+          transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .tdp-zone-action-delete:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 20px -4px rgba(255, 59, 48, 0.4);
+        }
+      `}</style>
 
       {/* Hidden file input for avatar upload */}
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload}
         style={{ display: 'none' }} />
 
-      {/* ── Header ── */}
-      <div style={{
-        display: 'flex', gap: '1.25rem', alignItems: 'flex-start',
-        marginBottom: '1.75rem',
-      }}>
-
-        {/* Avatar with photo upload + color picker */}
-        <div ref={colorPickerRef} style={{ position: 'relative', flexShrink: 0 }}>
-          {/* Main avatar button — click to upload photo (owner only) */}
+      {/* ── Page header: team identity (banner) ── */}
+      <section
+        className="glass-card tdp-section tdp-hero"
+        style={{ ['--tdp-accent' as string]: `${avatarColor}40`, ['--tdp-avatar-glow' as string]: `${avatarColor}99`, marginBottom: 18 }}
+      >
+        <div ref={colorPickerRef} className="tdp-avatar-wrap">
           <button
             type="button"
             onClick={() => isOwner && fileInputRef.current?.click()}
             title={isOwner ? 'Upload team photo' : undefined}
             disabled={avatarUploading}
+            data-clickable={isOwner ? '1' : undefined}
+            className="tdp-avatar-btn"
             style={{
-              position: 'relative', width: 64, height: 64, borderRadius: 16,
-              background: avatarUrl ? 'transparent' : avatarColor,
-              boxShadow: avatarUrl ? 'none' : `0 4px 14px ${avatarColor}55`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 800, fontSize: '1.35rem', color: '#fff', letterSpacing: '-1px',
-              border: 'none', cursor: isOwner ? 'pointer' : 'default',
-              fontFamily: 'inherit', overflow: 'hidden',
+              background: avatarUrl ? 'transparent' : `linear-gradient(135deg, ${avatarColor}, color-mix(in srgb, ${avatarColor} 70%, #000))`,
               opacity: avatarUploading ? 0.6 : 1,
+              cursor: isOwner ? 'pointer' : 'default',
             }}
           >
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={team.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-            ) : (
-              initials(team.name)
-            )}
-            {/* Camera overlay on hover */}
+            {avatarUrl ? <img src={avatarUrl} alt={team.name} /> : initials(team.name)}
             {isOwner && (
-              <div style={{
-                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                opacity: 0, transition: 'opacity 0.15s',
-                borderRadius: 'inherit',
-              }}
-              className="avatar-hover-overlay">
-                <svg width="20" height="20" fill="none" stroke="white" strokeWidth={2} viewBox="0 0 24 24">
+              <div className="tdp-avatar-overlay">
+                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                   <circle cx="12" cy="13" r="4"/>
                 </svg>
@@ -497,139 +1165,150 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
             )}
           </button>
 
-          {/* Color picker badge (owner only, shown when no photo) */}
           {isOwner && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setShowColorPicker((v) => !v); }}
               title="Change color"
-              style={{
-                position: 'absolute', bottom: -3, right: -3, width: 20, height: 20,
-                background: avatarColor, border: '2px solid var(--bg-deep)',
-                borderRadius: '50%', cursor: 'pointer', padding: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
+              className="tdp-color-badge"
+              style={{ background: avatarColor }}
             >
-              <svg width="9" height="9" fill="none" stroke="white" strokeWidth={2.5} viewBox="0 0 24 24">
+              <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="3" /><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
               </svg>
             </button>
           )}
 
-          {/* Color palette popup */}
           {showColorPicker && (
-            <div style={{
-              position: 'absolute', top: '100%', left: 0, marginTop: 10, zIndex: 9999,
-              background: 'var(--glass-substrate)', backdropFilter: 'blur(30px)',
-              WebkitBackdropFilter: 'blur(30px)',
-              border: '1px solid var(--border)', borderRadius: 12,
-              padding: '0.75rem', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-              display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6,
-            }}>
+            <div className="tdp-color-pop">
               {AVATAR_COLORS.map((c) => (
-                <button key={c} type="button" onClick={() => handlePickColor(c)} style={{
-                  width: 28, height: 28, borderRadius: 7, background: c, border: 'none',
-                  cursor: 'pointer', outline: c === avatarColor ? `2px solid var(--txt-pure)` : 'none',
-                  outlineOffset: 2,
-                }} />
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => handlePickColor(c)}
+                  className="tdp-color-swatch"
+                  data-active={c === avatarColor ? '1' : undefined}
+                  style={{ background: c }}
+                />
               ))}
             </div>
           )}
         </div>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Name */}
+        <div className="tdp-id">
+          <span className="recgon-label" style={{ marginBottom: 8 }}>team workspace</span>
+
           {renaming ? (
-            <form onSubmit={handleRename} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.3rem' }}>
-              <input autoFocus value={renameValue} onChange={(e) => setRenameValue(e.target.value)}
-                required minLength={2}
-                style={{ ...inputStyle, flex: 1, fontSize: '1.05rem', fontWeight: 700, padding: '0.3rem 0.5rem', width: 'auto' }} />
-              <button type="submit" disabled={renameLoading} style={{
-                padding: '0.3rem 0.75rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
-                border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer',
-              }}>{renameLoading ? '…' : 'Save'}</button>
-              <button type="button" onClick={() => { setRenaming(false); setRenameValue(team.name); }} style={{
-                padding: '0.3rem 0.6rem', background: 'none', border: '1px solid var(--border)',
-                borderRadius: 'var(--r-sm)', color: 'var(--txt-muted)', fontSize: '0.82rem', cursor: 'pointer',
-              }}>Cancel</button>
+            <form onSubmit={handleRename} className="tdp-edit-form" style={{ marginBottom: 10 }}>
+              <input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                required
+                minLength={2}
+                className="tdp-edit-input is-name"
+              />
+              <button type="submit" disabled={renameLoading} className="tdp-edit-save">
+                {renameLoading ? '…' : 'Save'}
+              </button>
+              <button type="button" onClick={() => { setRenaming(false); setRenameValue(team.name); }} className="tdp-edit-cancel">
+                Cancel
+              </button>
             </form>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.2rem' }}>
-              <h1 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--txt-pure)', letterSpacing: '-0.3px' }}>
-                {team.name}
-              </h1>
+            <div className="tdp-name-row">
+              <h1 className="tdp-name">{team.name}</h1>
               {isOwner && (
-                <button onClick={() => setRenaming(true)} title="Rename" style={ghostBtn}><EditIcon /></button>
+                <button onClick={() => setRenaming(true)} title="Rename team" className="tdp-edit-btn">
+                  <EditIcon size={14} />
+                </button>
               )}
             </div>
           )}
 
-          {/* Description */}
           {editingDesc ? (
-            <form onSubmit={handleSaveDescription} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <input autoFocus value={descValue} onChange={(e) => setDescValue(e.target.value)}
-                maxLength={120} placeholder="Short description…"
-                style={{ ...inputStyle, flex: 1, fontSize: '0.85rem', padding: '0.28rem 0.5rem', width: 'auto' }} />
-              <button type="submit" disabled={descLoading} style={{
-                padding: '0.25rem 0.6rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
-                border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer',
-              }}>{descLoading ? '…' : 'Save'}</button>
-              <button type="button" onClick={() => { setEditingDesc(false); setDescValue(team.description ?? ''); }} style={{
-                padding: '0.25rem 0.5rem', background: 'none', border: '1px solid var(--border)',
-                borderRadius: 'var(--r-sm)', color: 'var(--txt-muted)', fontSize: '0.78rem', cursor: 'pointer',
-              }}>Cancel</button>
+            <form onSubmit={handleSaveDescription} className="tdp-edit-form" style={{ marginBottom: 10 }}>
+              <input
+                autoFocus
+                value={descValue}
+                onChange={(e) => setDescValue(e.target.value)}
+                maxLength={120}
+                placeholder="Short description…"
+                className="tdp-edit-input is-desc"
+              />
+              <button type="submit" disabled={descLoading} className="tdp-edit-save">
+                {descLoading ? '…' : 'Save'}
+              </button>
+              <button type="button" onClick={() => { setEditingDesc(false); setDescValue(team.description ?? ''); }} className="tdp-edit-cancel">
+                Cancel
+              </button>
             </form>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.45rem' }}>
-              <span style={{
-                fontSize: '0.85rem',
-                color: 'var(--txt-muted)',
-                opacity: team.description ? 1 : 0.4,
-                fontStyle: team.description ? 'normal' : 'italic',
-              }}>
-                {team.description || (isOwner ? 'Add a description…' : '')}
+            <div className="tdp-desc-row">
+              <span className="tdp-desc" data-empty={team.description ? undefined : '1'}>
+                {team.description || (isOwner ? 'Add a description…' : 'No description.')}
               </span>
               {isOwner && (
-                <button onClick={() => setEditingDesc(true)} title="Edit description" style={ghostBtn}><EditIcon size={11} /></button>
+                <button onClick={() => setEditingDesc(true)} title="Edit description" className="tdp-edit-btn">
+                  <EditIcon size={12} />
+                </button>
               )}
             </div>
           )}
 
-          {/* Slug + role pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <code style={{
-              fontSize: '0.72rem', color: 'var(--txt-muted)',
-              background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)',
-              padding: '1px 7px', borderRadius: 5,
-            }}>{team.slug}</code>
-            <span style={{
-              fontSize: '0.7rem', fontWeight: 700, padding: '2px 9px', borderRadius: 20,
-              background: `${avatarColor}22`, color: avatarColor,
-              border: `1px solid ${avatarColor}44`,
-            }}>{team.role}</span>
+          <div className="tdp-meta-row">
+            <code className="tdp-slug">{team.slug}</code>
+            <span
+              className="tdp-role-pill"
+              style={{
+                background: 'rgba(var(--signature-rgb), 0.12)',
+                color: 'var(--signature)',
+                border: '1px solid rgba(var(--signature-rgb), 0.38)',
+              }}
+            >
+              <span className="dot" />
+              {team.role}
+            </span>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── Members ── */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <p style={sectionLabel}>Members · {members.length}</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+      {/* ── Recgon Admin (dispatcher + roster + tasks) ── */}
+      <RecgonAdminPanel teamId={id} />
+
+      {/* ── Team management shell (people, invites, danger) ── */}
+      <div className="tdp-shell">
+
+      {/* ── People ── */}
+      <section className="glass-card tdp-section">
+        <div className="tdp-section-head">
+          <div>
+            <span className="recgon-label">people</span>
+            <h2 className="tdp-section-title">Team access</h2>
+          </div>
+          <span className="tdp-section-count">{members.length.toString().padStart(2, '0')} active</span>
+        </div>
+        <div className="tdp-members-list">
           {members.map((m) => {
             const displayName = m.nickname || m.email?.split('@')[0] || 'Unknown';
             const isConfirmingRemove = pendingConfirm?.type === 'remove' && pendingConfirm.userId === m.userId;
+            const memberColor = defaultColor(displayName);
             return (
-              <div key={m.userId} style={{
-                padding: '0.7rem 1rem', background: 'var(--bg-card)',
-                border: '1px solid var(--border)', borderRadius: 12,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <MemberAvatar member={m} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: '0.88rem', color: 'var(--txt-pure)' }}>{displayName}</p>
-                    {m.email && <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--txt-muted)' }}>{m.email}</p>}
+              <div key={m.userId}>
+                <div className="tdp-member-row">
+                  <div
+                    className="tdp-member-avatar"
+                    style={{
+                      background: m.avatarUrl ? 'transparent' : `linear-gradient(135deg, ${memberColor}, color-mix(in srgb, ${memberColor} 70%, #000))`,
+                    }}
+                  >
+                    {m.avatarUrl ? <img src={m.avatarUrl} alt={displayName} /> : initials(displayName)}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                  <div className="tdp-member-body">
+                    <p className="tdp-member-name">{displayName}</p>
+                    {m.email && <p className="tdp-member-email">{m.email}</p>}
+                  </div>
+                  <div className="tdp-member-actions">
                     {isOwner ? (
                       <RoleDropdown
                         value={m.role}
@@ -637,17 +1316,15 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
                         disabled={!!roleChangeLoading[m.userId]}
                       />
                     ) : (
-                      <span style={{
-                        fontSize: '0.75rem', fontWeight: 600, padding: '2px 9px', borderRadius: 20,
-                        background: 'var(--btn-secondary-bg)', color: 'var(--txt-muted)',
-                        border: '1px solid var(--btn-secondary-border)', textTransform: 'capitalize',
-                      }}>{m.role}</span>
+                      <span className="tdp-static-role">{m.role}</span>
                     )}
                     {isOwner && members.length > 1 && !isConfirmingRemove && (
-                      <button onClick={() => setPendingConfirm({ type: 'remove', userId: m.userId })}
+                      <button
+                        onClick={() => setPendingConfirm({ type: 'remove', userId: m.userId })}
                         title="Remove member"
-                        style={{ ...ghostBtn, color: 'var(--danger)', opacity: 0.65 }}>
-                        <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        className="tdp-icon-danger-btn"
+                      >
+                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                           <circle cx="9" cy="7" r="4"/>
                           <line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/>
@@ -657,68 +1334,57 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
                 {isConfirmingRemove && (
-                  <div style={{
-                    marginTop: '0.55rem', paddingTop: '0.55rem', borderTop: '1px solid var(--border)',
-                    display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  }}>
-                    <span style={{ flex: 1, fontSize: '0.82rem', color: 'var(--txt-muted)' }}>Remove {displayName}?</span>
-                    <button onClick={() => handleRemoveMember(m.userId)} style={{
-                      padding: '0.25rem 0.75rem', background: 'var(--danger)', color: '#fff',
-                      border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer',
-                    }}>Remove</button>
-                    <button onClick={() => setPendingConfirm(null)} style={{
-                      padding: '0.25rem 0.6rem', background: 'none', border: '1px solid var(--border)',
-                      borderRadius: 'var(--r-sm)', color: 'var(--txt-muted)', fontSize: '0.78rem', cursor: 'pointer',
-                    }}>Cancel</button>
+                  <div className="tdp-confirm-strip">
+                    <span className="msg">Remove <strong>{displayName}</strong>?</span>
+                    <button onClick={() => handleRemoveMember(m.userId)} className="tdp-btn-danger">Remove</button>
+                    <button onClick={() => setPendingConfirm(null)} className="tdp-btn-ghost">Cancel</button>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-      </div>
+      </section>
 
       {/* ── Invite ── */}
       {canInvite && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={sectionLabel}>Invite member</p>
-          <div style={{
-            padding: '1rem 1.25rem', background: 'var(--bg-card)',
-            border: '1px solid var(--border)', borderRadius: 12,
-          }}>
+        <section className="glass-card tdp-section">
+          <div className="tdp-section-head">
+            <div>
+              <span className="recgon-label">invite</span>
+              <h2 className="tdp-section-title">Generate access link</h2>
+            </div>
+            {pendingInvites.length > 0 && (
+              <span className="tdp-section-count">{pendingInvites.length} pending</span>
+            )}
+          </div>
+
+          <div className="tdp-invite-body">
+            <p className="tdp-invite-blurb">
+              Single-use, time-boxed link. Anyone with the URL who signs in is added to the team at the chosen role.
+            </p>
             <form onSubmit={handleInvite}>
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                <p style={{ flex: 1, margin: 0, fontSize: '0.85rem', color: 'var(--txt-muted)' }}>
-                  Generate a single-use invite link. Share it with someone you want to add to the team.
-                </p>
+              <div className="tdp-invite-controls">
                 <RoleDropdown
                   value={inviteRole}
                   onChange={(v) => setInviteRole(v as 'member' | 'viewer')}
                 />
-                <button type="submit" disabled={actionLoading} style={{
-                  padding: '0.55rem 1rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
-                  border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.85rem',
-                  cursor: actionLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
-                }}>{actionLoading ? 'Generating…' : 'Generate link'}</button>
+                <button type="submit" disabled={actionLoading} className="tdp-invite-submit">
+                  {actionLoading ? 'Generating…' : 'Generate link →'}
+                </button>
               </div>
 
               {inviteLink && (
-                <div style={{
-                  marginTop: '0.85rem', padding: '0.6rem 0.85rem',
-                  background: 'rgba(var(--signature-rgb), 0.06)',
-                  border: '1px solid rgba(var(--signature-rgb), 0.15)',
-                  borderRadius: 8, display: 'flex', alignItems: 'center', gap: '0.75rem',
-                }}>
-                  <code style={{ flex: 1, fontSize: '0.78rem', color: 'var(--signature)', wordBreak: 'break-all' }}>{inviteLink}</code>
-                  <button type="button" onClick={async () => {
-                    await navigator.clipboard.writeText(inviteLink).catch(() => {});
-                    addToast('Copied!', 'success');
-                  }} style={{
-                    flexShrink: 0, padding: '0.28rem 0.65rem', background: 'var(--btn-secondary-bg)',
-                    border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)',
-                    color: 'var(--txt)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 500,
-                    display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'inherit',
-                  }}>
+                <div className="tdp-link-display">
+                  <code className="tdp-link-code">{inviteLink}</code>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(inviteLink).catch(() => {});
+                      addToast('Copied!', 'success');
+                    }}
+                    className="tdp-copy-btn"
+                  >
                     <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                     </svg>
@@ -727,125 +1393,112 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
               )}
             </form>
+          </div>
 
-            {pendingInvites.length > 0 && (
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-                <p style={{ ...sectionLabel, margin: '0 0 0.5rem' }}>Pending · {pendingInvites.length}</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  {pendingInvites.map((inv) => {
-                    const isConfirmingRevoke = pendingConfirm?.type === 'revoke' && pendingConfirm.inviteId === inv.id;
-                    return (
-                      <div key={inv.id} style={{
-                        padding: '0.5rem 0.75rem', borderRadius: 8,
-                        background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                          <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--txt-pure)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: 'var(--txt-muted)' }}>
-                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                            </svg>
-                            {inv.email ?? 'Invite link'}
-                          </span>
-                          <span style={{
-                            fontSize: '0.68rem', fontWeight: 600, padding: '1px 7px', borderRadius: 20,
-                            background: 'var(--btn-secondary-bg)', color: 'var(--txt-muted)',
-                            border: '1px solid var(--border)', textTransform: 'capitalize',
-                          }}>{inv.role}</span>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--txt-muted)' }}>{relativeExpiry(inv.expiresAt)}</span>
-                          {!isConfirmingRevoke && (
-                            <button onClick={() => setPendingConfirm({ type: 'revoke', inviteId: inv.id })}
-                              style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.75rem', padding: '0 2px', fontFamily: 'inherit' }}>
-                              Revoke
-                            </button>
-                          )}
-                        </div>
-                        {isConfirmingRevoke && (
-                          <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ flex: 1, fontSize: '0.8rem', color: 'var(--txt-muted)' }}>Revoke this invite?</span>
-                            <button onClick={() => handleRevokeInvite(inv.id)} style={{
-                              padding: '0.2rem 0.6rem', background: 'var(--danger)', color: '#fff',
-                              border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit',
-                            }}>Confirm</button>
-                            <button onClick={() => setPendingConfirm(null)} style={{
-                              padding: '0.2rem 0.5rem', background: 'none', border: '1px solid var(--border)',
-                              borderRadius: 'var(--r-sm)', color: 'var(--txt-muted)', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit',
-                            }}>Cancel</button>
-                          </div>
+          {pendingInvites.length > 0 && (
+            <div className="tdp-pending">
+              <span className="recgon-label">pending invites</span>
+              <div className="tdp-pending-list">
+                {pendingInvites.map((inv) => {
+                  const isConfirmingRevoke = pendingConfirm?.type === 'revoke' && pendingConfirm.inviteId === inv.id;
+                  return (
+                    <div key={inv.id} className="tdp-pending-row">
+                      <div className="tdp-pending-head">
+                        <span className="tdp-pending-label">
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                          </svg>
+                          {inv.email ?? 'Invite link'}
+                        </span>
+                        <span className="tdp-static-role">{inv.role}</span>
+                        <span className="tdp-pending-meta">{relativeExpiry(inv.expiresAt)}</span>
+                        {!isConfirmingRevoke && (
+                          <button onClick={() => setPendingConfirm({ type: 'revoke', inviteId: inv.id })} className="tdp-revoke-link">
+                            Revoke
+                          </button>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
+                      {isConfirmingRevoke && (
+                        <div className="tdp-confirm-strip" style={{ marginLeft: 0, marginTop: 8 }}>
+                          <span className="msg">Revoke this invite?</span>
+                          <button onClick={() => handleRevokeInvite(inv.id)} className="tdp-btn-danger">Confirm</button>
+                          <button onClick={() => setPendingConfirm(null)} className="tdp-btn-ghost">Cancel</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+        </section>
       )}
 
       {/* ── Leave team ── */}
       {!isOwner && session?.user?.id && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <p style={sectionLabel}>Leave team</p>
-          <div style={{ padding: '0.9rem 1.25rem', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12 }}>
+        <section className="glass-card tdp-section tdp-leave-card">
+          <div className="tdp-section-head">
+            <div>
+              <span className="recgon-label" style={{ color: 'var(--warning)' }}>leave</span>
+              <h2 className="tdp-section-title">Leave this team</h2>
+            </div>
+          </div>
+          <div className="tdp-zone">
             {pendingConfirm?.type === 'leave' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ flex: 1, fontSize: '0.88rem', color: 'var(--txt)' }}>Leave <strong>{team.name}</strong>?</span>
-                <button onClick={handleLeaveTeam} style={{
-                  padding: '0.35rem 0.85rem', background: 'var(--danger)', color: '#fff',
-                  border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
-                }}>Leave</button>
-                <button onClick={() => setPendingConfirm(null)} style={{
-                  padding: '0.35rem 0.7rem', background: 'none', border: '1px solid var(--border)',
-                  borderRadius: 'var(--r-sm)', color: 'var(--txt-muted)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
-                }}>Cancel</button>
-              </div>
+              <>
+                <span className="tdp-zone-copy" style={{ color: 'var(--txt-pure)' }}>
+                  Leave <strong>{team.name}</strong>? You&apos;ll lose access to all its projects.
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={handleLeaveTeam} className="tdp-btn-danger">Leave</button>
+                  <button onClick={() => setPendingConfirm(null)} className="tdp-btn-ghost">Cancel</button>
+                </div>
+              </>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--txt-muted)' }}>You will lose access to all projects in this team.</p>
-                <button onClick={() => setPendingConfirm({ type: 'leave' })} style={{
-                  flexShrink: 0, padding: '0.4rem 0.9rem', background: 'none',
-                  color: 'var(--danger)', border: '1px solid var(--danger)',
-                  borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
-                }}>Leave team</button>
-              </div>
+              <>
+                <p className="tdp-zone-copy">You will lose access to all projects in this team.</p>
+                <button onClick={() => setPendingConfirm({ type: 'leave' })} className="tdp-zone-action-leave">
+                  Leave team
+                </button>
+              </>
             )}
           </div>
-        </div>
+        </section>
       )}
 
       {/* ── Danger zone ── */}
       {isOwner && (
-        <div>
-          <p style={{ ...sectionLabel, color: 'var(--danger)', opacity: 0.8 }}>Danger zone</p>
-          <div style={{
-            padding: '0.9rem 1.25rem', background: 'var(--bg-card)',
-            border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12,
-          }}>
+        <section className="glass-card tdp-section tdp-danger-card">
+          <div className="tdp-section-head">
+            <div>
+              <span className="recgon-label" style={{ color: 'var(--danger)' }}>danger zone</span>
+              <h2 className="tdp-section-title">Delete team</h2>
+            </div>
+          </div>
+          <div className="tdp-zone">
             {pendingConfirm?.type === 'delete' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ flex: 1, fontSize: '0.88rem', color: 'var(--txt)' }}>Permanently delete <strong>{team.name}</strong>?</span>
-                <button onClick={handleDeleteTeam} style={{
-                  padding: '0.35rem 0.85rem', background: 'var(--danger)', color: '#fff',
-                  border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
-                }}>Delete</button>
-                <button onClick={() => setPendingConfirm(null)} style={{
-                  padding: '0.35rem 0.7rem', background: 'none', border: '1px solid var(--border)',
-                  borderRadius: 'var(--r-sm)', color: 'var(--txt-muted)', fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
-                }}>Cancel</button>
-              </div>
+              <>
+                <span className="tdp-zone-copy" style={{ color: 'var(--txt-pure)' }}>
+                  Permanently delete <strong>{team.name}</strong>? This cannot be undone.
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={handleDeleteTeam} className="tdp-btn-danger">Delete</button>
+                  <button onClick={() => setPendingConfirm(null)} className="tdp-btn-ghost">Cancel</button>
+                </div>
+              </>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--txt-muted)' }}>All projects and data will be permanently deleted.</p>
-                <button onClick={() => setPendingConfirm({ type: 'delete' })} style={{
-                  flexShrink: 0, padding: '0.4rem 0.9rem', background: 'var(--danger)', color: '#fff',
-                  border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', fontFamily: 'inherit',
-                }}>Delete team</button>
-              </div>
+              <>
+                <p className="tdp-zone-copy">All projects, members, and data will be permanently deleted.</p>
+                <button onClick={() => setPendingConfirm({ type: 'delete' })} className="tdp-zone-action-delete">
+                  Delete team
+                </button>
+              </>
             )}
           </div>
-        </div>
+        </section>
       )}
+      </div>{/* /tdp-shell */}
     </div>
   );
 }

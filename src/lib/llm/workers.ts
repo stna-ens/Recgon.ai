@@ -12,6 +12,7 @@ import { analyzeIdea } from '../ideaAnalyzer';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '../codeAnalyzer';
 import { analyzeCompetitors } from '../competitorAnalyzer';
 import { cloneGitHubRepo, getLatestCommit } from '../githubFetcher';
+import { runDispatch } from '../recgon/dispatcher';
 import {
   saveFeedbackToProject,
   saveProject,
@@ -182,10 +183,28 @@ async function runCompetitorAnalysis(job: LLMJob): Promise<WorkerResult> {
 
 type Worker = (job: LLMJob) => Promise<WorkerResult>;
 
+// Wrap analysis workers so successful completion fires Recgon dispatch — new
+// next-steps and dev-prompts become tasks immediately, not on the next cron.
+function withRecgonDispatch(inner: Worker): Worker {
+  return async (job) => {
+    const result = await inner(job);
+    if (job.team_id) {
+      runDispatch(job.team_id).catch((err) => {
+        logger.warn('post-analysis recgon dispatch failed', {
+          jobId: job.id,
+          teamId: job.team_id,
+          err: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
+    return result;
+  };
+}
+
 const WORKERS: Partial<Record<JobKind, Worker>> = {
-  feedback_analysis: runFeedbackAnalysis,
-  idea_analysis: runIdeaAnalysis,
-  codebase_analysis: runCodebaseAnalysis,
+  feedback_analysis: withRecgonDispatch(runFeedbackAnalysis),
+  idea_analysis: withRecgonDispatch(runIdeaAnalysis),
+  codebase_analysis: withRecgonDispatch(runCodebaseAnalysis),
   competitor_analysis: runCompetitorAnalysis,
 };
 

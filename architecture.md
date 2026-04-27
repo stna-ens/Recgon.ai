@@ -47,6 +47,36 @@ TeamInvitation: { id, teamId, email: string|null, role, invitedBy, token, expire
 // email is null for new link-only invites. Accepting an invite only
 // requires a valid single-use token + authenticated session; the token
 // is marked accepted_at on first use.
+// On createTeam + acceptInvitation, the human user is mirrored into the
+// `teammates` table so they show up in the Recgon-managed roster (§10).
+```
+
+### Recgon Admin (`lib/recgon/`)
+Recgon is the dispatcher above the team — it reads a unified brain of open
+work, mints tasks, and assigns each one to the best-fit teammate (human or
+AI peer). Roster, tasks, ratings, and dispatcher state live in dedicated
+tables; see §4 and §10.
+```typescript
+Teammate: {
+  id, teamId, kind: 'human'|'ai', userId|null, displayName,
+  avatarColor?, avatarUrl?, title?,
+  skills: string[], systemPrompt?, modelPref?: 'gemini'|'claude'|null,
+  capacityHours, workingHours: WorkingHours|null,
+  fitProfile: { taskKindScores?: Record<TaskKind,number>, lastUpdated? },
+  status: 'active'|'paused'|'retired', createdAt
+}
+AgentTask: {
+  id, teamId, projectId|null, title, description,
+  kind: 'next_step'|'dev_prompt'|'marketing'|'analytics'|'research'|'custom',
+  source: 'brain'|'user'|'teammate'|'schedule', sourceRef (incl. dedupKey),
+  requiredSkills[], priority (0..3), estimatedHours, deadline?,
+  assignedTo|null, assignedBy ('recgon' | userId), assignedAt?,
+  status: 'unassigned'|'assigned'|'accepted'|'in_progress'|
+          'awaiting_review'|'completed'|'declined'|'failed'|'cancelled',
+  jobId|null, result?, createdBy?, createdAt, completedAt?
+}
+TaskRating: { taskId (pk), teammateId, rating: 1|-1, note?, ratedBy, ratedAt }
+RecgonState: { teamId, brainSnapshot, lastDispatchAt, assignmentLog[], rosterProposal? }
 ```
 
 ### Project (`lib/storage.ts`)
@@ -118,6 +148,29 @@ Project: {
 | `/api/teams/[id]/invitations/[invId]` | DELETE | Session | Revoke |
 | `/api/teams/invite/accept` | POST | Session | Accept invite via token |
 
+### Recgon Admin (teammates / tasks / dispatcher)
+| Route | Method | Auth | Notes |
+|-------|--------|------|-------|
+| `/api/teams/[id]/recgon` | GET | Session | Dispatcher state: brain snapshot + last dispatch + assignment log + active roster proposal |
+| `/api/teams/[id]/recgon/dispatch` | POST | Session (write) | Manual run: read brain → mint tasks → assign best fit. Returns `{ minted, skipped, assigned, noFit }` |
+| `/api/teams/[id]/recgon/propose-roster` | POST | Session (write) | (Legacy — AI-doer side removed.) One-shot LLM call that proposes a tailored AI roster from the team's projects. Saves to `recgon_state.roster_proposal`. |
+| `/api/teams/[id]/recgon/accept-proposal` | POST/DELETE | Session (write) | (Legacy — AI-doer side removed.) POST `{ indices? }` materialises proposed teammates as `teammates` rows (defaults to all). DELETE clears the proposal. |
+| `/api/teams/[id]/teammates` | GET | Session | List roster (with rating + load). POST removed: AI-doer side parked, no UI flow to add AI teammates. |
+| `/api/teams/[id]/teammates/[teammateId]` | GET/PATCH/DELETE | Session | Get / edit (skills, prompt, capacity, working hours, status) / soft-retire |
+| `/api/teams/[id]/tasks` | GET/POST | Session | List with filters (`status`, `teammateId`, `kind`, `projectId`) / create user task (auto-dispatched) |
+| `/api/teams/[id]/tasks/[taskId]` | GET | Session | Task detail incl. result |
+| `/api/teams/[id]/tasks/[taskId]/reassign` | POST | Session (write) | Manual override `{ teammateId: id\|null }`. Re-enqueues run if assigned to AI |
+| `/api/teams/[id]/tasks/[taskId]/accept` | POST | Session | Human assignee (or owner) accepts an `assigned` task → `accepted`. |
+| `/api/teams/[id]/tasks/[taskId]/decline` | POST | Session | Human declines `{ note? }` — Recgon unassigns + re-dispatches. Returns `{ reassignedTo }`. |
+| `/api/teams/[id]/tasks/[taskId]/complete` | POST | Session | Human completes `{ summary? }` → `awaiting_review` for thumbs review. |
+| `/api/teams/[id]/tasks/[taskId]/rating` | POST | Session | `{ rating: 1\|-1, note? }` — idempotent upsert per task; updates rollup; feeds `learn.ts` to update `fit_profile`. |
+
+### Inbox (per-user, not team-scoped)
+| Route | Method | Auth | Notes |
+|-------|--------|------|-------|
+| `/api/inbox` | GET | Session | All non-terminal tasks assigned to teammate rows owned by the current user, decorated with team name. Returns `{ tasks, counts: { open, awaitingReview } }`. |
+| `/api/inbox/count` | GET | Session | Lightweight count (assigned + accepted + in_progress) for the sidebar badge. Polled every 60s. |
+
 ### AI Features
 | Route | Method | Auth | Notes |
 |-------|--------|------|-------|
@@ -133,6 +186,7 @@ Project: {
 | `/api/overview/analytics` | GET | Session | `?teamId=` → `{ analytics, analyticsConfigured }` — per-property 7v7 session delta with project fallback to user default, in-memory cache per team (30min TTL) |
 | `/api/llm/jobs/[id]` | GET | Session | Poll queued LLM job status. Returns `{ status, attempts, maxAttempts, nextRetryAt, result?, error? }`. Team-access-checked. |
 | `/api/cron/llm-jobs` | GET/POST | `CRON_SECRET` | Vercel cron (every minute). Drains up to 3 jobs from `llm_jobs`, handles stuck-job release. Skipped auth in local dev. |
+| `/api/cron/recgon-schedule` | GET/POST | `CRON_SECRET` | Vercel cron (`0 6 * * *`). Per active team: mints scheduled brain entries (weekly health check + daily anomaly scan) and runs a dispatch pass. Idempotent via dedupKey. |
 
 ### GitHub Account Connect
 | Route | Method | Auth | Notes |
@@ -185,7 +239,7 @@ Project: {
 | `quota_exceptions` | Email allowlist to bypass quota |
 | `email_verifications` | OTP codes for registration |
 | `chat_messages` | Mentor chatbot history |
-| `llm_jobs` | Persistent queue for batch LLM work. Columns: `id`, `team_id`, `user_id`, `kind` (`feedback_analysis`/`codebase_analysis`/`competitor_analysis`/`idea_analysis`), `payload` (jsonb), `status` (`pending`/`running`/`succeeded`/`failed`/`dead`), `result` (jsonb), `error`, `attempts`, `max_attempts` (default 12), `next_retry_at`, `locked_at`, `locked_by`. Partial index on pending rows; atomic claim via `claim_next_llm_job()` SQL function (`FOR UPDATE SKIP LOCKED`). |
+| `llm_jobs` | Persistent queue for batch LLM work. Columns: `id`, `team_id`, `user_id`, `kind` (`feedback_analysis`/`codebase_analysis`/`competitor_analysis`/`idea_analysis`), `payload` (jsonb), `status` (`pending`/`running`/`succeeded`/`failed`/`dead`), `result` (jsonb), `error`, `attempts`, `max_attempts` (default 12), `next_retry_at`, `locked_at`, `locked_by`. Partial index on pending rows; atomic claim via `claim_next_llm_job()` SQL function (`FOR UPDATE SKIP LOCKED`). (`teammate_task` kind removed with the AI-doer side.) |
 | `llm_health` | Shared LLM circuit-breaker state, one row per provider. Columns: `provider` (pk), `state` (`closed`/`half_open`/`open`), `failure_count`, `window_start`, `opened_until`, `updated_at`. Atomic RPCs `llm_health_try()` (gated by `FOR UPDATE` so only one instance probes during cooldown expiry), `llm_health_record_success()`, `llm_health_record_failure()` (5 failures / 30s window → open for 60s). |
 
 **RLS**: Enabled on all tenant tables. Backend always uses `SUPABASE_SERVICE_ROLE_KEY` (bypasses RLS). RLS is defense-in-depth only.
@@ -303,3 +357,44 @@ Auth: `RECGON_MCP_TOKEN` env var → bearer token → resolves to userId → sco
 **Prompt/schema split**: Every Gemini call uses a named constant from `prompts.ts` and validates output against a Zod schema from `schemas.ts`. No inline prompts or unvalidated responses.
 
 **Response parsing** (`parseAIResponse()`): tries raw JSON → strips markdown fences → regex-extracts first JSON object. Throws with preview if all fail.
+
+---
+
+## 10. Recgon Admin (`lib/recgon/`)
+
+Recgon is the dispatcher above the team — *not* a teammate. It reads a unified brain of open work across the team's projects, mints tasks, then assigns each to the best-fit teammate (human or AI peer).
+
+### Tables (migration: `supabase/migrations/20260426_recgon_admin.sql`)
+| Table | Key Columns / Notes |
+|-------|---------------------|
+| `teammates` | Unified roster. `(team_id, user_id)` unique when human. `kind` ∈ `human`/`ai`. AI rows carry `system_prompt`, `model_pref`, default `capacity_hours=168`. Humans default to 10h/wk. `working_hours` (jsonb) is per-day `[start,end]`; null = always available (AI default). `fit_profile` (jsonb) is learned `taskKindScores` EMA. Soft-retire via `status='retired'`. Migration backfills existing `team_members` rows. |
+| `agent_tasks` | First-class tasks. `kind` enum: `next_step`/`dev_prompt`/`marketing`/`analytics`/`research`/`custom`. `source` enum: `brain`/`user`/`teammate`/`schedule`. `source_ref.dedupKey` provides idempotency for brain/scheduled mints (partial unique index). Status flow: `unassigned → assigned → in_progress → awaiting_review → completed`. `job_id` links to `llm_jobs` for AI runs. |
+| `agent_task_ratings` | One per task (pk on `task_id`). `rating ∈ {-1, 1}`, optional `note`. Rolled up via `teammate_stats` view (avg → 0..5 stars, default 3.5 with no ratings so newcomers get tried). |
+| `recgon_state` | Per-team dispatcher memory: `brain_snapshot`, `last_dispatch_at`, `assignment_log[]` (capped at 50), `roster_proposal`. Seeded on team creation. |
+| `teammate_event_log` | Append-only audit trail: `assigned`/`accepted`/`declined`/`completed`/`rated`/`reassigned`/`overloaded`/`no_fit`. |
+
+### Module layout
+| File | Purpose |
+|------|---------|
+| `lib/recgon/types.ts` | All shared types (Teammate, AgentTask, BrainEntry, RosterProposal, etc.). |
+| `lib/recgon/storage.ts` | CRUD + view query: `createTeammate`, `listTeammatesWithStats` (joins `team_members.role` → `teamRole` per teammate), `updateTeammate`, `retireTeammate`, `createTask`, `listTasks`, `assignTask`, `reassignTask`, `updateTaskStatus`, `upsertRating`, `getRecgonState`, `saveBrainSnapshot`, `appendAssignmentLog`, `logEvent`. |
+| `lib/recgon/brain.ts` | `readUnifiedBrain(teamId)` — aggregates open `prioritizedNextSteps` (→ `next_step` tasks) and `developerPrompts` (→ `dev_prompt` tasks) across all team projects. Honours existing `nextStepsTaken[]` + `completedPrompts[]` so completed work isn't re-minted. Each entry carries a stable `dedupKey`. |
+| `lib/recgon/taskMint.ts` | `mintTasksFromBrain(teamId, snapshot)` — idempotent insert via `dedupKey`. `mintUserTask(...)` — direct user-created path (source=`user`). |
+| `lib/recgon/match.ts` | Scoring: `score = 0.45·skillOverlap + 0.30·fitForKind + 0.15·availabilityNow + 0.10·loadHeadroom`. `MIN_FIT_SCORE = 0.25` — below that, task stays unassigned and Recgon logs `no_fit`. `isWithinWorkingHours()` honours per-day windows + IANA tz. **AI teammates (`kind === 'ai'`) are filtered out of `pickBestMatch` — the AI-doer side has been removed; the matcher only routes to humans.** |
+| `lib/recgon/dispatcher.ts` | `runDispatch(teamId)` — read brain → save snapshot → mint → score full unassigned backlog → for each, pick best fit and record assignment for the human teammate (with email/in-app notification). Returns `{ minted, skipped, assigned, noFit }`. `dispatchTask(teamId, taskId)` for single-task path used after user-created task insert. |
+| `lib/recgon/learn.ts` | `recordRatingForLearning(teammateId, kind, rating)` — EMA update of `fit_profile.taskKindScores[kind]` (α=0.30, clamped to [-1, 1]). Wired into `POST /tasks/[id]/rating`. Future matching biases toward each teammate's strengths. |
+| `lib/notifications.ts` | `notifyTeammateAssigned({ teammate, task, teamName })` — sends a Resend email to human assignees with the task title, kind, priority, and a deep link to `/inbox`. Fire-and-forget; no `RESEND_API_KEY` → silent skip. |
+| `lib/recgon/rosterProposer.ts` | `proposeRoster(teamId)` — reads team projects, calls `chatViaProviders` with a tailored-roster system prompt, parses 3-5 specialist proposals, saves to `recgon_state.roster_proposal`. Tolerates messy model output (raw JSON / fenced / prose-wrapped). |
+| `lib/recgon/scheduled.ts` | `runScheduledForTeam(teamId)` — daily cron entry point. `buildScheduledEntries` produces `BrainEntry[]` (weekly health check always, daily anomaly scan only if a team project has `analytics_property_id`). Mints via `mintTasksFromBrain` then runs `runDispatch`. ISO-week / ISO-day dedup keys keep it idempotent. |
+
+### Wiring
+- `lib/llm/jobQueue.ts` — `JobKind` covers analysis kinds only (`teammate_task` removed with the AI-doer side).
+- `lib/llm/workers.ts` — `withRecgonDispatch` wraps existing analysis workers so completion fires `runDispatch` automatically (so freshly-minted next-steps/dev-prompts are assigned without waiting for cron).
+- `lib/teamStorage.ts` — `createTeam(name, userId)` seeds `recgon_state` and the human teammate row for the owner. `acceptInvitation` mirrors invited humans into `teammates`. (Preset-based AI seeding removed.)
+- UI: `components/recgon/RecgonAdminPanel.tsx` (command card + roster + tasks summary) embedded at the top of `/teams/[id]`. Pages: `/teams/[id]/teammates/[teammateId]` (detail + skills + capacity + working-hours editor + per-task 👍/👎), `/teams/[id]/tasks` (filtered backlog + quick-create + reassign). The `/teams/[id]/teammates/new` page was removed with the AI-doer side.
+- Per-user inbox: `/inbox` page lists all open assignments across teams with Accept / Decline / Mark-done buttons; sidebar nav has an "Inbox" link with a pink badge showing the open count, polled every 60s via `/api/inbox/count`.
+- Dispatcher → notifications: when Recgon assigns a task to a `kind='human'` teammate, `dispatcher.ts` fires `notifyTeammateAssigned` (email via Resend) in addition to writing the row that powers the in-app inbox.
+- Decline → reassign: `/tasks/[id]/decline` flips status back to `unassigned` + logs the event, then immediately calls `dispatchTask` so Recgon picks the next-best fit. The original assignee's `fit_profile` is unaffected (decline ≠ rating); they just get reduced load headroom on the next match attempt.
+- Agent-to-agent followups: removed with the AI-doer side. Tasks no longer spawn child tasks automatically; humans complete or decline.
+- Roster proposal flow: legacy. The `propose-roster` / `accept-proposal` routes still exist on disk but the only entry point (`/teams/[id]/teammates/new`) has been removed. Treat as dead code pending cleanup.
+- Scheduled brain (Slice 3): `vercel.json` now has two crons — the existing `/api/cron/llm-jobs` (`0 0 * * *`) plus the new `/api/cron/recgon-schedule` (`0 6 * * *`). The scheduled cron iterates every team in `recgon_state` and mints recurring `BrainEntry` rows: weekly health check (Strategy-fit) + daily GA4 anomaly scan (only when a project has `analytics_property_id`). Both use stable dedup keys (`schedule|health|<teamId>|<isoWeek>`, `schedule|anomaly|<teamId>|<isoDay>`) so re-running within the same window is a no-op.

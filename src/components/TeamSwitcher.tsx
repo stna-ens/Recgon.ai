@@ -2,12 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTeam } from './TeamProvider';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function TeamSwitcher() {
   const { teams, currentTeam, setCurrentTeam } = useTeam();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -100,8 +102,11 @@ export default function TeamSwitcher() {
               key={team.id}
               className="team-switcher-team-row"
               onClick={() => {
-                setCurrentTeam(team);
+                // Always navigate to the team's page so the click visibly
+                // does something — even when re-selecting the active team.
+                if (team.id !== currentTeam.id) setCurrentTeam(team);
                 setOpen(false);
+                router.push(`/teams/${team.id}`);
               }}
               style={{
                 width: '100%',

@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import crypto from 'crypto';
+import { createTeammate } from './recgon/storage';
+import { logger } from './logger';
 
 export interface Team {
   id: string;
@@ -58,7 +60,13 @@ async function uniqueSlug(base: string): Promise<string> {
   return slug;
 }
 
-export async function createTeam(name: string, userId: string): Promise<Team> {
+export type CreateTeamOptions = Record<string, never>;
+
+export async function createTeam(
+  name: string,
+  userId: string,
+  _options: CreateTeamOptions = {},
+): Promise<Team> {
   const id = generateId();
   const slug = await uniqueSlug(name);
 
@@ -76,6 +84,34 @@ export async function createTeam(name: string, userId: string): Promise<Team> {
     user_id: userId,
     role: 'owner',
   });
+
+  // Seed Recgon state and the human + AI roster.
+  await supabase.from('recgon_state').insert({ team_id: id }).single();
+
+  // The migration backfills `team_members` → `teammates`, but that only
+  // covers existing teams. New teams need an explicit human row for the
+  // owner so they show up in the roster + can be assigned tasks.
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('nickname, email, avatar_url')
+      .eq('id', userId)
+      .maybeSingle();
+    await createTeammate({
+      teamId: id,
+      kind: 'human',
+      userId,
+      displayName: user?.nickname || (user?.email as string | undefined)?.split('@')[0] || 'Founder',
+      avatarUrl: (user?.avatar_url as string | null) ?? null,
+      title: 'Founder',
+      capacityHours: 10,
+    });
+  } catch (err) {
+    logger.warn('failed to seed human teammate on team create', {
+      teamId: id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   return {
     id: data.id,
@@ -261,6 +297,33 @@ export async function acceptInvitation(token: string, userId: string): Promise<v
 
   // Add user to team
   await addTeamMember(invitation.teamId, userId, invitation.role as 'member' | 'viewer');
+
+  // Mirror into teammates so the user appears in the Recgon-aware roster.
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('nickname, email, avatar_url')
+      .eq('id', userId)
+      .maybeSingle();
+    await createTeammate({
+      teamId: invitation.teamId,
+      kind: 'human',
+      userId,
+      displayName:
+        (user?.nickname as string | undefined) ||
+        (user?.email as string | undefined)?.split('@')[0] ||
+        'Teammate',
+      avatarUrl: (user?.avatar_url as string | null) ?? null,
+      title: null,
+      capacityHours: 10,
+    });
+  } catch (err) {
+    // Unique violation (already a teammate from prior invite) is fine.
+    logger.warn('teammate mirror skipped on invite accept', {
+      teamId: invitation.teamId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   // Mark invitation as accepted
   await supabase

@@ -41,9 +41,13 @@ export async function POST(
 
   const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
 
+  // Cache-bust: the storage path is deterministic (avatar.{ext} with upsert),
+  // so without a version query the browser keeps serving the old image.
+  const bustedUrl = `${publicUrl}?v=${Date.now()}`;
+
   const { error: dbError } = await supabase
     .from('teams')
-    .update({ avatar_url: publicUrl })
+    .update({ avatar_url: bustedUrl })
     .eq('id', id);
 
   if (dbError) {
@@ -51,5 +55,5 @@ export async function POST(
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
   }
 
-  return NextResponse.json({ avatarUrl: publicUrl });
+  return NextResponse.json({ avatarUrl: bustedUrl });
 }

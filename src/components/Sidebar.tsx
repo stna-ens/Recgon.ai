@@ -39,6 +39,11 @@ const NAV_ITEMS = [
     label: 'Feedback',
     icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
   },
+  {
+    href: '/inbox',
+    label: 'Inbox',
+    icon: <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+  },
 ];
 
 export default function Sidebar() {
@@ -48,6 +53,31 @@ export default function Sidebar() {
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const { data: session } = useSession();
   const [fetchedAvatarUrl, setFetchedAvatarUrl] = useState<string | null>(null);
+  const [inboxCount, setInboxCount] = useState(0);
+
+  // Poll inbox count so the badge updates as Recgon assigns work.
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const r = await fetch('/api/inbox/count');
+        if (cancelled) return;
+        if (r.ok) {
+          const { count } = await r.json();
+          setInboxCount(count ?? 0);
+        }
+      } catch {
+        /* swallowed */
+      }
+    };
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [session?.user?.id]);
 
   // If the JWT doesn't have avatarUrl (e.g. stale token), fetch it from the DB once
   useEffect(() => {
@@ -120,6 +150,7 @@ export default function Sidebar() {
           const isActive = (item.href === '/' || item.href === '/mentor')
             ? pathname === item.href
             : pathname.startsWith(item.href);
+          const showBadge = item.href === '/inbox' && inboxCount > 0;
           return (
             <Link
               key={item.href}
@@ -129,7 +160,32 @@ export default function Sidebar() {
               aria-current={isActive ? 'page' : undefined}
               style={isActive ? { viewTransitionName: 'nav-active-pill' } as React.CSSProperties : undefined}
             >
-              {item.icon}
+              <span style={{ position: 'relative', display: 'inline-flex' }}>
+                {item.icon}
+                {showBadge && (
+                  <span
+                    aria-label={`${inboxCount} pending`}
+                    style={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -6,
+                      minWidth: 16,
+                      height: 16,
+                      padding: '0 4px',
+                      borderRadius: 8,
+                      background: 'var(--signature)',
+                      color: 'white',
+                      fontSize: '0.62rem',
+                      fontWeight: 700,
+                      lineHeight: '16px',
+                      textAlign: 'center',
+                      boxShadow: '0 0 0 2px var(--bg-deep, #000)',
+                    }}
+                  >
+                    {inboxCount > 99 ? '99+' : inboxCount}
+                  </span>
+                )}
+              </span>
               <span className="nav-link-label">{item.label}</span>
             </Link>
           );

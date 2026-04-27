@@ -28,12 +28,19 @@
     },
     "src/app/api/cron/llm-jobs/route.ts": {
       "maxDuration": 300
+    },
+    "src/app/api/cron/recgon-schedule/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
     {
       "path": "/api/cron/llm-jobs",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/recgon-schedule",
+      "schedule": "0 6 * * *"
     }
   ]
 }
