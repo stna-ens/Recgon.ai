@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react';
 import { useTeam } from '@/components/TeamProvider';
 import { createPortal } from 'react-dom';
 import Modal from '@/components/Modal';
-import { IntegrationsPanel } from '@/components/IntegrationsPanel';
 
 interface Competitor {
   name: string;
@@ -455,10 +454,6 @@ export default function ProjectDetailPage() {
             {error}
           </p>
         </div>
-      )}
-
-      {project && currentTeam && (
-        <IntegrationsPanel projectId={project.id} teamId={currentTeam.id} />
       )}
 
       {analyzing && (
