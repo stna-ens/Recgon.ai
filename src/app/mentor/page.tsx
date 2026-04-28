@@ -439,15 +439,20 @@ export default function DashboardPage() {
       return;
     }
 
-    // Slash command → natural-language prompt the AI will tool-call on
+    // Slash command → directive prompt: name the exact tool + every required arg.
+    // Soft prompts let Gemini drop required args and ask follow-up questions
+    // ("which project?", "which platform?") even when the user typed the project.
+    // Spelling out the tool call eliminates that drift.
+    const directRun = 'Call the tool exactly once and report the result. Do not ask follow-up questions.';
+    const projOrMain = (arg: string) => arg ? `"${arg}"` : 'the user\'s main project';
     const SLASH_MAP: Record<string, (arg: string) => string> = {
-      '/projects': () => 'List all my projects.',
-      '/analyze': (arg) => arg ? `Run a codebase analysis for the project "${arg}".` : 'Run a codebase analysis for my main project.',
-      '/analytics': (arg) => arg ? `Fetch GA4 analytics data for the project "${arg}".` : 'Fetch analytics data for my main project.',
-      '/feedback': (arg) => arg ? `Show me the feedback analysis for the project "${arg}".` : 'Show me the feedback analysis for my main project.',
-      '/collect-feedback': (arg) => arg ? `Collect feedback from saved sources for the project "${arg}".` : 'Collect feedback from saved sources for my main project.',
-      '/content': (arg) => arg ? `Generate marketing content for the project "${arg}".` : 'Generate marketing content for my main project.',
-      '/campaign': (arg) => arg ? `Generate a marketing campaign plan for the project "${arg}".` : 'Generate a marketing campaign plan for my main project.',
+      '/projects': () => `Call list_projects once and summarize what comes back. ${directRun}`,
+      '/analyze': (arg) => `Call analyze_code with project=${projOrMain(arg)}. ${directRun}`,
+      '/analytics': (arg) => `Call fetch_analytics with project=${projOrMain(arg)} and days=30. The project argument is required — do not omit it. ${directRun}`,
+      '/feedback': (arg) => `Call get_project_details with project=${projOrMain(arg)} and report the feedback analyses you find. ${directRun}`,
+      '/collect-feedback': (arg) => `Call collect_feedback with project=${projOrMain(arg)}. The project argument is required — do not omit it. ${directRun}`,
+      '/content': (arg) => `Call generate_content with project=${projOrMain(arg)} and platform="instagram". ${directRun}`,
+      '/campaign': (arg) => `Call generate_campaign with project=${projOrMain(arg)}, campaignType="brand-awareness", goal="build early awareness and grow signups", duration="1 month". ${directRun}`,
     };
     const [cmd, ...rest] = trimmed.split(' ');
     if (SLASH_MAP[cmd]) {
@@ -815,7 +820,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Messages */}
-        <div style={{ position: 'relative', flex: 1, minHeight: 400, maxHeight: 520, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <div ref={messagesContainerRef} style={{ flex: 1, overflowY: paletteOpen ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
           {messages.length === 0 && mounted && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
