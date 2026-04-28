@@ -2505,6 +2505,11 @@ select:focus-visible,
     border-color var(--dur-base) var(--ease-out);
 }
 
+.chat-bare-textarea:focus-visible {
+  box-shadow: none;
+  border-color: transparent;
+}
+
 /* List-item entrance via @starting-style (Chromium-supported, gracefully
    no-ops elsewhere). Apply `.list-enter` to a child of any list container.
    Each child fades + slides up to its final position the first time it appears. */

@@ -953,6 +953,7 @@ export default function DashboardPage() {
             disabled={streaming || teamLoading}
             onKeyUp={handleKeyUp}
             rows={1}
+            className="chat-bare-textarea"
             style={{
               flex: 1, resize: 'none', overflow: 'hidden', background: 'transparent',
               border: 'none', outline: 'none', color: 'var(--txt-pure)',
