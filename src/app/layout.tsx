@@ -6,6 +6,13 @@ import { SessionProvider } from 'next-auth/react';
 import { ToastProvider } from '@/components/Toast';
 import { Analytics } from '@vercel/analytics/next';
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  colorScheme: 'light dark',
+};
+
 export const metadata: Metadata = {
   icons: {
     icon: '/favicon.svg',
@@ -40,6 +47,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <meta name="view-transition" content="same-origin" />
+      </head>
       <body suppressHydrationWarning>
         <SessionProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

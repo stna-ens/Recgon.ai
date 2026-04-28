@@ -2,6 +2,8 @@
 
 /* === LIGHT MODE (DEFAULT) - APPLE WABI AESTHETIC === */
 :root {
+  color-scheme: light;
+
   /* Colors */
   --bg-deep: #f5f5f7; /* Signature Apple light gray */
   --bg-content: rgba(255, 255, 255, 0.6); /* Frosty cards */
@@ -59,6 +61,8 @@
 
 /* === DARK MODE === */
 .dark {
+  color-scheme: dark;
+
   /* Colors */
   --bg-deep: #000000;
   --bg-content: rgba(20, 20, 22, 0.4);
@@ -108,6 +112,12 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   height: 100vh;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
@@ -115,6 +125,7 @@ body {
   color: var(--txt-pure);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -334,6 +345,7 @@ body {
   backface-visibility: hidden;
   isolation: isolate;
   will-change: transform;
+  contain: layout style;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;

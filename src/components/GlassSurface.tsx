@@ -172,17 +172,14 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
       return false;
     }
 
-    const isWebkit =
+    // Pure Safari (not Chrome/Edge) has rendering issues with SVG backdrop filters
+    const isPureSafari =
       /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-    const isFirefox = /Firefox/.test(navigator.userAgent);
+    if (isPureSafari) return false;
 
-    if (isWebkit || isFirefox) {
-      return false;
-    }
-
+    // Feature-detect: does the browser accept a url() value for backdrop-filter?
     const div = document.createElement('div');
-    div.style.backdropFilter = `url(#${filterId})`;
-
+    div.style.cssText = `backdrop-filter: url(#${filterId})`;
     return div.style.backdropFilter !== '';
   };
 
