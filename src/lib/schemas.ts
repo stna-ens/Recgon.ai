@@ -221,6 +221,54 @@ export const OverviewBriefSchema = z.object({
 
 export type OverviewBrief = z.infer<typeof OverviewBriefSchema>;
 
+// ── Task verification + rating ────────────────────────────────────────────────
+
+export const VerificationResultSchema = z.object({
+  verdict: z.enum(['passed', 'failed', 'inconclusive']),
+  confidence: z.coerce.number().min(0).max(1),
+  reasoning: z.string(),
+  // What evidence (if any) the LLM saw that justified the verdict.
+  evidenceSummary: z.string().optional().default(''),
+  regressions: z.array(z.string()).optional().default([]),
+});
+
+export type VerificationResult = z.infer<typeof VerificationResultSchema>;
+
+export const ProofPayloadSchema = z.object({
+  text: z.string().optional(),
+  links: z.array(z.string()).optional(),
+  attachments: z
+    .array(z.object({ name: z.string(), url: z.string() }))
+    .optional(),
+  extras: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type ProofPayloadInput = z.infer<typeof ProofPayloadSchema>;
+
+export const QualityRatingSchema = z.object({
+  rating: z.union([z.literal(1), z.literal(-1)]),
+  reasoning: z.string(),
+});
+
+export type QualityRating = z.infer<typeof QualityRatingSchema>;
+
+export const EvidenceRouteSchema = z.object({
+  source: z.enum([
+    'github_commits',
+    'ga4_metric',
+    'marketing_artifacts',
+    'instagram_graph',
+    'web_fetch',
+    'proof_writeup',
+    'none',
+  ]),
+  // For web_fetch: which URL to actually fetch.
+  url: z.string().optional(),
+  reasoning: z.string(),
+});
+
+export type EvidenceRoute = z.infer<typeof EvidenceRouteSchema>;
+
 // ── Shared parse helper ───────────────────────────────────────────────────────
 
 /**

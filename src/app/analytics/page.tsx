@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  Rectangle, Sector,
 } from 'recharts';
 import Select from '@/components/Select';
 import { useTeam } from '@/components/TeamProvider';
@@ -209,6 +210,57 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
         </div>
       ))}
     </div>
+  );
+}
+
+type GlowBarProps = {
+  fill?: string;
+  fillOpacity?: number;
+  index?: number;
+  [key: string]: unknown;
+};
+
+function GlowBar(props: GlowBarProps) {
+  const { fill, index = 0, ...shapeProps } = props;
+  const color = fill || GLASS[index % GLASS.length].base;
+
+  return (
+    <Rectangle
+      {...shapeProps}
+      fill={color}
+      fillOpacity={0.98}
+      stroke="none"
+      style={{
+        filter: `drop-shadow(0 0 5px ${color}) drop-shadow(0 0 14px ${color})`,
+        transition: 'filter 160ms ease, fill-opacity 160ms ease',
+      }}
+    />
+  );
+}
+
+type GlowSectorProps = {
+  fill?: string;
+  index?: number;
+  outerRadius?: number;
+  [key: string]: unknown;
+};
+
+function GlowSector(props: GlowSectorProps) {
+  const { fill, index = 0, outerRadius, ...shapeProps } = props;
+  const color = fill || GLASS[index % GLASS.length].base;
+
+  return (
+    <Sector
+      {...shapeProps}
+      outerRadius={typeof outerRadius === 'number' ? outerRadius + 4 : outerRadius}
+      fill={color}
+      fillOpacity={0.96}
+      stroke="none"
+      style={{
+        filter: `drop-shadow(0 0 5px ${color}) drop-shadow(0 0 15px ${color})`,
+        transition: 'filter 160ms ease, fill-opacity 160ms ease',
+      }}
+    />
   );
 }
 
@@ -840,6 +892,7 @@ export default function AnalyticsPage() {
   const [gaProperties, setGaProperties] = useState<GAProperty[]>([]);
   const [propertiesLoading, setPropertiesLoading] = useState(false);
   const [propertiesError, setPropertiesError] = useState('');
+  const [hoveredTopPageIndex, setHoveredTopPageIndex] = useState<number | null>(null);
 
   const selectedProject = scope === 'personal' ? null : projects.find((p) => p.id === selectedProjectId) ?? null;
   const activePropertyId = selectedProject?.analyticsPropertyId ?? propertyId;
@@ -1369,8 +1422,8 @@ export default function AnalyticsPage() {
                 <BarChart data={data.channels} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--txt-faint)' }} axisLine={false} tickLine={false} tickFormatter={fmtNum} />
                   <YAxis type="category" dataKey="channel" width={100} tick={{ fontSize: 11, fill: 'var(--txt-muted)' }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Bar dataKey="sessions" name="Sessions" radius={[0, 8, 8, 0]} background={{ fill: 'rgba(128,128,128,0.06)', radius: 8 }}>
+                  <Tooltip content={<ChartTooltip />} cursor={false} />
+                  <Bar dataKey="sessions" name="Sessions" radius={[0, 8, 8, 0]} activeBar={<GlowBar />} background={{ fill: 'rgba(128,128,128,0.06)', radius: 8 }}>
                     {data.channels.map((_, idx) => {
                       const g = GLASS[idx % GLASS.length];
                       return <Cell key={idx} fill={g.base} fillOpacity={0.7} stroke="none" />;
@@ -1384,13 +1437,13 @@ export default function AnalyticsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
                 <ResponsiveContainer width="50%" height={200}>
                   <PieChart>
-                    <Pie data={data.devices} dataKey="sessions" nameKey="device" cx="50%" cy="50%" innerRadius={50} outerRadius={84} paddingAngle={5} stroke="none">
+                    <Pie data={data.devices} dataKey="sessions" nameKey="device" cx="50%" cy="50%" innerRadius={50} outerRadius={84} paddingAngle={5} stroke="none" activeShape={<GlowSector />}>
                       {data.devices.map((_, idx) => {
                         const g = GLASS[idx % GLASS.length];
                         return <Cell key={idx} fill={g.base} fillOpacity={0.72} />;
                       })}
                     </Pie>
-                    <Tooltip content={<ChartTooltip />} />
+                    <Tooltip content={<ChartTooltip />} cursor={false} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
@@ -1417,8 +1470,14 @@ export default function AnalyticsPage() {
                   const maxViews = data.topPages[0]?.views || 1;
                   const pct = (page.views / maxViews) * 100;
                   const g = GLASS[i % GLASS.length];
+                  const hovered = hoveredTopPageIndex === i;
                   return (
-                    <div key={i} style={{ padding: '9px 0', borderBottom: i < data.topPages.length - 1 ? '1px solid rgba(128,128,128,0.08)' : 'none' }}>
+                    <div
+                      key={i}
+                      onMouseEnter={() => setHoveredTopPageIndex(i)}
+                      onMouseLeave={() => setHoveredTopPageIndex(null)}
+                      style={{ padding: '9px 0', borderBottom: i < data.topPages.length - 1 ? '1px solid rgba(128,128,128,0.08)' : 'none' }}
+                    >
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, alignItems: 'center' }}>
                         <span style={{ fontSize: '0.82rem', color: 'var(--txt-pure)', fontFamily: 'JetBrains Mono, monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
                           {page.page}
@@ -1428,7 +1487,17 @@ export default function AnalyticsPage() {
                         </span>
                       </div>
                       <div style={{ height: 7, background: 'rgba(128,128,128,0.06)', borderRadius: 99 }}>
-                        <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: g.base, opacity: 0.7 }} />
+                        <div
+                          style={{
+                            height: '100%',
+                            width: `${pct}%`,
+                            borderRadius: 99,
+                            background: g.base,
+                            opacity: hovered ? 0.98 : 0.7,
+                            boxShadow: hovered ? `0 0 5px ${g.base}, 0 0 14px ${g.base}` : 'none',
+                            transition: 'box-shadow 160ms ease, opacity 160ms ease',
+                          }}
+                        />
                       </div>
                     </div>
                   );
@@ -1441,8 +1510,8 @@ export default function AnalyticsPage() {
                 <BarChart data={data.countries.slice(0, 8)} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
                   <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--txt-faint)' }} axisLine={false} tickLine={false} tickFormatter={fmtNum} />
                   <YAxis type="category" dataKey="country" width={90} tick={{ fontSize: 11, fill: 'var(--txt-muted)' }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Bar dataKey="sessions" name="Sessions" radius={[0, 8, 8, 0]} background={{ fill: 'rgba(128,128,128,0.06)', radius: 8 }}>
+                  <Tooltip content={<ChartTooltip />} cursor={false} />
+                  <Bar dataKey="sessions" name="Sessions" radius={[0, 8, 8, 0]} activeBar={<GlowBar />} background={{ fill: 'rgba(128,128,128,0.06)', radius: 8 }}>
                     {data.countries.slice(0, 8).map((_, idx) => {
                       const g = GLASS[idx % GLASS.length];
                       return <Cell key={idx} fill={g.base} fillOpacity={0.7} stroke="none" />;

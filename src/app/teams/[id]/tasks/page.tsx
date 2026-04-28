@@ -2,8 +2,15 @@
 
 import { useCallback, useEffect, useState, use } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/Toast';
-import type { AgentTask, TeammateWithStats, TaskKind, TaskStatus } from '@/lib/recgon/types';
+import type {
+  AgentTask,
+  TeammateWithStats,
+  TaskKind,
+  TaskStatus,
+  VerificationStatus,
+} from '@/lib/recgon/types';
 
 const KIND_LABEL: Record<TaskKind, string> = {
   next_step: 'Next step',
@@ -26,12 +33,37 @@ const STATUS_COLOR: Record<TaskStatus, string> = {
   cancelled: '#6b7280',
 };
 
+const VERIFICATION_LABEL: Record<VerificationStatus, string> = {
+  none: '',
+  auto_running: 'verifying…',
+  auto_passed: 'auto-verified',
+  auto_inconclusive: 'inconclusive',
+  proof_requested: 'proof requested',
+  proof_evaluating: 'evaluating proof…',
+  passed: 'verified',
+  failed: 'verification failed',
+  owner_override: 'owner override',
+};
+
+const VERIFICATION_COLOR: Record<VerificationStatus, string> = {
+  none: 'transparent',
+  auto_running: '#0ea5e9',
+  auto_passed: '#10b981',
+  auto_inconclusive: '#f59e0b',
+  proof_requested: '#f59e0b',
+  proof_evaluating: '#0ea5e9',
+  passed: '#10b981',
+  failed: '#ef4444',
+  owner_override: '#a855f7',
+};
+
 export default function TasksPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id: teamId } = use(params);
+  const { data: session } = useSession();
   const { addToast } = useToast();
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [teammates, setTeammates] = useState<TeammateWithStats[]>([]);
@@ -39,14 +71,24 @@ export default function TasksPage({
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ title: '', description: '', kind: 'custom' as TaskKind });
+  const [teamRole, setTeamRole] = useState<'owner' | 'member' | 'viewer' | null>(null);
+  const [proofDrafts, setProofDrafts] = useState<Record<string, string>>({});
+  const [proofLinks, setProofLinks] = useState<Record<string, string>>({});
+  const [proofExpanded, setProofExpanded] = useState<Record<string, boolean>>({});
+  const currentUserId = session?.user?.id ?? null;
 
   const refresh = useCallback(async () => {
-    const [r1, r2] = await Promise.all([
+    const [r1, r2, r3] = await Promise.all([
       fetch(`/api/teams/${teamId}/tasks`),
       fetch(`/api/teams/${teamId}/teammates`),
+      fetch(`/api/teams/${teamId}`),
     ]);
     if (r1.ok) setTasks((await r1.json()).tasks);
     if (r2.ok) setTeammates((await r2.json()).teammates);
+    if (r3.ok) {
+      const team = await r3.json();
+      setTeamRole(team.role ?? null);
+    }
     setLoading(false);
   }, [teamId]);
 
@@ -89,11 +131,61 @@ export default function TasksPage({
     await refresh();
   };
 
+  const submitProof = async (taskId: string) => {
+    const text = (proofDrafts[taskId] ?? '').trim();
+    const linkRaw = (proofLinks[taskId] ?? '').trim();
+    const links = linkRaw
+      .split(/[\s,]+/)
+      .map((s) => s.trim())
+      .filter((s) => /^https?:\/\//i.test(s));
+    if (!text && links.length === 0) {
+      addToast('Add a proof note or link before submitting', 'error');
+      return;
+    }
+    const res = await fetch(`/api/teams/${teamId}/tasks/${taskId}/proof`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, links }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      addToast(d.error || 'Proof submission failed', 'error');
+      return;
+    }
+    addToast('Proof submitted — Recgon evaluating…', 'success');
+    setProofDrafts((p) => ({ ...p, [taskId]: '' }));
+    setProofLinks((p) => ({ ...p, [taskId]: '' }));
+    setProofExpanded((p) => ({ ...p, [taskId]: false }));
+    await refresh();
+  };
+
+  const ownerOverride = async (taskId: string) => {
+    if (!confirm('Mark this task complete and bypass verification?')) return;
+    const res = await fetch(`/api/teams/${teamId}/tasks/${taskId}/override`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      addToast(d.error || 'Override failed', 'error');
+      return;
+    }
+    addToast('Marked complete (owner override)', 'success');
+    await refresh();
+  };
+
   const inputStyle: React.CSSProperties = {
     padding: '0.5rem 0.75rem', fontFamily: 'inherit',
     background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)',
     borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.85rem',
     boxSizing: 'border-box',
+  };
+
+  const isAssigneeOf = (task: AgentTask): boolean => {
+    if (!currentUserId || !task.assignedTo) return false;
+    const assignee = teammateById(task.assignedTo);
+    return assignee?.userId === currentUserId;
   };
 
   return (
@@ -173,6 +265,12 @@ export default function TasksPage({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtered.map((t) => {
           const assigned = teammateById(t.assignedTo);
+          const verifyLabel = VERIFICATION_LABEL[t.verificationStatus];
+          const verifyColor = VERIFICATION_COLOR[t.verificationStatus];
+          const showProofForm = isAssigneeOf(t) && t.verificationStatus === 'proof_requested';
+          const canOverride =
+            teamRole === 'owner' &&
+            !['completed', 'cancelled', 'declined'].includes(t.status);
           return (
             <div key={t.id} className="glass-card" style={{ padding: 12, borderRadius: 10 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -188,22 +286,112 @@ export default function TasksPage({
                       {t.description}
                     </p>
                   )}
-                  <div style={{ fontSize: '0.72rem', color: 'var(--txt-muted)', marginTop: 6 }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--txt-muted)', marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                     <span style={{ color: STATUS_COLOR[t.status] }}>● {t.status.replace('_', ' ')}</span>
-                    {' • '}p{t.priority} • {t.source}
-                    {assigned && ` • assigned to ${assigned.displayName}`}
+                    <span>p{t.priority}</span>
+                    <span>{t.source}</span>
+                    {assigned && <span>assigned to {assigned.displayName}</span>}
+                    {verifyLabel && (
+                      <span style={{
+                        color: verifyColor, border: `1px solid ${verifyColor}`,
+                        padding: '1px 6px', borderRadius: 'var(--r-pill)', fontWeight: 600,
+                      }}>
+                        {verifyLabel}
+                      </span>
+                    )}
                   </div>
+                  {t.verificationEvidence?.verdict && (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--txt-muted)', marginTop: 6, fontStyle: 'italic' }}>
+                      Recgon: {t.verificationEvidence.verdict}
+                    </p>
+                  )}
+
+                  {showProofForm && (
+                    <div style={{ marginTop: 10, padding: 10, background: 'rgba(245, 158, 11, 0.08)', borderRadius: 8, border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--txt-muted)', marginBottom: 6 }}>
+                        Recgon couldn&apos;t auto-verify this. Submit proof — what you did, links, screenshots.
+                      </div>
+                      {!proofExpanded[t.id] ? (
+                        <button
+                          onClick={() => setProofExpanded((p) => ({ ...p, [t.id]: true }))}
+                          style={{
+                            padding: '4px 10px', fontSize: '0.78rem', fontWeight: 600,
+                            background: 'transparent', color: '#f59e0b',
+                            border: '1px solid #f59e0b', borderRadius: 'var(--r-pill)', cursor: 'pointer',
+                          }}
+                        >
+                          Submit proof
+                        </button>
+                      ) : (
+                        <>
+                          <textarea
+                            placeholder="Describe what you did."
+                            value={proofDrafts[t.id] ?? ''}
+                            onChange={(e) => setProofDrafts((p) => ({ ...p, [t.id]: e.target.value }))}
+                            rows={3}
+                            style={{ ...inputStyle, width: '100%', marginBottom: 6 }}
+                          />
+                          <input
+                            placeholder="Proof links (Reel URL, blog post, PR, etc — separate with spaces)"
+                            value={proofLinks[t.id] ?? ''}
+                            onChange={(e) => setProofLinks((p) => ({ ...p, [t.id]: e.target.value }))}
+                            style={{ ...inputStyle, width: '100%', marginBottom: 6, fontSize: '0.78rem' }}
+                          />
+                          <div style={{ fontSize: '0.7rem', color: 'var(--txt-muted)', marginBottom: 6 }}>
+                            Recgon will fetch any URL you paste and judge the page itself — not just your description.
+                          </div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              onClick={() => submitProof(t.id)}
+                              style={{
+                                padding: '4px 10px', fontSize: '0.78rem', fontWeight: 600,
+                                background: '#f59e0b', color: 'white', border: 'none',
+                                borderRadius: 'var(--r-pill)', cursor: 'pointer',
+                              }}
+                            >
+                              Submit
+                            </button>
+                            <button
+                              onClick={() => setProofExpanded((p) => ({ ...p, [t.id]: false }))}
+                              style={{
+                                padding: '4px 10px', fontSize: '0.78rem',
+                                background: 'transparent', color: 'var(--txt-muted)',
+                                border: '1px solid var(--border)', borderRadius: 'var(--r-pill)', cursor: 'pointer',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <select
-                  value={t.assignedTo ?? ''}
-                  onChange={(e) => reassign(t.id, e.target.value || null)}
-                  style={{ ...inputStyle, fontSize: '0.78rem', flexShrink: 0, maxWidth: 180 }}
-                >
-                  <option value="">— unassign —</option>
-                  {teammates.map((tm) => (
-                    <option key={tm.id} value={tm.id}>{tm.displayName} ({tm.kind})</option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, minWidth: 180 }}>
+                  <select
+                    value={t.assignedTo ?? ''}
+                    onChange={(e) => reassign(t.id, e.target.value || null)}
+                    style={{ ...inputStyle, fontSize: '0.78rem', maxWidth: 180 }}
+                  >
+                    <option value="">— unassign —</option>
+                    {teammates.map((tm) => (
+                      <option key={tm.id} value={tm.id}>{tm.displayName} ({tm.kind})</option>
+                    ))}
+                  </select>
+                  {canOverride && (
+                    <button
+                      onClick={() => ownerOverride(t.id)}
+                      style={{
+                        padding: '4px 10px', fontSize: '0.74rem', fontWeight: 600,
+                        background: 'transparent', color: '#a855f7',
+                        border: '1px solid #a855f7', borderRadius: 'var(--r-pill)', cursor: 'pointer',
+                      }}
+                      title="Mark complete and bypass verification"
+                    >
+                      Mark done (owner)
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );

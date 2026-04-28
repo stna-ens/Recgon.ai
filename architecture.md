@@ -62,9 +62,14 @@ Teammate: {
   avatarColor?, avatarUrl?, title?,
   skills: string[], systemPrompt?, modelPref?: 'gemini'|'claude'|null,
   capacityHours, workingHours: WorkingHours|null,
-  fitProfile: { taskKindScores?: Record<TaskKind,number>, lastUpdated? },
+  fitProfile: {
+    taskKindScores?: Record<TaskKind,number>,           // EMA per kind, [-1,1]
+    skillStats?: Record<string, SkillStat>,             // per-skill running stats
+    lastUpdated?
+  },
   status: 'active'|'paused'|'retired', createdAt
 }
+SkillStat: { tasksDone, avgRating, rolling30dAvg, lastRatedAt }  // pruned >90d idle
 AgentTask: {
   id, teamId, projectId|null, title, description,
   kind: 'next_step'|'dev_prompt'|'marketing'|'analytics'|'research'|'custom',
@@ -73,9 +78,21 @@ AgentTask: {
   assignedTo|null, assignedBy ('recgon' | userId), assignedAt?,
   status: 'unassigned'|'assigned'|'accepted'|'in_progress'|
           'awaiting_review'|'completed'|'declined'|'failed'|'cancelled',
-  jobId|null, result?, createdBy?, createdAt, completedAt?
+  jobId|null, result?, createdBy?, createdAt, completedAt?,
+  // Recgon's verification verdict — separate from user-facing status.
+  proof: ProofPayload|null,
+  verificationStatus: 'none'|'auto_running'|'auto_passed'|'auto_inconclusive'|
+                      'proof_requested'|'proof_evaluating'|'passed'|'failed'|
+                      'owner_override',
+  verificationEvidence: { commitShas?, diffSummary?, metric?, baselineValue?,
+                          observedValue?, delta?, artifactIds?, verdict?,
+                          confidence?, iterations? } | null,
+  verifiedAt?, verifiedBy?: 'recgon'|'owner_override'
 }
+ProofPayload: { text?, links?, attachments?, extras?, submittedAt, submittedBy }
 TaskRating: { taskId (pk), teammateId, rating: 1|-1, note?, ratedBy, ratedAt }
+// rater='recgon' rows are inserted by the verification worker on a passed
+// verdict; owner_override skips auto-rating.
 RecgonState: { teamId, brainSnapshot, lastDispatchAt, assignmentLog[], rosterProposal? }
 ```
 
@@ -160,6 +177,12 @@ Project: {
 | `/api/teams/[id]/tasks` | GET/POST | Session | List with filters (`status`, `teammateId`, `kind`, `projectId`) / create user task (auto-dispatched) |
 | `/api/teams/[id]/tasks/[taskId]` | GET | Session | Task detail incl. result |
 | `/api/teams/[id]/tasks/[taskId]/reassign` | POST | Session (write) | Manual override `{ teammateId: id\|null }`. Re-enqueues run if assigned to AI |
+| `/api/teams/[id]/tasks/[taskId]/proof` | POST | Session (assignee or owner) | Submit proof `{ text?, links?, attachments?, extras? }` for a task in `verification_status='proof_requested'`. Persists `proof`, flips status to `proof_evaluating`, enqueues a `task_verification` job in `proof_evaluation` mode. |
+| `/api/teams/[id]/tasks/[taskId]/override` | POST | Session (owner only) | Owner-final mark complete `{ note? }`. Sets `verification_status='owner_override'`, `status='completed'`, `verified_by='owner_override'`. **Skips auto-rating** — owner's call is final. |
+| `/api/integrations/status` | GET | Session (team member) | `?projectId&teamId` → `{ integrations: [{ provider, accountHandle, connectedAt, expiresAt }] }`. Tokens never returned. |
+| `/api/integrations/instagram/connect` | GET | Session (team member) | `?projectId&teamId` → 302 to Meta OAuth dialog with HMAC-signed `state`. Requires `META_APP_ID` / `META_APP_SECRET` / `META_REDIRECT_URI` env vars. |
+| `/api/integrations/instagram/callback` | GET | Session + signed state | Meta OAuth landing. Verifies HMAC state, exchanges short-lived → long-lived token (~60d), finds the user's IG Business Account, upserts `project_integrations`, redirects to `/projects/{id}?ig=connected&handle=...`. |
+| `/api/integrations/instagram/disconnect` | POST | Session (team member) | `{ projectId, teamId }` → deletes the project's IG `project_integrations` row. |
 | `/api/teams/[id]/tasks/[taskId]/accept` | POST | Session | Human assignee (or owner) accepts an `assigned` task → `accepted`. |
 | `/api/teams/[id]/tasks/[taskId]/decline` | POST | Session | Human declines `{ note? }` — Recgon unassigns + re-dispatches. Returns `{ reassignedTo }`. |
 | `/api/teams/[id]/tasks/[taskId]/complete` | POST | Session | Human completes `{ summary? }` → `awaiting_review` for thumbs review. |
@@ -233,6 +256,7 @@ Project: {
 | `feedback_analyses` | `id`, `project_id`, `raw_feedback` (JSONB), `developer_prompts`, `completed_prompts` (JSONB) |
 | `marketing_content` | `id`, `project_id`, `platform`, `content` (JSONB) |
 | `campaigns` | `id`, `project_id`, `type`, `goal`, `plan` (JSONB) |
+| `project_integrations` | Per-project external-platform creds (Instagram first; designed for TikTok/X/LinkedIn). Columns: `id`, `project_id`, `team_id`, `provider` (text), `account_id` (e.g. IG Business Account ID), `account_handle` (e.g. `@coolbrand`), `access_token`, `refresh_token`, `expires_at`, `metadata` (JSONB), `connected_by`. Unique `(project_id, provider)` — reconnecting overwrites. Service-role-only access. |
 
 ### Utility Tables
 | Table | Purpose |
@@ -245,7 +269,7 @@ Project: {
 | `email_verifications` | OTP codes for registration |
 | `chat_messages` | Mentor chatbot history |
 | `analytics_configs` | GA4 configs scoped via `(user_id, team_id)` keys. `team_id IS NULL` = personal config (one per user); `team_id IS NOT NULL` = team config (one per team, `user_id` records the connecting/token-owning user). Token writeback always targets the same row that was loaded. Two partial unique indexes enforce the keying. |
-| `llm_jobs` | Persistent queue for batch LLM work. Columns: `id`, `team_id`, `user_id`, `kind` (`feedback_analysis`/`codebase_analysis`/`competitor_analysis`/`idea_analysis`), `payload` (jsonb), `status` (`pending`/`running`/`succeeded`/`failed`/`dead`), `result` (jsonb), `error`, `attempts`, `max_attempts` (default 12), `next_retry_at`, `locked_at`, `locked_by`. Partial index on pending rows; atomic claim via `claim_next_llm_job()` SQL function (`FOR UPDATE SKIP LOCKED`). (`teammate_task` kind removed with the AI-doer side.) |
+| `llm_jobs` | Persistent queue for batch LLM work. Columns: `id`, `team_id`, `user_id`, `kind` (`feedback_analysis`/`codebase_analysis`/`competitor_analysis`/`idea_analysis`/`task_verification`), `payload` (jsonb), `status` (`pending`/`running`/`succeeded`/`failed`/`dead`), `result` (jsonb), `error`, `attempts`, `max_attempts` (default 12), `next_retry_at`, `locked_at`, `locked_by`. Partial index on pending rows; atomic claim via `claim_next_llm_job()` SQL function (`FOR UPDATE SKIP LOCKED`). (`teammate_task` kind removed with the AI-doer side.) |
 | `llm_health` | Shared LLM circuit-breaker state, one row per provider. Columns: `provider` (pk), `state` (`closed`/`half_open`/`open`), `failure_count`, `window_start`, `opened_until`, `updated_at`. Atomic RPCs `llm_health_try()` (gated by `FOR UPDATE` so only one instance probes during cooldown expiry), `llm_health_record_success()`, `llm_health_record_failure()` (5 failures / 30s window → open for 60s). |
 
 **RLS**: Enabled on all tenant tables. Backend always uses `SUPABASE_SERVICE_ROLE_KEY` (bypasses RLS). RLS is defense-in-depth only.
@@ -340,7 +364,8 @@ Auth: `RECGON_MCP_TOKEN` env var → bearer token → resolves to userId → sco
 | `RESEND_API_KEY` | Yes | OTP emails |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Optional | GitHub OAuth |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional | GA4 OAuth |
-| `FIRECRAWL_API_KEY` | Optional | Web scraping (competitors, social) |
+| `FIRECRAWL_API_KEY` | Optional | Web scraping (competitors, social) and the `web_fetch` evidence source for off-platform task verification |
+| `META_APP_ID` / `META_APP_SECRET` / `META_REDIRECT_URI` | Optional | Meta (Facebook/Instagram) app credentials for the Instagram Graph evidence source. `META_REDIRECT_URI` must match the OAuth redirect registered in the Meta dashboard, e.g. `https://recgon.app/api/integrations/instagram/callback`. Without these, the IG source is silently disabled — the router won't pick it. |
 | `NEXT_PUBLIC_APP_URL` | Optional | Base URL for OAuth redirects |
 | `QUOTA_EXEMPT_EMAILS` | Optional | Comma-separated, bypass analysis quota |
 
@@ -374,7 +399,7 @@ Recgon is the dispatcher above the team — *not* a teammate. It reads a unified
 | Table | Key Columns / Notes |
 |-------|---------------------|
 | `teammates` | Unified roster. `(team_id, user_id)` unique when human. `kind` ∈ `human`/`ai`. AI rows carry `system_prompt`, `model_pref`, default `capacity_hours=168`. Humans default to 10h/wk. `working_hours` (jsonb) is per-day `[start,end]`; null = always available (AI default). `fit_profile` (jsonb) is learned `taskKindScores` EMA. Soft-retire via `status='retired'`. Migration backfills existing `team_members` rows. |
-| `agent_tasks` | First-class tasks. `kind` enum: `next_step`/`dev_prompt`/`marketing`/`analytics`/`research`/`custom`. `source` enum: `brain`/`user`/`teammate`/`schedule`. `source_ref.dedupKey` provides idempotency for brain/scheduled mints (partial unique index). Status flow: `unassigned → assigned → in_progress → awaiting_review → completed`. `job_id` links to `llm_jobs` for AI runs. |
+| `agent_tasks` | First-class tasks. `kind` enum: `next_step`/`dev_prompt`/`marketing`/`analytics`/`research`/`custom`. `source` enum: `brain`/`user`/`teammate`/`schedule`. `source_ref.dedupKey` provides idempotency for brain/scheduled mints (partial unique index). Status flow: `unassigned → assigned → in_progress → awaiting_review → completed`. `job_id` links to `llm_jobs` for AI runs. **Verification columns (`20260428_task_verification.sql`):** `proof` (jsonb), `verification_status` enum (`none`/`auto_running`/`auto_passed`/`auto_inconclusive`/`proof_requested`/`proof_evaluating`/`passed`/`failed`/`owner_override`), `verification_evidence` (jsonb: commit shas, metric deltas, verdict text, confidence, iterations), `verified_at`, `verified_by`. |
 | `agent_task_ratings` | One per task (pk on `task_id`). `rating ∈ {-1, 1}`, optional `note`. Rolled up via `teammate_stats` view (avg → 0..5 stars, default 3.5 with no ratings so newcomers get tried). |
 | `recgon_state` | Per-team dispatcher memory: `brain_snapshot`, `last_dispatch_at`, `assignment_log[]` (capped at 50), `roster_proposal`. Seeded on team creation. |
 | `teammate_event_log` | Append-only audit trail: `assigned`/`accepted`/`declined`/`completed`/`rated`/`reassigned`/`overloaded`/`no_fit`. |
@@ -383,12 +408,20 @@ Recgon is the dispatcher above the team — *not* a teammate. It reads a unified
 | File | Purpose |
 |------|---------|
 | `lib/recgon/types.ts` | All shared types (Teammate, AgentTask, BrainEntry, RosterProposal, etc.). |
-| `lib/recgon/storage.ts` | CRUD + view query: `createTeammate`, `listTeammatesWithStats` (joins `team_members.role` → `teamRole` per teammate), `updateTeammate`, `retireTeammate`, `createTask`, `listTasks`, `assignTask`, `reassignTask`, `updateTaskStatus`, `upsertRating`, `getRecgonState`, `saveBrainSnapshot`, `appendAssignmentLog`, `logEvent`. |
+| `lib/recgon/storage.ts` | CRUD + view query: `createTeammate`, `listTeammatesWithStats` (joins `team_members.role` → `teamRole` per teammate), `updateTeammate`, `retireTeammate`, `createTask`, `listTasks`, `assignTask`, `reassignTask`, `updateTaskStatus`, `setTaskProof`, `setTaskVerification`, `upsertRating`, `getRecgonState`, `saveBrainSnapshot`, `appendAssignmentLog`, `logEvent`. |
+| `lib/recgon/verify.ts` | `runTaskVerification({ taskId, mode })` worker. Three-tier model: (1) **LLM-routed auto-verify** — `evidenceRouter` picks the best evidence source (see `evidenceSources.ts`), the chosen source fetches, and the verification LLM judges; (2) `proof_requested` flow when no source is viable or evidence is too thin; (3) owner override via dedicated route. On `passed` verdict, runs a quality-rating LLM pass and inserts `agent_task_ratings` row with `rater='recgon'`, then calls `recordRatingForLearning` and `recordSkillRating`. `enqueueVerification(taskId)` is fired by `POST /complete` to kick off auto-verify. |
+| `lib/recgon/evidenceSources.ts` | Pluggable evidence-source registry. Each source declares `name`, `description` (read by the router LLM), `isViable(task)` and `fetch(task, opts)`. Built-in sources: `github_commits` (commit diffs from the project's GitHub repo), `ga4_metric` (GA4 metric snapshot — brain-minted analytics tasks now carry baselines snapshotted at mint time, see brain.ts `snapshotMetricBaseline`), `marketing_artifacts` (Recgon-internal marketing_content rows — proves *generation*, not external publication), `instagram_graph` (real Meta Graph API — pulls IG Business Account recent media, matches against task by URL or recency), `web_fetch` (Firecrawl-backed URL fetch for off-platform proof — blog posts, landing pages, etc.; flags `thin: true` when scraper hits platform shell HTML), `proof_writeup` (teammate's submitted proof text + links). Adding new sources (TikTok, X, LinkedIn) is a one-file change here. |
+| `lib/instagramGraph.ts` | Meta Graph API client: `buildInstagramAuthUrl`, `exchangeCodeForToken`, `exchangeShortLivedForLongLived`, `findInstagramBusinessAccount` (walks user's Pages → IG Business Accounts), `listRecentMedia`, `parseInstagramShortcode`. Reads `META_APP_ID`/`META_APP_SECRET`/`META_REDIRECT_URI`. Used by both the OAuth routes and the verification source. |
+| `lib/integrationStorage.ts` | Per-project external-platform credentials (`project_integrations` table). Service-role-only. Helpers: `getIntegration(projectId, provider)`, `listIntegrations(projectId)`, `upsertIntegration(...)`, `deleteIntegration(...)`. |
+| `components/IntegrationsPanel.tsx` | Project-page widget. Calls `/api/integrations/status`. Shows current Instagram connection (handle + status), Connect button (→ OAuth flow), Disconnect button. Surfaces `?ig=connected\|error` callback toasts. |
+| `lib/recgon/evidenceRouter.ts` | `routeEvidence(task)` — LLM router. Calls `listViableSources` (filters out sources that don't apply), then prompts an LLM to pick one with reasoning. Fast paths: 0 viable → `none`; 1 viable → skip the LLM. Falls back to a priority order on routing failure. For `web_fetch` decisions, extracts the URL from the proof or task description if the LLM doesn't supply one. |
+| `lib/recgon/fitLearning.ts` | Per-skill learning: `recordSkillRating(teammateId, skills, rating)` updates `fit_profile.skillStats[skill]` (EMA + rolling 30d, prunes >90d idle). `skillWeight(profile, skills)` returns a multiplicative weight in `[0.5, 1.5]` used by `match.ts` to bias the skill-overlap score by recent track record. |
+| `lib/recgon/brain.ts` | Five readers feed `BrainEntry[]`: prioritized next steps, developer prompts, **feedback rollup** (top-5 unaddressed bugs → `dev_prompt`, top-3 themes → `research`), **project health** (`topRisks` → `next_step` p1, `growthMetrics` → `analytics`), **GitHub drift** (latest commit message has no keyword overlap with declared next steps for >7d → `research`). Each entry carries a stable `dedupKey` so re-running the dispatcher never duplicates. |
 | `lib/recgon/brain.ts` | `readUnifiedBrain(teamId)` — aggregates open `prioritizedNextSteps` (→ `next_step` tasks) and `developerPrompts` (→ `dev_prompt` tasks) across all team projects. Honours existing `nextStepsTaken[]` + `completedPrompts[]` so completed work isn't re-minted. Each entry carries a stable `dedupKey`. |
 | `lib/recgon/taskMint.ts` | `mintTasksFromBrain(teamId, snapshot)` — idempotent insert via `dedupKey`. `mintUserTask(...)` — direct user-created path (source=`user`). |
 | `lib/recgon/match.ts` | Scoring: `score = 0.45·skillOverlap + 0.30·fitForKind + 0.15·availabilityNow + 0.10·loadHeadroom`. `MIN_FIT_SCORE = 0.25` — below that, task stays unassigned and Recgon logs `no_fit`. `isWithinWorkingHours()` honours per-day windows + IANA tz. **AI teammates (`kind === 'ai'`) are filtered out of `pickBestMatch` — the AI-doer side has been removed; the matcher only routes to humans.** |
 | `lib/recgon/dispatcher.ts` | `runDispatch(teamId)` — read brain → save snapshot → mint → score full unassigned backlog → for each, pick best fit and record assignment for the human teammate (with email/in-app notification). Returns `{ minted, skipped, assigned, noFit }`. `dispatchTask(teamId, taskId)` for single-task path used after user-created task insert. |
-| `lib/recgon/learn.ts` | `recordRatingForLearning(teammateId, kind, rating)` — EMA update of `fit_profile.taskKindScores[kind]` (α=0.30, clamped to [-1, 1]). Wired into `POST /tasks/[id]/rating`. Future matching biases toward each teammate's strengths. |
+| `lib/recgon/learn.ts` | `recordRatingForLearning(teammateId, kind, rating)` — EMA update of `fit_profile.taskKindScores[kind]` (α=0.30, clamped to [-1, 1]). Wired into `POST /tasks/[id]/rating` and the verification worker. Future matching biases toward each teammate's strengths. Per-skill stats live in `fitLearning.ts`. |
 | `lib/notifications.ts` | `notifyTeammateAssigned({ teammate, task, teamName })` — sends a Resend email to human assignees with the task title, kind, priority, and a deep link to `/inbox`. Fire-and-forget; no `RESEND_API_KEY` → silent skip. |
 | `lib/recgon/rosterProposer.ts` | `proposeRoster(teamId)` — reads team projects, calls `chatViaProviders` with a tailored-roster system prompt, parses 3-5 specialist proposals, saves to `recgon_state.roster_proposal`. Tolerates messy model output (raw JSON / fenced / prose-wrapped). |
 | `lib/recgon/scheduled.ts` | `runScheduledForTeam(teamId)` — daily cron entry point. `buildScheduledEntries` produces `BrainEntry[]` (weekly health check always, daily anomaly scan only if a team project has `analytics_property_id`). Mints via `mintTasksFromBrain` then runs `runDispatch`. ISO-week / ISO-day dedup keys keep it idempotent. |

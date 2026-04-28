@@ -6,7 +6,8 @@ export type JobKind =
   | 'feedback_analysis'
   | 'codebase_analysis'
   | 'competitor_analysis'
-  | 'idea_analysis';
+  | 'idea_analysis'
+  | 'task_verification';
 
 export type JobStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'dead';
 

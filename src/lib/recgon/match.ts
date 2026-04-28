@@ -1,12 +1,18 @@
 // Recgon matching — score each teammate for a given task and pick the best.
 //
-// score = 0.45 * skillOverlap
-//       + 0.30 * fitForKind
-//       + 0.15 * availabilityNow
-//       + 0.10 * loadHeadroom
+// base score = 0.45 * skillOverlap
+//            + 0.30 * fitForKind
+//            + 0.15 * availabilityNow
+//            + 0.10 * loadHeadroom
+//
+// Then the skillOverlap term is multiplied by `skillWeight()` (in [0.5, 1.5])
+// so a teammate's recent track record on the task's required skills biases
+// the match. Bounded so newcomers aren't shut out and one bad rating doesn't
+// tank a strong teammate.
 //
 // Below MIN_FIT_SCORE the task stays unassigned and Recgon flags "no good fit".
 
+import { skillWeight } from './fitLearning';
 import type { AgentTask, BrainEntry, Teammate, TeammateWithStats, WorkingHours } from './types';
 
 export const MIN_FIT_SCORE = 0.25;
@@ -91,7 +97,11 @@ export function scoreTeammateForTask(
   task: MatchInput,
   now: Date = new Date(),
 ): MatchResult {
-  const skillOverlap = jaccard(task.requiredSkills ?? [], teammate.skills ?? []);
+  const baseSkillOverlap = jaccard(task.requiredSkills ?? [], teammate.skills ?? []);
+  // Per-skill learning: weight the skill score by the teammate's recent
+  // track record on the specific skills this task needs. 1.0 = no signal.
+  const weight = skillWeight(teammate.fitProfile, task.requiredSkills ?? []);
+  const skillOverlap = Math.max(0, Math.min(1, baseSkillOverlap * weight));
   const fit = fitForKind(teammate, task.kind);
   const avail = availabilityNow(teammate, now);
   const inFlight = (teammate as TeammateWithStats).inFlightCount ?? 0;

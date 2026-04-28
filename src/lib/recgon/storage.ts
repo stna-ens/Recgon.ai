@@ -20,6 +20,9 @@ import type {
   AssignmentLogEntry,
   RosterProposal,
   BrainSnapshot,
+  ProofPayload,
+  VerificationStatus,
+  VerificationEvidence,
 } from './types';
 
 // Keep the assignment log bounded so the row doesn't grow unbounded.
@@ -87,6 +90,11 @@ type TaskRow = {
   created_by: string | null;
   created_at: string;
   completed_at: string | null;
+  proof: ProofPayload | null;
+  verification_status: VerificationStatus | null;
+  verification_evidence: VerificationEvidence | null;
+  verified_at: string | null;
+  verified_by: string | null;
 };
 
 function mapTask(row: TaskRow): AgentTask {
@@ -112,6 +120,11 @@ function mapTask(row: TaskRow): AgentTask {
     createdBy: row.created_by,
     createdAt: row.created_at,
     completedAt: row.completed_at,
+    proof: row.proof ?? null,
+    verificationStatus: row.verification_status ?? 'none',
+    verificationEvidence: row.verification_evidence ?? null,
+    verifiedAt: row.verified_at,
+    verifiedBy: row.verified_by,
   };
 }
 
@@ -355,6 +368,42 @@ export async function reassignTask(
   };
   const { error } = await supabase.from('agent_tasks').update(update).eq('id', taskId);
   if (error) throw new Error(`reassignTask failed: ${error.message}`);
+}
+
+// ── Verification ────────────────────────────────────────────────────────────
+
+export async function setTaskProof(taskId: string, proof: ProofPayload): Promise<void> {
+  const { error } = await supabase
+    .from('agent_tasks')
+    .update({ proof })
+    .eq('id', taskId);
+  if (error) throw new Error(`setTaskProof failed: ${error.message}`);
+}
+
+export async function setTaskVerification(
+  taskId: string,
+  fields: {
+    verificationStatus?: VerificationStatus;
+    verificationEvidence?: VerificationEvidence | null;
+    verifiedAt?: string | null;
+    verifiedBy?: string | null;
+    status?: TaskStatus;
+    jobId?: string | null;
+  },
+): Promise<void> {
+  const update: Record<string, unknown> = {};
+  if (fields.verificationStatus !== undefined) update.verification_status = fields.verificationStatus;
+  if (fields.verificationEvidence !== undefined) update.verification_evidence = fields.verificationEvidence;
+  if (fields.verifiedAt !== undefined) update.verified_at = fields.verifiedAt;
+  if (fields.verifiedBy !== undefined) update.verified_by = fields.verifiedBy;
+  if (fields.status !== undefined) {
+    update.status = fields.status;
+    if (fields.status === 'completed') update.completed_at = new Date().toISOString();
+  }
+  if (fields.jobId !== undefined) update.job_id = fields.jobId;
+  if (Object.keys(update).length === 0) return;
+  const { error } = await supabase.from('agent_tasks').update(update).eq('id', taskId);
+  if (error) throw new Error(`setTaskVerification failed: ${error.message}`);
 }
 
 // ── Ratings ─────────────────────────────────────────────────────────────────

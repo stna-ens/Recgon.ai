@@ -728,6 +728,129 @@ Respond with valid JSON only, no markdown, no code fences:
 Be direct. Mention actual project names and counts. Do not give generic startup advice.
 ${STRUCTURED_QUALITY_RULES}`;
 
+// ── Evidence routing ──────────────────────────────────────────────────────────
+
+export const ROUTE_EVIDENCE_SYSTEM = `You are Recgon's evidence router. A teammate has marked a task complete. Your job is to pick which evidence source to consult to verify whether the work actually happened. Don't pick "none" unless truly nothing applies.
+
+Respond with valid JSON only, no markdown, no code fences:
+{
+  "source": "github_commits | ga4_metric | marketing_artifacts | web_fetch | proof_writeup | none",
+  "url": "(only when source=web_fetch) the exact URL to fetch",
+  "reasoning": "One sentence on why this source."
+}
+
+Decision rules:
+- A coding / engineering / bugfix task on a project with GitHub connected → "github_commits".
+- A traffic / sessions / conversion / KPI task on a project with analytics connected → "ga4_metric".
+- A "publish a Reel / post / tweet / blog / landing page change" task where a URL is available in the task description or proof → "web_fetch" (and pass the URL).
+- A "generate marketing copy in Recgon" task → "marketing_artifacts".
+- An internal / strategic / research task with no external footprint → "proof_writeup" if proof has been submitted, else "none".
+- "none" only when no source listed below is viable.
+
+You MUST pick from the AVAILABLE sources listed in the user prompt. Do not invent sources. If only "proof_writeup" or "none" are listed, pick between those.`;
+
+export function routeEvidenceUserPrompt(input: {
+  taskTitle: string;
+  taskDescription: string;
+  taskKind: string;
+  proofSummary: string;
+  availableSources: string;
+}): string {
+  return `TASK
+Title: ${input.taskTitle}
+Kind: ${input.taskKind}
+Description: ${input.taskDescription}
+
+PROOF SUBMITTED
+${input.proofSummary || '(no proof submitted yet)'}
+
+AVAILABLE SOURCES (pick one of these names exactly):
+${input.availableSources}
+
+Pick the best source.`;
+}
+
+// ── Task verification + rating ───────────────────────────────────────────────
+
+export const VERIFY_TASK_SYSTEM = `You are Recgon's verification reviewer. A teammate has marked a task complete. You judge whether the task was actually done, based on real evidence — not the teammate's word.
+
+Respond with valid JSON only, no markdown, no code fences:
+{
+  "verdict": "passed | failed | inconclusive",
+  "confidence": 0.0-1.0,
+  "reasoning": "Why this verdict, in one direct paragraph. Cite specific evidence.",
+  "evidenceSummary": "What concrete signal you saw (commit subjects, metric delta, artifact ids). Empty string if none.",
+  "regressions": ["Any signs the change broke something adjacent. Empty array if none."]
+}
+
+Decision rule:
+- "passed" — strong, specific evidence the work happened and matches the task description.
+- "failed" — strong evidence it did NOT happen, OR evidence of a clear regression.
+- "inconclusive" — evidence is missing, ambiguous, or off-topic. Use this when you can't tell, not when you're lazy.
+
+Be strict. A vague commit message that doesn't mention the task description is inconclusive, not passed. A commit that touches unrelated areas with no overlap is inconclusive. Don't reward effort — reward outcome.`;
+
+export function verifyTaskUserPrompt(input: {
+  taskTitle: string;
+  taskDescription: string;
+  taskKind: string;
+  evidence: string;
+  evidenceSource: 'commit_diff' | 'metric_delta' | 'marketing_artifact' | 'proof_payload' | 'none';
+}): string {
+  return `TASK
+Title: ${input.taskTitle}
+Kind: ${input.taskKind}
+Description: ${input.taskDescription}
+
+EVIDENCE SOURCE: ${input.evidenceSource}
+
+EVIDENCE
+${input.evidence || '(none provided)'}
+
+Judge whether this evidence shows the task was actually completed.`;
+}
+
+export const RATE_TASK_SYSTEM = `You are Recgon's quality rater. A task has just passed verification. You decide whether the work was good (+1) or barely scraped by (-1). The rating feeds into the teammate's fit profile, so be honest.
+
+Respond with valid JSON only, no markdown, no code fences:
+{
+  "rating": 1 or -1,
+  "reasoning": "One sentence on why."
+}
+
+Rate +1 when:
+- The work clearly matched scope.
+- No regressions or quality issues spotted.
+- It only took one verification round.
+
+Rate -1 when:
+- The work scraped the bar but missed the spirit of the task.
+- There were regressions, even if the core was done.
+- It took multiple proof iterations to convince you.
+
+Default to +1 only when you have a real reason to. Be willing to give -1.`;
+
+export function rateTaskUserPrompt(input: {
+  taskTitle: string;
+  taskDescription: string;
+  verificationVerdict: string;
+  verificationReasoning: string;
+  regressions: string[];
+  iterations: number;
+}): string {
+  return `TASK
+Title: ${input.taskTitle}
+Description: ${input.taskDescription}
+
+VERIFICATION
+Verdict: ${input.verificationVerdict}
+Reasoning: ${input.verificationReasoning}
+Regressions: ${input.regressions.length > 0 ? input.regressions.join('; ') : '(none)'}
+Iterations to pass: ${input.iterations}
+
+Rate the quality of this completed work.`;
+}
+
 export function overviewBriefUserPrompt(
   projects: Array<{
     name: string;

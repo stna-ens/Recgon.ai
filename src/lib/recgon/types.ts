@@ -22,7 +22,19 @@ export type WorkingHours = {
 export type FitProfile = {
   // Per-task-kind exponential moving average of ratings, in [-1, 1].
   taskKindScores?: Record<string, number>;
+  // Per-skill running stats. Populated by the learning loop after each
+  // verified+rated task. Used by `match.ts` to weight the skill score by
+  // recent quality so a strong teammate keeps getting routed work in their
+  // wheelhouse and a struggling teammate is biased toward different work.
+  skillStats?: Record<string, SkillStat>;
   lastUpdated?: string;
+};
+
+export type SkillStat = {
+  tasksDone: number;
+  avgRating: number;     // EMA in [-1, 1]
+  rolling30dAvg: number; // average of ratings within the last 30 days
+  lastRatedAt: string;
 };
 
 export type Teammate = {
@@ -74,6 +86,45 @@ export type TaskStatus =
   | 'failed'
   | 'cancelled';
 
+export type VerificationStatus =
+  | 'none'
+  | 'auto_running'
+  | 'auto_passed'
+  | 'auto_inconclusive'
+  | 'proof_requested'
+  | 'proof_evaluating'
+  | 'passed'
+  | 'failed'
+  | 'owner_override';
+
+export type ProofPayload = {
+  text?: string;
+  links?: string[];
+  attachments?: Array<{ name: string; url: string }>;
+  // Free-form fields the teammate can attach (commit shas, asset ids, etc.).
+  extras?: Record<string, unknown>;
+  submittedAt: string;
+  submittedBy: string;
+};
+
+export type VerificationEvidence = {
+  // Set when auto-verify routes through the commit-diff path.
+  commitShas?: string[];
+  diffSummary?: string;
+  // Set when auto-verify routes through the metric-delta path.
+  metric?: string;
+  baselineValue?: number;
+  observedValue?: number;
+  delta?: number;
+  // Set when auto-verify routes through the marketing_content lookup.
+  artifactIds?: string[];
+  // The verification verdict text the LLM produced.
+  verdict?: string;
+  confidence?: number;
+  // How many proof iterations it took (0 = auto-verify only).
+  iterations?: number;
+};
+
 export type AgentTask = {
   id: string;
   teamId: string;
@@ -96,6 +147,11 @@ export type AgentTask = {
   createdBy: string | null;
   createdAt: string;
   completedAt: string | null;
+  proof: ProofPayload | null;
+  verificationStatus: VerificationStatus;
+  verificationEvidence: VerificationEvidence | null;
+  verifiedAt: string | null;
+  verifiedBy: string | null;
 };
 
 export type TaskRating = {

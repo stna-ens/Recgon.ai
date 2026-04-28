@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { verifyTeamAccess } from '@/lib/teamStorage';
 import { getTask, getTeammate, updateTaskStatus, logEvent } from '@/lib/recgon/storage';
+import { enqueueVerification } from '@/lib/recgon/verify';
+import { logger } from '@/lib/logger';
 
 // Human marks an accepted/in-progress task complete with optional notes.
 export async function POST(
@@ -40,6 +42,16 @@ export async function POST(
     taskId,
     event: 'completed',
     payload: { by: session.user.id, summary },
+  });
+
+  // Recgon takes over from here: kick off auto-verification. Failures here
+  // are non-fatal — the task still reaches awaiting_review and the owner can
+  // override if verification never resolves.
+  enqueueVerification(taskId).catch((err) => {
+    logger.warn('failed to enqueue task verification', {
+      taskId,
+      err: err instanceof Error ? err.message : String(err),
+    });
   });
 
   return NextResponse.json({ success: true });

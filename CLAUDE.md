@@ -14,7 +14,8 @@ Recommended in production:
 Optional:
 - GA4 OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 - GitHub OAuth (repo import): `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (or legacy `GITHUB_ID`)
-- Feedback scraping: `FIRECRAWL_API_KEY`
+- Feedback scraping + Recgon `web_fetch` verification source: `FIRECRAWL_API_KEY`
+- Instagram Graph API (Recgon `instagram_graph` verification source + OAuth): `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI`
 - Deployment base URL (for emails + OAuth callbacks): `NEXT_PUBLIC_BASE_URL`
 - Logging: `LOG_LEVEL` (`debug` | `info` | `warn` | `error`; default `info`)
 - Quota bypass (comma-separated emails exempt from analysis quota): `QUOTA_EXEMPT_EMAILS`

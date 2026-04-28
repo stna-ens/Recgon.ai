@@ -13,6 +13,7 @@ import { analyzeCodebase, analyzeCodebaseUpdate } from '../codeAnalyzer';
 import { analyzeCompetitors } from '../competitorAnalyzer';
 import { cloneGitHubRepo, getLatestCommit } from '../githubFetcher';
 import { runDispatch } from '../recgon/dispatcher';
+import { runTaskVerification, type TaskVerificationPayload } from '../recgon/verify';
 import {
   saveFeedbackToProject,
   saveProject,
@@ -201,11 +202,19 @@ function withRecgonDispatch(inner: Worker): Worker {
   };
 }
 
+async function runTaskVerificationJob(job: LLMJob): Promise<WorkerResult> {
+  const payload = job.payload as TaskVerificationPayload;
+  if (!payload?.taskId) throw new Error('task_verification job missing taskId');
+  const result = await runTaskVerification(payload);
+  return result as unknown as WorkerResult;
+}
+
 const WORKERS: Partial<Record<JobKind, Worker>> = {
   feedback_analysis: withRecgonDispatch(runFeedbackAnalysis),
   idea_analysis: withRecgonDispatch(runIdeaAnalysis),
   codebase_analysis: withRecgonDispatch(runCodebaseAnalysis),
   competitor_analysis: runCompetitorAnalysis,
+  task_verification: runTaskVerificationJob,
 };
 
 export async function runJob(job: LLMJob): Promise<WorkerResult> {
