@@ -581,7 +581,7 @@ export default function DashboardPage() {
     <div>
       <style>{`.main-content { overflow: hidden !important; }`}</style>
       {/* Chat */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', minHeight: 600, padding: 0, overflow: 'hidden', marginBottom: 24, fontFamily: "'JetBrains Mono', ui-monospace, monospace", position: 'relative' }}>
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 240px)', minHeight: 480, padding: 0, overflow: 'hidden', marginBottom: 24, fontFamily: "'JetBrains Mono', ui-monospace, monospace", position: 'relative' }}>
 
         {/* Command Palette */}
         {paletteOpen && (() => {
