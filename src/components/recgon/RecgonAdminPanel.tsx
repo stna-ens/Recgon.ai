@@ -375,9 +375,28 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
                   <span className="rcg-roster-summary-k">h/wk capacity</span>
                 </span>
               </div>
-              <Link href={`/teams/${teamId}`} className="rcg-block-link">
+              <button
+                type="button"
+                onClick={() => {
+                  const target = document.getElementById('invite');
+                  if (!target) return;
+                  // The page scrolls inside main.main-content, not the window —
+                  // compute the offset against that scroll container.
+                  const scroller =
+                    target.closest('main') ?? document.scrollingElement ?? document.documentElement;
+                  const top =
+                    target.getBoundingClientRect().top -
+                    scroller.getBoundingClientRect().top +
+                    scroller.scrollTop -
+                    24;
+                  scroller.scrollTo({ top, behavior: 'smooth' });
+                  target.classList.add('rcg-flash');
+                  setTimeout(() => target.classList.remove('rcg-flash'), 1400);
+                }}
+                className="rcg-block-link rcg-block-link-btn"
+              >
                 invite teammate
-              </Link>
+              </button>
             </header>
 
             {humans.length === 0 ? (
@@ -550,6 +569,17 @@ const rcgStyles = `
     color: var(--signature);
     border-color: rgba(var(--signature-rgb), 0.35);
     background: rgba(var(--signature-rgb), 0.06);
+  }
+  .rcg-block-link-btn {
+    cursor: pointer;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  @keyframes rcgFlash {
+    0% { box-shadow: 0 0 0 0 rgba(var(--signature-rgb), 0.55); }
+    100% { box-shadow: 0 0 0 12px rgba(var(--signature-rgb), 0); }
+  }
+  .rcg-flash {
+    animation: rcgFlash 1.4s ease-out;
   }
   .rcg-add-link { color: var(--signature); border-color: rgba(var(--signature-rgb), 0.32); background: rgba(var(--signature-rgb), 0.06); }
   .rcg-add-plus { display: inline-block; margin-right: 4px; font-size: 13px; line-height: 1; transform: translateY(-1px); }

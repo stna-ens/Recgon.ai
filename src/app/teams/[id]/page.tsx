@@ -1348,7 +1348,7 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* ── Invite ── */}
       {canInvite && (
-        <section className="glass-card tdp-section">
+        <section id="invite" className="glass-card tdp-section">
           <div className="tdp-section-head">
             <div>
               <span className="recgon-label">invite</span>

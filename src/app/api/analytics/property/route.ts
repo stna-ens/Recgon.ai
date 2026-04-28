@@ -3,16 +3,21 @@ import { auth } from '@/auth';
 import { getAnalyticsConfig, setAnalyticsConfig, setAnalyticsPropertyId, disconnectAnalytics } from '@/lib/analyticsStorage';
 import { updateProjectAnalyticsProperty, getProjectTeamId } from '@/lib/storage';
 import { verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { resolveScope } from '@/lib/analyticsScope';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const config = await getAnalyticsConfig(session.user.id);
+  const resolved = await resolveScope(req.nextUrl.searchParams, session.user.id);
+  if (!resolved.ok) return resolved.response;
+
+  const config = await getAnalyticsConfig(resolved.scope);
   return NextResponse.json({
     propertyId: config?.propertyId ?? null,
     hasCredentials: !!(config?.serviceAccountJson || config?.oauth),
     authMethod: config?.authMethod ?? null,
+    ownerUserId: config?.ownerUserId ?? null,
     oauthConfigured: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
   });
 }
@@ -23,7 +28,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
 
-  // Handle linking a GA4 property to a specific project
+  // Handle linking a GA4 property to a specific project (project-level, unchanged)
   if (body.type === 'set_project_property') {
     const { projectId, propertyId } = body;
     if (!projectId || typeof projectId !== 'string')
@@ -42,17 +47,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Handle setting property ID for OAuth users
+  // For analytics_configs writes, scope comes from query params
+  const resolved = await resolveScope(req.nextUrl.searchParams, session.user.id, { requireOwnerForTeam: true });
+  if (!resolved.ok) return resolved.response;
+
   if (body.type === 'set_property_id') {
     const { propertyId } = body;
     if (!propertyId || typeof propertyId !== 'string' || !/^\d+$/.test(propertyId.trim())) {
       return NextResponse.json({ error: 'Invalid property ID — must be numeric (e.g. 123456789)' }, { status: 400 });
     }
-    await setAnalyticsPropertyId(session.user.id, propertyId.trim());
+    await setAnalyticsPropertyId(resolved.scope, propertyId.trim());
     return NextResponse.json({ ok: true });
   }
 
-  // Handle service account setup (legacy)
+  // Service account setup (legacy)
   const { propertyId, serviceAccountJson } = body;
 
   if (!propertyId || typeof propertyId !== 'string' || !/^\d+$/.test(propertyId.trim())) {
@@ -72,14 +80,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON — paste the full contents of your service account key file' }, { status: 400 });
   }
 
-  await setAnalyticsConfig(session.user.id, propertyId.trim(), serviceAccountJson);
+  await setAnalyticsConfig(resolved.scope, session.user.id, propertyId.trim(), serviceAccountJson);
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  await disconnectAnalytics(session.user.id);
+  const resolved = await resolveScope(req.nextUrl.searchParams, session.user.id, { requireOwnerForTeam: true });
+  if (!resolved.ok) return resolved.response;
+
+  await disconnectAnalytics(resolved.scope);
   return NextResponse.json({ ok: true });
 }

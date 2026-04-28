@@ -41,16 +41,17 @@ export const fetchAnalyticsTool: ToolDefinition<Input, AnalyticsOutput> = {
       );
     }
 
-    const analyticsConfig = await getAnalyticsConfig(ctx.userId);
+    const scope = { kind: 'team' as const, teamId: ctx.teamId };
+    const analyticsConfig = await getAnalyticsConfig(scope);
     if (!analyticsConfig) {
       throw new Error(
-        'No GA4 credentials found. Connect your Google account or upload a service account key in the Analytics tab.',
+        'No GA4 credentials found for this team. A team owner can connect Google Analytics in the Analytics tab.',
       );
     }
 
     const authOptions =
       analyticsConfig.authMethod === 'oauth' && analyticsConfig.oauth
-        ? { oauth: analyticsConfig.oauth, userId: ctx.userId }
+        ? { oauth: analyticsConfig.oauth, scope }
         : analyticsConfig.serviceAccountJson
         ? { serviceAccountJson: analyticsConfig.serviceAccountJson }
         : null;

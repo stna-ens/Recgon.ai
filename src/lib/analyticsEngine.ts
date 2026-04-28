@@ -1,6 +1,6 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { OAuth2Client } from 'google-auth-library';
-import { updateOAuthTokens, type OAuthTokens } from './analyticsStorage';
+import { updateOAuthTokens, type OAuthTokens, type ConfigScope } from './analyticsStorage';
 
 export interface OverviewMetrics {
   sessions: number;
@@ -57,7 +57,7 @@ function num(val: string | null | undefined): number {
   return parseFloat(val ?? '0') || 0;
 }
 
-async function refreshOAuthToken(refreshToken: string, userId: string): Promise<string> {
+async function refreshOAuthToken(refreshToken: string, scope: ConfigScope): Promise<string> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error('Google OAuth not configured');
@@ -83,7 +83,7 @@ async function refreshOAuthToken(refreshToken: string, userId: string): Promise<
     expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
   };
   if (data.refresh_token) newTokens.refreshToken = data.refresh_token;
-  await updateOAuthTokens(userId, newTokens);
+  await updateOAuthTokens(scope, newTokens);
 
   return data.access_token;
 }
@@ -91,7 +91,7 @@ async function refreshOAuthToken(refreshToken: string, userId: string): Promise<
 interface AuthOptions {
   serviceAccountJson?: string;
   oauth?: OAuthTokens;
-  userId?: string;
+  scope?: ConfigScope;
 }
 
 export async function fetchAnalyticsData(
@@ -110,10 +110,10 @@ export async function fetchAnalyticsData(
 
     // Auto-refresh if token is expired or about to expire (5 min buffer)
     if (authOptions.oauth.expiresAt < Date.now() + 5 * 60 * 1000) {
-      if (!authOptions.oauth.refreshToken || !authOptions.userId) {
+      if (!authOptions.oauth.refreshToken || !authOptions.scope) {
         throw new Error('OAuth token expired. Please reconnect your Google account.');
       }
-      accessToken = await refreshOAuthToken(authOptions.oauth.refreshToken, authOptions.userId);
+      accessToken = await refreshOAuthToken(authOptions.oauth.refreshToken, authOptions.scope);
     }
 
     const oauth2Client = new OAuth2Client(

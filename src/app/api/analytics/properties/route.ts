@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { getAnalyticsConfig, updateOAuthTokens, type OAuthTokens } from '@/lib/analyticsStorage';
+import { getAnalyticsConfig, updateOAuthTokens, type OAuthTokens, type ConfigScope } from '@/lib/analyticsStorage';
+import { resolveScope } from '@/lib/analyticsScope';
 
 export interface GAProperty {
   id: string;
@@ -8,7 +9,7 @@ export interface GAProperty {
   accountName: string;
 }
 
-async function getValidAccessToken(oauth: OAuthTokens, userId: string): Promise<string> {
+async function getValidAccessToken(oauth: OAuthTokens, scope: ConfigScope): Promise<string> {
   if (oauth.expiresAt > Date.now() + 5 * 60 * 1000) {
     return oauth.accessToken;
   }
@@ -38,23 +39,26 @@ async function getValidAccessToken(oauth: OAuthTokens, userId: string): Promise<
     expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
   };
   if (data.refresh_token) newTokens.refreshToken = data.refresh_token;
-  await updateOAuthTokens(userId, newTokens);
+  await updateOAuthTokens(scope, newTokens);
 
   return data.access_token;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const config = await getAnalyticsConfig(session.user.id);
+  const resolved = await resolveScope(req.nextUrl.searchParams, session.user.id);
+  if (!resolved.ok) return resolved.response;
+
+  const config = await getAnalyticsConfig(resolved.scope);
   if (!config?.oauth) {
     return NextResponse.json({ error: 'OAuth not connected' }, { status: 400 });
   }
 
   let accessToken: string;
   try {
-    accessToken = await getValidAccessToken(config.oauth, session.user.id);
+    accessToken = await getValidAccessToken(config.oauth, resolved.scope);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Token refresh failed' }, { status: 401 });
   }

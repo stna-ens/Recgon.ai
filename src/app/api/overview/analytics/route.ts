@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ analytics: [], analyticsConfigured: false });
     }
 
-    const config = await getAnalyticsConfig(session.user.id);
+    const scope = { kind: 'team' as const, teamId };
+    const config = await getAnalyticsConfig(scope);
     const hasAuth = !!config && (config.authMethod === 'oauth' ? !!config.oauth : !!config.serviceAccountJson);
 
     if (!hasAuth || !config) {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     const authOptions = config.authMethod === 'oauth' && config.oauth
-      ? { oauth: config.oauth, userId: session.user.id }
+      ? { oauth: config.oauth, scope }
       : { serviceAccountJson: config.serviceAccountJson };
 
     const projectMap = Object.fromEntries(projects.map((p) => [p.id, p.name]));

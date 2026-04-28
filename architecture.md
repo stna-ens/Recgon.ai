@@ -178,8 +178,13 @@ Project: {
 | `/api/feedback/history` | GET | Session | `?projectId=` |
 | `/api/marketing/generate` | POST | Session | `{projectId, platforms[]}` → marketing content |
 | `/api/marketing/campaign` | POST | Session | `{projectId, type, goal, duration}` → campaign plan |
-| `/api/analytics/data` | GET | Session | GA4 raw data |
+| `/api/analytics/data` | GET | Session | GA4 raw data. Either `?projectId=` (uses owning team's config) or `?scope=team&teamId=` / `?scope=personal` (+ optional `propertyId=`). |
 | `/api/analytics/analyze` | POST | Session | AI insights from GA4 data |
+| `/api/analytics/property` | GET/POST/DELETE | Session | `?scope=team&teamId=` or `?scope=personal`. POST/DELETE on team scope require **owner** role. POST also handles `set_project_property` for binding a project to a GA4 property. |
+| `/api/analytics/property/transfer` | POST | Session (team owner) | Body `{ direction: 'to_team' \| 'to_personal', teamId }`. Atomically flips an existing config's `team_id` between scopes (no re-OAuth). `to_personal` additionally requires the caller to be the team config's `user_id` (token owner). 409 if target scope already has a config. |
+| `/api/analytics/properties` | GET | Session | `?scope=team&teamId=` or `?scope=personal`. Lists GA4 properties accessible to the connecting account. |
+| `/api/analytics/oauth` | GET | Session | `?scope=team&teamId=` or `?scope=personal`. Encodes scope in OAuth `state`. Team scope requires owner. |
+| `/api/analytics/oauth/callback` | GET | — | Decodes scope from `state`, re-validates session + owner role, writes to `analytics_configs` for the resolved scope. |
 | `/api/social/profiles` | POST | Session | Scrape + analyze social profiles |
 | `/api/overview` | GET | Session | `?teamId=` → `{ actions, signals, unreadFeedback }` — fast-path: priority actions with `surfacedAt` staleness, recent domain signals, last-7d feedback count |
 | `/api/overview/brief` | GET | Session | `?teamId=` → `{ brief: { brief, focusArea } \| null }` — Gemini recgon pulse, in-memory cache per team (2h TTL) |
@@ -239,6 +244,7 @@ Project: {
 | `quota_exceptions` | Email allowlist to bypass quota |
 | `email_verifications` | OTP codes for registration |
 | `chat_messages` | Mentor chatbot history |
+| `analytics_configs` | GA4 configs scoped via `(user_id, team_id)` keys. `team_id IS NULL` = personal config (one per user); `team_id IS NOT NULL` = team config (one per team, `user_id` records the connecting/token-owning user). Token writeback always targets the same row that was loaded. Two partial unique indexes enforce the keying. |
 | `llm_jobs` | Persistent queue for batch LLM work. Columns: `id`, `team_id`, `user_id`, `kind` (`feedback_analysis`/`codebase_analysis`/`competitor_analysis`/`idea_analysis`), `payload` (jsonb), `status` (`pending`/`running`/`succeeded`/`failed`/`dead`), `result` (jsonb), `error`, `attempts`, `max_attempts` (default 12), `next_retry_at`, `locked_at`, `locked_by`. Partial index on pending rows; atomic claim via `claim_next_llm_job()` SQL function (`FOR UPDATE SKIP LOCKED`). (`teammate_task` kind removed with the AI-doer side.) |
 | `llm_health` | Shared LLM circuit-breaker state, one row per provider. Columns: `provider` (pk), `state` (`closed`/`half_open`/`open`), `failure_count`, `window_start`, `opened_until`, `updated_at`. Atomic RPCs `llm_health_try()` (gated by `FOR UPDATE` so only one instance probes during cooldown expiry), `llm_health_record_success()`, `llm_health_record_failure()` (5 failures / 30s window → open for 60s). |
 

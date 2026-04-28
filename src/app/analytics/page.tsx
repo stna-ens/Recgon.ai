@@ -274,7 +274,7 @@ function LinkPropertyBanner({ projectName, propertyId, onChange, onSave, saving,
 
 // ─── Setup screen ─────────────────────────────────────────────────────────────
 
-function SetupScreen({ onSave, oauthConfigured, needsPropertyId, onPropertyIdSave, gaProperties, propertiesLoading, propertiesError, onRetryProperties }: {
+function SetupScreen({ onSave, oauthConfigured, needsPropertyId, onPropertyIdSave, gaProperties, propertiesLoading, propertiesError, onRetryProperties, oauthHref, canManage, scopeLabel }: {
   onSave: (propertyId: string, serviceAccountJson: string) => Promise<void>;
   oauthConfigured: boolean;
   needsPropertyId: boolean;
@@ -283,6 +283,9 @@ function SetupScreen({ onSave, oauthConfigured, needsPropertyId, onPropertyIdSav
   propertiesLoading: boolean;
   propertiesError: string;
   onRetryProperties: () => void;
+  oauthHref: string;
+  canManage: boolean;
+  scopeLabel: string;
 }) {
   const [id, setId] = useState('');
   const [json, setJson] = useState('');
@@ -449,8 +452,15 @@ function SetupScreen({ onSave, oauthConfigured, needsPropertyId, onPropertyIdSav
         <span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>connect google-analytics
       </h1>
       <p style={{ color: 'var(--txt-muted)', marginBottom: 12, lineHeight: 1.6 }}>
-        Recgon reads your GA4 data to surface insights and recommendations.
+        Recgon reads your GA4 data to surface insights and recommendations. Connecting <strong>{scopeLabel}</strong>.
       </p>
+      {!canManage && (
+        <div className="glass-card" style={{ padding: '12px 16px', marginBottom: 24, borderColor: 'rgba(168,85,247,0.3)' }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--txt-muted)', margin: 0, lineHeight: 1.5 }}>
+            Only team owners can connect Google Analytics for the team. Ask your team owner to connect, or switch to <strong>Personal</strong> to connect your own account.
+          </p>
+        </div>
+      )}
       <p style={{ color: 'var(--txt-faint)', marginBottom: 40, fontSize: '0.82rem', lineHeight: 1.6 }}>
         No analytics yet?{' '}
         <a
@@ -471,9 +481,9 @@ function SetupScreen({ onSave, oauthConfigured, needsPropertyId, onPropertyIdSav
             Sign in with your Google account to grant Recgon read-only access to your analytics.
           </p>
           <a
-            href="/api/analytics/oauth"
+            href={oauthHref}
             className="btn btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 28px', fontSize: 14, textDecoration: 'none' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '12px 28px', fontSize: 14, textDecoration: 'none', pointerEvents: canManage ? 'auto' : 'none', opacity: canManage ? 1 : 0.5 }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -598,9 +608,9 @@ function SetupScreen({ onSave, oauthConfigured, needsPropertyId, onPropertyIdSav
 
           <button
             onClick={handleSave}
-            disabled={saving || !canSave}
+            disabled={saving || !canSave || !canManage}
             className="btn btn-primary btn-sm"
-            style={{ alignSelf: 'flex-start', opacity: saving || !canSave ? 0.5 : 1, cursor: saving || !canSave ? 'not-allowed' : 'pointer' }}
+            style={{ alignSelf: 'flex-start', opacity: saving || !canSave || !canManage ? 0.5 : 1, cursor: saving || !canSave || !canManage ? 'not-allowed' : 'pointer' }}
           >
             {saving ? 'Connecting…' : 'Connect Property'}
           </button>
@@ -763,14 +773,56 @@ function InsightsPanel({ insights, loading, onAnalyze }: {
   );
 }
 
+// ─── Scope toggle ─────────────────────────────────────────────────────────────
+
+function ScopeToggle({ scope, onChange, hasTeam }: { scope: Scope; onChange: (s: Scope) => void; hasTeam: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+      <span className="recgon-label" style={{ marginRight: 4 }}>scope</span>
+      <div style={{ display: 'flex', gap: 3, background: 'var(--bg-deep)', border: '1px solid var(--btn-secondary-border)', borderRadius: 10, padding: 3 }}>
+        {(['team', 'personal'] as const).map((opt) => {
+          const active = scope === opt;
+          const disabled = opt === 'team' && !hasTeam;
+          return (
+            <button
+              key={opt}
+              onClick={() => !disabled && onChange(opt)}
+              disabled={disabled}
+              style={{
+                padding: '5px 14px',
+                borderRadius: 8,
+                border: 'none',
+                fontSize: '0.78rem',
+                fontWeight: 500,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                background: active ? 'var(--btn-primary-bg)' : 'transparent',
+                color: active ? 'var(--btn-primary-txt)' : 'var(--txt-muted)',
+                opacity: disabled ? 0.4 : 1,
+                textTransform: 'capitalize',
+              }}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
+
+type Scope = 'team' | 'personal';
 
 export default function AnalyticsPage() {
   const { currentTeam } = useTeam();
+  const [scope, setScope] = useState<Scope>('team');
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [hasCredentials, setHasCredentials] = useState(false);
   const [oauthConfigured, setOauthConfigured] = useState(false);
   const [authMethod, setAuthMethod] = useState<'oauth' | 'service_account' | null>(null);
+  const [configOwnerUserId, setConfigOwnerUserId] = useState<string | null>(null);
   const [days, setDays] = useState(30);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [insights, setInsights] = useState<AnalyticsInsights | null>(null);
@@ -789,11 +841,16 @@ export default function AnalyticsPage() {
   const [propertiesLoading, setPropertiesLoading] = useState(false);
   const [propertiesError, setPropertiesError] = useState('');
 
-  const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
+  const selectedProject = scope === 'personal' ? null : projects.find((p) => p.id === selectedProjectId) ?? null;
   const activePropertyId = selectedProject?.analyticsPropertyId ?? propertyId;
+  const isOwner = currentTeam?.role === 'owner';
+  const canManage = scope === 'personal' || isOwner;
+  const scopeQuery = scope === 'team' && currentTeam
+    ? `scope=team&teamId=${currentTeam.id}`
+    : 'scope=personal';
 
   const insightsKey = activePropertyId
-    ? `analytics_insights_${activePropertyId}_${selectedProjectId ?? 'global'}_${days}`
+    ? `analytics_insights_${scope}_${activePropertyId}_${selectedProjectId ?? 'global'}_${days}`
     : null;
 
   // Load cached insights from localStorage when property/days are known
@@ -805,11 +862,12 @@ export default function AnalyticsPage() {
     } catch { /* ignore */ }
   }, [insightsKey]);
 
-  async function fetchProperties() {
+  const fetchProperties = useCallback(async () => {
+    if (scope === 'team' && !currentTeam) return;
     setPropertiesLoading(true);
     setPropertiesError('');
     try {
-      const res = await fetch('/api/analytics/properties');
+      const res = await fetch(`/api/analytics/properties?${scopeQuery}`);
       if (!res.ok) {
         const json = await res.json();
         throw new Error(json.error ?? 'Failed to load properties');
@@ -820,24 +878,36 @@ export default function AnalyticsPage() {
     } finally {
       setPropertiesLoading(false);
     }
-  }
+  }, [scope, scopeQuery, currentTeam]);
 
-  // Check config on mount
+  // (Re-)check config when scope or current team changes
   useEffect(() => {
+    if (scope === 'team' && !currentTeam) return;
+    setConfigLoaded(false);
+    setData(null);
+    setInsights(null);
+    setError('');
+    let cancelled = false;
     async function checkConfig() {
-      const res = await fetch('/api/analytics/property').then((r) => r.ok ? r.json() : { propertyId: null, hasCredentials: false, oauthConfigured: false, authMethod: null });
+      const res = await fetch(`/api/analytics/property?${scopeQuery}`)
+        .then((r) => r.ok ? r.json() : { propertyId: null, hasCredentials: false, oauthConfigured: false, authMethod: null, ownerUserId: null });
+      if (cancelled) return;
       setPropertyId(res.hasCredentials && res.propertyId ? res.propertyId : null);
       setHasCredentials(res.hasCredentials ?? false);
       setOauthConfigured(res.oauthConfigured ?? false);
       setAuthMethod(res.authMethod ?? null);
+      setConfigOwnerUserId(res.ownerUserId ?? null);
       setConfigLoaded(true);
       if (res.authMethod === 'oauth' && res.hasCredentials) {
         fetchProperties();
+      } else {
+        setGaProperties([]);
       }
     }
     checkConfig();
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scope, currentTeam?.id]);
 
   // Load project list
   useEffect(() => {
@@ -847,7 +917,7 @@ export default function AnalyticsPage() {
 
   const teamId = currentTeam?.id;
   const loadSavedInsights = useCallback(async () => {
-    if (!teamId || !activePropertyId) {
+    if (scope === 'personal' || !teamId || !activePropertyId) {
       setSavedInsights([]);
       return;
     }
@@ -866,7 +936,7 @@ export default function AnalyticsPage() {
     } catch {
       setSavedInsights([]);
     }
-  }, [activePropertyId, days, selectedProjectId, teamId]);
+  }, [scope, activePropertyId, days, selectedProjectId, teamId]);
 
   useEffect(() => {
     const onVisible = () => {
@@ -884,8 +954,14 @@ export default function AnalyticsPage() {
     setLoadingData(true);
     setError('');
     try {
-      const projectParam = pId ? `&projectId=${pId}` : '';
-      const res = await fetch(`/api/analytics/data?days=${selectedDays}${projectParam}`, {
+      const params = new URLSearchParams({ days: String(selectedDays) });
+      if (scope === 'team' && pId) {
+        params.set('projectId', pId);
+      } else {
+        params.set('scope', scope);
+        if (scope === 'team' && teamId) params.set('teamId', teamId);
+      }
+      const res = await fetch(`/api/analytics/data?${params.toString()}`, {
         headers: teamId ? { 'x-team-id': teamId } : {},
       });
       const json = await res.json();
@@ -896,7 +972,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoadingData(false);
     }
-  }, [teamId]);
+  }, [teamId, scope]);
 
   // Auto-fetch when config or selected project changes
   useEffect(() => {
@@ -908,7 +984,7 @@ export default function AnalyticsPage() {
   }, [configLoaded, hasCredentials, activePropertyId, fetchData, days, selectedProjectId, loadSavedInsights]);
 
   async function handleSaveProperty(id: string, serviceAccountJson: string) {
-    const res = await fetch('/api/analytics/property', {
+    const res = await fetch(`/api/analytics/property?${scopeQuery}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ propertyId: id, serviceAccountJson }),
@@ -920,7 +996,7 @@ export default function AnalyticsPage() {
   }
 
   async function handlePropertyIdSave(id: string) {
-    const res = await fetch('/api/analytics/property', {
+    const res = await fetch(`/api/analytics/property?${scopeQuery}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'set_property_id', propertyId: id }),
@@ -963,7 +1039,12 @@ export default function AnalyticsPage() {
       const res = await fetch('/api/analytics/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, days, projectId: selectedProjectId, teamId }),
+        body: JSON.stringify({
+          data,
+          days,
+          projectId: scope === 'team' ? selectedProjectId : null,
+          teamId: scope === 'team' ? teamId : undefined,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Analysis failed');
@@ -995,16 +1076,22 @@ export default function AnalyticsPage() {
   // Show setup screen if credentials not configured, or OAuth user hasn't selected a property yet
   if (!hasCredentials || needsPropertyId) {
     return (
-      <SetupScreen
-        onSave={handleSaveProperty}
-        oauthConfigured={oauthConfigured}
-        needsPropertyId={needsPropertyId}
-        onPropertyIdSave={handlePropertyIdSave}
-        gaProperties={gaProperties}
-        propertiesLoading={propertiesLoading}
-        propertiesError={propertiesError}
-        onRetryProperties={fetchProperties}
-      />
+      <div>
+        <ScopeToggle scope={scope} onChange={setScope} hasTeam={!!currentTeam} />
+        <SetupScreen
+          onSave={handleSaveProperty}
+          oauthConfigured={oauthConfigured}
+          needsPropertyId={needsPropertyId}
+          onPropertyIdSave={handlePropertyIdSave}
+          gaProperties={gaProperties}
+          propertiesLoading={propertiesLoading}
+          propertiesError={propertiesError}
+          onRetryProperties={fetchProperties}
+          oauthHref={`/api/analytics/oauth?${scopeQuery}`}
+          canManage={canManage}
+          scopeLabel={scope === 'team' ? `for team "${currentTeam?.name ?? ''}"` : 'for your personal account'}
+        />
+      </div>
     );
   }
 
@@ -1016,10 +1103,18 @@ export default function AnalyticsPage() {
           <span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>analytics
         </h1>
         <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', fontFamily: "'JetBrains Mono', ui-monospace, monospace", marginBottom: 16 }}>
-          {selectedProject && selectedProject.analyticsPropertyId && <>property <code style={{ color: 'var(--signature)', fontSize: '0.8rem' }}>{selectedProject.analyticsPropertyId}</code> · </>}
-          {selectedProject ? selectedProject.name : 'All projects'}
+          {scope === 'personal'
+            ? <>personal · property <code style={{ color: 'var(--signature)', fontSize: '0.8rem' }}>{propertyId}</code></>
+            : <>
+                {selectedProject && selectedProject.analyticsPropertyId && <>property <code style={{ color: 'var(--signature)', fontSize: '0.8rem' }}>{selectedProject.analyticsPropertyId}</code> · </>}
+                {selectedProject ? selectedProject.name : 'All projects'}
+              </>
+          }
           {data && <> · fetched {new Date(data.fetchedAt).toLocaleTimeString()}</>}
+          {scope === 'team' && hasCredentials && configOwnerUserId && !isOwner && <> · connected by team owner</>}
         </p>
+
+        <ScopeToggle scope={scope} onChange={setScope} hasTeam={!!currentTeam} />
 
         {/* Toolbar strip */}
         <div className="analytics-toolbar" style={{
@@ -1035,36 +1130,40 @@ export default function AnalyticsPage() {
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.05)',
           gap: 12,
         }}>
-          {/* Left: project selector */}
-          <div style={{ flexShrink: 0, minWidth: 0 }}>
-            {projects.length > 0 ? (
-              <Select
-                value={selectedProjectId ?? ''}
-                onChange={(val) => {
-                  setSelectedProjectId(val || null);
-                  setData(null);
-                  setInsights(null);
-                  setError('');
-                  setLinkingPropertyId('');
-                  setLinkingError('');
-                }}
-                placeholder="All projects"
-                options={[
-                  { value: '', label: 'All projects' },
-                  ...projects.map((p) => ({
-                    value: p.id,
-                    label: p.analyticsPropertyId ? `${p.name}  ·  ${p.analyticsPropertyId}` : `${p.name}  ·  not linked`,
-                  })),
-                ]}
-                style={{ width: 220 }}
-              />
-            ) : (
-              <span style={{ fontSize: '0.85rem', color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>All projects</span>
-            )}
-          </div>
+          {/* Left: project selector (team scope only) */}
+          {scope === 'team' && (
+            <>
+              <div style={{ flexShrink: 0, minWidth: 0 }}>
+                {projects.length > 0 ? (
+                  <Select
+                    value={selectedProjectId ?? ''}
+                    onChange={(val) => {
+                      setSelectedProjectId(val || null);
+                      setData(null);
+                      setInsights(null);
+                      setError('');
+                      setLinkingPropertyId('');
+                      setLinkingError('');
+                    }}
+                    placeholder="All projects"
+                    options={[
+                      { value: '', label: 'All projects' },
+                      ...projects.map((p) => ({
+                        value: p.id,
+                        label: p.analyticsPropertyId ? `${p.name}  ·  ${p.analyticsPropertyId}` : `${p.name}  ·  not linked`,
+                      })),
+                    ]}
+                    style={{ width: 220 }}
+                  />
+                ) : (
+                  <span style={{ fontSize: '0.85rem', color: 'var(--txt-faint)', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>All projects</span>
+                )}
+              </div>
 
-          {/* Divider */}
-          <div style={{ width: 1, height: 22, background: 'var(--btn-secondary-border)', flexShrink: 0 }} />
+              {/* Divider */}
+              <div style={{ width: 1, height: 22, background: 'var(--btn-secondary-border)', flexShrink: 0 }} />
+            </>
+          )}
 
           {/* Right: time + controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -1101,20 +1200,47 @@ export default function AnalyticsPage() {
               </svg>
               Refresh
             </button>
-            <button
-              onClick={async () => {
-                await fetch('/api/analytics/property', { method: 'DELETE' });
-                setPropertyId(null);
-                setHasCredentials(false);
-                setAuthMethod(null);
-                setData(null);
-                setError('');
-              }}
-              className="btn btn-secondary btn-sm"
-              style={{ color: 'var(--txt-muted)' }}
-            >
-              Disconnect
-            </button>
+            {canManage && hasCredentials && currentTeam && (
+              <button
+                onClick={async () => {
+                  const direction: 'to_team' | 'to_personal' = scope === 'personal' ? 'to_team' : 'to_personal';
+                  const targetLabel = scope === 'personal' ? `team "${currentTeam.name}"` : 'personal';
+                  const res = await fetch('/api/analytics/property/transfer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ direction, teamId: currentTeam.id }),
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (!res.ok) {
+                    setError(json.error ?? `Failed to move connection to ${targetLabel}`);
+                    return;
+                  }
+                  // Switch the active scope to where the connection now lives.
+                  setScope(scope === 'personal' ? 'team' : 'personal');
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{ color: 'var(--txt-muted)' }}
+                title={scope === 'personal' ? `Move this connection to team "${currentTeam.name}"` : 'Move this team connection to your personal account'}
+              >
+                {scope === 'personal' ? 'Move to team' : 'Move to personal'}
+              </button>
+            )}
+            {canManage && (
+              <button
+                onClick={async () => {
+                  await fetch(`/api/analytics/property?${scopeQuery}`, { method: 'DELETE' });
+                  setPropertyId(null);
+                  setHasCredentials(false);
+                  setAuthMethod(null);
+                  setData(null);
+                  setError('');
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{ color: 'var(--txt-muted)' }}
+              >
+                Disconnect
+              </button>
+            )}
           </div>
         </div>
       </div>
