@@ -510,6 +510,12 @@ body {
   animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@media (min-width: 1600px) {
+  .content-wrapper {
+    max-width: 1400px;
+  }
+}
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px) translate3d(0,0,0); }
   to { opacity: 1; transform: translateY(0) translate3d(0,0,0); }
