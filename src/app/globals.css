@@ -2746,3 +2746,23 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .scroll-to-latest-pill { animation: none; }
 }
+
+/* === MOBILE NAV — prevent logo / nav-pill / avatar overlap === */
+@media (max-width: 720px) {
+  .brand-logo { display: none; }
+  .top-nav { padding: 6px; gap: 4px; top: 16px; }
+  .top-nav .nav-link { padding: 8px; }
+  .top-nav .nav-link.active { padding: 8px 12px; gap: 6px; }
+  .top-nav .nav-link.active .nav-link-label,
+  .top-nav .nav-link:hover .nav-link-label { max-width: 80px; }
+  .theme-toggle { width: 32px; height: 32px; margin-left: 4px; }
+}
+@media (max-width: 480px) {
+  .top-nav .nav-link.active .nav-link-label,
+  .top-nav .nav-link:hover .nav-link-label { display: none; }
+  .top-nav .nav-link.active { padding: 8px; gap: 0; }
+}
+@media (max-width: 720px) {
+  .account-pill-group { top: 16px !important; right: 12px !important; gap: 8px !important; }
+  .account-pill-group .account-avatar-link { width: 30px !important; height: 30px !important; }
+}

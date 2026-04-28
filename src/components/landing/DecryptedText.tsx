@@ -69,38 +69,37 @@ export default function DecryptedText({
   useEffect(() => {
     if (!isAnimating) return;
     let currentIteration = 0;
+    let revealed = new Set<number>();
 
     const interval = setInterval(() => {
-      setRevealedIndices((prev) => {
-        if (sequential) {
-          if (prev.size < text.length) {
-            const next = new Set(prev);
-            let idx = prev.size;
-            if (revealDirection === 'end') idx = text.length - 1 - prev.size;
-            next.add(idx);
-            setDisplayText(shuffleText(text, next));
-            return next;
-          } else {
-            clearInterval(interval);
-            setIsAnimating(false);
-            setIsDecrypted(true);
-            setDisplayText(text);
-            onComplete?.();
-            return prev;
-          }
+      if (sequential) {
+        if (revealed.size < text.length) {
+          const next = new Set(revealed);
+          let idx = revealed.size;
+          if (revealDirection === 'end') idx = text.length - 1 - revealed.size;
+          next.add(idx);
+          revealed = next;
+          setRevealedIndices(next);
+          setDisplayText(shuffleText(text, next));
         } else {
-          setDisplayText(shuffleText(text, prev));
-          currentIteration++;
-          if (currentIteration >= maxIterations) {
-            clearInterval(interval);
-            setIsAnimating(false);
-            setIsDecrypted(true);
-            setDisplayText(text);
-            onComplete?.();
-          }
-          return prev;
+          clearInterval(interval);
+          setIsAnimating(false);
+          setIsDecrypted(true);
+          setDisplayText(text);
+          // Defer parent-setState so it doesn't run during this render commit.
+          if (onComplete) queueMicrotask(onComplete);
         }
-      });
+      } else {
+        setDisplayText(shuffleText(text, revealed));
+        currentIteration++;
+        if (currentIteration >= maxIterations) {
+          clearInterval(interval);
+          setIsAnimating(false);
+          setIsDecrypted(true);
+          setDisplayText(text);
+          if (onComplete) queueMicrotask(onComplete);
+        }
+      }
     }, speed);
 
     return () => clearInterval(interval);

@@ -221,7 +221,7 @@ export default function Sidebar() {
       </nav>
 
       {session?.user && (
-        <div style={{
+        <div className="account-pill-group" style={{
           position: 'fixed', top: '32px', right: '48px',
           display: 'flex', alignItems: 'center', gap: '12px',
           zIndex: 100,

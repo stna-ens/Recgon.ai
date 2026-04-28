@@ -23,9 +23,9 @@ export default function ProjectCard({
   return (
     <Link href={`/projects/${id}`} style={{ textDecoration: 'none' }}>
       <div className="glass-card" style={{ cursor: 'pointer' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--txt-pure)' }}>{name}</h3>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--txt-pure)', minWidth: 0, flex: '1 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</h3>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
             {hasUpdates && (
               <span className="tag" style={{ color: 'var(--warning)', borderColor: 'rgba(255,159,10,0.3)', background: 'rgba(255,159,10,0.06)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12 }}>
                 ! new commits

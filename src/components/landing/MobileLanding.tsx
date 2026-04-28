@@ -24,9 +24,9 @@ function MatrixRain() {
   const [columns, setColumns] = useState<MatrixColumn[]>([]);
 
   useEffect(() => {
-    const cols = 26;
+    const cols = 16;
     const arr: MatrixColumn[] = Array.from({ length: cols }, (_, i) => {
-      const len = 14 + Math.floor(Math.random() * 16);
+      const len = 12 + Math.floor(Math.random() * 12);
       let text = '';
       for (let j = 0; j < len; j++) {
         text += MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)] + '\n';
@@ -34,9 +34,9 @@ function MatrixRain() {
       return {
         left: `${((i + 0.5) * (100 / cols)).toFixed(2)}%`,
         width: `${(100 / cols).toFixed(2)}%`,
-        duration: `${(5 + Math.random() * 5).toFixed(2)}s`,
-        delay: `${(-Math.random() * 6).toFixed(2)}s`,
-        opacity: Number((0.35 + Math.random() * 0.55).toFixed(2)),
+        duration: `${(7 + Math.random() * 6).toFixed(2)}s`,
+        delay: `${(-Math.random() * 8).toFixed(2)}s`,
+        opacity: Number((0.12 + Math.random() * 0.22).toFixed(2)),
         text,
       };
     });
@@ -70,7 +70,7 @@ function MatrixRain() {
             color: PINK,
             opacity: col.opacity,
             whiteSpace: 'pre',
-            textShadow: '0 0 6px rgba(240,184,208,0.55)',
+            textShadow: '0 0 4px rgba(240,184,208,0.25)',
             animation: `mlMatrixFall ${col.duration} linear ${col.delay} infinite`,
             willChange: 'transform',
           }}

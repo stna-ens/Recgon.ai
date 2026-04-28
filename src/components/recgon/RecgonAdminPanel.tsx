@@ -793,7 +793,16 @@ const rcgStyles = `
     cursor: pointer;
     isolation: isolate;
     overflow: hidden;
-    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.3s ease;
+    box-shadow:
+      0 8px 24px -6px rgba(var(--signature-rgb), 0.35),
+      0 0 36px -4px rgba(var(--signature-rgb), 0.28);
+  }
+  .rcg-dispatch-btn:not(:disabled):hover {
+    box-shadow:
+      0 14px 32px -6px rgba(var(--signature-rgb), 0.5),
+      0 0 48px -4px rgba(var(--signature-rgb), 0.42);
   }
   .rcg-dispatch-btn:disabled { cursor: wait; }
   .rcg-dispatch-btn-bg {

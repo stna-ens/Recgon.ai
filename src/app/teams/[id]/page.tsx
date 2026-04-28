@@ -635,6 +635,18 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
           opacity: 0.9;
           filter: blur(2px);
         }
+        .light .tdp-hero::before {
+          opacity: 0.55;
+          filter: blur(6px);
+        }
+        .light .tdp-avatar-btn {
+          box-shadow:
+            0 12px 30px -8px var(--tdp-avatar-glow, rgba(0,0,0,0.25)),
+            0 0 30px -4px color-mix(in srgb, var(--tdp-avatar-glow, transparent) 55%, transparent),
+            inset 0 1px 0 rgba(255,255,255,0.22),
+            inset 0 -3px 8px rgba(0,0,0,0.10),
+            0 0 0 1px rgba(0,0,0,0.05);
+        }
         .tdp-hero > * { position: relative; z-index: 1; }
 
         .tdp-avatar-wrap {
