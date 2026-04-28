@@ -194,7 +194,7 @@ body {
   font-size: 14px;
   font-weight: 500;
   letter-spacing: -0.2px;
-
+  transition: color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
 }
 
 .nav-link:hover {
@@ -274,7 +274,12 @@ body {
   align-items: center; /* Center everything */
 }
 
-/* Custom minimal scrollbar */
+/* Custom minimal scrollbar — Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128,128,128,0.4) transparent;
+}
+/* Custom minimal scrollbar — Chrome/Edge */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: var(--r-pill); }
@@ -560,6 +565,7 @@ body {
 
 .form-input::placeholder, .form-textarea::placeholder { color: var(--txt-faint); }
 .form-select {
+  -webkit-appearance: none;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-chevron-down' opacity='0.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -922,8 +928,10 @@ button:hover .avatar-hover-overlay {
 }
 
 /* Smooth Hardware-Accelerated View Transitions */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.35s;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+@supports (view-transition-name: root) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.35s;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
 }
