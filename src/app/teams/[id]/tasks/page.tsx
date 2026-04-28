@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useToast } from '@/components/Toast';
+import Select from '@/components/Select';
 import type {
   AgentTask,
   TeammateWithStats,
@@ -56,6 +57,68 @@ const VERIFICATION_COLOR: Record<VerificationStatus, string> = {
   failed: '#ef4444',
   owner_override: '#a855f7',
 };
+
+/**
+ * Strip lightweight markdown formatting from LLM-authored task strings so
+ * users don't see stray `**`, `__`, `*`, `_`, or backticks rendered as text.
+ * We do not render markdown — we just clean it.
+ */
+function stripMd(input: string | null | undefined): string {
+  if (!input) return '';
+  return input
+    // bold/italic markers (**text**, __text__, *text*, _text_)
+    .replace(/(\*\*|__)(.+?)\1/g, '$2')
+    .replace(/(?<![*\w])\*(?!\s)([^*\n]+?)\*(?!\w)/g, '$1')
+    .replace(/(?<![_\w])_(?!\s)([^_\n]+?)_(?!\w)/g, '$1')
+    // inline code (`code`)
+    .replace(/`([^`]+)`/g, '$1')
+    // any remaining stray ** or __ pairs
+    .replace(/\*\*/g, '')
+    .replace(/__/g, '')
+    .trim();
+}
+
+function IconBtn({
+  onClick, title, color, children,
+}: {
+  onClick: () => void;
+  title: string;
+  color: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      style={{
+        width: 26,
+        height: 26,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'transparent',
+        color: 'var(--txt-muted)',
+        border: '1px solid var(--btn-secondary-border)',
+        borderRadius: 'var(--r-sm)',
+        cursor: 'pointer',
+        transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.color = color;
+        e.currentTarget.style.borderColor = color;
+        e.currentTarget.style.background = `color-mix(in srgb, ${color} 10%, transparent)`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = 'var(--txt-muted)';
+        e.currentTarget.style.borderColor = 'var(--btn-secondary-border)';
+        e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function TasksPage({
   params,
@@ -175,6 +238,36 @@ export default function TasksPage({
     await refresh();
   };
 
+  const cancelTask = async (taskId: string) => {
+    if (!confirm('Cancel this task? It will be marked as cancelled but kept for history.')) return;
+    const res = await fetch(`/api/teams/${teamId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'cancel' }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      addToast(d.error || 'Cancel failed', 'error');
+      return;
+    }
+    addToast('Task cancelled', 'success');
+    await refresh();
+  };
+
+  const deleteTaskNow = async (taskId: string) => {
+    if (!confirm('Delete this task permanently? This cannot be undone.')) return;
+    const res = await fetch(`/api/teams/${teamId}/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      addToast(d.error || 'Delete failed', 'error');
+      return;
+    }
+    addToast('Task deleted', 'success');
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  };
+
   const inputStyle: React.CSSProperties = {
     padding: '0.5rem 0.75rem', fontFamily: 'inherit',
     background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)',
@@ -207,15 +300,16 @@ export default function TasksPage({
             onChange={(e) => setDraft({ ...draft, title: e.target.value })}
             style={{ ...inputStyle, flex: '1 1 280px' }}
           />
-          <select
+          <Select
             value={draft.kind}
-            onChange={(e) => setDraft({ ...draft, kind: e.target.value as TaskKind })}
-            style={{ ...inputStyle, flex: '0 0 auto' }}
-          >
-            {(Object.keys(KIND_LABEL) as TaskKind[]).map((k) => (
-              <option key={k} value={k}>{KIND_LABEL[k]}</option>
-            ))}
-          </select>
+            onChange={(value) => setDraft({ ...draft, kind: value as TaskKind })}
+            options={(Object.keys(KIND_LABEL) as TaskKind[]).map((k) => ({
+              value: k,
+              label: KIND_LABEL[k],
+            }))}
+            size="sm"
+            style={{ flex: '0 0 auto', minWidth: 130 }}
+          />
           <button
             onClick={createTask}
             disabled={!draft.title.trim() || creating}
@@ -239,22 +333,41 @@ export default function TasksPage({
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-        {(['all', 'unassigned', 'assigned', 'in_progress', 'awaiting_review', 'completed'] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f as TaskStatus | 'all')}
-            style={{
-              padding: '4px 10px', fontSize: '0.78rem', fontWeight: 600,
-              cursor: 'pointer', borderRadius: 'var(--r-pill)',
-              border: '1px solid ' + (filter === f ? 'var(--signature)' : 'var(--border)'),
-              background: filter === f ? 'rgba(var(--signature-rgb), 0.08)' : 'transparent',
-              color: filter === f ? 'var(--signature)' : 'var(--txt-muted)',
-            }}
-          >
-            {f.replace('_', ' ')}
-          </button>
-        ))}
+      <div
+        className="glass-card"
+        style={{
+          display: 'inline-flex',
+          gap: 4,
+          marginBottom: 12,
+          padding: 4,
+          borderRadius: 'var(--r-pill)',
+          flexWrap: 'wrap',
+        }}
+      >
+        {(['all', 'unassigned', 'assigned', 'in_progress', 'awaiting_review', 'completed', 'cancelled'] as const).map((f) => {
+          const active = filter === f;
+          return (
+            <button
+              key={f}
+              onClick={() => setFilter(f as TaskStatus | 'all')}
+              style={{
+                padding: '4px 12px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+                letterSpacing: '0.04em',
+                cursor: 'pointer',
+                borderRadius: 'var(--r-pill)',
+                border: '1px solid transparent',
+                background: active ? 'rgba(var(--signature-rgb), 0.12)' : 'transparent',
+                color: active ? 'var(--signature)' : 'var(--txt-muted)',
+                transition: 'background 0.15s, color 0.15s',
+              }}
+            >
+              {f.replace('_', ' ')}
+            </button>
+          );
+        })}
       </div>
 
       {/* List */}
@@ -271,6 +384,9 @@ export default function TasksPage({
           const canOverride =
             teamRole === 'owner' &&
             !['completed', 'cancelled', 'declined'].includes(t.status);
+          const isWriter = teamRole === 'owner' || teamRole === 'member';
+          const canCancel = isWriter && !['completed', 'cancelled'].includes(t.status);
+          const canDelete = isWriter;
           return (
             <div key={t.id} className="glass-card" style={{ padding: 12, borderRadius: 10 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
@@ -279,11 +395,11 @@ export default function TasksPage({
                     <span style={{ fontSize: '0.66rem', color: 'var(--signature)', marginRight: 8, fontWeight: 700, letterSpacing: '0.08em' }}>
                       {KIND_LABEL[t.kind].toUpperCase()}
                     </span>
-                    {t.title}
+                    {stripMd(t.title)}
                   </div>
-                  {t.description && (
+                  {t.description && stripMd(t.description) && (
                     <p style={{ fontSize: '0.82rem', color: 'var(--txt-muted)', margin: '4px 0 0' }}>
-                      {t.description}
+                      {stripMd(t.description)}
                     </p>
                   )}
                   <div style={{ fontSize: '0.72rem', color: 'var(--txt-muted)', marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
@@ -367,29 +483,60 @@ export default function TasksPage({
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, minWidth: 180 }}>
-                  <select
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, width: 170 }}>
+                  <Select
                     value={t.assignedTo ?? ''}
-                    onChange={(e) => reassign(t.id, e.target.value || null)}
-                    style={{ ...inputStyle, fontSize: '0.78rem', maxWidth: 180 }}
-                  >
-                    <option value="">— unassign —</option>
-                    {teammates.map((tm) => (
-                      <option key={tm.id} value={tm.id}>{tm.displayName} ({tm.kind})</option>
-                    ))}
-                  </select>
-                  {canOverride && (
-                    <button
-                      onClick={() => ownerOverride(t.id)}
-                      style={{
-                        padding: '4px 10px', fontSize: '0.74rem', fontWeight: 600,
-                        background: 'transparent', color: '#a855f7',
-                        border: '1px solid #a855f7', borderRadius: 'var(--r-pill)', cursor: 'pointer',
-                      }}
-                      title="Mark complete and bypass verification"
-                    >
-                      Mark done (owner)
-                    </button>
+                    onChange={(value) => reassign(t.id, value || null)}
+                    placeholder="unassigned"
+                    options={[
+                      { value: '', label: 'unassigned' },
+                      ...teammates.map((tm) => ({ value: tm.id, label: tm.displayName })),
+                    ]}
+                    size="sm"
+                  />
+                  {(canOverride || canCancel || canDelete) && (
+                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                      {canOverride && (
+                        <IconBtn
+                          onClick={() => ownerOverride(t.id)}
+                          title="Mark done (owner override) — bypass verification"
+                          color="#a855f7"
+                        >
+                          {/* check icon */}
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </IconBtn>
+                      )}
+                      {canCancel && (
+                        <IconBtn
+                          onClick={() => cancelTask(t.id)}
+                          title="Cancel — kept for history"
+                          color="var(--txt-muted)"
+                        >
+                          {/* slash-circle icon */}
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="9" />
+                            <line x1="5.5" y1="5.5" x2="18.5" y2="18.5" />
+                          </svg>
+                        </IconBtn>
+                      )}
+                      {canDelete && (
+                        <IconBtn
+                          onClick={() => deleteTaskNow(t.id)}
+                          title="Delete permanently"
+                          color="#ef4444"
+                        >
+                          {/* trash icon */}
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            <path d="M10 11v6M14 11v6" />
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                          </svg>
+                        </IconBtn>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

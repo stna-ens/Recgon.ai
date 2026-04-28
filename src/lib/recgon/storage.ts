@@ -384,6 +384,11 @@ export async function reassignTask(
   if (error) throw new Error(`reassignTask failed: ${error.message}`);
 }
 
+export async function deleteTask(taskId: string): Promise<void> {
+  const { error } = await supabase.from('agent_tasks').delete().eq('id', taskId);
+  if (error) throw new Error(`deleteTask failed: ${error.message}`);
+}
+
 // ── Verification ────────────────────────────────────────────────────────────
 
 export async function setTaskProof(taskId: string, proof: ProofPayload): Promise<void> {
