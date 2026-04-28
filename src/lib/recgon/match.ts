@@ -70,13 +70,18 @@ function availabilityNow(teammate: Teammate, now: Date = new Date()): number {
   return isWithinWorkingHours(teammate.workingHours, now) ? 1 : 0.3;
 }
 
-function loadHeadroom(inFlight: number, capacityHours: number, taskHours: number): number {
-  const inFlightHours = inFlight * 1.5; // rough avg per task; refined in Slice 2
+function loadHeadroom(inFlightHours: number, capacityHours: number, taskHours: number): number {
   const headroom = 1 - (inFlightHours + taskHours) / Math.max(1, capacityHours);
   return Math.max(0, Math.min(1, headroom));
 }
 
-export type Scoreable = TeammateWithStats | (Teammate & { inFlightCount?: number });
+// Fallback when real summed hours aren't available (legacy callers / tests
+// that pass only `inFlightCount`). Same constant the placeholder used.
+const FALLBACK_HOURS_PER_TASK = 1.5;
+
+export type Scoreable =
+  | TeammateWithStats
+  | (Teammate & { inFlightCount?: number; inFlightHours?: number });
 
 export type MatchInput = Pick<AgentTask, 'kind' | 'requiredSkills' | 'estimatedHours'> &
   Partial<Pick<AgentTask, 'priority'>>;
@@ -104,8 +109,16 @@ export function scoreTeammateForTask(
   const skillOverlap = Math.max(0, Math.min(1, baseSkillOverlap * weight));
   const fit = fitForKind(teammate, task.kind);
   const avail = availabilityNow(teammate, now);
-  const inFlight = (teammate as TeammateWithStats).inFlightCount ?? 0;
-  const load = loadHeadroom(inFlight, teammate.capacityHours, task.estimatedHours ?? 1);
+  const stats = teammate as TeammateWithStats;
+  // Prefer real summed in-flight hours from listTeammatesWithStats. Fall
+  // back to count × rough-avg when hours weren't supplied (legacy callers,
+  // unit tests). 0-hour aggregates are valid (no in-flight work) and must
+  // not silently trigger the fallback — so we check `undefined`, not falsy.
+  const inFlightHours =
+    stats.inFlightHours !== undefined
+      ? stats.inFlightHours
+      : (stats.inFlightCount ?? 0) * FALLBACK_HOURS_PER_TASK;
+  const load = loadHeadroom(inFlightHours, teammate.capacityHours, task.estimatedHours ?? 1);
   const score =
     W_SKILL * skillOverlap +
     W_FIT * fit +

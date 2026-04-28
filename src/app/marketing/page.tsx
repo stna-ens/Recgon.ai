@@ -579,52 +579,6 @@ export default function MarketingPage() {
         )}
       </div>
 
-      {/* Saved content */}
-      {savedMarketingContent.length > 0 && (
-        <div style={{ marginTop: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt-muted)', fontFamily: "'JetBrains Mono', ui-monospace, monospace", letterSpacing: '0.03em' }}>
-              // content
-            </span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--signature)', background: 'rgba(var(--signature-rgb), 0.12)', borderRadius: 10, padding: '1px 7px' }}>
-              {savedMarketingContent.length}
-            </span>
-          </div>
-          <div className="list-enter" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {savedMarketingContent.slice(0, 8).map((entry, idx) => (
-              <button
-                key={entry.id}
-                onClick={() => setPreviewEntry(entry)}
-                style={{
-                  animationDelay: `${Math.min(idx, 8) * 35}ms`,
-                  textAlign: 'left',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-content)',
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  width: '100%',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ background: platformBadgeColor(entry.platform), color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>
-                    {entry.platform}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt-pure)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.2px' }}>
-                      {String(entry.content.caption ?? entry.content.headline1 ?? 'Generated marketing content')}
-                    </div>
-                    <div style={{ fontSize: 10, color: 'var(--txt-muted)', marginTop: 1, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
-                      {new Date(entry.generatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Past campaigns */}
       {campaigns.length > 0 && (
         <div style={{ marginTop: 28 }}>

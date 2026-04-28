@@ -90,6 +90,7 @@ function MarkdownText({ text }: { text: string }) {
 export default function DashboardPage() {
   const { currentTeam, loading: teamLoading, refreshProjects } = useTeam();
   const [mounted, setMounted] = useState(false);
+  const [cardHeight, setCardHeight] = useState(560);
   const [projects, setProjects] = useState<Project[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS);
@@ -129,6 +130,13 @@ export default function DashboardPage() {
   const GREETING_TEXT = 'How can I help?';
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    const update = () => setCardHeight(Math.max(360, Math.min(window.innerHeight - 260, 1100)));
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   const refreshMentorProjects = useCallback(() => {
     if (!currentTeam) return;
@@ -583,14 +591,10 @@ export default function DashboardPage() {
   const hasProjects = projects.length > 0;
 
   return (
-    <div className="mentor-page">
-      <style>{`
-        .main-content { overflow: hidden !important; }
-        .main-content > .content-wrapper { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-        .content-wrapper > .mentor-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-      `}</style>
+    <div>
+      <style>{`.main-content { overflow: hidden !important; }`}</style>
       {/* Chat */}
-      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, padding: 0, overflow: 'hidden', marginBottom: 24, fontFamily: "'JetBrains Mono', ui-monospace, monospace", position: 'relative' }}>
+      <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: cardHeight, padding: 0, overflow: 'hidden', marginBottom: 24, fontFamily: "'JetBrains Mono', ui-monospace, monospace", position: 'relative' }}>
 
         {/* Command Palette */}
         {paletteOpen && (() => {

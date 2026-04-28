@@ -21,12 +21,13 @@ type Input = z.infer<typeof parameters>;
 
 interface CollectFeedbackOutput {
   projectName: string;
-  status: 'completed' | 'not_modified' | 'empty' | 'queued';
+  status: 'completed' | 'not_modified' | 'empty' | 'queued' | 'no_sources';
   summary?: string;
   rawFeedbackCount: number;
   themes: string[];
   warnings: string[];
   jobId?: string;
+  message?: string;
 }
 
 export const collectFeedbackTool: ToolDefinition<Input, CollectFeedbackOutput> = {
@@ -40,7 +41,14 @@ export const collectFeedbackTool: ToolDefinition<Input, CollectFeedbackOutput> =
     const project = await resolveProject(input.project, ctx.teamId, ctx.userId);
     const sources = project.socialProfiles ?? [];
     if (sources.length === 0) {
-      throw new Error(`${project.name} has no feedback sources configured.`);
+      return {
+        projectName: project.name,
+        status: 'no_sources',
+        rawFeedbackCount: 0,
+        themes: [],
+        warnings: [],
+        message: `${project.name} has no feedback sources configured. Add one on the Feedback page before running collect_feedback.`,
+      };
     }
 
     const latest = project.feedbackAnalyses?.[0] ?? null;

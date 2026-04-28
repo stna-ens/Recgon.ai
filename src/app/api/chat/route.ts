@@ -119,7 +119,9 @@ export async function POST(request: NextRequest) {
 - Call tools for: running a new analysis, fetching live analytics, querying pasted feedback, collecting feedback from saved sources, generating content, generating campaigns, or when the user explicitly asks to "show" or "fetch" something.
 - If you call a tool, use the tool result as the source of truth and do not add unsupported details.
 - If the user just wants advice or brainstorming, answer directly without any tool call.
-- Before a final answer, check that every concrete claim is supported by known context or a tool result.`;
+- Before a final answer, check that every concrete claim is supported by known context or a tool result.
+- The RECENT ACTIVITY block is historical context only. Do NOT treat a past tool failure shown there as the result of the tool call you just made. Trust the live tool result you receive in this turn.
+- Never apologize for or explain a tool call that returned ok=true. If the result indicates an empty/missing state (no sources, no analyses, no GA4 property), simply state that fact.`;
 
     const systemPrompt = mentorSystemPrompt(projects, memoryContext) + activitiesBlock + toolGuidance;
 
@@ -149,6 +151,42 @@ export async function POST(request: NextRequest) {
         const emit = (s: string) => controller.enqueue(encoder.encode(s));
         let fullResponse = '';
 
+        // Cache identical tool calls within a single user turn. Gemini sometimes
+        // re-issues the same call after seeing an empty/error result, hoping for
+        // a different answer. Replaying the cached result short-circuits the loop
+        // and forces the model to commit to a final answer.
+        const toolCallCache = new Map<string, unknown>();
+        const cacheKey = (name: string, args: unknown) => `${name}:${JSON.stringify(args ?? {})}`;
+
+        // Tools that require a `project` argument. Gemini occasionally drops it.
+        // When that happens, recover by extracting the project name the user
+        // referred to in the current message, so we don't surface a confusing
+        // "missing project" error to the user.
+        const projectAwareTools = new Set([
+          'get_project_details', 'analyze_code', 'fetch_analytics',
+          'query_feedback', 'collect_feedback', 'generate_content', 'generate_campaign',
+        ]);
+        const findProjectInMessage = (text: string): string | null => {
+          const quoted = text.match(/"([^"]{1,80})"/);
+          if (quoted) {
+            const name = quoted[1];
+            if (projects.some((p) => p.name.toLowerCase() === name.toLowerCase())) return name;
+          }
+          for (const p of projects) {
+            const re = new RegExp(`\\b${p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+            if (re.test(text)) return p.name;
+          }
+          return null;
+        };
+        const recoveredProject = findProjectInMessage(message);
+        const patchArgs = (name: string, args: Record<string, unknown> | undefined) => {
+          const a = { ...(args ?? {}) };
+          if (projectAwareTools.has(name) && (!a.project || (typeof a.project === 'string' && !a.project.trim())) && recoveredProject) {
+            a.project = recoveredProject;
+          }
+          return a;
+        };
+
         try {
           let iterations = 0;
           while (iterations < MAX_TOOL_ITERATIONS) {
@@ -163,7 +201,7 @@ export async function POST(request: NextRequest) {
             const calls = response.functionCalls() ?? [];
             logger.debug('mentor chat model turn', {
               iteration: iterations,
-              calls: calls.map((c) => c.name),
+              calls: calls.map((c) => ({ name: c.name, args: c.args })),
               finishReason: response.candidates?.[0]?.finishReason,
               promptVersion: PROMPT_VERSIONS.mentor_chat,
               promptFeedback: response.promptFeedback,
@@ -177,11 +215,29 @@ export async function POST(request: NextRequest) {
               });
 
               const responses = await Promise.all(calls.map(async (call) => {
+                const patchedArgs = patchArgs(call.name, call.args as Record<string, unknown> | undefined);
+                const key = cacheKey(call.name, patchedArgs);
+                const cached = toolCallCache.get(key);
+                if (cached !== undefined) {
+                  // Don't re-run the side-effecting tool; tell the model it
+                  // already called this and must produce a final answer.
+                  return {
+                    functionResponse: {
+                      name: call.name,
+                      response: {
+                        ok: true,
+                        output: cached,
+                        note: 'You already called this tool with these arguments earlier in this turn. Do not call it again — produce the final answer using this result.',
+                      } as Record<string, unknown>,
+                    },
+                  };
+                }
+
                 const chip = `\n\n> running \`${call.name}\`...\n\n`;
                 emit(chip);
                 fullResponse += chip;
 
-                const toolResult = await runTool(call.name, call.args ?? {}, {
+                const toolResult = await runTool(call.name, patchedArgs, {
                   userId,
                   teamId,
                   source: 'terminal',
@@ -190,6 +246,8 @@ export async function POST(request: NextRequest) {
                 const payload = toolResult.ok
                   ? { ok: true, output: toolResult.output }
                   : { ok: false, error: toolResult.error };
+
+                toolCallCache.set(key, toolResult.ok ? toolResult.output : { error: toolResult.error });
 
                 return {
                   functionResponse: {

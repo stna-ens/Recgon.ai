@@ -185,11 +185,17 @@ export async function listTeammatesWithStats(teamId: string): Promise<TeammateWi
   if (teammates.length === 0) return [];
   const ids = teammates.map((t) => t.id);
   const userIds = teammates.map((t) => t.userId).filter((u): u is string => !!u);
-  const [statsRes, rolesRes] = await Promise.all([
+  const [statsRes, rolesRes, inFlightRes] = await Promise.all([
     supabase.from('teammate_stats').select('*').in('teammate_id', ids),
     userIds.length
       ? supabase.from('team_members').select('user_id, role').eq('team_id', teamId).in('user_id', userIds)
       : Promise.resolve({ data: [] as { user_id: string; role: string }[] }),
+    supabase
+      .from('agent_tasks')
+      .select('assigned_to, estimated_hours')
+      .eq('team_id', teamId)
+      .in('assigned_to', ids)
+      .in('status', ['assigned', 'accepted', 'in_progress', 'awaiting_review']),
   ]);
   const byId = new Map<string, Record<string, unknown>>();
   (statsRes.data ?? []).forEach((s) => byId.set(s.teammate_id as string, s as Record<string, unknown>));
@@ -200,6 +206,13 @@ export async function listTeammatesWithStats(teamId: string): Promise<TeammateWi
       roleByUser.set(r.user_id as string, role);
     }
   });
+  const hoursById = new Map<string, number>();
+  ((inFlightRes.data ?? []) as { assigned_to: string | null; estimated_hours: number | null }[])
+    .forEach((row) => {
+      if (!row.assigned_to) return;
+      const prev = hoursById.get(row.assigned_to) ?? 0;
+      hoursById.set(row.assigned_to, prev + (Number(row.estimated_hours) || 0));
+    });
   return teammates.map((t) => {
     const s = byId.get(t.id);
     return {
@@ -209,6 +222,7 @@ export async function listTeammatesWithStats(teamId: string): Promise<TeammateWi
       upCount: s ? Number(s.up_count) : 0,
       downCount: s ? Number(s.down_count) : 0,
       inFlightCount: s ? Number(s.in_flight_count) : 0,
+      inFlightHours: hoursById.get(t.id) ?? 0,
       teamRole: t.userId ? roleByUser.get(t.userId) ?? null : null,
     };
   });

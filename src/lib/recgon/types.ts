@@ -62,6 +62,11 @@ export type TeammateWithStats = Teammate & {
   upCount: number;
   downCount: number;
   inFlightCount: number;
+  // Sum of `estimatedHours` for the teammate's currently in-flight tasks
+  // (status ∈ {assigned, accepted, in_progress, awaiting_review}). Drives
+  // load-headroom in match.ts. Optional: callers without this signal fall
+  // back to inFlightCount × rough-avg.
+  inFlightHours?: number;
   teamRole: 'owner' | 'member' | 'viewer' | null;
 };
 

@@ -56,7 +56,6 @@
   --r-md: 24px;
   --r-lg: 32px;
   --r-pill: 999px;
-  --max-w: 1100px;
 
   /* Motion vocabulary — single source of truth for all transitions/animations */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
