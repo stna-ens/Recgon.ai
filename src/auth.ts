@@ -28,12 +28,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        const fs = require('fs') as typeof import('fs');
+        const log = (msg: string) => { try { fs.appendFileSync('/tmp/recgon-auth.log', `${new Date().toISOString()} ${msg}\n`); } catch {} };
+        log(`authorize called email=${credentials?.email}`);
+        if (!credentials?.email || !credentials?.password) { log('  → null (missing creds)'); return null; }
         const user = await getUserByEmail(credentials.email as string);
-        if (!user) return null;
-        if (!user.passwordHash) return null;
+        if (!user) { log('  → null (user not found)'); return null; }
+        if (!user.passwordHash) { log('  → null (no passwordHash)'); return null; }
         const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) { log('  → null (bcrypt mismatch)'); return null; }
+        log(`  → success id=${user.id}`);
         return { id: user.id, email: user.email, name: user.email, nickname: user.nickname, avatarUrl: user.avatarUrl } as Record<string, unknown>;
       },
     }),

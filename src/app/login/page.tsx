@@ -49,6 +49,9 @@ const FEATURES = [
 const URL_ERRORS: Record<string, string> = {
   metuonly: 'Only METU email addresses (@metu.edu.tr) can sign in with GitHub.',
   waitlisted: 'This email is on the waitlist and is not approved to sign in yet.',
+  CredentialsSignin: 'Invalid email or password',
+  credentials: 'Invalid email or password',
+  Configuration: 'Sign-in is temporarily unavailable. Please try again.',
 };
 
 function LoginPageContent() {
@@ -63,16 +66,31 @@ function LoginPageContent() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const result = await signIn('credentials', { email, password, redirect: false });
-    setLoading(false);
-    if (result?.error) {
-      setError('Invalid email or password');
-    } else {
+    // DIAGNOSTIC: ping a server route that writes to a log file so we can
+    // confirm the handler fires from the user's browser. Remove after debugging.
+    try { fetch('/api/_debug-login-click', { method: 'POST', body: JSON.stringify({ email, when: 'before-signIn' }) }); } catch {}
+    try {
+      const result = await signIn('credentials', { email, password, redirect: false });
+      try { fetch('/api/_debug-login-click', { method: 'POST', body: JSON.stringify({ email, when: 'after-signIn', result }) }); } catch {}
+      setLoading(false);
+      // Detect error in either the result object OR the returned URL.
+      // next-auth v5 beta sometimes still puts the error in `url` even when
+      // redirect:false is set; treating both as auth failure is the only
+      // reliable way to surface the message in-place.
+      const urlError = result?.url ? new URL(result.url, window.location.origin).searchParams.get('error') : null;
+      if (result?.error || urlError) {
+        const code = result?.error ?? urlError ?? '';
+        setError(URL_ERRORS[code] ?? 'Invalid email or password');
+        return;
+      }
       const raw = searchParams.get('callbackUrl') ?? '';
       // Only honor relative paths to prevent open redirects.
       const dest = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
       router.push(dest);
       router.refresh();
+    } catch (err) {
+      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Sign-in failed. Please try again.');
     }
   }
 
@@ -94,7 +112,11 @@ function LoginPageContent() {
             <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
           </div>
-          {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
+          {error && (
+            <div role="alert" style={{ padding: '0.6rem 0.75rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 'var(--r-sm)', color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>
+              {error}
+            </div>
+          )}
           <button type="submit" disabled={loading} style={{ padding: '0.7rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: '0.25rem' }}>
             {loading ? 'Signing in…' : 'Sign in'}
           </button>

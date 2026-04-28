@@ -31,6 +31,17 @@ function isMobileUA(req: { headers: Headers }): boolean {
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
+  // Temporary diagnostic: dump every proxy invocation to /tmp so we can inspect it
+  // even when the dev server stdout isn't visible.
+  try {
+    const fs = require('fs') as typeof import('fs');
+    const cookieHeader = req.headers.get('cookie') ?? '';
+    const sessionCookies = cookieHeader.split(';').map(c => c.trim()).filter(c => c.toLowerCase().includes('authjs') || c.toLowerCase().includes('next-auth')).map(c => c.split('=')[0]);
+    const fullUrl = req.nextUrl.pathname + req.nextUrl.search;
+    const referer = req.headers.get('referer') ?? '-';
+    const ua = (req.headers.get('user-agent') ?? '').slice(0, 60);
+    fs.appendFileSync('/tmp/recgon-proxy.log', `${new Date().toISOString()} ${req.method} ${fullUrl} isLoggedIn=${isLoggedIn} authCookies=[${sessionCookies.join(',')}] referer=${referer} ua=${ua}\n`);
+  } catch {}
 
   const isAuthPage = pathname === '/login' || pathname === '/register';
   const isPublicPage = pathname === '/landing' || pathname.startsWith('/.well-known/');
