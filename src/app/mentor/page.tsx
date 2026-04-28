@@ -463,12 +463,9 @@ export default function DashboardPage() {
       '/campaign': (arg) => `Call generate_campaign with project=${projOrMain(arg)}, campaignType="brand-awareness", goal="build early awareness and grow signups", duration="1 month". ${directRun}`,
     };
     const [cmd, ...rest] = trimmed.split(' ');
-    if (SLASH_MAP[cmd]) {
-      const mapped = SLASH_MAP[cmd](rest.join(' ').trim());
-      // Continue with the mapped prompt — fall through to the normal send flow below
-      return send(mapped);
-    }
-
+    // Display the user's typed command in chat, but send the directive prompt to the API.
+    // Without this split, the user sees the rewritten directive as if they typed it.
+    const apiText = SLASH_MAP[cmd] ? SLASH_MAP[cmd](rest.join(' ').trim()) : trimmed;
     const userMsg: Message = { role: 'user', content: trimmed };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
@@ -485,7 +482,7 @@ export default function DashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: trimmed,
+          message: apiText,
           history: messages,
           teamId: currentTeam?.id,
           conversationId: activeConvId,
@@ -570,7 +567,13 @@ export default function DashboardPage() {
       if (e.key === 'ArrowDown') { e.preventDefault(); setCmdIndex((i) => Math.min(cmdMatches.length - 1, i + 1)); return; }
       if (e.key === 'Escape') { e.preventDefault(); setInput(''); return; }
       if (e.key === 'Tab') { e.preventDefault(); setInput(cmdMatches[cmdIndex].name); return; }
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(cmdMatches[cmdIndex].name); return; }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const args = input.split(' ').slice(1).join(' ').trim();
+        const cmd = cmdMatches[cmdIndex].name;
+        send(args ? `${cmd} ${args}` : cmd);
+        return;
+      }
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -927,7 +930,11 @@ export default function DashboardPage() {
                 {cmdMatches.map((cmd, i) => (
                   <div
                     key={cmd.name}
-                    onMouseDown={(e) => { e.preventDefault(); send(cmd.name); }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const args = input.split(' ').slice(1).join(' ').trim();
+                      send(args ? `${cmd.name} ${args}` : cmd.name);
+                    }}
                     style={{
                       padding: '8px 20px', cursor: 'pointer',
                       display: 'flex', gap: 14, alignItems: 'center',
