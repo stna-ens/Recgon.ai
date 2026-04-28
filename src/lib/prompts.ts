@@ -21,7 +21,7 @@ Respond with valid JSON only, no markdown, no code fences. Use this exact struct
   "problemStatement": "The specific real-world pain this product solves. Be concrete — describe the situation before the product existed.",
   "marketOpportunity": "Honest assessment of the market: is this a niche or broad market? Is it growing? Are people actively searching for this solution? What's the realistic opportunity for a solo dev or small team?",
   "competitors": [
-    { "name": "Competitor or alternative name", "differentiator": "How this product wins or loses vs this competitor in one sentence" }
+    { "name": "Competitor or alternative name", "url": "https://competitor.com (the competitor's main website URL, or omit if unknown)", "differentiator": "How this product wins or loses vs this competitor in one sentence" }
   ],
 
   "businessModel": "Most viable monetization model for this product given its stage and audience (e.g. freemium SaaS, one-time license, usage-based, marketplace fee, etc.)",
@@ -60,7 +60,7 @@ export const ANALYZE_UPDATE_SYSTEM = `You are a senior product manager and start
 
 Update the analysis to reflect the new code changes. Follow these rules strictly:
 - DELETED FILES: If a file is listed as deleted, remove any technologies, features, or capabilities that were provided exclusively by that file.
-- MODIFIED FILES: If a feature or integration is removed from a file (lines starting with "-"), update the analysis to no longer mention it if it no longer exists anywhere.
+- MODIFIED FILES: If a feature or integration is removed from a file (lines starting with "-"), update the analysis to no longer mention it if it no longer exists anywhere. If storage patterns change (e.g. file-system/JSON replaced by a database), update swot.weaknesses, techStack, and any related fields to reflect the new reality.
 - ADDED FILES/CODE: If new functionality is added, update features and techStack accordingly.
 - Only modify fields genuinely affected by the diff — do not change fields the diff doesn't warrant.
 
@@ -74,6 +74,52 @@ Also populate two new fields based on what you observe in the diff:
 - "evidence": a short sentence explaining what in the diff supports your judgment (or "No evidence in this diff" if taken is false)
 
 Respond with valid JSON only, no markdown, no code fences. Return the complete updated analysis using the exact same JSON structure as before, plus the two new fields.`;
+
+export const ANALYZE_IDEA_SYSTEM = `You are a senior product manager and startup mentor with deep experience helping solo developers and early-stage startups find product-market fit, define strategy, and grow. You analyze written product ideas and descriptions to give founders the kind of brutally honest, actionable guidance a great PM mentor would give in a 1:1 session.
+
+The founder has not built anything yet (or is at the very earliest stage). Analyze the idea on its merits — the problem it addresses, the market, the competition, and what the founder should do next.
+
+Respond with valid JSON only, no markdown, no code fences. Use this exact structure:
+
+{
+  "name": "Product name (from the description, or a suggested name if not given)",
+  "description": "2-3 sentence description of what the product does and the value it delivers",
+  "techStack": ["list any specific technologies mentioned, or leave empty [] if none stated"],
+  "features": ["list features or capabilities described in the idea, each in one clear sentence"],
+  "targetAudience": "Specific description of the primary user — their role, pain, and context",
+  "uniqueSellingPoints": ["2-4 genuine differentiators vs alternatives, be specific not generic"],
+
+  "problemStatement": "The specific real-world pain this product solves. Be concrete — describe the situation before the product existed.",
+  "marketOpportunity": "Honest assessment of the market: is this a niche or broad market? Is it growing? Are people actively searching for this solution? What's the realistic opportunity for a solo dev or small team?",
+  "competitors": [
+    { "name": "Competitor or alternative name", "url": "https://competitor.com (the competitor's main website URL, or omit if unknown)", "differentiator": "How this product wins or loses vs this competitor in one sentence" }
+  ],
+
+  "businessModel": "Most viable monetization model for this product given its stage and audience",
+  "revenueStreams": ["list of 2-4 concrete revenue stream ideas the founder should consider"],
+  "pricingSuggestion": "Specific pricing recommendation — actual numbers if possible. Justify briefly.",
+
+  "currentStage": "idea",
+
+  "swot": {
+    "strengths": ["2-4 genuine concept or positioning strengths"],
+    "weaknesses": ["2-4 honest weaknesses or gaps that need addressing"],
+    "opportunities": ["2-4 realistic market or product opportunities to pursue"],
+    "threats": ["2-4 real threats: competition, technical, market, or execution risks"]
+  },
+  "topRisks": ["3-5 most critical risks ranked by urgency — be direct, not generic"],
+
+  "prioritizedNextSteps": ["5-7 ordered, specific validation and build actions the founder should take NOW. Focus on customer discovery and de-risking assumptions, not just building. Each step should be concrete enough to act on this week."],
+  "gtmStrategy": "A focused go-to-market approach for a solo dev or small team with limited budget. Name specific channels, communities, or tactics.",
+  "earlyAdopterChannels": ["4-6 specific places to find the first 100 users — subreddits, communities, directories, forums, influencers, etc."],
+  "growthMetrics": ["4-6 specific KPIs the founder should track from day one, with context on what good looks like"]
+}
+
+Where information is not provided, make reasonable assumptions based on the idea and note them implicitly in your analysis. Be the mentor the founder can't afford to hire. Be specific, honest, and direct. Avoid generic startup advice.`;
+
+export function analyzeIdeaUserPrompt(description: string): string {
+  return `Analyze this product idea and give me a deep product and strategy analysis.\n\nIDEA DESCRIPTION:\n${description}`;
+}
 
 export function analyzeUpdateUserPrompt(existingAnalysis: object, diffStr: string): string {
   return `Below is the current product analysis and a git diff showing recent changes. Update the analysis to accurately reflect the current state of the codebase, and populate the "improvements" and "nextStepsTaken" fields.
@@ -109,6 +155,24 @@ interface ProjectForMentor {
     gtmStrategy?: string;
     earlyAdopterChannels?: string[];
   };
+}
+
+export function classifyChatProjectPrompt(
+  message: string,
+  projects: { id: string; name: string; description?: string }[],
+): string {
+  const lines = projects.map((p) => `- ${p.id} | ${p.name}${p.description ? ` — ${p.description.slice(0, 120)}` : ''}`).join('\n');
+  return `You are a classifier. Given a chat message and a list of the user's projects, decide which single project (if any) the message is primarily about.
+
+Projects:
+${lines || '(none)'}
+
+Message:
+"""
+${message.slice(0, 1200)}
+"""
+
+Respond with JSON only: {"projectId": "<id or null>"}. Use null if the message is general/unclear or not about a specific project.`;
 }
 
 export function generateSuggestions(projects: ProjectForMentor[]): string[] {
@@ -366,6 +430,7 @@ export function marketingUserPrompt(
   targetAudience: string,
   uniqueSellingPoints: string[],
   customPrompt?: string,
+  websiteContent?: string,
 ): string {
   return `Generate marketing content for this product:
 
@@ -375,6 +440,7 @@ Tech Stack: ${techStack.join(', ')}
 Key Features: ${features.join(', ')}
 Target Audience: ${targetAudience}
 Unique Selling Points: ${uniqueSellingPoints.join(', ')}
+${websiteContent ? `\nLIVE WEBSITE CONTENT (use this for authentic messaging and tone):\n${websiteContent}` : ''}
 ${customPrompt ? `\nUser's Custom Instructions: ${customPrompt}\nMAKE SURE TO FOLLOW THESE INSTRUCTIONS CLOSELY.` : ''}`;
 }
 
@@ -477,6 +543,7 @@ export function campaignUserPrompt(
   campaignType: CampaignType,
   goal: string,
   duration: string,
+  websiteContent?: string,
 ): string {
   return `Create ${CAMPAIGN_TYPE_DESCRIPTIONS[campaignType]} for this product.
 
@@ -490,6 +557,7 @@ Unique Selling Points: ${uniqueSellingPoints?.join(', ') ?? 'N/A'}
 Problem Statement: ${problemStatement ?? 'N/A'}
 GTM Strategy: ${gtmStrategy ?? 'N/A'}
 Early Adopter Channels: ${earlyAdopterChannels?.join(', ') ?? 'N/A'}
+${websiteContent ? `\nLIVE WEBSITE CONTENT (use this for authentic messaging and tone):\n${websiteContent}` : ''}
 
 CAMPAIGN PARAMETERS:
 Type: ${campaignType}
@@ -523,5 +591,79 @@ export function analyticsUserPrompt(data: object, days: number): string {
 
 DATA:
 ${JSON.stringify(data, null, 2)}`;
+}
+
+// ── Competitor deep analysis ───────────────────────────────────────────────────
+
+export const COMPETITOR_ANALYSIS_SYSTEM = `You are a competitive intelligence analyst. You are given scraped website content from competitor products and the details of our product. Produce a structured deep-dive analysis for each competitor.
+
+Respond with valid JSON only, no markdown, no code fences:
+{
+  "insights": [
+    {
+      "name": "Competitor name",
+      "url": "Competitor URL if known",
+      "summary": "2-3 sentence description of what this competitor does and who it's for",
+      "positioning": "How they position themselves in the market — their core value proposition",
+      "messagingTone": "The tone and style of their marketing copy (e.g. enterprise-formal, developer-casual, consumer-friendly)",
+      "keyFeatures": ["3-5 features or capabilities prominently highlighted on their site"],
+      "weaknesses": ["2-3 apparent weaknesses or gaps based on their site and positioning"],
+      "differentiator": "In one sentence: how our product wins or should win against this competitor"
+    }
+  ]
+}
+
+Be specific and grounded in the actual content provided. Do not hallucinate features not visible in the scraped content.`;
+
+export function competitorAnalysisUserPrompt(
+  ourProduct: { name: string; description: string; uniqueSellingPoints: string[] },
+  competitors: Array<{ name: string; url?: string; scrapedContent: string }>,
+): string {
+  const competitorSections = competitors.map((c) =>
+    `--- ${c.name} (${c.url ?? 'URL unknown'}) ---\n${c.scrapedContent}`
+  ).join('\n\n');
+
+  return `Analyze these competitor websites relative to our product.
+
+OUR PRODUCT:
+Name: ${ourProduct.name}
+Description: ${ourProduct.description}
+Unique Selling Points: ${ourProduct.uniqueSellingPoints.join(', ')}
+
+COMPETITOR WEBSITE CONTENT:
+${competitorSections}`;
+}
+
+// ── Social media profile analysis ─────────────────────────────────────────────
+
+export const SOCIAL_ANALYSIS_SYSTEM = `You are a social media strategist. You are given scraped content from public social media profiles. Analyze the presence and provide actionable insights.
+
+Respond with valid JSON only, no markdown, no code fences:
+{
+  "profiles": [
+    {
+      "platform": "Platform name (e.g. Instagram, TikTok, LinkedIn)",
+      "profileUrl": "The profile URL",
+      "sizeEstimate": "Estimated audience size based on any visible follower/subscriber counts, or 'Unknown' if not visible",
+      "contentStyle": "Description of the content style, themes, and format used",
+      "postingFrequency": "Estimated posting frequency based on visible post dates, or 'Unknown'",
+      "strengths": ["2-3 things this profile does well"],
+      "improvements": ["2-3 specific, actionable improvements to grow reach and engagement"],
+      "overallScore": 7
+    }
+  ],
+  "overallSummary": "2-3 sentence summary of the overall social media presence and top priority action"
+}
+
+overallScore is 0-10. Only score profiles where content was actually retrieved — if a profile's content is null or empty, set overallScore to 0, sizeEstimate to "Unknown", contentStyle to "Profile content could not be accessed", strengths to [], and improvements to ["Make sure your profile is public so it can be analyzed"].`;
+
+export function socialAnalysisUserPrompt(
+  profiles: Array<{ platform: string; url: string; content: string | null }>,
+): string {
+  const sections = profiles.map((p) =>
+    `--- ${p.platform}: ${p.url} ---\n${p.content ?? 'Could not access profile content (may be private or blocked).'}`
+  ).join('\n\n');
+
+  return `Analyze these social media profiles:\n\n${sections}`;
 }
 

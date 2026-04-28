@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -26,12 +27,66 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase', letterSpacing: '0.05em',
 };
 
-export default function AccountPage() {
+interface GitHubStatus {
+  connected: boolean;
+  username: string | null;
+}
+
+function AccountPageInner() {
   const { data: session, update } = useSession();
+  const searchParams = useSearchParams();
 
   const [nicknameValue, setNicknameValue] = useState('');
   const [nicknameStatus, setNicknameStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [nicknameLoading, setNicknameLoading] = useState(false);
+
+  const [githubStatus, setGithubStatus] = useState<GitHubStatus | null>(null);
+  const [githubDisconnecting, setGithubDisconnecting] = useState(false);
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const url = (session?.user as { avatarUrl?: string } | undefined)?.avatarUrl;
+    if (url) {
+      setAvatarUrl(url);
+    } else if (session?.user) {
+      // JWT may be stale — fetch the current value from the DB
+      fetch('/api/account')
+        .then((r) => r.json())
+        .then((d) => { if (d.avatarUrl) setAvatarUrl(d.avatarUrl); })
+        .catch(() => {});
+    }
+  }, [session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    fetch('/api/github/status')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => data && setGithubStatus(data))
+      .catch(() => null);
+  }, []);
+
+  // Show feedback after GitHub OAuth redirect
+  useEffect(() => {
+    const github = searchParams.get('github');
+    if (github === 'connected') {
+      setGithubStatus((s) => s ? { ...s, connected: true } : { connected: true, username: null });
+      // Re-fetch to get username
+      fetch('/api/github/status')
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => data && setGithubStatus(data))
+        .catch(() => null);
+    }
+  }, [searchParams]);
+
+  const [mcpCopied, setMcpCopied] = useState(false);
+
+  function handleMcpCopy() {
+    navigator.clipboard.writeText('claude mcp add recgon --transport http https://recgon-ai.vercel.app/mcp');
+    setMcpCopied(true);
+    setTimeout(() => setMcpCopied(false), 2000);
+  }
 
   const [emailForm, setEmailForm] = useState({ newEmail: '', password: '' });
   const [emailStatus, setEmailStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
@@ -104,6 +159,38 @@ export default function AccountPage() {
     }
   }
 
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/account/avatar', { method: 'POST', body: formData });
+    const data = await res.json();
+    setAvatarUploading(false);
+    if (res.ok) {
+      setAvatarUrl(data.avatarUrl);
+      await update({ avatarUrl: data.avatarUrl });
+    }
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarUploading(true);
+    await fetch('/api/account/avatar', { method: 'DELETE' });
+    setAvatarUrl(null);
+    await update({ avatarUrl: '' });
+    setAvatarUploading(false);
+  }
+
+  async function handleGithubDisconnect() {
+    setGithubDisconnecting(true);
+    await fetch('/api/github/connect', { method: 'DELETE' });
+    setGithubStatus({ connected: false, username: null });
+    setGithubDisconnecting(false);
+  }
+
   return (
     <div style={{ maxWidth: '560px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div style={{ marginBottom: '0.5rem' }}>
@@ -112,6 +199,70 @@ export default function AccountPage() {
           <span style={{ color: 'var(--signature)', opacity: 0.7 }}>›</span> {session?.user?.email}
         </p>
       </div>
+
+      {/* Profile Photo */}
+      <Section title="Profile Photo">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div style={{
+            width: '72px', height: '72px', borderRadius: '50%',
+            overflow: 'hidden', flexShrink: 0,
+            border: '2px solid var(--border)',
+            background: 'var(--accent-faint)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase' }}>
+                {(session?.user?.nickname || session?.user?.email || '?').slice(0, 2)}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <p style={{ color: 'var(--txt-muted)', fontSize: '0.8rem', margin: 0 }}>
+              JPEG, PNG, WebP or GIF. Max 2MB.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleAvatarUpload}
+                style={{ display: 'none' }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarUploading}
+                style={{
+                  padding: '0.45rem 1rem',
+                  background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
+                  border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600,
+                  fontSize: '0.8rem', cursor: avatarUploading ? 'not-allowed' : 'pointer',
+                  opacity: avatarUploading ? 0.7 : 1,
+                }}
+              >
+                {avatarUploading ? 'Uploading...' : 'Upload Photo'}
+              </button>
+              {avatarUrl && (
+                <button
+                  onClick={handleAvatarRemove}
+                  disabled={avatarUploading}
+                  style={{
+                    padding: '0.45rem 1rem',
+                    background: 'transparent', color: 'var(--danger)',
+                    border: '1px solid var(--danger)', borderRadius: 'var(--r-sm)',
+                    fontWeight: 600, fontSize: '0.8rem',
+                    cursor: avatarUploading ? 'not-allowed' : 'pointer',
+                    opacity: avatarUploading ? 0.6 : 1,
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Section>
 
       {/* Change Nickname */}
       <Section title="Nickname">
@@ -230,6 +381,102 @@ export default function AccountPage() {
         </form>
       </Section>
 
+      {/* GitHub */}
+      <Section title="GitHub">
+        {githubStatus === null ? (
+          <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+        ) : githubStatus.connected ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--txt-muted)', flexShrink: 0 }}>
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              <span style={{ fontSize: '0.875rem', color: 'var(--txt-pure)' }}>
+                {githubStatus.username ? (
+                  <><strong>{githubStatus.username}</strong> connected</>
+                ) : (
+                  'Connected'
+                )}
+              </span>
+            </div>
+            <button
+              onClick={handleGithubDisconnect}
+              disabled={githubDisconnecting}
+              style={{
+                padding: '0.45rem 1rem',
+                background: 'transparent',
+                color: 'var(--danger)',
+                border: '1px solid var(--danger)',
+                borderRadius: 'var(--r-sm)', fontWeight: 600,
+                fontSize: '0.8rem', cursor: githubDisconnecting ? 'not-allowed' : 'pointer',
+                opacity: githubDisconnecting ? 0.6 : 1, flexShrink: 0,
+              }}
+            >
+              {githubDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+            </button>
+          </div>
+        ) : (
+          <>
+            <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: '0 0 1rem' }}>
+              Connect your GitHub account to import repositories directly into Recgon.
+            </p>
+            <a
+              href="/api/github/connect"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.55rem 1.25rem',
+                background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)',
+                border: '1px solid var(--btn-secondary-border)',
+                borderRadius: 'var(--r-sm)', fontWeight: 600,
+                fontSize: '0.875rem', textDecoration: 'none',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              Connect GitHub
+            </a>
+          </>
+        )}
+      </Section>
+
+      {/* Claude Code */}
+      <Section title="Claude Code">
+        <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: '0 0 1rem' }}>
+          Connect Recgon to Claude Code to get project insights, next steps, and developer prompts directly in your editor.
+        </p>
+        <p style={{ color: 'var(--txt-muted)', fontSize: '0.8rem', margin: '0 0 0.75rem' }}>
+          Run this command in your terminal, then sign in when the browser opens:
+        </p>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          background: 'var(--btn-secondary-bg)',
+          border: '1px solid var(--btn-secondary-border)',
+          borderRadius: 'var(--r-sm)', padding: '0.6rem 0.875rem',
+        }}>
+          <code style={{
+            flex: 1, fontSize: '0.8rem', color: 'var(--txt-pure)',
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            claude mcp add recgon --transport http https://recgon-ai.vercel.app/mcp
+          </code>
+          <button
+            onClick={handleMcpCopy}
+            style={{
+              flexShrink: 0, padding: '0.35rem 0.75rem',
+              background: mcpCopied ? 'var(--success)' : 'var(--btn-primary-bg)',
+              color: mcpCopied ? '#fff' : 'var(--btn-primary-txt)',
+              border: 'none', borderRadius: 'var(--r-sm)',
+              fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            {mcpCopied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+      </Section>
+
       {/* Sign Out */}
       <Section title="Sign Out">
         <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: '0 0 1rem' }}>
@@ -250,5 +497,13 @@ export default function AccountPage() {
         </button>
       </Section>
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense>
+      <AccountPageInner />
+    </Suspense>
   );
 }

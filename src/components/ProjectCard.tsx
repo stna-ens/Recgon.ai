@@ -9,6 +9,7 @@ interface ProjectCardProps {
   techStack?: string[];
   analyzed: boolean;
   hasUpdates?: boolean;
+  sourceType?: 'codebase' | 'github' | 'description';
 }
 
 export default function ProjectCard({

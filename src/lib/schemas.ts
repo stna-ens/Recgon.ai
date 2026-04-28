@@ -16,6 +16,7 @@ export const AnalysisResultSchema = z.object({
   marketOpportunity: z.string(),
   competitors: z.array(z.object({
     name: z.string(),
+    url: z.string().optional(),
     differentiator: z.string(),
   })),
 
@@ -52,6 +53,46 @@ export const AnalysisResultSchema = z.object({
 });
 
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
+
+// ── Competitor deep analysis ──────────────────────────────────────────────────
+
+export const CompetitorInsightSchema = z.object({
+  name: z.string(),
+  url: z.string().optional(),
+  summary: z.string(),
+  positioning: z.string(),
+  messagingTone: z.string(),
+  keyFeatures: z.array(z.string()),
+  weaknesses: z.array(z.string()),
+  differentiator: z.string(),
+});
+
+export const CompetitorInsightsResponseSchema = z.object({
+  insights: z.array(CompetitorInsightSchema),
+});
+
+export type CompetitorInsight = z.infer<typeof CompetitorInsightSchema>;
+
+// ── Social media profile insights ─────────────────────────────────────────────
+
+export const SocialProfileInsightSchema = z.object({
+  platform: z.string(),
+  profileUrl: z.string(),
+  sizeEstimate: z.string(),
+  contentStyle: z.string(),
+  postingFrequency: z.string(),
+  strengths: z.array(z.string()),
+  improvements: z.array(z.string()),
+  overallScore: z.coerce.number().min(0).max(10),
+});
+
+export const SocialAnalysisResponseSchema = z.object({
+  profiles: z.array(SocialProfileInsightSchema),
+  overallSummary: z.string(),
+});
+
+export type SocialProfileInsight = z.infer<typeof SocialProfileInsightSchema>;
+export type SocialAnalysisResponse = z.infer<typeof SocialAnalysisResponseSchema>;
 
 // ── Feedback analysis ─────────────────────────────────────────────────────────
 

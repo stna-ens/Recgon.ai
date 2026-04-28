@@ -1,66 +1,71 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Commands
+- `npm run dev` — dev server at localhost:3000
+- `npm run build` — production build
+- `npm run lint` — ESLint
+- `npm run test` — vitest
 
-```bash
-npm run dev       # Start dev server (http://localhost:3000)
-npm run build     # Production build
-npm run lint      # ESLint check
-```
+## Env (`.env.local`)
+Required: `GEMINI_API_KEY`, `AUTH_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+Optional (GA4 OAuth): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 
-No test suite is configured. There is a scratch file `test-scraper.js` and `src/lib/test-gemini.ts` for manual testing.
+## Stack
+Next.js 15 (App Router) + TypeScript + Tailwind. AI via Gemini 2.5 Flash (`@google/generative-ai`). Auth via NextAuth v5 (credentials + JWT). Database: Supabase (PostgreSQL), accessed via service-role key server-side.
 
-## Environment Variables
+## File map
 
-The app requires these env vars (create a `.env.local`):
+### Auth
+- `src/auth.ts` — NextAuth config
+- `src/middleware.ts` — route protection (public: `/login`, `/register`, `/landing`, `/teams/setup`, `/teams/invite/**`, `/api/auth/**`)
+- `src/lib/userStorage.ts` — user CRUD → Supabase `users` table
 
-```
-GEMINI_API_KEY=   # Used for all AI: text (gemini-2.5-flash)
-AUTH_SECRET=      # NextAuth secret — generate with: openssl rand -base64 32
-```
+### Data
+- `src/lib/supabase.ts` — Supabase client (service-role key, server-side only)
+- `src/lib/storage.ts` — `Project` type + CRUD → Supabase tables (`projects`, `project_analyses`, `marketing_content`, `feedback_analyses`, `campaigns`), scoped by `teamId`
+- `src/lib/teamStorage.ts` — team CRUD, membership, invitations, access verification → Supabase tables (`teams`, `team_members`, `team_invitations`)
+- `src/lib/chatStorage.ts` — mentor chat history → Supabase `chat_messages` table
+- `src/lib/analyticsStorage.ts` — per-user GA4 property + OAuth tokens → Supabase `analytics_configs` table
+- `src/lib/analysisQuota.ts` — per-user analysis quota enforcement (3 total, 1 per 2 weeks) → Supabase `analysis_quotas` table
 
-The `openai` package is installed but the file `src/lib/openai.ts` actually wraps **Gemini**, not OpenAI. The naming is a historical artifact — do not add real OpenAI calls without updating this file.
-
-## Architecture
-
-### Auth layer
-- `src/auth.ts` — NextAuth v5 config; credentials provider (email + password); JWT sessions
-- `src/lib/userStorage.ts` — User CRUD over `data/users.json` (same flat-file pattern as projects)
-- `src/middleware.ts` — Protects all routes except `/login`, `/register`, and `/api/auth/**`
-- Registration: `POST /api/auth/register` → hashes password with bcrypt, stores user
-- Login: NextAuth credentials flow → `/login` page uses `signIn('credentials', ...)`
-
-### Data layer
-All persistence is flat-file JSON at `data/projects.json` and `data/users.json` (created at runtime). `src/lib/storage.ts` is the single source of truth for the `Project` type and all CRUD. Projects are scoped per user via `userId`. There is no database.
-
-### AI layer (`src/lib/`)
-- `openai.ts` — Gemini chat wrapper (`gemini-2.5-flash`, always returns JSON via `responseMimeType: 'application/json'`)
-- `schemas.ts` — All Zod schemas for AI response validation; `parseAIResponse()` handles Gemini's occasional markdown-wrapped JSON
-- `prompts.ts` — All system/user prompt strings (single source for prompt engineering)
-
-### Feature modules (`src/lib/`)
-- `codeAnalyzer.ts` — Walks local/cloned directory (max depth 4, ignores `node_modules` etc.), reads key files + first 5 code files, sends to Gemini
-- `githubFetcher.ts` — `git clone --depth 1` into OS temp dir; strips `.git` before analysis
-- `contentGenerator.ts` — Generates marketing content (text) for Instagram, TikTok, and Google Ads via Gemini
-- `feedbackEngine.ts` — Takes an array of feedback strings, returns structured sentiment + developer prompts
-- `instagramScraper.ts` — Puppeteer-based scraper for Instagram comments
+### AI (all prompts in `src/lib/prompts.ts`, all schemas in `src/lib/schemas.ts`)
+- `src/lib/gemini.ts` — Gemini wrapper, always JSON response mode
+- `src/lib/codeAnalyzer.ts` — walks codebase, sends top files to Gemini
+- `src/lib/contentGenerator.ts` — marketing content (Instagram/TikTok/Google Ads)
+- `src/lib/feedbackEngine.ts` — feedback → sentiment + dev prompts
+- `src/lib/analyticsEngine.ts` — GA4 Data API fetcher (6 parallel reports)
 
 ### API routes (`src/app/api/`)
-| Route | Purpose |
-|---|---|
-| `GET /api/projects` | List all projects |
-| `POST /api/projects` | Create project (accepts local path or `https://github.com/` URL) |
-| `GET /api/projects/[id]` | Get single project |
-| `DELETE /api/projects/[id]` | Delete project |
-| `POST /api/projects/[id]/analyze` | Run codebase analysis, stores result in project |
-| `POST /api/marketing/generate` | Generate marketing content for a platform |
-| `POST /api/feedback/fetch` | Scrape feedback (Instagram or manual input) |
-| `POST /api/feedback/analyze` | Run feedback analysis |
+- `projects/` — CRUD + `[id]/analyze` (codebase analysis) — all require `teamId`
+- `teams/` — team CRUD, members, invitations
+- `marketing/generate` + `marketing/campaign` — content + campaign plans
+- `feedback/analyze` — feedback analysis
+- `analytics/data` + `analytics/analyze` — GA4 data + AI insights
+- `analytics/oauth/` + `analytics/oauth/callback/` — Google OAuth flow
+- `chat/` — mentor chatbot (streaming, persists history)
 
-### Key data flow
-1. User adds a project (local path or GitHub URL → cloned to temp)
-2. `/analyze` walks the codebase → Gemini → `ProductAnalysis` stored on the project
-3. Marketing generation uses the stored `ProductAnalysis` → Gemini text content
-4. Feedback flow is independent of projects: fetch comments → analyze → get developer prompts
+### Pages (`src/app/`)
+`page.tsx` (dashboard) · `landing/` · `login/` · `register/` · `account/` · `projects/[id]/` + `export/` · `marketing/` · `feedback/` · `analytics/` · `teams/` · `teams/setup/` · `teams/[id]/` · `teams/invite/[token]/`
+
+### Components (`src/components/`)
+`AppShell.tsx` (layout + TeamProvider) · `Sidebar.tsx` (nav+theme+team switcher) · `TeamProvider.tsx` (team context) · `TeamSwitcher.tsx` (team dropdown) · `Toast.tsx` (`useToast()` hook) · `ProjectCard.tsx` · `FeedbackPanel.tsx` · `MarketingPreview.tsx` · `StatsCard.tsx` · `Select.tsx` · `RecgonLogo.tsx` · `ErrorBoundary.tsx` · `ThemeProvider.tsx`
+
+### MCP Server (`mcp-server/`)
+- `mcp-server/src/index.ts` — entry point, stdio transport
+- `mcp-server/src/tools.ts` — 4 tools: `list_projects`, `get_project_analysis`, `get_actionable_items`, `mark_item_complete`
+- `mcp-server/src/data.ts` — reads/writes Supabase directly
+- `mcp-server/src/types.ts` — mirrors `storage.ts` types + `CompletedPrompt`
+- `mcp-server/src/auth.ts` — token validation via `RECGON_MCP_TOKEN` env var
+
+## MCP Servers (plugins)
+- **Recgon** — exposes project analyses to Claude Code. Tools: `list_projects`, `get_project_analysis`, `get_actionable_items`, `mark_item_complete`. Token auth via `RECGON_MCP_TOKEN`.
+- **Context7** — live documentation lookup for libraries (Next.js, Zod, NextAuth, etc.). Use before writing code with newer APIs.
+- **GitHub** — direct PR/issue management. Requires one-time auth via `/mcp` command.
+- **Supabase** — database management. Requires access token from supabase.com dashboard (Settings > API).
+
+## Key rules
+- Database: Supabase (PostgreSQL), all access through `src/lib/supabase.ts` service-role client
+- Team-based data model: projects belong to teams, users access via team membership (owner/member/viewer)
+- All prompts in `prompts.ts`, all schemas in `schemas.ts` — never inline
+- Tests in `src/__tests__/` (vitest, globals enabled, `@` → `./src`)
+- Detailed conventions auto-load from `.claude/rules/` when editing relevant files

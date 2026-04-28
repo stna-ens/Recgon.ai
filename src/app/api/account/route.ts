@@ -3,6 +3,13 @@ import bcrypt from 'bcryptjs';
 import { auth } from '@/auth';
 import { getUserById, getUserByEmail, updateUser } from '@/lib/userStorage';
 
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getUserById(session.user.id);
+  return NextResponse.json({ avatarUrl: user?.avatarUrl ?? null });
+}
+
 export async function PATCH(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -15,7 +22,7 @@ export async function PATCH(request: NextRequest) {
     if (!nickname || nickname.trim().length < 2) {
       return NextResponse.json({ error: 'Nickname must be at least 2 characters' }, { status: 400 });
     }
-    updateUser(session.user.id, { nickname: nickname.trim() });
+    await updateUser(session.user.id, { nickname: nickname.trim() });
     return NextResponse.json({ success: true, nickname: nickname.trim() });
   }
 
@@ -29,18 +36,19 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
     }
 
-    const user = getUserById(session.user.id);
+    const user = await getUserById(session.user.id);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user.passwordHash) return NextResponse.json({ error: 'OAuth accounts cannot change email here' }, { status: 400 });
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return NextResponse.json({ error: 'Incorrect password' }, { status: 403 });
 
-    const taken = getUserByEmail(newEmail);
+    const taken = await getUserByEmail(newEmail);
     if (taken && taken.id !== user.id) {
       return NextResponse.json({ error: 'That email is already in use' }, { status: 409 });
     }
 
-    updateUser(user.id, { email: newEmail });
+    await updateUser(user.id, { email: newEmail });
     return NextResponse.json({ success: true });
   }
 
@@ -54,14 +62,15 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 });
     }
 
-    const user = getUserById(session.user.id);
+    const user = await getUserById(session.user.id);
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user.passwordHash) return NextResponse.json({ error: 'This account uses GitHub sign-in and has no password' }, { status: 400 });
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!valid) return NextResponse.json({ error: 'Incorrect current password' }, { status: 403 });
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    updateUser(user.id, { passwordHash });
+    await updateUser(user.id, { passwordHash });
     return NextResponse.json({ success: true });
   }
 
