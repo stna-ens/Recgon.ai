@@ -5,7 +5,7 @@
 // duplicates. createTask returns null on conflict; we count those as already-
 // minted.
 
-import { createTask } from './storage';
+import { createTask, listTombstonedDedupKeys } from './storage';
 import type { BrainEntry, BrainSnapshot, AgentTask } from './types';
 
 export type MintResult = {
@@ -17,9 +17,14 @@ export async function mintTasksFromBrain(
   teamId: string,
   snapshot: BrainSnapshot,
 ): Promise<MintResult> {
+  const tombstoned = await listTombstonedDedupKeys(teamId);
   const minted: AgentTask[] = [];
   let skipped = 0;
   for (const entry of snapshot.entries) {
+    if (tombstoned.has(`${entry.kind}::${entry.dedupKey}`)) {
+      skipped++;
+      continue;
+    }
     const task = await createTask({
       teamId,
       projectId: entry.projectId ?? null,

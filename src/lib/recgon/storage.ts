@@ -385,8 +385,36 @@ export async function reassignTask(
 }
 
 export async function deleteTask(taskId: string): Promise<void> {
+  // Tombstone brain-sourced dedupKeys before deleting so the next dispatch
+  // doesn't re-mint the same row from the same analysis.
+  const { data: row } = await supabase
+    .from('agent_tasks')
+    .select('team_id, kind, source, source_ref')
+    .eq('id', taskId)
+    .maybeSingle();
+  if (row) {
+    const sourceRef = row.source_ref as Record<string, unknown> | null;
+    const dedupKey = sourceRef && typeof sourceRef.dedupKey === 'string' ? sourceRef.dedupKey : null;
+    if (row.source === 'brain' && dedupKey) {
+      await supabase
+        .from('agent_task_tombstones')
+        .upsert(
+          { team_id: row.team_id, kind: row.kind, dedup_key: dedupKey },
+          { onConflict: 'team_id,kind,dedup_key' },
+        );
+    }
+  }
   const { error } = await supabase.from('agent_tasks').delete().eq('id', taskId);
   if (error) throw new Error(`deleteTask failed: ${error.message}`);
+}
+
+export async function listTombstonedDedupKeys(teamId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('agent_task_tombstones')
+    .select('kind, dedup_key')
+    .eq('team_id', teamId);
+  if (error) throw new Error(`listTombstonedDedupKeys failed: ${error.message}`);
+  return new Set((data ?? []).map((r) => `${r.kind}::${r.dedup_key}`));
 }
 
 // ── Verification ────────────────────────────────────────────────────────────

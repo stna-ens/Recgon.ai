@@ -565,7 +565,7 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
   const avatarUrl = team.avatarUrl;
 
   return (
-    <div className="tdp-page" style={{ maxWidth: 960 }}>
+    <div className="tdp-page" style={{ maxWidth: 960, marginInline: 'auto' }}>
       <style>{`
         @keyframes tdpSurfaceIn {
           from { opacity: 0; transform: translateY(10px); filter: blur(6px); }

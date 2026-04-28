@@ -66,12 +66,8 @@ function LoginPageContent() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    // DIAGNOSTIC: ping a server route that writes to a log file so we can
-    // confirm the handler fires from the user's browser. Remove after debugging.
-    try { fetch('/api/_debug-login-click', { method: 'POST', body: JSON.stringify({ email, when: 'before-signIn' }) }); } catch {}
     try {
       const result = await signIn('credentials', { email, password, redirect: false });
-      try { fetch('/api/_debug-login-click', { method: 'POST', body: JSON.stringify({ email, when: 'after-signIn', result }) }); } catch {}
       setLoading(false);
       // Detect error in either the result object OR the returned URL.
       // next-auth v5 beta sometimes still puts the error in `url` even when
