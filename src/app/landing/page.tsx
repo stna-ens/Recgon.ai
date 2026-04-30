@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import LandingClientShell from '@/components/landing/LandingClientShell';
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://recgon.com';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://recgon.app';
 
 export const metadata: Metadata = {
   title: "Recgon — The Coach Solo Founders Don't Have",

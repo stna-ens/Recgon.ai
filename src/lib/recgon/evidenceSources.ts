@@ -38,11 +38,20 @@ export type EvidenceBundle = {
   thin?: boolean;
 };
 
+// Live narration callback. Sources call this with concrete strings as they do
+// work ("Fetching https://example.com", "Reading commit abc123 — feat: add
+// login") so the inbox tooltip can show what's happening right now instead of
+// a generic stage label. Failures here are non-fatal: sources should not error
+// if narration fails.
+//
+// (HMR nudge — Turbopack didn't reload this module after the initial wiring.)
+export type Narrate = (detail: string) => Promise<void> | void;
+
 export type EvidenceSource = {
   name: EvidenceSourceName;
   description: string;
   isViable(task: AgentTask): Promise<boolean> | boolean;
-  fetch(task: AgentTask, opts?: { url?: string }): Promise<EvidenceBundle | null>;
+  fetch(task: AgentTask, opts?: { url?: string; narrate?: Narrate }): Promise<EvidenceBundle | null>;
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -74,7 +83,7 @@ const githubCommitsSource: EvidenceSource = {
     const project = await getProject(task.projectId, task.teamId);
     return Boolean(project?.githubUrl);
   },
-  async fetch(task) {
+  async fetch(task, opts) {
     if (!task.projectId) return null;
     const project = await getProject(task.projectId, task.teamId);
     if (!project?.githubUrl) return null;
@@ -83,10 +92,13 @@ const githubCommitsSource: EvidenceSource = {
     const user = tokenUserId ? await getUserById(tokenUserId) : null;
     const token = user?.githubAccessToken;
 
+    const repoName = project.githubUrl.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '');
+    await opts?.narrate?.(`Reading the latest commit on ${repoName}…`);
     const head = await getLatestCommit(project.githubUrl, token);
     if (!head) return null;
 
     if (!baseSha) {
+      await opts?.narrate?.(`Reading head commit ${head.sha.slice(0, 7)}: ${head.message.split('\n')[0].slice(0, 60)}`);
       return {
         source: 'github_commits',
         text: `LATEST COMMIT (no baseline)\nsha: ${head.sha}\nmessage: ${head.message}\ndate: ${head.date}`,
@@ -94,6 +106,7 @@ const githubCommitsSource: EvidenceSource = {
       };
     }
     if (baseSha === head.sha) {
+      await opts?.narrate?.(`No new commits on ${repoName} since baseline ${baseSha.slice(0, 7)}.`);
       return {
         source: 'github_commits',
         text: `No new commits since baseline ${baseSha}.`,
@@ -102,10 +115,12 @@ const githubCommitsSource: EvidenceSource = {
       };
     }
 
+    await opts?.narrate?.(`Comparing ${baseSha.slice(0, 7)}…${head.sha.slice(0, 7)} on ${repoName}…`);
     const diff = await getCommitDiff(project.githubUrl, baseSha, head.sha, token);
     if (!diff) return null;
     const fileLines = diff.files.slice(0, 20).map((f) => `${f.status}: ${f.filename}`).join('\n');
     const messages = diff.commits.map((c) => `- ${c.message}`).join('\n');
+    await opts?.narrate?.(`Reading ${diff.commits.length} commit${diff.commits.length === 1 ? '' : 's'}, ${diff.files.length} file${diff.files.length === 1 ? '' : 's'} changed on ${repoName}.`);
     return {
       source: 'github_commits',
       text: `COMPARE ${baseSha.slice(0, 7)}...${head.sha.slice(0, 7)}\n\nCOMMITS\n${messages}\n\nFILES\n${fileLines}`,
@@ -132,7 +147,7 @@ const ga4MetricSource: EvidenceSource = {
     const config = await getAnalyticsConfig({ kind: 'team', teamId: task.teamId });
     return Boolean(config?.oauth);
   },
-  async fetch(task) {
+  async fetch(task, opts) {
     if (!task.projectId) return null;
     const project = await getProject(task.projectId, task.teamId);
     if (!project?.analyticsPropertyId) return null;
@@ -142,6 +157,7 @@ const ga4MetricSource: EvidenceSource = {
     const baselineRef = (task.sourceRef as MetricBaseline) ?? {};
     const metricName = baselineRef.metric ?? 'sessions';
 
+    await opts?.narrate?.(`Pulling 14 days of '${metricName}' from GA4 property ${project.analyticsPropertyId}…`);
     let data;
     try {
       data = await fetchAnalyticsData(
@@ -163,6 +179,7 @@ const ga4MetricSource: EvidenceSource = {
     const delta = observed - baseline;
     const direction = baselineRef.expected ?? 'increase';
     const moved = direction === 'increase' ? delta > 0 : delta < 0;
+    await opts?.narrate?.(`Comparing observed ${metricName}=${observed} vs baseline ${baseline} (Δ ${delta >= 0 ? '+' : ''}${delta}).`);
 
     return {
       source: 'ga4_metric',
@@ -181,8 +198,9 @@ const marketingArtifactsSource: EvidenceSource = {
   async isViable(task) {
     return Boolean(task.projectId && task.assignedAt);
   },
-  async fetch(task) {
+  async fetch(task, opts) {
     if (!task.projectId || !task.assignedAt) return null;
+    await opts?.narrate?.(`Looking up marketing rows produced after ${new Date(task.assignedAt).toLocaleDateString()}…`);
     const { data, error } = await supabase
       .from('marketing_content')
       .select('id, platform, content, generated_at')
@@ -195,6 +213,7 @@ const marketingArtifactsSource: EvidenceSource = {
       return null;
     }
     if (!data || data.length === 0) {
+      await opts?.narrate?.('No marketing artifacts found since assignment.');
       return {
         source: 'marketing_artifacts',
         text: 'No new marketing_content rows since the task was assigned.',
@@ -202,6 +221,7 @@ const marketingArtifactsSource: EvidenceSource = {
         thin: true,
       };
     }
+    await opts?.narrate?.(`Reading ${data.length} marketing artifact${data.length === 1 ? '' : 's'} from this team.`);
     const lines = data.map((r) => {
       const c = (r.content as Record<string, string> | null) ?? {};
       return `- [${r.platform}] ${(c.headline1 ?? c.caption ?? Object.values(c)[0] ?? '').slice(0, 120)}`;
@@ -238,11 +258,13 @@ const instagramGraphSource: EvidenceSource = {
     const integration = await getIntegration(task.projectId, 'instagram');
     return Boolean(integration?.accessToken && integration.accountId);
   },
-  async fetch(task) {
+  async fetch(task, opts) {
     if (!task.projectId) return null;
     const integration = await getIntegration(task.projectId, 'instagram');
     if (!integration?.accessToken || !integration.accountId) return null;
 
+    const handle = integration.accountHandle ? `@${integration.accountHandle}` : `account ${integration.accountId}`;
+    await opts?.narrate?.(`Reading recent Instagram media for ${handle} via the Meta Graph API…`);
     let media;
     try {
       media = await listRecentMedia(integration.accountId, integration.accessToken, 25);
@@ -351,8 +373,11 @@ const webFetchSource: EvidenceSource = {
   async fetch(task, opts) {
     const url = opts?.url ?? urlsFromTask(task)[0];
     if (!url) return null;
+    const shortUrl = url.length > 60 ? url.slice(0, 57) + '…' : url;
+    await opts?.narrate?.(`Fetching ${shortUrl} via Firecrawl…`);
     const content = await scrapeWebsite(url).catch(() => null);
     if (!content) {
+      await opts?.narrate?.(`Couldn't reach ${shortUrl} (scraper unreachable, 4xx, or timeout).`);
       return {
         source: 'web_fetch',
         text: `Tried to fetch ${url} — fetch failed (scraper unreachable, 4xx, or timeout).`,
@@ -363,6 +388,7 @@ const webFetchSource: EvidenceSource = {
     const lower = content.toLowerCase();
     const looksLikeShell =
       content.length < 400 || PLATFORM_SHELL_HINTS.some((hint) => lower.includes(hint));
+    await opts?.narrate?.(`Read ${content.length.toLocaleString()} chars from ${shortUrl}.`);
     return {
       source: 'web_fetch',
       text: `FETCHED ${url}\n\nCONTENT (${content.length} chars):\n${content}`,
@@ -381,9 +407,14 @@ const proofWriteupSource: EvidenceSource = {
   isViable(task) {
     return Boolean(task.proof?.text || task.proof?.links?.length || task.proof?.attachments?.length);
   },
-  async fetch(task) {
+  async fetch(task, opts) {
     const proof = task.proof;
     if (!proof) return null;
+    const counts: string[] = [];
+    if (proof.text) counts.push(`${proof.text.length.toLocaleString()} chars of notes`);
+    if (proof.links?.length) counts.push(`${proof.links.length} link${proof.links.length === 1 ? '' : 's'}`);
+    if (proof.attachments?.length) counts.push(`${proof.attachments.length} attachment${proof.attachments.length === 1 ? '' : 's'}`);
+    await opts?.narrate?.(`Reading the proof writeup you submitted (${counts.join(', ') || 'empty'})…`);
     const lines: string[] = [];
     if (proof.text) lines.push(`TEXT:\n${proof.text}`);
     if (proof.links?.length) lines.push(`LINKS:\n${proof.links.map((l) => `- ${l}`).join('\n')}`);

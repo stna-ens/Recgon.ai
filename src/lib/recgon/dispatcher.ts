@@ -78,15 +78,71 @@ async function dispatchSingleTask(
   teamId: string,
   task: AgentTask,
   teammates: Awaited<ReturnType<typeof listTeammatesWithStats>>,
+  excludeIds: string[] = [],
 ): Promise<'assigned' | 'no_fit' | 'skip'> {
-  const best = pickBestMatch(teammates, {
+  const excluded = new Set(excludeIds);
+  // First pass: respect exclusions (e.g. the teammate who just declined).
+  const candidatePool = teammates.filter((t) => !excluded.has(t.id));
+  let best = pickBestMatch(candidatePool, {
     kind: task.kind,
     requiredSkills: task.requiredSkills,
     estimatedHours: task.estimatedHours,
     priority: task.priority,
   });
 
+  // Second pass: if no compatible candidate, retry without exclusions before
+  // we fall through to the owner. This catches the case where the only
+  // possible assignee was the decliner — better the owner sees it than
+  // the task get bounced right back to them.
+  if (!best && excluded.size > 0) {
+    best = pickBestMatch(teammates, {
+      kind: task.kind,
+      requiredSkills: task.requiredSkills,
+      estimatedHours: task.estimatedHours,
+      priority: task.priority,
+    });
+  }
+
+  // Final fallback: assign to the team owner so they can decide. We do this
+  // instead of leaving the task unassigned because Recgon found nobody who
+  // scored well — this is exactly when a human needs to weigh in.
   if (!best) {
+    const ownerTeammate = teammates.find(
+      (t) => t.teamRole === 'owner' && t.kind !== 'ai' && t.status === 'active' && !excluded.has(t.id),
+    ) ?? teammates.find((t) => t.teamRole === 'owner' && t.kind !== 'ai' && t.status === 'active');
+    if (ownerTeammate) {
+      await assignTask(task.id, ownerTeammate.id, 'recgon', null);
+      await logEvent({
+        teamId,
+        teammateId: ownerTeammate.id,
+        taskId: task.id,
+        event: 'assigned',
+        payload: { reason: 'owner_fallback', kind: task.kind, requiredSkills: task.requiredSkills },
+      });
+      const [teamName, full] = await Promise.all([
+        getTeamName(teamId),
+        getTeammate(ownerTeammate.id),
+      ]);
+      if (full) {
+        notifyTeammateAssigned({ teammate: full, task, teamName }).catch((err) => {
+          logger.warn('notify owner-fallback failed', {
+            taskId: task.id,
+            err: err instanceof Error ? err.message : String(err),
+          });
+        });
+      }
+      await appendAssignmentLog(teamId, {
+        taskId: task.id,
+        taskTitle: task.title,
+        teammateId: ownerTeammate.id,
+        teammateName: ownerTeammate.displayName,
+        score: 0,
+        reason: 'owner_fallback',
+        ts: new Date().toISOString(),
+      });
+      return 'assigned';
+    }
+
     await logEvent({
       teamId,
       taskId: task.id,
@@ -143,9 +199,13 @@ async function dispatchSingleTask(
 
 // Used by tests and by the manual /recgon/dispatch route. Re-exports the same
 // path for explicit single-task dispatch (e.g. on user-created task insert).
-export async function dispatchTask(teamId: string, taskId: string): Promise<'assigned' | 'no_fit' | 'skip'> {
+export async function dispatchTask(
+  teamId: string,
+  taskId: string,
+  options: { excludeTeammateIds?: string[] } = {},
+): Promise<'assigned' | 'no_fit' | 'skip'> {
   const task = await getTask(taskId);
   if (!task || task.status !== 'unassigned') return 'skip';
   const teammates = await listTeammatesWithStats(teamId);
-  return dispatchSingleTask(teamId, task, teammates);
+  return dispatchSingleTask(teamId, task, teammates, options.excludeTeammateIds ?? []);
 }

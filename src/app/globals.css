@@ -2766,3 +2766,14 @@ html {
   .account-pill-group { top: 16px !important; right: 12px !important; gap: 8px !important; }
   .account-pill-group .account-avatar-link { width: 30px !important; height: 30px !important; }
 }
+
+/* Generic spinner used by proof-submit Submit button while a proof is uploading. */
+@keyframes recgon-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Skeleton shimmer used by inbox/tasks loading placeholders. */
+@keyframes recgon-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

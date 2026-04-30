@@ -87,52 +87,6 @@ export default function TeamsPage() {
           to { opacity: 1; transform: translateY(0) scaleY(1); }
         }
 
-        .tlp-hero {
-          display: flex;
-          align-items: flex-end;
-          justify-content: space-between;
-          gap: 24px;
-          margin-bottom: 28px;
-          padding-bottom: 22px;
-          border-bottom: 1px solid rgba(var(--signature-rgb), 0.14);
-        }
-        .tlp-hero-left { min-width: 0; flex: 1; }
-        .tlp-hero-meta {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 6px;
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 1.2px;
-          text-transform: uppercase;
-          color: var(--signature);
-          opacity: 0.9;
-        }
-        .tlp-hero-meta::before { content: '// '; opacity: 0.5; }
-        .tlp-hero-count {
-          margin-left: auto;
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 11px;
-          letter-spacing: 1px;
-          color: var(--txt-muted);
-        }
-        .tlp-hero-title {
-          margin: 0;
-          font-size: 38px;
-          font-weight: 600;
-          letter-spacing: -1.4px;
-          line-height: 1.05;
-          color: var(--txt-pure);
-        }
-        .tlp-hero-sub {
-          margin: 8px 0 0;
-          font-size: 14px;
-          color: var(--txt-muted);
-          max-width: 520px;
-          line-height: 1.55;
-        }
         .tlp-new-btn {
           flex-shrink: 0;
           display: inline-flex;
@@ -472,15 +426,14 @@ export default function TeamsPage() {
         }
       `}</style>
 
-      <header className="tlp-hero">
-        <div className="tlp-hero-left">
-          <div className="tlp-hero-meta">
-            teams · console
-            <span className="tlp-hero-count">[ {pad(teams.length)} active · {pad(ownedCount)} owned ]</span>
-          </div>
-          <h1 className="tlp-hero-title">Your teams.</h1>
-          <p className="tlp-hero-sub">
-            Each team is its own working surface — projects, members, agents, and the Recgon roster live inside.
+      <header
+        className="page-header"
+        style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, marginBottom: 28 }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <h2><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>teams</h2>
+          <p>
+            {pad(teams.length)} active · {pad(ownedCount)} owned — each team is its own working surface for projects, members, and agents.
           </p>
         </div>
         <button

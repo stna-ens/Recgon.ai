@@ -1,0 +1,577 @@
+/* ============================================================
+   Recgon Redesign — Vintage Editorial PM Workspace
+   Scoped under .recgon-v2 wrapper. All tokens prefixed --rg-*
+   so this file never collides with the legacy globals.css.
+   ============================================================ */
+
+/* ---------- TOKENS ---------- */
+:root {
+  /* Paper system — light theme */
+  --rg-paper:       #faf6ef;
+  --rg-paper-deep:  #f0e9dc;
+  --rg-paper-card:  #fefcf8;
+  --rg-paper-veil:  rgba(250, 246, 239, 0.72);
+
+  /* Ink — light theme */
+  --rg-ink:         #1a1614;
+  --rg-ink-soft:    #3d342f;
+  --rg-ink-quiet:   #857a72;
+  --rg-rule:        #d4cabb;
+  --rg-rule-strong: #b8ad9c;
+
+  /* Brand + data palette (theme-stable) */
+  --rg-signature:       #e8a8c4;
+  --rg-signature-rgb:   232, 168, 196;
+  --rg-signature-deep:  #c4849f;
+  --rg-ochre:    #c69147;
+  --rg-sage:     #7d8a6e;
+  --rg-rust:     #a04a32;
+
+  /* Radii — fixed, consistent */
+  --rg-r-card:   14px;
+  --rg-r-btn:    10px;
+  --rg-r-pill:   999px;
+  --rg-r-sharp:  4px;
+
+  /* Motion */
+  --rg-ease-paper:     cubic-bezier(0.22, 0.61, 0.36, 1);
+  --rg-ease-press:     cubic-bezier(0.4, 0, 0.2, 1);
+  --rg-ease-overshoot: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --rg-dur-instant: 90ms;
+  --rg-dur-fast:    180ms;
+  --rg-dur-base:    280ms;
+  --rg-dur-slow:    480ms;
+
+  /* Type scale */
+  --rg-t-hero:    clamp(3rem, 7vw, 4.5rem);
+  --rg-t-display: clamp(2.125rem, 4vw, 2.75rem);
+  --rg-t-h2:      1.875rem;
+  --rg-t-h3:      1.25rem;
+  --rg-t-body:    0.9375rem;
+  --rg-t-small:   0.8125rem;
+  --rg-t-stamp:   0.6875rem;
+
+  /* Grain + halftone strength */
+  --rg-grain-opacity: 0.035;
+
+  /* Shadows — subtle, like a slight lift off paper */
+  --rg-shadow-rest:  0 0 0 1px var(--rg-rule);
+  --rg-shadow-hover: 0 14px 36px -18px rgba(20,16,14,0.18), 0 0 0 1px var(--rg-rule);
+  --rg-shadow-press: 0 4px 12px -8px rgba(20,16,14,0.12), 0 0 0 1px var(--rg-rule);
+}
+
+html.dark {
+  --rg-paper:       #161311;
+  --rg-paper-deep:  #0f0d0c;
+  --rg-paper-card:  #1f1a17;
+  --rg-paper-veil:  rgba(22, 19, 17, 0.72);
+
+  --rg-ink:         #f0ede5;
+  --rg-ink-soft:    #c8c2b6;
+  --rg-ink-quiet:   #7f786d;
+  --rg-rule:        #332e29;
+  --rg-rule-strong: #4a4239;
+
+  --rg-signature:       #f0b8d0;
+  --rg-signature-rgb:   240, 184, 208;
+  --rg-signature-deep:  #d496ae;
+  --rg-ochre:  #d4a558;
+  --rg-sage:   #9ba88c;
+  --rg-rust:   #c0654a;
+
+  --rg-grain-opacity: 0.06;
+  --rg-shadow-rest:  0 0 0 1px var(--rg-rule);
+  --rg-shadow-hover: 0 18px 44px -20px rgba(0,0,0,0.6), 0 0 0 1px var(--rg-rule);
+  --rg-shadow-press: 0 4px 12px -8px rgba(0,0,0,0.5), 0 0 0 1px var(--rg-rule);
+}
+
+/* ---------- ROOT WRAPPER ---------- */
+.recgon-v2 {
+  background: var(--rg-paper);
+  color: var(--rg-ink);
+  font-family: var(--font-inter, ui-sans-serif, system-ui, -apple-system);
+  font-size: var(--rg-t-body);
+  line-height: 1.55;
+  font-feature-settings: "ss01", "cv11", "ss02";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  position: relative;
+  isolation: isolate;
+  scroll-padding-top: 96px;
+}
+
+.recgon-v2 section[id] { scroll-margin-top: 96px; }
+
+/* Page-level grain overlay — sits above paper bg, under content */
+.recgon-v2::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px;
+  opacity: var(--rg-grain-opacity);
+  mix-blend-mode: multiply;
+}
+
+html.dark .recgon-v2::before { mix-blend-mode: screen; }
+
+/* Reset minor things to avoid legacy globals bleeding */
+.recgon-v2 *,
+.recgon-v2 *::before,
+.recgon-v2 *::after {
+  box-sizing: border-box;
+}
+.recgon-v2 a { color: inherit; text-decoration: none; }
+.recgon-v2 button { font-family: inherit; }
+.recgon-v2 svg { display: block; }
+
+/* ---------- TYPOGRAPHY ---------- */
+.recgon-v2 .t-hero,
+.recgon-v2 .t-display,
+.recgon-v2 .t-h2,
+.recgon-v2 h1.editorial,
+.recgon-v2 h2.editorial,
+.recgon-v2 h3.editorial {
+  font-family: var(--font-fraunces, "Times New Roman", serif);
+  font-weight: 400;
+  font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
+  letter-spacing: -0.015em;
+  color: var(--rg-ink);
+  text-wrap: balance;
+}
+
+.recgon-v2 .t-hero    { font-size: var(--rg-t-hero); line-height: 1.02; letter-spacing: -0.025em; }
+.recgon-v2 .t-display { font-size: var(--rg-t-display); line-height: 1.08; letter-spacing: -0.02em; }
+.recgon-v2 .t-h2      { font-size: var(--rg-t-h2); line-height: 1.2; }
+.recgon-v2 .t-h3      { font-size: var(--rg-t-h3); line-height: 1.35; font-weight: 500; }
+
+.recgon-v2 .t-italic {
+  font-style: italic;
+  font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
+}
+
+.recgon-v2 .t-body  { font-size: var(--rg-t-body); line-height: 1.55; color: var(--rg-ink-soft); }
+.recgon-v2 .t-small { font-size: var(--rg-t-small); line-height: 1.5; color: var(--rg-ink-quiet); }
+
+.recgon-v2 .t-stamp,
+.recgon-v2 .stamp,
+.recgon-v2 .label-stamp {
+  font-family: var(--font-jetbrains, ui-monospace, "SF Mono", monospace);
+  font-size: var(--rg-t-stamp);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--rg-ink-quiet);
+  font-feature-settings: "ss01";
+}
+
+.recgon-v2 .mono {
+  font-family: var(--font-jetbrains, ui-monospace, monospace);
+  font-feature-settings: "ss01", "ss02", "ss03", "calt", "zero";
+}
+
+/* Pull-quote / editorial accent */
+.recgon-v2 .pullquote {
+  font-family: var(--font-fraunces, serif);
+  font-style: italic;
+  font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--rg-ink);
+  max-width: 38ch;
+  text-wrap: balance;
+}
+
+/* ---------- LAYOUT ---------- */
+.recgon-v2 .page-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: 32px clamp(20px, 4vw, 48px) 96px;
+}
+
+.recgon-v2 .page-shell--narrow {
+  max-width: 880px;
+}
+
+.recgon-v2 .page-shell--wide {
+  max-width: 1320px;
+}
+
+/* Top nav inside redesign — minimal */
+.recgon-v2 .rg-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px clamp(20px, 4vw, 48px);
+  background: var(--rg-paper-veil);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border-bottom: 1px solid var(--rg-rule);
+}
+
+/* ---------- SURFACES ---------- */
+.recgon-v2 .paper-card {
+  background: var(--rg-paper-card);
+  border: 1px solid var(--rg-rule);
+  border-radius: var(--rg-r-card);
+  padding: 24px;
+  position: relative;
+  transition: box-shadow var(--rg-dur-base) var(--rg-ease-paper),
+              transform var(--rg-dur-base) var(--rg-ease-paper),
+              border-color var(--rg-dur-fast) var(--rg-ease-paper);
+}
+
+.recgon-v2 .paper-card.is-interactive:hover {
+  box-shadow: var(--rg-shadow-hover);
+  transform: translateY(-1px);
+  border-color: var(--rg-rule-strong);
+}
+
+.recgon-v2 .paper-card.is-recessed {
+  background: var(--rg-paper-deep);
+}
+
+.recgon-v2 .paper-card--bare {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.recgon-v2 .ink-rule {
+  border: none;
+  border-top: 1px solid var(--rg-rule);
+  margin: 32px 0;
+}
+
+.recgon-v2 .ink-rule--tight  { margin: 16px 0; }
+.recgon-v2 .ink-rule--loose  { margin: 56px 0; }
+
+/* Vintage chip — data badge */
+.recgon-v2 .vintage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--rg-paper-deep);
+  border: 1px solid var(--rg-rule);
+  border-radius: var(--rg-r-pill);
+  font-family: var(--font-jetbrains, monospace);
+  font-size: var(--rg-t-stamp);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--rg-ink-soft);
+  font-weight: 500;
+}
+
+.recgon-v2 .vintage-chip--sage  { color: var(--rg-sage);  border-color: color-mix(in oklab, var(--rg-sage) 35%, var(--rg-rule)); background: color-mix(in oklab, var(--rg-sage) 8%, var(--rg-paper-card)); }
+.recgon-v2 .vintage-chip--ochre { color: var(--rg-ochre); border-color: color-mix(in oklab, var(--rg-ochre) 35%, var(--rg-rule)); background: color-mix(in oklab, var(--rg-ochre) 8%, var(--rg-paper-card)); }
+.recgon-v2 .vintage-chip--rust  { color: var(--rg-rust);  border-color: color-mix(in oklab, var(--rg-rust) 35%, var(--rg-rule));  background: color-mix(in oklab, var(--rg-rust) 8%, var(--rg-paper-card)); }
+.recgon-v2 .vintage-chip--pink  { color: var(--rg-signature-deep); border-color: color-mix(in oklab, var(--rg-signature) 50%, var(--rg-rule)); background: color-mix(in oklab, var(--rg-signature) 12%, var(--rg-paper-card)); }
+
+.recgon-v2 .vintage-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+
+/* Wax-seal style label-stamp */
+.recgon-v2 .wax-stamp {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1px dashed var(--rg-signature-deep);
+  border-radius: var(--rg-r-sharp);
+  color: var(--rg-signature-deep);
+  font-family: var(--font-jetbrains, monospace);
+  font-size: var(--rg-t-stamp);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  transform: rotate(-3deg);
+  font-weight: 500;
+}
+
+html.dark .recgon-v2 .wax-stamp { color: var(--rg-signature); border-color: var(--rg-signature); }
+
+/* Page-header pattern: stamp / title / ink-rule */
+.recgon-v2 .rg-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.recgon-v2 .rg-page-header__stamp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--rg-ink-quiet);
+}
+
+.recgon-v2 .rg-page-header__title {
+  font-family: var(--font-fraunces, serif);
+  font-weight: 400;
+  font-size: var(--rg-t-display);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--rg-ink);
+  font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
+  margin: 0;
+}
+
+.recgon-v2 .rg-page-header__sub {
+  font-family: var(--font-fraunces, serif);
+  font-style: italic;
+  font-size: 1.125rem;
+  color: var(--rg-ink-soft);
+  max-width: 64ch;
+  margin: 0;
+}
+
+/* ---------- BUTTONS ---------- */
+.recgon-v2 .rg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-family: var(--font-inter, sans-serif);
+  font-size: var(--rg-t-body);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  border-radius: var(--rg-r-btn);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform var(--rg-dur-fast) var(--rg-ease-press),
+              background var(--rg-dur-fast) var(--rg-ease-press),
+              border-color var(--rg-dur-fast) var(--rg-ease-press),
+              color var(--rg-dur-fast) var(--rg-ease-press);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.recgon-v2 .rg-btn:active { transform: scale(0.99); }
+
+.recgon-v2 .rg-btn--ink {
+  background: var(--rg-ink);
+  color: var(--rg-paper);
+  border-color: var(--rg-ink);
+}
+.recgon-v2 .rg-btn--ink:hover { background: color-mix(in oklab, var(--rg-ink) 92%, var(--rg-rust)); }
+
+.recgon-v2 .rg-btn--paper {
+  background: var(--rg-paper-card);
+  color: var(--rg-ink);
+  border-color: var(--rg-rule);
+}
+.recgon-v2 .rg-btn--paper:hover { border-color: var(--rg-rule-strong); }
+
+.recgon-v2 .rg-btn--pink {
+  background: var(--rg-signature);
+  color: var(--rg-ink);
+  border-color: color-mix(in oklab, var(--rg-signature) 60%, var(--rg-ink));
+}
+.recgon-v2 .rg-btn--pink:hover { background: color-mix(in oklab, var(--rg-signature) 85%, var(--rg-ink)); }
+
+.recgon-v2 .rg-btn--ghost {
+  background: transparent;
+  color: var(--rg-ink-soft);
+  border-color: transparent;
+  padding: 8px 12px;
+}
+.recgon-v2 .rg-btn--ghost:hover { color: var(--rg-ink); background: var(--rg-paper-deep); }
+
+.recgon-v2 .rg-btn--mono {
+  font-family: var(--font-jetbrains, monospace);
+  font-size: var(--rg-t-stamp);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 9px 14px;
+}
+
+/* ---------- INPUTS ---------- */
+.recgon-v2 .rg-input {
+  width: 100%;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: var(--rg-t-body);
+  color: var(--rg-ink);
+  background: var(--rg-paper-card);
+  border: 1px solid var(--rg-rule);
+  border-radius: var(--rg-r-btn);
+  transition: border-color var(--rg-dur-fast), box-shadow var(--rg-dur-fast);
+}
+.recgon-v2 .rg-input:focus {
+  outline: none;
+  border-color: var(--rg-signature-deep);
+  box-shadow: 0 0 0 3px rgba(var(--rg-signature-rgb), 0.25);
+}
+.recgon-v2 .rg-input::placeholder { color: var(--rg-ink-quiet); }
+
+/* ---------- VIZ HOOKS ---------- */
+.recgon-v2 .data-grid {
+  display: grid;
+  gap: 16px;
+}
+.recgon-v2 .data-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.recgon-v2 .data-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.recgon-v2 .data-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 880px) {
+  .recgon-v2 .data-grid--3,
+  .recgon-v2 .data-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .recgon-v2 .data-grid--2,
+  .recgon-v2 .data-grid--3,
+  .recgon-v2 .data-grid--4 { grid-template-columns: 1fr; }
+}
+
+/* Stat block — number + stamp + sparkline */
+.recgon-v2 .stat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px;
+  background: var(--rg-paper-card);
+  border: 1px solid var(--rg-rule);
+  border-radius: var(--rg-r-card);
+}
+.recgon-v2 .stat-block__stamp {
+  font-family: var(--font-jetbrains, monospace);
+  font-size: var(--rg-t-stamp);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--rg-ink-quiet);
+}
+.recgon-v2 .stat-block__value {
+  font-family: var(--font-fraunces, serif);
+  font-weight: 400;
+  font-size: 2.25rem;
+  line-height: 1.0;
+  color: var(--rg-ink);
+  letter-spacing: -0.02em;
+  font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
+}
+.recgon-v2 .stat-block__delta {
+  font-family: var(--font-jetbrains, monospace);
+  font-size: var(--rg-t-small);
+  color: var(--rg-ink-quiet);
+}
+
+/* Halftone bg overlay — for hero only */
+.recgon-v2 .halftone-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, var(--rg-ink-quiet) 0.6px, transparent 0.6px);
+  background-size: 16px 16px;
+  opacity: 0.18;
+  mask-image: radial-gradient(ellipse at center, black, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black, transparent 70%);
+}
+
+/* ---------- HERO HELPERS ---------- */
+.recgon-v2 .hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: clamp(32px, 5vw, 80px);
+  align-items: center;
+  padding: clamp(56px, 10vw, 128px) 0 clamp(40px, 6vw, 80px);
+}
+@media (max-width: 980px) { .recgon-v2 .hero-grid { grid-template-columns: 1fr; gap: 48px; } }
+
+/* Eyebrow row used above hero */
+.recgon-v2 .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+/* ---------- 3D CANVAS WRAPPER ---------- */
+.recgon-v2 .scene-host {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--rg-r-card);
+  overflow: hidden;
+  background: var(--rg-paper-card);
+  border: 1px solid var(--rg-rule);
+}
+.recgon-v2 .scene-host > canvas { display: block; width: 100%; height: 100%; }
+
+.recgon-v2 .scene-host__corner {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  font-family: var(--font-jetbrains, monospace);
+  font-size: var(--rg-t-stamp);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--rg-ink-quiet);
+}
+.recgon-v2 .scene-host__corner--right { left: auto; right: 14px; text-align: right; }
+.recgon-v2 .scene-host__corner--bottom { top: auto; bottom: 14px; }
+
+/* ---------- ANIMATIONS ---------- */
+@keyframes rg-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.recgon-v2 .rg-fade-up { animation: rg-fade-up var(--rg-dur-slow) var(--rg-ease-paper) both; }
+.recgon-v2 .rg-fade-up--d1 { animation-delay: 80ms; }
+.recgon-v2 .rg-fade-up--d2 { animation-delay: 160ms; }
+.recgon-v2 .rg-fade-up--d3 { animation-delay: 240ms; }
+.recgon-v2 .rg-fade-up--d4 { animation-delay: 320ms; }
+.recgon-v2 .rg-fade-up--d5 { animation-delay: 400ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .recgon-v2 *,
+  .recgon-v2 *::before,
+  .recgon-v2 *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- UTILITIES ---------- */
+.recgon-v2 .flex     { display: flex; }
+.recgon-v2 .items-c  { align-items: center; }
+.recgon-v2 .items-s  { align-items: flex-start; }
+.recgon-v2 .justify-b { justify-content: space-between; }
+.recgon-v2 .gap-2  { gap: 8px; }
+.recgon-v2 .gap-3  { gap: 12px; }
+.recgon-v2 .gap-4  { gap: 16px; }
+.recgon-v2 .gap-6  { gap: 24px; }
+.recgon-v2 .gap-8  { gap: 32px; }
+.recgon-v2 .col    { display: flex; flex-direction: column; }
+.recgon-v2 .grow   { flex-grow: 1; }
+.recgon-v2 .mb-2 { margin-bottom: 8px; }
+.recgon-v2 .mb-4 { margin-bottom: 16px; }
+.recgon-v2 .mb-6 { margin-bottom: 24px; }
+.recgon-v2 .mb-8 { margin-bottom: 32px; }
+.recgon-v2 .mb-12 { margin-bottom: 48px; }
+.recgon-v2 .mt-4 { margin-top: 16px; }
+.recgon-v2 .mt-8 { margin-top: 32px; }
+.recgon-v2 .text-c { text-align: center; }
+.recgon-v2 .ink-quiet { color: var(--rg-ink-quiet); }
+.recgon-v2 .ink-soft  { color: var(--rg-ink-soft); }
+.recgon-v2 .ink       { color: var(--rg-ink); }
+.recgon-v2 .accent-pink { color: var(--rg-signature-deep); }
+.recgon-v2 .accent-sage { color: var(--rg-sage); }
+.recgon-v2 .accent-ochre { color: var(--rg-ochre); }
+.recgon-v2 .accent-rust { color: var(--rg-rust); }
+
+.recgon-v2 .relative { position: relative; }
+.recgon-v2 .z-1 { z-index: 1; }
+.recgon-v2 .full { width: 100%; }

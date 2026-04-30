@@ -112,6 +112,12 @@ export type ProofPayload = {
   submittedBy: string;
 };
 
+export type VerificationStage =
+  | 'routing'              // picking the evidence source
+  | 'fetching'             // pulling evidence from the chosen source
+  | 'judging'              // LLM grading the evidence
+  | 'rating';              // post-pass quality rating
+
 export type VerificationEvidence = {
   // Set when auto-verify routes through the commit-diff path.
   commitShas?: string[];
@@ -128,6 +134,15 @@ export type VerificationEvidence = {
   confidence?: number;
   // How many proof iterations it took (0 = auto-verify only).
   iterations?: number;
+  // Live progress for the UI while verification is mid-flight.
+  // Cleared (or kept as final stage) once the verdict is reached.
+  stage?: VerificationStage;
+  // The source the router chose, surfaced for the tooltip.
+  routedSource?: string;
+  // Granular live narration from the source ("Fetching https://example.com",
+  // "Reading commit abc123: feat: add login", "Pulling sessions metric from
+  // GA4 property 521058612"). Preferred over the stage-default verb.
+  stageDetail?: string;
 };
 
 export type AgentTask = {

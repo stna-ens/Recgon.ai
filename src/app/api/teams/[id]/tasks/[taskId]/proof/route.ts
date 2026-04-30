@@ -10,6 +10,7 @@ import {
 import { logger } from '@/lib/logger';
 import { ProofPayloadSchema } from '@/lib/schemas';
 import { enqueueJob } from '@/lib/llm/jobQueue';
+import { runTaskVerification } from '@/lib/recgon/verify';
 import type { ProofPayload } from '@/lib/recgon/types';
 
 // Teammate-submitted proof for tasks Recgon couldn't auto-verify. The body is
@@ -77,6 +78,16 @@ export async function POST(
     });
     return NextResponse.json({ error: 'Failed to schedule proof evaluation' }, { status: 500 });
   }
+
+  // Also fire inline (non-awaited) so dev (no cron) and prod (currently a
+  // daily cron) both make progress immediately. The queue row is a retry
+  // safety net — the worker is idempotent.
+  void runTaskVerification({ taskId, mode: 'proof_evaluation' }).catch((err) => {
+    logger.warn('inline proof_evaluation failed; queue row will retry', {
+      taskId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  });
 
   return NextResponse.json({ success: true });
 }

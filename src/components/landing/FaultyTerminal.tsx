@@ -262,6 +262,7 @@ export default function FaultyTerminal({
 
     const update = (t: number) => {
       rafRef.current = requestAnimationFrame(update);
+      if (document.hidden) return;
       if (pageLoadAnimation && loadStartRef.current === 0) loadStartRef.current = t;
       const uniforms = program.uniforms as Record<string, { value: unknown }>;
       if (!pause) {

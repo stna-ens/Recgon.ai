@@ -14,8 +14,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthPage = AUTH_PATHS.includes(pathname) || pathname === '/landing-demo';
   const isTeamSetup = TEAM_SETUP_PATHS.includes(pathname) || pathname.startsWith('/teams/invite/');
   const isExportPage = pathname.endsWith('/export');
+  const isRedesignPreview = pathname === '/redesign' || pathname.startsWith('/redesign/');
 
-  if (isAuthPage) {
+  if (isAuthPage || isRedesignPreview) {
     return <>{children}</>;
   }
 

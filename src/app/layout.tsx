@@ -66,7 +66,7 @@ export default function RootLayout({
             </ToastProvider>
           </ThemeProvider>
         </SessionProvider>
-        <Analytics />
+        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   );

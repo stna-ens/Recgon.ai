@@ -45,6 +45,54 @@ interface AnalyticsDelta {
   deltaPct: number;
 }
 
+interface TaskSummary {
+  id: string;
+  title: string;
+  status: string;
+  priority: number;
+  projectId: string | null;
+}
+
+const TASK_OPEN_STATUSES = new Set([
+  'unassigned', 'assigned', 'accepted', 'in_progress', 'awaiting_review',
+]);
+
+function taskRank(t: TaskSummary): number {
+  if (t.status === 'awaiting_review') return 0;
+  if (t.priority <= 0) return 1;
+  if (t.priority === 1) return 2;
+  if (t.status === 'in_progress' || t.status === 'accepted') return 3;
+  return 4;
+}
+
+function taskStatusLabel(status: string): { label: string; color: string } {
+  switch (status) {
+    case 'awaiting_review': return { label: 'review', color: 'var(--warning)' };
+    case 'in_progress':     return { label: 'running', color: 'var(--signature)' };
+    case 'accepted':        return { label: 'queued', color: 'var(--txt-muted)' };
+    case 'assigned':        return { label: 'assigned', color: 'var(--txt-muted)' };
+    case 'unassigned':      return { label: 'open', color: 'var(--txt-faint)' };
+    default:                return { label: status, color: 'var(--txt-faint)' };
+  }
+}
+
+function taskPriorityChip(priority: number): { label: string; color: string } | null {
+  if (priority <= 0) return { label: 'urgent', color: 'var(--danger)' };
+  if (priority === 1) return { label: 'high', color: 'var(--warning)' };
+  return null;
+}
+
+// Strip stray markdown emphasis (**bold**, __bold__) from model output before
+// rendering as plain text. The dashboard never wants raw markdown leaking
+// through as literal asterisks.
+function cleanText(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\*\*/g, '')
+    .replace(/__/g, '');
+}
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -71,9 +119,11 @@ export default function OverviewPage() {
   const [unreadFeedback, setUnreadFeedback] = useState(0);
   const [analytics, setAnalytics] = useState<AnalyticsDelta[]>([]);
   const [analyticsConfigured, setAnalyticsConfigured] = useState<boolean | null>(null);
+  const [tasks, setTasks] = useState<TaskSummary[]>([]);
   const [coreLoading, setCoreLoading] = useState(true);
   const [briefLoading, setBriefLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
 
   const [ask, setAsk] = useState('');
 
@@ -85,6 +135,7 @@ export default function OverviewPage() {
     setCoreLoading(true);
     setBriefLoading(true);
     setAnalyticsLoading(true);
+    setTasksLoading(true);
 
     fetch(`/api/projects?teamId=${teamId}`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : [])
@@ -121,6 +172,19 @@ export default function OverviewPage() {
         setAnalyticsLoading(false);
       })
       .catch(() => setAnalyticsLoading(false));
+
+    fetch(`/api/teams/${teamId}/tasks`, { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        const list: TaskSummary[] = Array.isArray(data?.tasks)
+          ? data.tasks.map((t: { id: string; title: string; status: string; priority: number; projectId: string | null }) => ({
+              id: t.id, title: t.title, status: t.status, priority: t.priority, projectId: t.projectId,
+            }))
+          : [];
+        setTasks(list);
+        setTasksLoading(false);
+      })
+      .catch(() => setTasksLoading(false));
   }, [teamId]);
 
   useEffect(() => {
@@ -151,6 +215,14 @@ export default function OverviewPage() {
   const showAnalyticsNudge = !projectsLoading && !analyticsLoading
     && analyticsConfigured === false
     && analyzed > 0;
+
+  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+  const topTasks = tasks
+    .filter((t) => TASK_OPEN_STATUSES.has(t.status))
+    .slice()
+    .sort((a, b) => taskRank(a) - taskRank(b))
+    .slice(0, 5);
+  const openTaskCount = tasks.filter((t) => TASK_OPEN_STATUSES.has(t.status)).length;
 
   function submitAsk(e: FormEvent) {
     e.preventDefault();
@@ -256,7 +328,7 @@ export default function OverviewPage() {
         ) : brief ? (
           <div>
             <p style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--txt-pure)', marginBottom: 12 }}>
-              {brief.brief}
+              {cleanText(brief.brief)}
             </p>
             <p style={{
               fontSize: 13.5, color: 'var(--signature)', fontWeight: 500,
@@ -264,7 +336,7 @@ export default function OverviewPage() {
               paddingTop: 12, borderTop: '1px solid var(--btn-secondary-border)',
               marginBottom: 0,
             }}>
-              → {brief.focusArea}
+              → {cleanText(brief.focusArea)}
             </p>
           </div>
         ) : analyzed === 0 ? (
@@ -379,6 +451,103 @@ export default function OverviewPage() {
         </form>
       </div>
 
+      {/* Active tasks — top 5 open, sorted by importance */}
+      {(tasksLoading || topTasks.length > 0) && (
+        <div className="glass-card" style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <span className="recgon-label" style={{ margin: 0 }}>active tasks</span>
+            {teamId && (
+              <Link
+                href={`/teams/${teamId}/tasks`}
+                style={{
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                  fontSize: 11, color: 'var(--txt-faint)', textDecoration: 'none',
+                  letterSpacing: '0.2px',
+                }}
+              >
+                {openTaskCount > topTasks.length ? `+${openTaskCount - topTasks.length} more · ` : ''}view all →
+              </Link>
+            )}
+          </div>
+
+          {tasksLoading ? (
+            <div className="skeleton-pulse" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(var(--signature-rgb), 0.2)', flexShrink: 0 }} />
+                  <div style={{ flex: 1, height: 12, borderRadius: 6, background: 'rgba(var(--signature-rgb), 0.08)' }} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              {topTasks.map((t, idx) => {
+                const status = taskStatusLabel(t.status);
+                const chip = taskPriorityChip(t.priority);
+                const projectName = t.projectId ? projectNameById.get(t.projectId) : null;
+                return (
+                  <Link
+                    key={t.id}
+                    href={teamId ? `/teams/${teamId}/tasks` : '#'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 11,
+                      padding: '10px 0',
+                      borderBottom: idx < topTasks.length - 1 ? '1px dashed var(--btn-secondary-border)' : 'none',
+                      textDecoration: 'none', color: 'inherit',
+                    }}
+                  >
+                    <div style={{
+                      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                      background: status.color,
+                      boxShadow: t.status === 'awaiting_review' || t.priority <= 0
+                        ? `0 0 5px ${status.color}` : 'none',
+                    }} />
+                    <div style={{
+                      flex: 1, minWidth: 0,
+                      fontSize: 13.5, fontWeight: 500, color: 'var(--txt-pure)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {cleanText(t.title)}
+                    </div>
+                    {projectName && (
+                      <span style={{
+                        background: 'rgba(var(--signature-rgb), 0.08)',
+                        border: '1px solid rgba(var(--signature-rgb), 0.2)',
+                        color: 'var(--signature)',
+                        padding: '1px 8px', borderRadius: 'var(--r-pill)',
+                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                        fontSize: 10, fontWeight: 600, letterSpacing: '0.4px',
+                        textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0,
+                      }}>
+                        {projectName}
+                      </span>
+                    )}
+                    {chip && (
+                      <span style={{
+                        color: chip.color,
+                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                        fontSize: 10, fontWeight: 700, letterSpacing: '0.6px',
+                        textTransform: 'uppercase', flexShrink: 0,
+                      }}>
+                        {chip.label}
+                      </span>
+                    )}
+                    <span style={{
+                      color: 'var(--txt-faint)',
+                      fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                      fontSize: 10.5, letterSpacing: '0.3px',
+                      whiteSpace: 'nowrap', flexShrink: 0, minWidth: 56, textAlign: 'right',
+                    }}>
+                      {status.label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Actions + Signals */}
       <div className="grid-2" style={{ marginBottom: 24 }}>
 
@@ -454,7 +623,7 @@ export default function OverviewPage() {
                         }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 3, color: 'var(--txt-pure)' }}>
-                            {action.title}
+                            {cleanText(action.title)}
                           </div>
                           <div style={{
                             fontFamily: "'JetBrains Mono', ui-monospace, monospace",
@@ -521,7 +690,7 @@ export default function OverviewPage() {
                     {timeAgo(item.createdAt)}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--txt-muted)', lineHeight: 1.55 }}>
-                    {item.label}
+                    {cleanText(item.label)}
                     {item.projectName && (
                       <> on <strong style={{ color: 'var(--signature)', fontWeight: 500 }}>{item.projectName}</strong></>
                     )}

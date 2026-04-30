@@ -249,7 +249,7 @@ async function projectHealthFromProject(project: Project): Promise<BrainEntry[]>
         expected,
       },
       title: `Track growth metric: ${metric.length > 60 ? metric.slice(0, 57) + '…' : metric}`,
-      description: `Growth metric flagged in analysis. Set up tracking, baseline, and target: ${metric}${baseline !== null ? `\n\nBaseline (last 14d): ${ga4Metric} = ${baseline}` : '\n\n(GA4 not connected — baseline unavailable.)'}`,
+      description: `Growth metric flagged in analysis. Set up tracking, baseline, and target: ${metric}${baseline !== null ? `\n\nBaseline (last 14d): ${ga4Metric} = ${baseline}` : ''}`,
       requiredSkills: ['analytics', 'data'],
       priority: 2,
       estimatedHours: 2,

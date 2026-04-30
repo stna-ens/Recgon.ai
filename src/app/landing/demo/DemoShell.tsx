@@ -92,7 +92,7 @@ export default function DemoShell() {
         <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e' }} />
         <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840' }} />
         <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)', marginLeft: 12 }}>
-          app.recgon.com/{tab === 'overview' ? '' : tab}
+          recgon.app/{tab === 'overview' ? '' : tab}
         </span>
       </div>
 

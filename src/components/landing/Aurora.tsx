@@ -177,6 +177,7 @@ export default function Aurora({
     let animateId = 0;
     const update = (t: number) => {
       animateId = requestAnimationFrame(update);
+      if (document.hidden) return;
       const { time = t * 0.01, speed: spd = 1.0 } = propsRef.current as AuroraProps & { time?: number };
       const uniforms = program.uniforms as Record<string, { value: unknown }>;
       uniforms.uTime.value = time * (spd ?? 1) * 0.1;

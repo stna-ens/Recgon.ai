@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { supabase } from '@/lib/supabase';
+import { runTaskVerification } from '@/lib/recgon/verify';
+import { logger } from '@/lib/logger';
 
 // Per-user inbox: every task assigned to a teammate row whose user_id is the
 // current user, across every team the user belongs to. No teamId scoping —
@@ -26,7 +28,7 @@ export async function GET(_request: NextRequest) {
   // 2) Tasks assigned to any of those teammate rows that aren't terminal.
   const { data: tasks, error: tErr } = await supabase
     .from('agent_tasks')
-    .select('id, team_id, project_id, title, description, kind, source, priority, status, assigned_at, deadline, result, created_at, completed_at, assigned_to')
+    .select('id, team_id, project_id, title, description, kind, source, priority, status, assigned_at, deadline, result, created_at, completed_at, assigned_to, verification_status, verification_evidence')
     .in('assigned_to', teammateIds)
     .in('status', ['assigned', 'accepted', 'in_progress', 'awaiting_review'])
     .order('priority', { ascending: true })
@@ -45,6 +47,29 @@ export async function GET(_request: NextRequest) {
 
   const open = (tasks ?? []).filter((t) => t.status !== 'awaiting_review').length;
   const awaitingReview = (tasks ?? []).filter((t) => t.status === 'awaiting_review').length;
+
+  // Self-heal: kick verification for any task stuck mid-flight with no live
+  // stage. Covers `auto_running` (Mark done flow) and `proof_evaluating` (after
+  // teammate submitted proof). Both paths queue a job whose drain depends on
+  // the daily cron — without this kick, the worker never runs in dev and
+  // takes up to 24 h in prod. Fire-and-forget; the worker is idempotent.
+  const stuck = (tasks ?? []).filter((t) => {
+    const vs = t.verification_status as string | null;
+    if (vs !== 'auto_running' && vs !== 'proof_evaluating') return false;
+    const ev = t.verification_evidence as { stage?: string } | null;
+    return !ev?.stage;
+  });
+  for (const s of stuck) {
+    const mode: 'auto' | 'proof_evaluation' =
+      (s.verification_status as string) === 'proof_evaluating' ? 'proof_evaluation' : 'auto';
+    void runTaskVerification({ taskId: s.id as string, mode }).catch((err) => {
+      logger.warn('inbox: self-heal verification failed', {
+        taskId: s.id,
+        mode,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
 
   return NextResponse.json({
     tasks: (tasks ?? []).map((t) => ({

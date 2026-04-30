@@ -9,10 +9,9 @@ import {
 } from '@/lib/recgon/storage';
 import { dispatchTask } from '@/lib/recgon/dispatcher';
 
-// Human declines a task — Recgon unassigns and re-routes to the next best
-// fit (excluding the decliner via a temporary skill-override fallback path:
-// for Slice 2 we just re-dispatch and trust matching to pick someone else
-// with the now-decremented availability of the original assignee).
+// Human declines a task — Recgon unassigns, excludes the decliner from the
+// next match pass, and falls back to the team owner if no other compatible
+// teammate exists. See dispatcher.ts owner-fallback path.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; taskId: string }> },
@@ -51,18 +50,30 @@ export async function POST(
     payload: { by: session.user.id, note },
   });
 
-  // Re-dispatch immediately. Failures are non-fatal — the task is now
-  // unassigned and the next dispatch tick will pick it up.
+  // Re-dispatch immediately, excluding the decliner so they don't get the
+  // task right back. If nobody else fits, dispatcher.ts falls back to the
+  // team owner. Failures are non-fatal — the next dispatch tick will retry.
   let reassignedTo: string | null = null;
+  let ownerFallback = false;
   try {
-    const result = await dispatchTask(teamId, taskId);
+    const result = await dispatchTask(teamId, taskId, {
+      excludeTeammateIds: [previousTeammateId],
+    });
     if (result === 'assigned') {
       const fresh = await getTask(taskId);
       reassignedTo = fresh?.assignedTo ?? null;
+      // The dispatcher applies an owner-fallback when no compatible teammate
+      // remains — surface that so the UI can be honest about *why* the owner
+      // now sees it ("Declined — sent to team owner").
+      const newAssignee = reassignedTo ? await getTeammate(reassignedTo) : null;
+      if (newAssignee?.userId && newAssignee.userId !== teammate?.userId) {
+        const newRole = await verifyTeamAccess(teamId, newAssignee.userId);
+        ownerFallback = newRole === 'owner';
+      }
     }
   } catch {
     /* swallowed */
   }
 
-  return NextResponse.json({ success: true, reassignedTo });
+  return NextResponse.json({ success: true, reassignedTo, ownerFallback });
 }

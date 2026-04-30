@@ -1,0 +1,411 @@
+/* Tasks page — local presentation. Builds on globals.css tokens
+   (--signature, --txt-pure, --bg-deep, --r-pill, --shadow-deep, --dur-fast,
+   --ease-out, glass-card, recgon-shimmer, recgon-spin). All selectors are
+   namespaced under .rg-tasks-page so this file never bleeds into other
+   routes. */
+
+.rg-tasks-page { --rg-row-stagger: 32ms; }
+
+/* ---- Breadcrumbs ----------------------------------------------- */
+.rg-tasks-page .rg-breadcrumbs {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; color: var(--txt-muted); margin-bottom: 14px;
+}
+.rg-tasks-page .rg-breadcrumbs a { color: var(--txt-muted); text-decoration: none; transition: color var(--dur-fast) var(--ease-out); }
+.rg-tasks-page .rg-breadcrumbs a:hover { color: var(--signature); }
+
+/* ---- Header CTA ------------------------------------------------ */
+.rg-tasks-page .rg-cta {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px; font-family: inherit;
+  font-weight: 600; font-size: 0.82rem; color: white;
+  background: var(--signature); border: 1px solid rgba(var(--signature-rgb), 0.5);
+  border-radius: var(--r-pill); cursor: pointer;
+  box-shadow: 0 4px 12px -4px rgba(var(--signature-rgb), 0.4),
+              inset 0 1px 0 rgba(255,255,255,0.18);
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.rg-tasks-page .rg-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -4px rgba(var(--signature-rgb), 0.55),
+              inset 0 1px 0 rgba(255,255,255,0.22);
+}
+.rg-tasks-page .rg-cta:active { transform: translateY(0); }
+
+/* ---- Filter rail ----------------------------------------------- */
+/* Soft rounded rectangle (not a pill) so wrapped rows never let the inner
+   pill buttons bleed past the container's curved edges. */
+.rg-tasks-page .rg-filters {
+  display: inline-flex; flex-wrap: wrap; gap: 4px;
+  padding: 4px; margin-bottom: 18px;
+  border-radius: 14px;
+  background: rgba(127,127,127,0.06);
+  border: 1px solid var(--btn-secondary-border);
+  max-width: 100%;
+}
+.rg-tasks-page .rg-filter-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; font-family: inherit;
+  font-size: 0.82rem; font-weight: 500; letter-spacing: 0;
+  border: 1px solid transparent; border-radius: var(--r-pill);
+  background: transparent; color: var(--txt-muted); cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+.rg-tasks-page .rg-filter-btn:hover { color: var(--txt-pure); }
+.rg-tasks-page .rg-filter-btn[aria-pressed="true"] {
+  background: rgba(var(--signature-rgb), 0.14);
+  color: var(--signature);
+  font-weight: 600;
+}
+/* When the "Needs you" filter has unread items, give it a soft amber
+   nudge so the user notices without an aggressive notification dot. */
+.rg-tasks-page .rg-filter-btn[data-tone="warn"][aria-pressed="false"] {
+  color: #f59e0b;
+}
+.rg-tasks-page .rg-filter-btn__count {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.7rem; font-weight: 500;
+  padding: 1px 6px; border-radius: var(--r-pill);
+  background: rgba(127,127,127,0.14);
+  color: inherit; opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+.rg-tasks-page .rg-filter-btn[aria-pressed="true"] .rg-filter-btn__count {
+  background: rgba(var(--signature-rgb), 0.22);
+}
+
+/* ---- Compose drawer -------------------------------------------- */
+.rg-tasks-page .rg-compose {
+  position: relative; padding: 16px 16px 14px;
+  border-radius: 14px; margin-bottom: 18px;
+  overflow: hidden;
+}
+.rg-tasks-page .rg-compose::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(var(--signature-rgb), 0.5) 50%,
+    transparent 100%);
+}
+.rg-tasks-page .rg-compose__head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px;
+}
+.rg-tasks-page .rg-compose__stamp {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.66rem; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--signature);
+}
+.rg-tasks-page .rg-compose__close {
+  background: transparent; border: none; cursor: pointer;
+  color: var(--txt-muted); font-size: 1.2rem; line-height: 1;
+  width: 24px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.rg-tasks-page .rg-compose__close:hover { color: var(--txt-pure); background: var(--btn-secondary-bg); }
+.rg-tasks-page .rg-compose__row {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
+}
+
+/* ---- Section heads --------------------------------------------- */
+.rg-tasks-page .rg-section-head {
+  display: flex; align-items: center; gap: 12px;
+  margin: 18px 4px 8px;
+}
+.rg-tasks-page .rg-section-head__label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--txt-muted);
+}
+.rg-tasks-page .rg-section-head__count {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.65rem; font-weight: 600; padding: 1px 8px;
+  border-radius: var(--r-pill);
+  background: rgba(127,127,127,0.12);
+  color: var(--txt-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rg-tasks-page .rg-section-head__line {
+  flex: 1; height: 1px; background: var(--btn-secondary-border);
+}
+.rg-tasks-page details.rg-closed-section { margin-top: 14px; }
+.rg-tasks-page details.rg-closed-section > summary {
+  list-style: none; cursor: pointer;
+}
+.rg-tasks-page details.rg-closed-section > summary::-webkit-details-marker { display: none; }
+.rg-tasks-page details.rg-closed-section > summary > .rg-section-head { margin-top: 0; }
+
+/* ---- Task list ------------------------------------------------- */
+.rg-tasks-page .rg-list { display: flex; flex-direction: column; gap: 8px; }
+
+.rg-tasks-page .rg-row {
+  position: relative; padding: 12px 14px 12px 18px;
+  border-radius: 12px;
+  animation: rgRowIn var(--dur-base) var(--ease-out) both;
+  animation-delay: calc(var(--rg-row-i, 0) * var(--rg-row-stagger));
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+/* Accent stripe is reserved for "needs your action" rows only. Every
+   other row stays neutral so the urgent ones genuinely pop. */
+.rg-tasks-page .rg-row[data-attention="true"]::before {
+  content: ''; position: absolute;
+  top: 12px; bottom: 12px; left: 6px; width: 3px;
+  background: var(--rg-accent, #f59e0b);
+  border-radius: 3px;
+  box-shadow: var(--rg-accent-glow, 0 0 12px rgba(245,158,11,0.35));
+}
+.rg-tasks-page .rg-row:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-deep);
+}
+.rg-tasks-page .rg-row:hover .rg-row__overflow { opacity: 1; pointer-events: auto; }
+.rg-tasks-page .rg-row[data-closed="true"] { opacity: 0.62; }
+.rg-tasks-page .rg-row[data-closed="true"]:hover { opacity: 1; }
+
+.rg-tasks-page .rg-row__top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+}
+.rg-tasks-page .rg-row__main { flex: 1; min-width: 0; }
+
+.rg-tasks-page .rg-row__title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.96rem; font-weight: 600;
+  color: var(--txt-pure); line-height: 1.32;
+  text-wrap: balance;
+}
+.rg-tasks-page .rg-attention-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+  animation: rgPulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.rg-tasks-page .rg-row__description {
+  margin: 4px 0 0; font-size: 0.83rem;
+  color: var(--txt-muted); line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Single compact meta line: status + priority + kind + assignee */
+.rg-tasks-page .rg-row__meta {
+  display: flex; flex-wrap: wrap;
+  gap: 8px 10px; align-items: center;
+  margin-top: 10px;
+  font-size: 0.74rem; color: var(--txt-muted);
+}
+.rg-tasks-page .rg-meta-priority {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.74rem; font-weight: 600;
+  letter-spacing: 0;
+}
+.rg-tasks-page .rg-meta-priority::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor;
+}
+.rg-tasks-page .rg-meta-kind {
+  font-size: 0.68rem; font-weight: 500;
+  color: var(--txt-faint); letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.rg-tasks-page .rg-meta-divider {
+  color: var(--txt-faint); opacity: 0.5;
+  font-size: 0.7rem;
+}
+.rg-tasks-page .rg-meta-assignee {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+/* Cross-team chip used by the Inbox to show which team minted the task. */
+.rg-tasks-page .rg-meta-team {
+  display: inline-flex; align-items: center;
+  padding: 1px 8px; font-size: 0.7rem; font-weight: 500;
+  color: var(--txt-muted); text-decoration: none;
+  background: rgba(127,127,127,0.08);
+  border: 1px solid var(--btn-secondary-border);
+  border-radius: var(--r-pill);
+  transition: color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+}
+.rg-tasks-page .rg-meta-team:hover {
+  color: var(--signature);
+  border-color: rgba(var(--signature-rgb), 0.4);
+  background: rgba(var(--signature-rgb), 0.08);
+}
+.rg-tasks-page .rg-meta-time {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.68rem; color: var(--txt-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Italic result summary written by the model when a task completes. Sits
+   between the description and the meta row. */
+.rg-tasks-page .rg-row__summary {
+  margin: 6px 0 0; padding: 6px 10px;
+  font-size: 0.8rem; color: var(--txt-muted);
+  font-style: italic; line-height: 1.5;
+  border-left: 2px solid rgba(var(--signature-rgb), 0.3);
+  background: rgba(var(--signature-rgb), 0.04);
+  border-radius: 0 6px 6px 0;
+}
+
+/* ---- Right rail (status chip + actions) ------------------------ */
+.rg-tasks-page .rg-row__actions {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 6px; flex-shrink: 0;
+}
+.rg-tasks-page .rg-row__overflow {
+  display: flex; gap: 4px;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.rg-tasks-page .rg-icon-btn {
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--txt-muted);
+  border: 1px solid var(--btn-secondary-border);
+  border-radius: 7px; cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+}
+.rg-tasks-page .rg-icon-btn:hover {
+  color: var(--rg-icon-color, var(--signature));
+  border-color: var(--rg-icon-color, var(--signature));
+  background: color-mix(in srgb, var(--rg-icon-color, var(--signature)) 12%, transparent);
+}
+
+.rg-tasks-page .rg-action {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; font-family: inherit;
+  font-size: 0.76rem; font-weight: 600;
+  border-radius: var(--r-pill); cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.rg-tasks-page .rg-action[data-tone="primary"] {
+  color: white; background: var(--signature);
+  border: 1px solid rgba(var(--signature-rgb), 0.5);
+  box-shadow: 0 3px 8px -2px rgba(var(--signature-rgb), 0.35),
+              inset 0 1px 0 rgba(255,255,255,0.16);
+}
+.rg-tasks-page .rg-action[data-tone="primary"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -4px rgba(var(--signature-rgb), 0.5),
+              inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.rg-tasks-page .rg-action[data-tone="warn"] {
+  color: white; background: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  box-shadow: 0 3px 8px -2px rgba(245, 158, 11, 0.35);
+}
+.rg-tasks-page .rg-action[data-tone="ghost"] {
+  background: transparent; color: var(--txt-muted);
+  border: 1px solid var(--btn-secondary-border);
+}
+.rg-tasks-page .rg-action[data-tone="ghost"]:hover {
+  color: var(--txt-pure); border-color: var(--txt-muted);
+}
+.rg-tasks-page .rg-action:disabled { opacity: 0.65; cursor: wait; }
+
+/* ---- Assignee bubble ------------------------------------------- */
+.rg-tasks-page .rg-bubble {
+  width: 18px; height: 18px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(var(--signature-rgb), 0.55), rgba(var(--signature-rgb), 0.85));
+  color: white; font-size: 0.6rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  flex-shrink: 0; overflow: hidden;
+}
+.rg-tasks-page .rg-bubble[data-empty="true"] {
+  background: var(--btn-secondary-bg);
+  color: var(--txt-faint);
+  border: 1px dashed var(--btn-secondary-border);
+}
+.rg-tasks-page .rg-bubble img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ---- Proof card ------------------------------------------------ */
+.rg-tasks-page .rg-proof {
+  margin-top: 12px; padding: 12px;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 10px;
+}
+.rg-tasks-page .rg-proof__stamp {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.66rem; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: #f59e0b; margin-bottom: 6px;
+}
+.rg-tasks-page .rg-proof__hint {
+  font-size: 0.78rem; color: var(--txt-muted); margin: 0 0 10px;
+  line-height: 1.5;
+}
+.rg-tasks-page .rg-proof__footnote {
+  font-size: 0.7rem; color: var(--txt-faint);
+  margin-top: 8px; line-height: 1.5;
+}
+.rg-tasks-page .rg-proof__actions {
+  display: flex; gap: 8px; align-items: center; margin-top: 10px;
+}
+
+/* ---- Inputs ---------------------------------------------------- */
+.rg-tasks-page .rg-input {
+  width: 100%; padding: 8px 12px;
+  font-family: inherit; font-size: 0.86rem;
+  color: var(--txt-pure);
+  background: var(--btn-secondary-bg);
+  border: 1px solid var(--btn-secondary-border);
+  border-radius: var(--r-sm);
+  outline: none; box-sizing: border-box;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.rg-tasks-page .rg-input:focus {
+  border-color: rgba(var(--signature-rgb), 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--signature-rgb), 0.12);
+}
+.rg-tasks-page .rg-input--sm { padding: 6px 10px; font-size: 0.78rem; }
+
+/* ---- Empty / loading ------------------------------------------- */
+.rg-tasks-page .rg-empty {
+  padding: 48px 24px; border-radius: 14px;
+  background: var(--glass-substrate);
+  border: 1px dashed var(--btn-secondary-border);
+  text-align: center;
+}
+.rg-tasks-page .rg-empty__title {
+  font-size: 1.2rem; font-weight: 600; color: var(--txt-pure);
+  letter-spacing: -0.01em; margin: 0 0 8px;
+}
+.rg-tasks-page .rg-empty__body {
+  color: var(--txt-muted); font-size: 0.86rem;
+  max-width: 44ch; margin: 0 auto 16px; line-height: 1.55;
+}
+
+.rg-tasks-page .rg-skel {
+  height: 64px; border-radius: 12px; opacity: 0.55;
+  background: linear-gradient(90deg, transparent, rgba(var(--signature-rgb), 0.08), transparent);
+  background-size: 200% 100%;
+  animation: recgon-shimmer 1.4s linear infinite;
+}
+
+@keyframes rgRowIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rgPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.4); opacity: 0.55; }
+}

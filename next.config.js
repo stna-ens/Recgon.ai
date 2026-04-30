@@ -8,6 +8,10 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Strict Mode forces every client component to mount/render twice in dev.
+  // Disabled to halve dev-mode CPU cost; flip to `true` when hunting effect
+  // bugs. (Strict Mode is a no-op in production builds either way.)
+  reactStrictMode: false,
   // Pin the workspace root to this directory — there's a stray lockfile in the
   // parent that Turbopack would otherwise pick up and warn about.
   turbopack: {
@@ -22,6 +26,21 @@ const nextConfig = {
     'canvas',
     '@modelcontextprotocol/sdk',
   ],
+  // Tree-shake heavy barrel-export packages so dev rebuilds don't drag in
+  // every export of three/recharts/motion on every change.
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'recharts',
+      'motion',
+      '@react-three/drei',
+      '@react-three/fiber',
+      'three',
+      'ogl',
+      '@number-flow/react',
+    ],
+  },
+  productionBrowserSourceMaps: false,
   async headers() {
     return [
       {
