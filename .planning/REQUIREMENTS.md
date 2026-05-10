@@ -120,55 +120,64 @@ Filled by the roadmapper. Each requirement maps to exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROFILE-01 | TBD | Pending |
-| PROFILE-02 | TBD | Pending |
-| PROFILE-03 | TBD | Pending |
-| PROFILE-04 | TBD | Pending |
-| PROFILE-05 | TBD | Pending |
-| PROFILE-06 | TBD | Pending |
-| SKILL-01 | TBD | Pending |
-| SKILL-02 | TBD | Pending |
-| SKILL-03 | TBD | Pending |
-| SKILL-04 | TBD | Pending |
-| SKILL-05 | TBD | Pending |
-| SKILL-06 | TBD | Pending |
-| JUDGE-01 | TBD | Pending |
-| JUDGE-02 | TBD | Pending |
-| JUDGE-03 | TBD | Pending |
-| JUDGE-04 | TBD | Pending |
-| JUDGE-05 | TBD | Pending |
-| JUDGE-06 | TBD | Pending |
-| JUDGE-07 | TBD | Pending |
-| JUDGE-08 | TBD | Pending |
-| JUDGE-09 | TBD | Pending |
-| JUDGE-10 | TBD | Pending |
-| FRAME-01 | TBD | Pending |
-| FRAME-02 | TBD | Pending |
-| FRAME-03 | TBD | Pending |
-| FRAME-04 | TBD | Pending |
-| FRAME-05 | TBD | Pending |
-| FRAME-06 | TBD | Pending |
-| FRAME-07 | TBD | Pending |
-| LIVECODE-01 | TBD | Pending |
-| LIVECODE-02 | TBD | Pending |
-| LIVECODE-03 | TBD | Pending |
-| LIVECODE-04 | TBD | Pending |
-| LIVECODE-05 | TBD | Pending |
-| LIVECODE-06 | TBD | Pending |
-| LIVECODE-07 | TBD | Pending |
-| LIVECODE-08 | TBD | Pending |
-| QUAL-01 | TBD | Pending |
-| QUAL-02 | TBD | Pending |
-| QUAL-03 | TBD | Pending |
-| QUAL-04 | TBD | Pending |
-| QUAL-05 | TBD | Pending |
-| QUAL-06 | TBD | Pending |
+| PROFILE-01 | Phase 1 | Pending |
+| PROFILE-02 | Phase 1 | Pending |
+| PROFILE-03 | Phase 1 | Pending |
+| PROFILE-04 | Phase 1 | Pending |
+| PROFILE-05 | Phase 1 | Pending |
+| PROFILE-06 | Phase 1 | Pending |
+| SKILL-01 | Phase 2 | Pending |
+| SKILL-02 | Phase 2 | Pending |
+| SKILL-03 | Phase 2 | Pending |
+| SKILL-04 | Phase 2 | Pending |
+| SKILL-05 | Phase 2 | Pending |
+| SKILL-06 | Phase 2 | Pending |
+| JUDGE-01 | Phase 3 | Pending |
+| JUDGE-02 | Phase 3 | Pending |
+| JUDGE-03 | Phase 3 | Pending |
+| JUDGE-04 | Phase 3 | Pending |
+| JUDGE-05 | Phase 3 | Pending |
+| JUDGE-06 | Phase 3 | Pending |
+| JUDGE-07 | Phase 3 | Pending |
+| JUDGE-08 | Phase 3 | Pending |
+| JUDGE-09 | Phase 3 | Pending |
+| JUDGE-10 | Phase 3 | Pending |
+| FRAME-01 | Phase 4 | Pending |
+| FRAME-02 | Phase 4 | Pending |
+| FRAME-03 | Phase 4 | Pending |
+| FRAME-04 | Phase 4 | Pending |
+| FRAME-05 | Phase 4 | Pending |
+| FRAME-06 | Phase 4 | Pending |
+| FRAME-07 | Phase 4 | Pending |
+| LIVECODE-01 | Phase 5 | Pending |
+| LIVECODE-02 | Phase 5 | Pending |
+| LIVECODE-03 | Phase 6 | Pending |
+| LIVECODE-04 | Phase 6 | Pending |
+| LIVECODE-05 | Phase 6 | Pending |
+| LIVECODE-06 | Phase 6 | Pending |
+| LIVECODE-07 | Phase 5 | Pending |
+| LIVECODE-08 | Phase 5 | Pending |
+| QUAL-01 | Phase 3 | Pending |
+| QUAL-02 | Phase 2 | Pending |
+| QUAL-03 | Phase 3 | Pending |
+| QUAL-04 | Phase 6 | Pending |
+| QUAL-05 | Phase 1 | Pending |
+| QUAL-06 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 43 total (6 PROFILE + 6 SKILL + 10 JUDGE + 7 FRAME + 8 LIVECODE + 6 QUAL)
-- Mapped to phases: 0 (roadmapper will fill)
-- Unmapped: 43 ⚠️ (will resolve to 0 after roadmapper runs)
+- Mapped to phases: 43
+- Unmapped: 0
+
+**Per-phase counts:**
+- Phase 1 (Profile Foundation): 8 (PROFILE-01..06, QUAL-05, QUAL-06)
+- Phase 2 (GitHub Skill Inference): 7 (SKILL-01..06, QUAL-02)
+- Phase 3 (LLM Judgment Overlay): 12 (JUDGE-01..10, QUAL-01, QUAL-03)
+- Phase 4 (Personalized Task Framing): 7 (FRAME-01..07)
+- Phase 5 (Live Code Infrastructure): 4 (LIVECODE-01, 02, 07, 08)
+- Phase 6 (Brain Integration & Cost Guards): 5 (LIVECODE-03, 04, 05, 06, QUAL-04)
+- Total: 8+7+12+7+4+5 = 43 ✓
 
 ---
 *Requirements defined: 2026-05-11*
-*Last updated: 2026-05-11 after initial definition*
+*Last updated: 2026-05-11 after roadmapper traceability fill*
