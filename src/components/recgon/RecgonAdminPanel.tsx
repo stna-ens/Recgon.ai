@@ -198,8 +198,9 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
       const res = await fetch(`/api/teams/${teamId}/recgon/dispatch`, { method: 'POST' });
       if (!res.ok) throw new Error('dispatch failed');
       const { result } = await res.json();
+      const backfilled = typeof result.backfilled === 'number' ? result.backfilled : 0;
       addToast(
-        `Recgon dispatched — ${result.minted} new, ${result.assigned} assigned, ${result.noFit} no-fit`,
+        `Recgon dispatched — ${result.minted} new, ${result.assigned} assigned, ${result.noFit} no-fit${backfilled > 0 ? `, ${backfilled} rescheduled` : ''}`,
         'success',
       );
       await refresh();
@@ -356,7 +357,7 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
 
       {/* ──────────────────── ROSTER ──────────────────── */}
       {(() => {
-        const humans = teammates.filter((t) => t.kind === 'human');
+        const humans = teammates;
         const totalHours = humans.reduce((sum, t) => sum + (t.capacityHours ?? 0), 0);
         const totalInFlight = humans.reduce((sum, t) => sum + (t.inFlightCount ?? 0), 0);
         return (

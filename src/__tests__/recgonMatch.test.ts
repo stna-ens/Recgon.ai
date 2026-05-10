@@ -2,18 +2,15 @@ import { describe, it, expect } from 'vitest';
 import {
   scoreTeammateForTask,
   pickBestMatch,
-  isWithinWorkingHours,
+  isWorkingDay,
   MIN_FIT_SCORE,
 } from '../lib/recgon/match';
-import type { Teammate, TeammateWithStats } from '../lib/recgon/types';
+import type { TeammateWithStats } from '../lib/recgon/types';
 
-// AI teammates are filtered out by pickBestMatch (AI-doer side removed),
-// so the test factory builds humans by default.
 function ai(overrides: Partial<TeammateWithStats> = {}): TeammateWithStats {
   return {
     id: overrides.id ?? 'tm-1',
     teamId: 't',
-    kind: 'human',
     userId: 'u-1',
     displayName: 'Teammate',
     skills: ['marketing'],
@@ -25,8 +22,6 @@ function ai(overrides: Partial<TeammateWithStats> = {}): TeammateWithStats {
     title: null,
     avatarColor: null,
     avatarUrl: null,
-    systemPrompt: null,
-    modelPref: null,
     stars: 3.5,
     ratingCount: 0,
     upCount: 0,
@@ -94,19 +89,16 @@ describe('pickBestMatch', () => {
   });
 });
 
-describe('isWithinWorkingHours', () => {
-  it('returns true when workingHours is null (AI default)', () => {
-    expect(isWithinWorkingHours(null)).toBe(true);
+describe('isWorkingDay', () => {
+  it('returns true when workingHours is null (always available)', () => {
+    expect(isWorkingDay(null)).toBe(true);
   });
 
-  it('respects per-day windows', () => {
-    // A Wednesday afternoon in Europe/Istanbul.
-    const wed14 = new Date('2026-04-29T11:00:00Z'); // 14:00 in Istanbul (UTC+3)
-    const wh = { tz: 'Europe/Istanbul', wed: [9, 17] as [number, number] };
-    expect(isWithinWorkingHours(wh, wed14)).toBe(true);
-
-    // 02:00 local — outside window.
-    const wedNight = new Date('2026-04-28T23:00:00Z'); // 02:00 Wed local
-    expect(isWithinWorkingHours(wh, wedNight)).toBe(false);
+  it('matches the teammate working weekdays', () => {
+    const wh = { days: ['mon', 'tue', 'wed', 'thu', 'fri'] as const };
+    // 2026-04-29 is a Wednesday in UTC.
+    expect(isWorkingDay({ days: [...wh.days] }, new Date('2026-04-29T11:00:00Z'))).toBe(true);
+    // 2026-05-02 is a Saturday in UTC.
+    expect(isWorkingDay({ days: [...wh.days] }, new Date('2026-05-02T11:00:00Z'))).toBe(false);
   });
 });

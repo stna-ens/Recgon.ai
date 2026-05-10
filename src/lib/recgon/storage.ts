@@ -4,10 +4,10 @@
 // client with snake_case ↔ camelCase mapping.
 
 import { supabase } from '../supabase';
+import { stripMd } from '../strings';
 import type {
   Teammate,
   TeammateWithStats,
-  TeammateKind,
   TeammateStatus,
   WorkingHours,
   FitProfile,
@@ -18,11 +18,11 @@ import type {
   TaskRating,
   RecgonState,
   AssignmentLogEntry,
-  RosterProposal,
   BrainSnapshot,
   ProofPayload,
   VerificationStatus,
   VerificationEvidence,
+  RescheduleRequestStatus,
 } from './types';
 
 // Keep the assignment log bounded so the row doesn't grow unbounded.
@@ -31,15 +31,12 @@ const ASSIGNMENT_LOG_MAX = 50;
 type TeammateRow = {
   id: string;
   team_id: string;
-  kind: TeammateKind;
   user_id: string | null;
   display_name: string;
   avatar_color: string | null;
   avatar_url: string | null;
   title: string | null;
   skills: string[] | null;
-  system_prompt: string | null;
-  model_pref: 'gemini' | 'claude' | null;
   capacity_hours: number;
   working_hours: WorkingHours | null;
   fit_profile: FitProfile | null;
@@ -51,15 +48,12 @@ function mapTeammate(row: TeammateRow): Teammate {
   return {
     id: row.id,
     teamId: row.team_id,
-    kind: row.kind,
     userId: row.user_id,
     displayName: row.display_name,
     avatarColor: row.avatar_color,
     avatarUrl: row.avatar_url,
     title: row.title,
     skills: row.skills ?? [],
-    systemPrompt: row.system_prompt,
-    modelPref: row.model_pref,
     capacityHours: Number(row.capacity_hours),
     workingHours: row.working_hours,
     fitProfile: row.fit_profile ?? {},
@@ -95,6 +89,14 @@ type TaskRow = {
   verification_evidence: VerificationEvidence | null;
   verified_at: string | null;
   verified_by: string | null;
+  scheduled_date: string | null;
+  scheduled_until_date: string | null;
+  schedule_note: string | null;
+  reschedule_request_status: RescheduleRequestStatus | null;
+  reschedule_requested_at: string | null;
+  reschedule_requested_by: string | null;
+  reschedule_request_note: string | null;
+  reschedule_requested_date: string | null;
 };
 
 function mapTask(row: TaskRow): AgentTask {
@@ -125,22 +127,39 @@ function mapTask(row: TaskRow): AgentTask {
     verificationEvidence: row.verification_evidence ?? null,
     verifiedAt: row.verified_at,
     verifiedBy: row.verified_by,
+    scheduledDate: row.scheduled_date,
+    scheduledUntilDate: row.scheduled_until_date,
+    scheduleNote: row.schedule_note,
+    rescheduleRequestStatus: row.reschedule_request_status ?? 'none',
+    rescheduleRequestedAt: row.reschedule_requested_at ?? null,
+    rescheduleRequestedBy: row.reschedule_requested_by ?? null,
+    rescheduleRequestNote: row.reschedule_request_note ?? null,
+    rescheduleRequestedDate: row.reschedule_requested_date ?? null,
   };
+}
+
+function isInsightOnlySourceRef(ref: Record<string, unknown> | null | undefined): boolean {
+  return ref?.kind === 'top_risk';
+}
+
+export function isAssignableTask(task: Pick<AgentTask, 'sourceRef'>): boolean {
+  return !isInsightOnlySourceRef(task.sourceRef);
+}
+
+function isAssignableTaskRow(row: TaskRow): boolean {
+  return !isInsightOnlySourceRef(row.source_ref);
 }
 
 // ── Teammates ───────────────────────────────────────────────────────────────
 
 export type TeammateInsert = {
   teamId: string;
-  kind: TeammateKind;
   userId?: string | null;
   displayName: string;
   avatarColor?: string | null;
   avatarUrl?: string | null;
   title?: string | null;
   skills?: string[];
-  systemPrompt?: string | null;
-  modelPref?: 'gemini' | 'claude' | null;
   capacityHours?: number;
   workingHours?: WorkingHours | null;
 };
@@ -150,16 +169,14 @@ export async function createTeammate(input: TeammateInsert): Promise<Teammate> {
     .from('teammates')
     .insert({
       team_id: input.teamId,
-      kind: input.kind,
+      kind: 'human',
       user_id: input.userId ?? null,
       display_name: input.displayName,
       avatar_color: input.avatarColor ?? null,
       avatar_url: input.avatarUrl ?? null,
       title: input.title ?? null,
       skills: input.skills ?? [],
-      system_prompt: input.systemPrompt ?? null,
-      model_pref: input.modelPref ?? null,
-      capacity_hours: input.capacityHours ?? (input.kind === 'human' ? 10 : 168),
+      capacity_hours: input.capacityHours ?? 10,
       working_hours: input.workingHours ?? null,
     })
     .select('*')
@@ -174,7 +191,6 @@ export async function listTeammates(teamId: string): Promise<Teammate[]> {
     .select('*')
     .eq('team_id', teamId)
     .neq('status', 'retired')
-    .order('kind', { ascending: true })
     .order('created_at', { ascending: true });
   if (error) throw new Error(`listTeammates failed: ${error.message}`);
   return (data ?? []).map((r) => mapTeammate(r as TeammateRow));
@@ -185,18 +201,31 @@ export async function listTeammatesWithStats(teamId: string): Promise<TeammateWi
   if (teammates.length === 0) return [];
   const ids = teammates.map((t) => t.id);
   const userIds = teammates.map((t) => t.userId).filter((u): u is string => !!u);
-  const [statsRes, rolesRes, inFlightRes] = await Promise.all([
+
+  // Look up all teammate IDs for these users across every team they belong to,
+  // so in-flight hours from other teams count toward load headroom.
+  const [statsRes, rolesRes, allTmRes] = await Promise.all([
     supabase.from('teammate_stats').select('*').in('teammate_id', ids),
     userIds.length
       ? supabase.from('team_members').select('user_id, role').eq('team_id', teamId).in('user_id', userIds)
       : Promise.resolve({ data: [] as { user_id: string; role: string }[] }),
-    supabase
-      .from('agent_tasks')
-      .select('assigned_to, estimated_hours')
-      .eq('team_id', teamId)
-      .in('assigned_to', ids)
-      .in('status', ['assigned', 'accepted', 'in_progress', 'awaiting_review']),
+    userIds.length
+      ? supabase.from('teammates').select('id, user_id').in('user_id', userIds).neq('status', 'retired')
+      : Promise.resolve({ data: [] as { id: string; user_id: string | null }[] }),
   ]);
+
+  const userByAllTmId = new Map<string, string>(); // any-team teammate id → userId
+  (allTmRes.data ?? []).forEach((r) => {
+    if (r.user_id) userByAllTmId.set(r.id, r.user_id);
+  });
+  const allTmIds = userByAllTmId.size > 0 ? [...userByAllTmId.keys()] : ids;
+
+  const inFlightRes = await supabase
+    .from('agent_tasks')
+    .select('assigned_to, estimated_hours, source_ref')
+    .in('assigned_to', allTmIds)
+    .in('status', ['assigned', 'accepted', 'in_progress', 'awaiting_review']);
+
   const byId = new Map<string, Record<string, unknown>>();
   (statsRes.data ?? []).forEach((s) => byId.set(s.teammate_id as string, s as Record<string, unknown>));
   const roleByUser = new Map<string, 'owner' | 'member' | 'viewer'>();
@@ -206,15 +235,27 @@ export async function listTeammatesWithStats(teamId: string): Promise<TeammateWi
       roleByUser.set(r.user_id as string, role);
     }
   });
-  const hoursById = new Map<string, number>();
-  ((inFlightRes.data ?? []) as { assigned_to: string | null; estimated_hours: number | null }[])
+
+  // Aggregate hours by userId (merges cross-team load); fall back to teammate ID for AI/anon
+  const hoursByUserId = new Map<string, number>();
+  const hoursByTmId = new Map<string, number>();
+  ((inFlightRes.data ?? []) as { assigned_to: string | null; estimated_hours: number | null; source_ref: Record<string, unknown> | null }[])
+    .filter((row) => !isInsightOnlySourceRef(row.source_ref))
     .forEach((row) => {
       if (!row.assigned_to) return;
-      const prev = hoursById.get(row.assigned_to) ?? 0;
-      hoursById.set(row.assigned_to, prev + (Number(row.estimated_hours) || 0));
+      const uid = userByAllTmId.get(row.assigned_to);
+      if (uid) {
+        hoursByUserId.set(uid, (hoursByUserId.get(uid) ?? 0) + (Number(row.estimated_hours) || 0));
+      } else {
+        hoursByTmId.set(row.assigned_to, (hoursByTmId.get(row.assigned_to) ?? 0) + (Number(row.estimated_hours) || 0));
+      }
     });
+
   return teammates.map((t) => {
     const s = byId.get(t.id);
+    const inFlightHours = t.userId
+      ? (hoursByUserId.get(t.userId) ?? 0)
+      : (hoursByTmId.get(t.id) ?? 0);
     return {
       ...t,
       stars: s ? Number(s.stars) : 3.5,
@@ -222,7 +263,7 @@ export async function listTeammatesWithStats(teamId: string): Promise<TeammateWi
       upCount: s ? Number(s.up_count) : 0,
       downCount: s ? Number(s.down_count) : 0,
       inFlightCount: s ? Number(s.in_flight_count) : 0,
-      inFlightHours: hoursById.get(t.id) ?? 0,
+      inFlightHours,
       teamRole: t.userId ? roleByUser.get(t.userId) ?? null : null,
     };
   });
@@ -247,8 +288,6 @@ export async function updateTeammate(
   if (fields.avatarUrl !== undefined) update.avatar_url = fields.avatarUrl;
   if (fields.title !== undefined) update.title = fields.title;
   if (fields.skills !== undefined) update.skills = fields.skills;
-  if (fields.systemPrompt !== undefined) update.system_prompt = fields.systemPrompt;
-  if (fields.modelPref !== undefined) update.model_pref = fields.modelPref;
   if (fields.capacityHours !== undefined) update.capacity_hours = fields.capacityHours;
   if (fields.workingHours !== undefined) update.working_hours = fields.workingHours;
   if (fields.status !== undefined) update.status = fields.status;
@@ -280,13 +319,14 @@ export type TaskInsert = {
 };
 
 export async function createTask(input: TaskInsert): Promise<AgentTask | null> {
+  if (isInsightOnlySourceRef(input.sourceRef)) return null;
   const { data, error } = await supabase
     .from('agent_tasks')
     .insert({
       team_id: input.teamId,
       project_id: input.projectId ?? null,
-      title: input.title,
-      description: input.description ?? '',
+      title: stripMd(input.title),
+      description: stripMd(input.description ?? ''),
       kind: input.kind,
       source: input.source,
       source_ref: input.sourceRef ?? {},
@@ -320,11 +360,148 @@ export async function listTasks(
   if (filters?.projectId) q = q.eq('project_id', filters.projectId);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(500);
   if (error) throw new Error(`listTasks failed: ${error.message}`);
-  return (data ?? []).map((r) => mapTask(r as TaskRow));
+  return (data ?? [])
+    .filter((r) => isAssignableTaskRow(r as TaskRow))
+    .map((r) => mapTask(r as TaskRow));
 }
 
 export async function listUnassignedTasks(teamId: string): Promise<AgentTask[]> {
   return listTasks(teamId, { status: 'unassigned' });
+}
+
+const ACTIVE_TASK_STATUSES_FOR_LOAD: TaskStatus[] = [
+  'assigned',
+  'accepted',
+  'in_progress',
+  'awaiting_review',
+];
+
+type ScheduleLoadRow = {
+  id: string;
+  scheduled_date: string | null;
+  scheduled_until_date: string | null;
+  estimated_hours: number | null;
+  source_ref: Record<string, unknown> | null;
+};
+
+// A multi-day task spreads its estimated hours evenly across the days it
+// occupies. For load accounting we count each day's share so a 6h task across
+// 3 days contributes 2h to each day, not 6h to the start.
+function accumulateLoad(
+  rows: ScheduleLoadRow[],
+  fromDate: string,
+  toDate: string,
+  out: Record<string, number>,
+  excludeTaskId?: string,
+): void {
+  for (const row of rows) {
+    if (!row.scheduled_date) continue;
+    if (excludeTaskId && row.id === excludeTaskId) continue;
+    if (isInsightOnlySourceRef(row.source_ref)) continue;
+    const totalHours = Number(row.estimated_hours) || 0;
+    const start = row.scheduled_date;
+    const end = row.scheduled_until_date && row.scheduled_until_date >= start
+      ? row.scheduled_until_date
+      : start;
+    const days: string[] = [];
+    let cursor = new Date(`${start}T00:00:00Z`);
+    const endCursor = new Date(`${end}T00:00:00Z`);
+    while (cursor.getTime() <= endCursor.getTime()) {
+      const key = cursor.toISOString().slice(0, 10);
+      if (key >= fromDate && key <= toDate) days.push(key);
+      cursor = new Date(cursor.getTime() + 86_400_000);
+    }
+    if (days.length === 0) continue;
+    const perDay = totalHours / days.length;
+    for (const d of days) out[d] = (out[d] ?? 0) + perDay;
+  }
+}
+
+// Sum already-scheduled estimated hours by scheduled_date for active tasks.
+// Used by the dispatcher to avoid overloading a teammate on a single day.
+// `excludeTaskId` lets the caller skip the task being (re)scheduled.
+export async function loadHoursByDateForTeammate(
+  teammateId: string,
+  fromDate: string,
+  toDate: string,
+  excludeTaskId?: string,
+): Promise<Record<string, number>> {
+  const { data, error } = await supabase
+    .from('agent_tasks')
+    .select('id, scheduled_date, scheduled_until_date, estimated_hours, source_ref')
+    .eq('assigned_to', teammateId)
+    .in('status', ACTIVE_TASK_STATUSES_FOR_LOAD)
+    .lte('scheduled_date', toDate);
+  if (error) throw new Error(`loadHoursByDateForTeammate failed: ${error.message}`);
+  const out: Record<string, number> = {};
+  accumulateLoad((data ?? []) as ScheduleLoadRow[], fromDate, toDate, out, excludeTaskId);
+  return out;
+}
+
+// Cross-team variant: aggregate load across every team this user belongs to.
+// Used for human teammates so a task on team A counts toward their day's load
+// when team B's dispatcher tries to schedule them.
+export async function loadHoursByDateForUser(
+  userId: string,
+  fromDate: string,
+  toDate: string,
+  excludeTaskId?: string,
+): Promise<Record<string, number>> {
+  const { data: tmRows } = await supabase
+    .from('teammates')
+    .select('id')
+    .eq('user_id', userId)
+    .neq('status', 'retired');
+  const ids = (tmRows ?? []).map((r) => r.id as string);
+  if (ids.length === 0) return {};
+  const { data, error } = await supabase
+    .from('agent_tasks')
+    .select('id, scheduled_date, scheduled_until_date, estimated_hours, source_ref')
+    .in('assigned_to', ids)
+    .in('status', ACTIVE_TASK_STATUSES_FOR_LOAD)
+    .lte('scheduled_date', toDate);
+  if (error) throw new Error(`loadHoursByDateForUser failed: ${error.message}`);
+  const out: Record<string, number> = {};
+  accumulateLoad((data ?? []) as ScheduleLoadRow[], fromDate, toDate, out, excludeTaskId);
+  return out;
+}
+
+// Personal calendar query: every scheduled task assigned to a teammate row
+// whose user_id is the given user, across every team they belong to. Filters
+// by overlap with [fromDate, toDate] so multi-day tasks that cross the window
+// still appear. Terminal statuses are excluded so the calendar shows live
+// commitments only.
+export async function listScheduledTasksForUser(
+  userId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<AgentTask[]> {
+  const { data: tmRows } = await supabase
+    .from('teammates')
+    .select('id')
+    .eq('user_id', userId)
+    .neq('status', 'retired');
+  const ids = (tmRows ?? []).map((r) => r.id as string);
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from('agent_tasks')
+    .select('*')
+    .in('assigned_to', ids)
+    .in('status', ['assigned', 'accepted', 'in_progress', 'awaiting_review', 'completed'])
+    .not('scheduled_date', 'is', null)
+    .lte('scheduled_date', toDate);
+  if (error) throw new Error(`listScheduledTasksForUser failed: ${error.message}`);
+  const rows = (data ?? []) as TaskRow[];
+  return rows
+    .filter((row) => isAssignableTaskRow(row))
+    .filter((row) => {
+      const start = row.scheduled_date!;
+      const end = row.scheduled_until_date && row.scheduled_until_date >= start
+        ? row.scheduled_until_date
+        : start;
+      return end >= fromDate;
+    })
+    .map(mapTask);
 }
 
 export async function getTask(taskId: string): Promise<AgentTask | null> {
@@ -333,7 +510,9 @@ export async function getTask(taskId: string): Promise<AgentTask | null> {
     .select('*')
     .eq('id', taskId)
     .maybeSingle();
-  return data ? mapTask(data as TaskRow) : null;
+  if (!data) return null;
+  const row = data as TaskRow;
+  return isAssignableTaskRow(row) ? mapTask(row) : null;
 }
 
 export async function assignTask(
@@ -341,18 +520,97 @@ export async function assignTask(
   teammateId: string,
   assignedBy: 'recgon' | string,
   jobId?: string | null,
+  schedule?: {
+    scheduledDate?: string | null;
+    scheduledUntilDate?: string | null;
+    deadline?: string | null;
+    scheduleNote?: string | null;
+  },
+): Promise<void> {
+  const update: Record<string, unknown> = {
+    assigned_to: teammateId,
+    assigned_by: assignedBy,
+    assigned_at: new Date().toISOString(),
+    status: 'assigned',
+    job_id: jobId ?? null,
+  };
+  if (schedule?.scheduledDate !== undefined) update.scheduled_date = schedule.scheduledDate;
+  if (schedule?.scheduledUntilDate !== undefined) update.scheduled_until_date = schedule.scheduledUntilDate;
+  if (schedule?.deadline !== undefined) update.deadline = schedule.deadline;
+  if (schedule?.scheduleNote !== undefined) update.schedule_note = schedule.scheduleNote;
+  const { error } = await supabase
+    .from('agent_tasks')
+    .update(update)
+    .eq('id', taskId);
+  if (error) throw new Error(`assignTask failed: ${error.message}`);
+}
+
+export async function setTaskSchedule(
+  taskId: string,
+  schedule: {
+    scheduledDate?: string | null;
+    scheduledUntilDate?: string | null;
+    deadline?: string | null;
+    scheduleNote?: string | null;
+  },
+): Promise<void> {
+  const update: Record<string, unknown> = {};
+  if (schedule.scheduledDate !== undefined) update.scheduled_date = schedule.scheduledDate;
+  if (schedule.scheduledUntilDate !== undefined) update.scheduled_until_date = schedule.scheduledUntilDate;
+  if (schedule.deadline !== undefined) update.deadline = schedule.deadline;
+  if (schedule.scheduleNote !== undefined) update.schedule_note = schedule.scheduleNote;
+  if (Object.keys(update).length === 0) return;
+  const { error } = await supabase.from('agent_tasks').update(update).eq('id', taskId);
+  if (error) throw new Error(`setTaskSchedule failed: ${error.message}`);
+}
+
+export async function requestTaskReschedule(
+  taskId: string,
+  request: {
+    requestedBy: string;
+    note?: string | null;
+    requestedDate?: string | null;
+  },
 ): Promise<void> {
   const { error } = await supabase
     .from('agent_tasks')
     .update({
-      assigned_to: teammateId,
-      assigned_by: assignedBy,
-      assigned_at: new Date().toISOString(),
-      status: 'assigned',
-      job_id: jobId ?? null,
+      reschedule_request_status: 'pending',
+      reschedule_requested_at: new Date().toISOString(),
+      reschedule_requested_by: request.requestedBy,
+      reschedule_request_note: request.note?.trim() || null,
+      reschedule_requested_date: request.requestedDate ?? null,
     })
     .eq('id', taskId);
-  if (error) throw new Error(`assignTask failed: ${error.message}`);
+  if (error) throw new Error(`requestTaskReschedule failed: ${error.message}`);
+}
+
+export async function setTaskRescheduleRequestStatus(
+  taskId: string,
+  status: RescheduleRequestStatus,
+): Promise<void> {
+  const update: Record<string, unknown> = {
+    reschedule_request_status: status,
+  };
+  if (status === 'none') {
+    update.reschedule_requested_at = null;
+    update.reschedule_requested_by = null;
+    update.reschedule_request_note = null;
+    update.reschedule_requested_date = null;
+  }
+  const { error } = await supabase.from('agent_tasks').update(update).eq('id', taskId);
+  if (error) throw new Error(`setTaskRescheduleRequestStatus failed: ${error.message}`);
+}
+
+export async function updateTaskRequiredSkills(
+  taskId: string,
+  skills: string[],
+): Promise<void> {
+  const { error } = await supabase
+    .from('agent_tasks')
+    .update({ required_skills: skills })
+    .eq('id', taskId);
+  if (error) throw new Error(`updateTaskRequiredSkills failed: ${error.message}`);
 }
 
 export async function updateTaskStatus(
@@ -372,6 +630,12 @@ export async function reassignTask(
   taskId: string,
   teammateId: string | null,
   assignedBy: 'recgon' | string,
+  schedule?: {
+    scheduledDate?: string | null;
+    scheduledUntilDate?: string | null;
+    deadline?: string | null;
+    scheduleNote?: string | null;
+  },
 ): Promise<void> {
   const update: Record<string, unknown> = {
     assigned_to: teammateId,
@@ -380,6 +644,15 @@ export async function reassignTask(
     status: teammateId ? 'assigned' : 'unassigned',
     job_id: null,
   };
+  if (!teammateId) {
+    update.scheduled_date = null;
+    update.scheduled_until_date = null;
+    update.schedule_note = null;
+  }
+  if (schedule?.scheduledDate !== undefined) update.scheduled_date = schedule.scheduledDate;
+  if (schedule?.scheduledUntilDate !== undefined) update.scheduled_until_date = schedule.scheduledUntilDate;
+  if (schedule?.deadline !== undefined) update.deadline = schedule.deadline;
+  if (schedule?.scheduleNote !== undefined) update.schedule_note = schedule.scheduleNote;
   const { error } = await supabase.from('agent_tasks').update(update).eq('id', taskId);
   if (error) throw new Error(`reassignTask failed: ${error.message}`);
 }
@@ -521,7 +794,6 @@ export async function getRecgonState(teamId: string): Promise<RecgonState> {
       brainSnapshot: null,
       lastDispatchAt: null,
       assignmentLog: [],
-      rosterProposal: null,
     };
   }
   // The migration defaults brain_snapshot to '{}'::jsonb so the row is never
@@ -537,7 +809,6 @@ export async function getRecgonState(teamId: string): Promise<RecgonState> {
     brainSnapshot,
     lastDispatchAt: data.last_dispatch_at,
     assignmentLog: (data.assignment_log as AssignmentLogEntry[] | null) ?? [],
-    rosterProposal: (data.roster_proposal as RosterProposal | null) ?? null,
   };
 }
 
@@ -563,19 +834,6 @@ export async function appendAssignmentLog(
     .eq('team_id', teamId);
 }
 
-export async function saveRosterProposal(
-  teamId: string,
-  proposal: RosterProposal | null,
-): Promise<void> {
-  await supabase
-    .from('recgon_state')
-    .upsert({
-      team_id: teamId,
-      roster_proposal: proposal,
-      updated_at: new Date().toISOString(),
-    });
-}
-
 // ── Event log ───────────────────────────────────────────────────────────────
 
 export async function logEvent(input: {
@@ -589,6 +847,8 @@ export async function logEvent(input: {
     | 'completed'
     | 'rated'
     | 'reassigned'
+    | 'reschedule_requested'
+    | 'rescheduled'
     | 'overloaded'
     | 'no_fit';
   payload?: Record<string, unknown>;

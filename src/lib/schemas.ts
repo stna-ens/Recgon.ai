@@ -43,6 +43,9 @@ export const AnalysisResultSchema = z.object({
   earlyAdopterChannels: z.array(z.string()),
   growthMetrics: z.array(z.string()),
 
+  // Product website (if detectable from codebase or description)
+  websiteUrl: z.string().optional(),
+
   // Update-only: populated when re-analyzing after a push (not present on first analysis)
   improvements: z.array(z.string()).optional(),
   nextStepsTaken: z.array(z.object({
@@ -268,6 +271,19 @@ export const EvidenceRouteSchema = z.object({
 });
 
 export type EvidenceRoute = z.infer<typeof EvidenceRouteSchema>;
+
+// ── Task skill tagging ────────────────────────────────────────────────────────
+
+export const TaskSkillTagsResponseSchema = z.object({
+  tasks: z.array(
+    z.object({
+      id: z.string(),
+      skills: z.array(z.string()).max(6),
+    }),
+  ),
+});
+
+export type TaskSkillTagsResponse = z.infer<typeof TaskSkillTagsResponseSchema>;
 
 // ── Shared parse helper ───────────────────────────────────────────────────────
 

@@ -16,6 +16,9 @@ export function stripMd(input: string | null | undefined): string {
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\*\*/g, '')
     .replace(/__/g, '')
+    // Orphan backticks from truncated LLM output (e.g. title cut at 60 chars
+    // mid-`code`) — strip unconditionally; backticks are always markdown.
+    .replace(/`/g, '')
     // Drop the stale GA4 caveat (em-dash and ASCII hyphen variants).
     .replace(/\n*\(GA4 not connected\s*[—-]\s*baseline unavailable\.\)/g, '')
     .trim();

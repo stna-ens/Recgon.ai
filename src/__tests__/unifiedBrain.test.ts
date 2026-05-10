@@ -13,8 +13,6 @@ describe('unified brain wiring', () => {
 
     expect(names).toEqual(expect.arrayContaining([
       'analyze_code',
-      'query_feedback',
-      'collect_feedback',
       'generate_content',
       'generate_campaign',
       'fetch_analytics',
@@ -23,12 +21,18 @@ describe('unified brain wiring', () => {
     ]));
   });
 
+  it('keeps feedback tools unwired from the chat surface while collection is paused', () => {
+    const names = listTools().map((tool) => tool.name);
+    expect(names).not.toContain('query_feedback');
+    expect(names).not.toContain('collect_feedback');
+  });
+
   it('exports Gemini-safe function declarations for registered tools', () => {
     const declarations = geminiFunctionDeclarations();
     const names = declarations.map((declaration) => declaration.name);
 
     expect(names).toContain('generate_campaign');
-    expect(names).toContain('collect_feedback');
+    expect(names).toContain('analyze_code');
     expect(JSON.stringify(declarations)).not.toContain('"$schema"');
     expect(JSON.stringify(declarations)).not.toContain('"additionalProperties"');
   });
@@ -108,10 +112,6 @@ describe('unified brain wiring', () => {
   it('keeps cross-surface project fetches fresh after terminal tool runs', () => {
     const files = [
       'src/components/TeamProvider.tsx',
-      'src/app/mentor/page.tsx',
-      'src/app/marketing/page.tsx',
-      'src/app/feedback/page.tsx',
-      'src/app/analytics/page.tsx',
       'src/app/page.tsx',
     ];
 
@@ -124,8 +124,6 @@ describe('unified brain wiring', () => {
   it('keeps overview surfaces user-scoped and refreshable', () => {
     const overviewRoutes = [
       'src/app/api/overview/route.ts',
-      'src/app/api/overview/brief/route.ts',
-      'src/app/api/overview/analytics/route.ts',
     ];
 
     for (const file of overviewRoutes) {
@@ -135,9 +133,7 @@ describe('unified brain wiring', () => {
 
     const overviewPage = readFileSync(path.join(root, 'src/app/page.tsx'), 'utf8');
     expect(overviewPage).toContain("fetch(`/api/overview?teamId=${teamId}`, { cache: 'no-store' })");
-    expect(overviewPage).toContain("fetch(`/api/overview/brief?teamId=${teamId}`, { cache: 'no-store' })");
-    expect(overviewPage).toContain("fetch(`/api/overview/analytics?teamId=${teamId}`, { cache: 'no-store' })");
-    expect(overviewPage).toContain("window.addEventListener('focus', loadOverview)");
+    expect(overviewPage).toContain("window.addEventListener('focus'");
   });
 
   it('uses text ids in analytics insight migration to match the existing schema', () => {

@@ -69,11 +69,12 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { message, history, teamId, conversationId: incomingConvId } = await request.json() as {
+    const { message, history, teamId, conversationId: incomingConvId, projectId } = await request.json() as {
       message: string;
       history: { role: 'user' | 'assistant'; content: string }[];
       teamId: string;
       conversationId?: string | null;
+      projectId?: string | null;
     };
 
     if (!message?.trim()) {
@@ -90,6 +91,8 @@ export async function POST(request: NextRequest) {
 
     const projects = await getAllProjects(teamId, session.user.id);
 
+    const selectedProject = projectId ? projects.find((p) => p.id === projectId) ?? null : null;
+
     let convId = incomingConvId ?? null;
     let createdNew = false;
     if (convId) {
@@ -99,6 +102,7 @@ export async function POST(request: NextRequest) {
       const conv = await createConversation(session.user.id, deriveTitle(message));
       convId = conv.id;
       createdNew = true;
+      if (selectedProject) await setConversationProject(session.user.id, convId, selectedProject.id);
     }
 
     const storedHistory = await getConversationMessages(convId);
@@ -114,16 +118,21 @@ export async function POST(request: NextRequest) {
     const toolGuidance = `\n\nAI OUTPUT QUALITY CONTRACT:
 - Ground every answer in the project summaries, conversation history, recent activity, or tool results visible in this prompt.
 - Do not fabricate metrics, campaigns, feedback, files, implementation status, revenue, user counts, or analytics. If the needed fact is missing, say what is missing or call the correct tool.
-- Only call a tool when you need data NOT already in the system prompt: recent feedback analyses, campaigns, marketing content, or live GA4 metrics.
+- Only call a tool when you need data NOT already in the system prompt: campaigns, marketing content, or live GA4 metrics.
 - Do NOT call get_project_details just because someone asks a general question about their project. If the answer is in the project summary above, answer from it directly.
-- Call tools for: running a new analysis, fetching live analytics, querying pasted feedback, collecting feedback from saved sources, generating content, generating campaigns, or when the user explicitly asks to "show" or "fetch" something.
+- Call tools for: running a new analysis, fetching live analytics, generating content, generating campaigns, or when the user explicitly asks to "show" or "fetch" something.
+- FEEDBACK FEATURE IS PAUSED. There is no feedback tool available. If the user asks you to analyze, collect, summarize, or fetch user feedback (Reddit, App Store, Twitter, comments, reviews, support tickets, etc.), do NOT attempt it and do NOT pretend to. Tell them feedback collection is being rebuilt and is unavailable right now. Suggest they revisit when the source-collection pipeline lands. Don't fabricate feedback themes from imagination.
 - If you call a tool, use the tool result as the source of truth and do not add unsupported details.
 - If the user just wants advice or brainstorming, answer directly without any tool call.
 - Before a final answer, check that every concrete claim is supported by known context or a tool result.
 - The RECENT ACTIVITY block is historical context only. Do NOT treat a past tool failure shown there as the result of the tool call you just made. Trust the live tool result you receive in this turn.
 - Never apologize for or explain a tool call that returned ok=true. If the result indicates an empty/missing state (no sources, no analyses, no GA4 property), simply state that fact.`;
 
-    const systemPrompt = mentorSystemPrompt(projects, memoryContext) + activitiesBlock + toolGuidance;
+    const selectedProjectBlock = selectedProject
+      ? `\n\nCURRENTLY SELECTED PROJECT FROM THE UI:\n- Name: ${selectedProject.name}\n- ID: ${selectedProject.id}\nWhen the user asks an ambiguous project question, answer for this project unless they clearly name another one.\n`
+      : '';
+
+    const systemPrompt = mentorSystemPrompt(projects, memoryContext) + selectedProjectBlock + activitiesBlock + toolGuidance;
 
     const client = getGeminiClient();
     const functionDeclarations = geminiFunctionDeclarations();
@@ -303,7 +312,9 @@ export async function POST(request: NextRequest) {
 
           // Classify conversation to a project if not already tagged
           const currentProjectId = await getConversationProjectId(userId, resolvedConvId).catch(() => undefined);
-          if (currentProjectId === null && projects.length > 0) {
+          if (currentProjectId === null && selectedProject) {
+            await setConversationProject(userId, resolvedConvId, selectedProject.id);
+          } else if (currentProjectId === null && projects.length > 0) {
             try {
               const classifier = client.getGenerativeModel({
                 model: 'gemini-2.5-flash',

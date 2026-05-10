@@ -1,0 +1,53 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Welcome back" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Sign in to continue
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]: Email
+          - textbox "you@example.com" [ref=e11]
+        - generic [ref=e12]:
+          - generic [ref=e13]: Password
+          - textbox "••••••••" [ref=e14]
+        - button "Sign in" [ref=e15] [cursor=pointer]
+      - generic [ref=e18]: or
+      - button "Continue with GitHub" [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - text: Continue with GitHub
+      - paragraph [ref=e23]:
+        - text: Don't have an account?
+        - link "Create one" [ref=e24] [cursor=pointer]:
+          - /url: /register
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - img [ref=e27]
+        - generic [ref=e30]: Recgon
+      - heading "The coach solo founders don't have" [level=2] [ref=e31]:
+        - text: The coach solo
+        - text: founders don't have
+      - paragraph [ref=e32]: Part mentor, part cofounder — Recgon knows your product, tells you the truth, and keeps you moving.
+      - generic [ref=e33]:
+        - generic [ref=e34]:
+          - img [ref=e36]
+          - generic [ref=e39]:
+            - paragraph [ref=e40]: Product Analysis
+            - paragraph [ref=e41]: Paste a GitHub URL or describe your idea — get a full product breakdown in seconds.
+        - generic [ref=e42]:
+          - img [ref=e44]
+          - generic [ref=e47]:
+            - paragraph [ref=e48]: Marketing Content
+            - paragraph [ref=e49]: Generate copy and images for Instagram, TikTok, and Google Ads.
+        - generic [ref=e50]:
+          - img [ref=e52]
+          - generic [ref=e54]:
+            - paragraph [ref=e55]: Feedback Intelligence
+            - paragraph [ref=e56]: Paste comments or scrape Instagram — get sentiment, themes, and dev prompts.
+        - generic [ref=e57]:
+          - img [ref=e59]
+          - generic [ref=e62]:
+            - paragraph [ref=e63]: Everything in Minutes
+            - paragraph [ref=e64]: What used to take a team days now runs in a single session, start to finish.
+  - button "Open Next.js Dev Tools" [ref=e70] [cursor=pointer]:
+    - img [ref=e71]
+  - alert [ref=e74]

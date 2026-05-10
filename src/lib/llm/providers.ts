@@ -17,6 +17,11 @@ export type ChatOptions = {
   promptVersion?: string;
   qualityProfile?: string;
   allowRepairRetry?: boolean;
+  // Default 'application/json' — most callers parse JSON downstream and
+  // need Gemini's structured-output mode to keep responses well-formed.
+  // Pass 'text/plain' for short prose answers (e.g. commit summaries)
+  // where JSON mode causes the model to return string fragments.
+  responseMimeType?: 'application/json' | 'text/plain';
 };
 
 export type LLMProvider = {
@@ -60,7 +65,7 @@ export const geminiProvider: LLMProvider = {
                 generationConfig: {
                   temperature: options?.temperature ?? 0.7,
                   maxOutputTokens: options?.maxTokens ?? 8192,
-                  responseMimeType: 'application/json',
+                  responseMimeType: options?.responseMimeType ?? 'application/json',
                 },
               }),
               REQUEST_TIMEOUT_MS,

@@ -91,3 +91,26 @@ describe('brain.devPromptsFromProject', () => {
     expect(entries[0].kind).toBe('dev_prompt');
   });
 });
+
+describe('brain.projectHealthFromProject', () => {
+  it('keeps top risks as insights instead of minting them as tasks', async () => {
+    const p = project({
+      analysis: {
+        name: '', description: '', techStack: [], features: [],
+        targetAudience: '', uniqueSellingPoints: [],
+        problemStatement: '', marketOpportunity: '', competitors: [],
+        businessModel: '', revenueStreams: [], pricingSuggestion: '',
+        currentStage: 'mvp',
+        swot: { strengths: [], weaknesses: [], opportunities: [], threats: [] },
+        topRisks: ['User acquisition is hard for solo founders'],
+        prioritizedNextSteps: [],
+        gtmStrategy: '', earlyAdopterChannels: [], growthMetrics: [],
+        analyzedAt: '2026-01-01',
+      },
+    });
+
+    const entries = await __testing.projectHealthFromProject(p);
+    expect(entries).toHaveLength(0);
+    expect(entries.some((e) => (e.sourceRef as { kind?: string }).kind === 'top_risk')).toBe(false);
+  });
+});

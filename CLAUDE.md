@@ -35,7 +35,8 @@ Next.js 15 (App Router) + TypeScript + Tailwind. AI via multi-provider chain: Ge
 - `src/lib/supabase.ts` — Supabase client (service-role key, server-side only)
 - `src/lib/storage.ts` — `Project` type + CRUD → Supabase tables (`projects`, `project_analyses`, `marketing_content`, `feedback_analyses`, `campaigns`), scoped by `teamId`
 - `src/lib/teamStorage.ts` — team CRUD, membership, invitations, access verification → Supabase tables (`teams`, `team_members`, `team_invitations`)
-- `src/lib/chatStorage.ts` — mentor chat history → Supabase `chat_messages` table
+- `src/lib/chatStorage.ts` — terminal/mentor chat history → Supabase `chat_messages` table
+- `src/lib/terminal/commands.ts` — slash-command registry for `/v2/terminal` (parser + directive prompts that map to chat tools)
 - `src/lib/analyticsStorage.ts` — per-user GA4 property + OAuth tokens → Supabase `analytics_configs` table
 - `src/lib/analysisQuota.ts` — per-user analysis quota enforcement (3 total, 1 per 2 weeks) → Supabase `analysis_quotas` table
 
@@ -58,7 +59,7 @@ Next.js 15 (App Router) + TypeScript + Tailwind. AI via multi-provider chain: Ge
 - `feedback/analyze` — feedback analysis
 - `analytics/data` + `analytics/analyze` — GA4 data + AI insights
 - `analytics/oauth/` + `analytics/oauth/callback/` — Google OAuth flow
-- `chat/` — mentor chatbot (streaming, persists history)
+- `chat/` — terminal chatbot (streaming, persists history) — backs `/v2/terminal` (formerly `/v2/mentor`, 307 redirect in `next.config.js`)
 - `llm/jobs/[id]/` — GET status of a queued LLM job (team-access-checked)
 - `cron/llm-jobs/` — Vercel cron (every minute) draining `llm_jobs`; `CRON_SECRET` bearer auth
 
@@ -80,6 +81,11 @@ Next.js 15 (App Router) + TypeScript + Tailwind. AI via multi-provider chain: Ge
 - **Context7** — live documentation lookup for libraries (Next.js, Zod, NextAuth, etc.). Use before writing code with newer APIs.
 - **GitHub** — direct PR/issue management. Requires one-time auth via `/mcp` command.
 - **Supabase** — database management. Requires access token from supabase.com dashboard (Settings > API).
+
+## UI Components
+- Use **Radix UI primitives** (`@radix-ui/react-*`) for all interactive UI: dialogs, dropdowns, tooltips, popovers, tabs, selects, etc.
+- Use **`@radix-ui/themes`** components (`Box`, `Flex`, `Text`, `Button`, `Card`, etc.) for layout and base elements when appropriate.
+- Do not hand-roll accessible interactive components from scratch when a Radix primitive exists.
 
 ## Key rules
 - Database: Supabase (PostgreSQL), all access through `src/lib/supabase.ts` service-role client

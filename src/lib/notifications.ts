@@ -18,7 +18,7 @@ function appBaseUrl(): string {
 }
 
 async function getEmailForTeammate(teammate: Teammate): Promise<string | null> {
-  if (teammate.kind !== 'human' || !teammate.userId) return null;
+  if (!teammate.userId) return null;
   const { data } = await supabase
     .from('users')
     .select('email')
@@ -32,7 +32,6 @@ export async function notifyTeammateAssigned(input: {
   task: AgentTask;
   teamName: string;
 }): Promise<void> {
-  if (input.teammate.kind !== 'human') return;
   const email = await getEmailForTeammate(input.teammate);
   if (!email) return;
   const apiKey = process.env.RESEND_API_KEY;

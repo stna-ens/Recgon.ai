@@ -19,6 +19,9 @@ export interface CachedProject {
   sourceType?: 'codebase' | 'github' | 'description';
   isGithub?: boolean;
   lastAnalyzedCommitSha?: string;
+  createdBy?: string;
+  isShared?: boolean;
+  logoUrl?: string;
   analysis?: {
     description: string;
     techStack: string[];

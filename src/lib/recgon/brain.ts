@@ -5,7 +5,7 @@
 //   • prioritizedNextSteps         → 'next_step'
 //   • developerPrompts             → 'dev_prompt'
 //   • feedback bugs/themes rollup  → 'dev_prompt' / 'research'
-//   • topRisks + growthMetrics     → 'next_step' (priority 1)
+//   • growthMetrics                → 'analytics'
 //   • GitHub commit drift          → 'research'
 //
 // Completion is honoured: nextStepsTaken[].taken and completedPrompts[] mean
@@ -147,7 +147,7 @@ function feedbackRollupFromProject(project: Project): BrainEntry[] {
   return entries;
 }
 
-// ── Project health (topRisks + growthMetrics) ─────────────────────────────
+// ── Project health (growthMetrics) ────────────────────────────────────────
 
 // Map a free-form growthMetric string to a GA4 metric name. Heuristic-based
 // — covers the common cases. If no match, the verifier still works against
@@ -201,25 +201,6 @@ async function projectHealthFromProject(project: Project): Promise<BrainEntry[]>
   const a = project.analysis;
   if (!a) return [];
   const entries: BrainEntry[] = [];
-  // topRisks → priority-1 next_step tasks. Risks are never auto-marked taken,
-  // so dedup is purely by text hash + project — re-running analysis on a
-  // still-present risk leaves the original task in place.
-  (a.topRisks ?? []).slice(0, 3).forEach((risk, idx) => {
-    if (!risk) return;
-    const norm = risk.trim().toLowerCase().slice(0, 60);
-    entries.push({
-      dedupKey: dedupKey(['risk', project.id, String(idx), norm]),
-      kind: 'next_step',
-      source: 'brain',
-      sourceRef: { kind: 'top_risk', projectId: project.id, index: idx, risk },
-      title: `Mitigate risk: ${risk.length > 60 ? risk.slice(0, 57) + '…' : risk}`,
-      description: `Strategic risk flagged in product analysis: ${risk}`,
-      requiredSkills: ['strategy', 'product', 'risk'],
-      priority: 1,
-      estimatedHours: 4,
-      projectId: project.id,
-    });
-  });
   // growthMetrics → analytics task to set up tracking + targets. Snapshot the
   // current GA4 value as the baseline so the verifier can later judge whether
   // the metric actually moved in the expected direction.

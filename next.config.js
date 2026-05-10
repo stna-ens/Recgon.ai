@@ -49,6 +49,30 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/mentor',
+        destination: '/terminal',
+        permanent: false,
+      },
+      {
+        source: '/mentor/:path*',
+        destination: '/terminal/:path*',
+        permanent: false,
+      },
+      {
+        source: '/v2',
+        destination: '/',
+        permanent: false,
+      },
+      {
+        source: '/v2/:path*',
+        destination: '/:path*',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

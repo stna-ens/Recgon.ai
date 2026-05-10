@@ -99,7 +99,6 @@ export async function createTeam(
       .maybeSingle();
     await createTeammate({
       teamId: id,
-      kind: 'human',
       userId,
       displayName: user?.nickname || (user?.email as string | undefined)?.split('@')[0] || 'Founder',
       avatarUrl: (user?.avatar_url as string | null) ?? null,
@@ -307,7 +306,6 @@ export async function acceptInvitation(token: string, userId: string): Promise<v
       .maybeSingle();
     await createTeammate({
       teamId: invitation.teamId,
-      kind: 'human',
       userId,
       displayName:
         (user?.nickname as string | undefined) ||

@@ -1,0 +1,52 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - link [ref=e4] [cursor=pointer]:
+      - /url: /
+      - img [ref=e5]
+    - navigation [ref=e8]:
+      - link "Terminal" [ref=e9] [cursor=pointer]:
+        - /url: /mentor
+        - img [ref=e11]
+        - generic: Terminal
+      - link "Projects" [ref=e13] [cursor=pointer]:
+        - /url: /projects
+        - img [ref=e15]
+        - generic: Projects
+      - link "Marketing" [ref=e18] [cursor=pointer]:
+        - /url: /marketing
+        - img [ref=e20]
+        - generic: Marketing
+      - link "Analytics" [ref=e23] [cursor=pointer]:
+        - /url: /analytics
+        - img [ref=e25]
+        - generic: Analytics
+      - link "Overview" [ref=e27] [cursor=pointer]:
+        - /url: /
+        - img [ref=e29]
+        - generic [ref=e34]: Overview
+      - link "Tasks" [ref=e35] [cursor=pointer]:
+        - /url: /inbox
+        - img [ref=e37]
+        - generic: Tasks
+      - link "Teams" [ref=e41] [cursor=pointer]:
+        - /url: /teams
+        - img [ref=e43]
+        - generic: Teams
+    - main [ref=e48]:
+      - generic [ref=e50]:
+        - generic [ref=e52]:
+          - heading "$ overview" [level=2] [ref=e53]
+          - paragraph [ref=e54]: Loading…
+        - generic [ref=e55]:
+          - generic [ref=e57]: // recgon's pulse
+          - generic [ref=e62]:
+            - textbox "Ask Recgon…" [ref=e63]
+            - button "Open terminal" [ref=e64] [cursor=pointer]:
+              - img [ref=e65]
+              - text: Open terminal
+        - generic [ref=e69]: // active tasks
+        - generic [ref=e80]:
+          - generic [ref=e82]: // priority actions
+          - generic [ref=e94]: // recent signals
+  - button "Open Next.js Dev Tools" [ref=e113] [cursor=pointer]:
+    - img [ref=e114]

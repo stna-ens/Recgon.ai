@@ -39,10 +39,8 @@ export async function PATCH(
     displayName?: string;
     title?: string;
     skills?: string[];
-    systemPrompt?: string;
     capacityHours?: number;
     workingHours?: import('@/lib/recgon/types').WorkingHours | null;
-    modelPref?: 'gemini' | 'claude' | null;
     status?: 'active' | 'paused' | 'retired';
     avatarColor?: string | null;
   };

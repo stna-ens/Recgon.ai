@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProject, deleteProject, saveProject, updateProjectShared } from '@/lib/storage';
+import { supabase } from '@/lib/supabase';
 import { cloneGitHubRepo } from '@/lib/githubFetcher';
 import { auth } from '@/auth';
 import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
@@ -63,10 +64,31 @@ export async function PATCH(
   if (!hasWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
   const body = await request.json();
-  const { description, path: rawPath, isShared } = body;
+  const { name, description, path: rawPath, isShared, logoUrl } = body;
 
-  if (description === undefined && rawPath === undefined && isShared === undefined) {
-    return NextResponse.json({ error: 'description, path, or isShared is required' }, { status: 400 });
+  if (name === undefined && description === undefined && rawPath === undefined && isShared === undefined && logoUrl === undefined) {
+    return NextResponse.json({ error: 'name, description, path, isShared, or logoUrl is required' }, { status: 400 });
+  }
+
+  if (name !== undefined) {
+    if (typeof name !== 'string' || !name.trim()) {
+      return NextResponse.json({ error: 'name must be a non-empty string' }, { status: 400 });
+    }
+    if (name.length > 120) {
+      return NextResponse.json({ error: 'name must be 120 characters or fewer' }, { status: 400 });
+    }
+  }
+
+  if (logoUrl !== undefined) {
+    const { error } = await supabase
+      .from('projects')
+      .update({ logo_url: logoUrl || null })
+      .eq('id', id)
+      .eq('team_id', teamId);
+    if (error) return NextResponse.json({ error: 'Failed to update logo' }, { status: 500 });
+    if (description === undefined && rawPath === undefined && isShared === undefined) {
+      return NextResponse.json({ success: true });
+    }
   }
 
   const project = await getProject(id, teamId, session.user.id);
@@ -100,7 +122,11 @@ export async function PATCH(
     project.description = description as string;
   }
 
-  if (rawPath || description) {
+  if (typeof name === 'string') {
+    project.name = name.trim();
+  }
+
+  if (rawPath || description || typeof name === 'string') {
     await saveProject(project);
   }
   return NextResponse.json({ success: true });

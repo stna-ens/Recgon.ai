@@ -10,6 +10,8 @@ export default function TeamSwitcher() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const teamHref = (_id: string) => '/team';
+  const manageHref = '/teams';
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -106,7 +108,7 @@ export default function TeamSwitcher() {
                 // does something — even when re-selecting the active team.
                 if (team.id !== currentTeam.id) setCurrentTeam(team);
                 setOpen(false);
-                router.push(`/teams/${team.id}`);
+                router.push(teamHref(team.id));
               }}
               style={{
                 width: '100%',
@@ -153,7 +155,7 @@ export default function TeamSwitcher() {
             </button>
           ))}
           <Link
-            href="/teams"
+            href={manageHref}
             className="team-switcher-manage-link"
             onClick={() => setOpen(false)}
             style={{

@@ -48,7 +48,9 @@ Respond with valid JSON only, no markdown, no code fences. Use this exact struct
   "prioritizedNextSteps": ["5-7 ordered, specific actions the founder should take NOW. Each step should be concrete enough to act on this week, not vague advice like 'improve UX'."],
   "gtmStrategy": "A focused go-to-market approach for a solo dev or small team with limited budget. Name specific channels, communities, or tactics.",
   "earlyAdopterChannels": ["4-6 specific places to find the first 100 users — subreddits, communities, directories, forums, influencers, etc."],
-  "growthMetrics": ["4-6 specific KPIs the founder should track from day one, with context on what good looks like"]
+  "growthMetrics": ["4-6 specific KPIs the founder should track from day one, with context on what good looks like"],
+
+  "websiteUrl": "The product's own live website or landing page URL (e.g. https://myapp.com). Infer from env vars, config files, package.json homepage, README, or any deployed URL found in the codebase. Omit if genuinely not found."
 }
 
 Be the mentor the founder can't afford to hire. Be specific, honest, and direct. Avoid generic startup advice — every insight should be grounded in what you actually see in this codebase.
@@ -124,7 +126,9 @@ Respond with valid JSON only, no markdown, no code fences. Use this exact struct
   "prioritizedNextSteps": ["5-7 ordered, specific validation and build actions the founder should take NOW. Focus on customer discovery and de-risking assumptions, not just building. Each step should be concrete enough to act on this week."],
   "gtmStrategy": "A focused go-to-market approach for a solo dev or small team with limited budget. Name specific channels, communities, or tactics.",
   "earlyAdopterChannels": ["4-6 specific places to find the first 100 users — subreddits, communities, directories, forums, influencers, etc."],
-  "growthMetrics": ["4-6 specific KPIs the founder should track from day one, with context on what good looks like"]
+  "growthMetrics": ["4-6 specific KPIs the founder should track from day one, with context on what good looks like"],
+
+  "websiteUrl": "The product's own live website or landing page URL if mentioned or inferable from the description. Omit if not found."
 }
 
 Where information is not provided, make reasonable assumptions based on the idea and note them implicitly in your analysis. Be the mentor the founder can't afford to hire. Be specific, honest, and direct. Avoid generic startup advice.
@@ -872,4 +876,94 @@ export function overviewBriefUserPrompt(
     return `- ${p.name} (${parts.join(' — ')}) · ${p.marketingCount} campaigns, ${p.feedbackCount} feedback runs`;
   });
   return `Team projects this week:\n${lines.join('\n')}\n\nWrite the weekly brief.`;
+}
+
+// ── Commit summary ───────────────────────────────────────────────────────────
+// Recgon's plain-English read of a single git commit. Inputs: raw commit
+// message + per-file patch excerpts. Output: ONE sentence describing what
+// the commit did for the product/user — never about the diff mechanics.
+
+export const COMMIT_SUMMARY_SYSTEM = `You are Recgon, a product manager looking at a git commit and explaining what it did in plain English for a non-engineer. Read the commit message and the diff. Return exactly ONE sentence (max ~22 words) describing what the commit changed from the product/user point of view.
+
+RULES:
+- Past tense, active voice. Start with a verb (Fixed / Added / Removed / Refactored / Tightened / Polished / Cleaned up / etc.).
+- Be specific. "Bug fixes" → "Fixed inbox count flashing on team switch."
+- Never mention filenames, function names, or implementation details unless they ARE the meaning of the change (e.g., a config-only change).
+- If the diff is purely stylistic / formatting / lint, say so.
+- If the diff is too small or unclear, say "Minor change to <area>." — do not invent.
+- Output the sentence only. No quotes, no markdown, no preamble.`;
+
+export function buildCommitSummaryUser(input: {
+  rawMessage: string;
+  files: Array<{ filename: string; status: string; additions: number; deletions: number; patch?: string }>;
+  stats: { additions: number; deletions: number };
+}): string {
+  // Trim total patch text to ~6k chars so we don't blow the context budget
+  // on giant commits. Per-file 1.5k is a reasonable cap; truncate with a
+  // marker so the model knows it's seeing a slice.
+  const PER_FILE_CAP = 1500;
+  const TOTAL_CAP = 6000;
+
+  let used = 0;
+  const fileBlocks: string[] = [];
+  for (const f of input.files) {
+    if (used >= TOTAL_CAP) {
+      fileBlocks.push(`… (${input.files.length - fileBlocks.length} more files truncated)`);
+      break;
+    }
+    const head = `--- ${f.filename} [${f.status}] +${f.additions}/-${f.deletions}`;
+    let patch = f.patch ?? '(binary or no patch returned)';
+    if (patch.length > PER_FILE_CAP) {
+      patch = patch.slice(0, PER_FILE_CAP) + '\n… (patch truncated)';
+    }
+    const block = `${head}\n${patch}`;
+    fileBlocks.push(block);
+    used += block.length;
+  }
+
+  return `Raw commit message:
+${input.rawMessage || '(empty message)'}
+
+Stats: +${input.stats.additions} / -${input.stats.deletions} across ${input.files.length} file(s).
+
+Diff:
+${fileBlocks.join('\n\n')}
+
+Return ONE plain-English sentence describing what this commit did.`;
+}
+
+// ── Task skill tagging ────────────────────────────────────────────────────────
+
+export const TAG_TASK_SKILLS_SYSTEM = `You are Recgon's task router. Given a batch of tasks, output the skill tags that describe WHO should do each one — what kind of teammate fits.
+
+Pick from this canonical vocabulary (lowercase, snake_case). Use 2–4 tags per task. Prefer the most specific role tag first.
+
+Roles: engineering, frontend, backend, mobile, devops, design, ux_design, marketing, social_media, content_writing, copywriting, seo, ads, growth, analytics, data, sales, customer_support, product, strategy, research, qa, finance, operations, legal
+
+Modifiers (optional, only if obviously relevant): ai, ml, video, photo, branding, community, partnerships, fundraising, hiring
+
+Hard rules:
+- A task to "implement", "build", "code", "fix bug", "refactor", "add UI", "add API", "add component" is engineering — never marketing/strategy.
+- A task to "post", "share", "tweet", "instagram", "tiktok", "reels", "engage followers" is social_media + content_writing.
+- A task to "write blog", "write copy", "newsletter", "landing page copy" is content_writing or copywriting.
+- A task to "analyze users", "look at metrics", "track conversion", "A/B test" is analytics + growth.
+- A task to "talk to users", "interview customers", "validate" is research.
+- "next_step", "strategy", "product" are NEVER skill tags — they describe task category, not role. Don't emit them.
+
+Output JSON: { "tasks": [{ "id": string, "skills": string[] }] } in the same order as input.`;
+
+export function tagTaskSkillsUserPrompt(
+  tasks: Array<{ id: string; title: string; description: string; kind: string }>,
+): string {
+  const blocks = tasks.map((t, i) => {
+    const desc = (t.description || '').slice(0, 400);
+    return `[${i + 1}] id=${t.id} kind=${t.kind}
+title: ${t.title}
+description: ${desc}`;
+  });
+  return `Tag the following ${tasks.length} task${tasks.length === 1 ? '' : 's'}:
+
+${blocks.join('\n\n')}
+
+Return one entry per task with the canonical skill tags, in input order.`;
 }

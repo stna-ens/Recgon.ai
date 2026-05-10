@@ -1,0 +1,587 @@
+- generic [active] [ref=e1]:
+  - banner:
+    - generic [ref=e2]:
+      - link "Ana içeriğe atla":
+        - /url: "#main"
+      - generic [ref=e4]:
+        - link "OpenAI Ana Sayfası" [ref=e5] [cursor=pointer]:
+          - /url: /tr-TR/
+          - img [ref=e7]
+        - generic [ref=e9]:
+          - navigation "Ana Menü" [ref=e11]:
+            - list [ref=e12]:
+              - listitem [ref=e13]:
+                - link "Araştırma" [ref=e14] [cursor=pointer]:
+                  - /url: /tr-TR/research/index/
+                  - generic [ref=e16]: Araştırma
+                - button "Araştırma menüsü"
+              - listitem [ref=e17]:
+                - button "Ürünler" [ref=e18] [cursor=pointer]:
+                  - generic [ref=e20]: Ürünler
+                - button "Ürünler menüsü"
+              - listitem [ref=e21]:
+                - link "Kurumsal" [ref=e22] [cursor=pointer]:
+                  - /url: /tr-TR/business/
+                  - generic [ref=e24]: Kurumsal
+                - button "Kurumsal menüsü"
+              - listitem [ref=e25]:
+                - link "Geliştiriciler" [ref=e26] [cursor=pointer]:
+                  - /url: /tr-TR/api/
+                  - generic [ref=e28]: Geliştiriciler
+                - button "Geliştiriciler menüsü"
+              - listitem [ref=e29]:
+                - link "Şirket" [ref=e30] [cursor=pointer]:
+                  - /url: /tr-TR/about/
+                  - generic [ref=e32]: Şirket
+                - button "Şirket menüsü"
+              - listitem [ref=e33]:
+                - link "Foundation (yeni bir pencerede açılır)" [ref=e34] [cursor=pointer]:
+                  - /url: https://openaifoundation.org/tr-TR/
+                  - generic [ref=e36]: Foundation
+                  - generic [ref=e37]: (yeni bir pencerede açılır)
+          - generic [ref=e39]:
+            - button "Aramayı aç" [ref=e41] [cursor=pointer]:
+              - img [ref=e42]
+            - button "Aramayı kapat" [ref=e44] [cursor=pointer]:
+              - img [ref=e45]
+          - generic [ref=e48]:
+            - button "Oturum aç" [ref=e49] [cursor=pointer]:
+              - text: Oturum aç
+              - img [ref=e50]
+            - link "ChatGPT'yi dene (yeni bir pencerede açılır)" [ref=e52] [cursor=pointer]:
+              - /url: https://chatgpt.com/?openaicom-did=ca7d1635-62f6-4fed-92fa-e29119f78dd0&openaicom_referred=true
+              - text: ChatGPT'yi dene
+              - img [ref=e53]
+              - generic [ref=e55]: (yeni bir pencerede açılır)
+  - generic [ref=e56]:
+    - main [ref=e57]:
+      - generic [ref=e58]: Codex | OpenAI'ın Sunduğu Yapay Zeka Kodlama Ortağı | OpenAI
+      - generic [ref=e59]:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Tarayıcın video etiketini desteklemiyor.
+        - generic [ref=e64]:
+          - button "asdfadsf" [ref=e65] [cursor=pointer]
+          - heading "Codex" [level=1] [ref=e67]
+          - paragraph [ref=e69]: Yapay zekayla geliştirip kullanıma sunmanıza yardımcı olan, ChatGPT destekli bir kodlama ajanı.
+          - link "MacOS için indir" [ref=e75] [cursor=pointer]:
+            - /url: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg
+        - generic [ref=e81]:
+          - complementary [ref=e82]:
+            - button "Toggle sidebar" [ref=e88] [cursor=pointer]:
+              - img
+            - button "New thread" [ref=e89] [cursor=pointer]:
+              - generic [ref=e90]:
+                - img
+              - generic [ref=e91]: New thread
+            - button "Automations" [ref=e92] [cursor=pointer]:
+              - generic [ref=e93]:
+                - img
+              - generic [ref=e94]: Automations
+            - button "Skills" [ref=e95] [cursor=pointer]:
+              - generic [ref=e96]:
+                - img
+              - generic [ref=e97]: Skills
+            - generic [ref=e98]: Threads
+            - generic [ref=e99]:
+              - generic [ref=e100]:
+                - button "Codex" [ref=e101] [cursor=pointer]:
+                  - generic [ref=e102]:
+                    - img
+                  - generic [ref=e103]: Codex
+                - generic [ref=e104]:
+                  - button "Create Codex app CTA 4h" [ref=e105] [cursor=pointer]:
+                    - generic [ref=e108]: Create Codex app CTA
+                    - generic [ref=e109]: 4h
+                  - button "Implement dark mode 8h" [ref=e110] [cursor=pointer]:
+                    - generic [ref=e113]: Implement dark mode
+                    - generic [ref=e114]: 8h
+              - generic [ref=e115]:
+                - button "ChatGPT" [ref=e116] [cursor=pointer]:
+                  - generic [ref=e117]:
+                    - img
+                  - generic [ref=e118]: ChatGPT
+                - button "Voice mode shortcuts 2h" [ref=e120] [cursor=pointer]:
+                  - generic [ref=e123]: Voice mode shortcuts
+                  - generic [ref=e124]: 2h
+              - generic [ref=e125]:
+                - button "Sora" [ref=e126] [cursor=pointer]:
+                  - generic [ref=e127]:
+                    - img
+                  - generic [ref=e128]: Sora
+                - button "Persist prompt presets 5h" [ref=e130] [cursor=pointer]:
+                  - generic [ref=e133]: Persist prompt presets
+                  - generic [ref=e134]: 5h
+              - generic [ref=e135]:
+                - button "Atlas" [ref=e136] [cursor=pointer]:
+                  - generic [ref=e137]:
+                    - img
+                  - generic [ref=e138]: Atlas
+                - button "Add Status filter facet 3h" [ref=e140] [cursor=pointer]:
+                  - generic [ref=e143]: Add Status filter facet
+                  - generic [ref=e144]: 3h
+          - generic [ref=e145]:
+            - generic [ref=e146]:
+              - generic [ref=e147]:
+                - generic [ref=e148]: Create Codex app CTA
+                - img [ref=e150]
+                - generic [ref=e152]: openai/codex
+              - generic [ref=e153]:
+                - button "Open" [ref=e154] [cursor=pointer]:
+                  - generic [ref=e155]: Open
+                - button "Commit" [ref=e156] [cursor=pointer]:
+                  - img
+                  - generic [ref=e157]: Commit
+            - generic [ref=e160]:
+              - generic [ref=e161]:
+                - generic [ref=e163]:
+                  - generic [ref=e166]: Create a compelling launch hero for the new Codex app on openai.com/codex
+                  - generic [ref=e169]:
+                    - generic [ref=e171]: I’ll update the hero copy to clearly communicate what Codex app does, add outcome-focused bullets, and ensure the CTAs align with launch goals.
+                    - generic [ref=e173]: Thought 7s
+                    - generic [ref=e175]: Explored 2 files
+                    - generic [ref=e177]:
+                      - generic [ref=e178]: Edited
+                      - generic [ref=e180]: hero.tsx
+                      - img [ref=e182]
+                    - generic [ref=e185]: Read build.py
+                    - generic [ref=e187]:
+                      - generic [ref=e188]: Edited
+                      - generic [ref=e190]: build.py
+                      - img [ref=e192]
+                    - generic [ref=e195]: Updated the launch hero to emphasize real developer outcomes (repo understanding, safe execution, PR delivery), and aligned the CTAs with launch intent.
+                - generic [ref=e197]:
+                  - textbox "Ask Codex anything" [ref=e199]
+                  - generic [ref=e200]:
+                    - generic [ref=e201]:
+                      - button "Attach" [ref=e202] [cursor=pointer]:
+                        - img
+                      - button "GPT-5.4" [ref=e203] [cursor=pointer]:
+                        - generic [ref=e205]: GPT-5.4
+                        - generic [ref=e206]:
+                          - img
+                    - button "Send" [ref=e207] [cursor=pointer]:
+                      - img
+              - separator "Resize panels" [ref=e208]
+              - generic [ref=e211]:
+                - generic [ref=e213]:
+                  - generic [ref=e214]:
+                    - generic [ref=e215]: 2 files changed
+                    - generic [ref=e217]:
+                      - generic [ref=e218]: "+9"
+                      - generic [ref=e219]: "-6"
+                  - generic [ref=e220]:
+                    - button "Discard" [ref=e221] [cursor=pointer]:
+                      - img [ref=e222]
+                    - button "Commit" [ref=e224] [cursor=pointer]:
+                      - img [ref=e225]
+                - generic [ref=e228]:
+                  - generic [ref=e229]:
+                    - button "src/hero.tsx +8 -5" [ref=e230] [cursor=pointer]:
+                      - generic [ref=e231]:
+                        - generic [ref=e232]: src/hero.tsx
+                        - generic [ref=e234]:
+                          - generic [ref=e235]: "+8"
+                          - generic [ref=e236]: "-5"
+                      - generic [ref=e237]:
+                        - img [ref=e238]
+                        - img [ref=e240]
+                    - generic [ref=e243]:
+                      - generic [ref=e247]: "export const hero = {"
+                      - generic [ref=e248]:
+                        - generic [ref=e249]: "-"
+                        - generic [ref=e251]: "eyebrow: \"New\","
+                      - generic [ref=e252]:
+                        - generic [ref=e253]: "-"
+                        - generic [ref=e255]: "title: \"Codex\","
+                      - generic [ref=e256]:
+                        - generic [ref=e257]: "-"
+                        - generic [ref=e259]: "subtitle: \"AI for developers\","
+                      - generic [ref=e260]:
+                        - generic [ref=e261]: +
+                        - generic [ref=e263]: "eyebrow: \"Introducing\","
+                      - generic [ref=e264]:
+                        - generic [ref=e265]: +
+                        - generic [ref=e267]: "title: \"Codex app\","
+                      - generic [ref=e268]:
+                        - generic [ref=e269]: +
+                        - generic [ref=e271]: "subtitle: \"Your AI pair programmer\","
+                      - generic [ref=e272]:
+                        - generic [ref=e273]: +
+                        - generic [ref=e275]: "primaryCta: \"Get started\","
+                      - generic [ref=e276]:
+                        - generic [ref=e277]: +
+                        - generic [ref=e279]: "secondaryCta: \"Download the CLI\","
+                      - generic [ref=e283]: "};"
+                      - generic [ref=e289]: export const heroBullets = [
+                      - generic [ref=e290]:
+                        - generic [ref=e291]: "-"
+                        - generic [ref=e293]: "\"Write code faster\","
+                      - generic [ref=e294]:
+                        - generic [ref=e295]: "-"
+                        - generic [ref=e297]: "\"Understand any repo\","
+                      - generic [ref=e298]:
+                        - generic [ref=e299]: +
+                        - generic [ref=e301]: "\"Understands your repo in seconds\","
+                      - generic [ref=e302]:
+                        - generic [ref=e303]: +
+                        - generic [ref=e305]: "\"Executes commands safely in a sandbox\","
+                      - generic [ref=e306]:
+                        - generic [ref=e307]: +
+                        - generic [ref=e309]: "\"Turns issues into reviewed, production-ready PRs\","
+                      - generic [ref=e313]: "];"
+                  - generic [ref=e314]:
+                    - button "tools/build.py +1 -1" [ref=e315] [cursor=pointer]:
+                      - generic [ref=e316]:
+                        - generic [ref=e317]: tools/build.py
+                        - generic [ref=e319]:
+                          - generic [ref=e320]: "+1"
+                          - generic [ref=e321]: "-1"
+                      - generic [ref=e322]:
+                        - img [ref=e323]
+                        - img [ref=e325]
+                    - generic [ref=e328]:
+                      - generic [ref=e331]: "def build():"
+                      - generic [ref=e332]:
+                        - generic [ref=e333]: "-"
+                        - generic [ref=e335]: print("building")
+                      - generic [ref=e336]:
+                        - generic [ref=e337]: +
+                        - generic [ref=e339]: print("building launch hero…")
+                      - generic [ref=e344]: "if __name__ == \"__main__\":"
+                      - generic [ref=e348]: build()
+        - group "Cisco logo, Instacart logo, Duolingo logo, Vanta logo, Virgin Atlantic logo, Miro logo, Rakuten logo, Whoop logo" [ref=e353]
+        - generic [ref=e423]:
+          - paragraph [ref=e426]: Ekibiniz Codex'i kullanmaya başladığında 500 $'a kadar kredi kazanabilirsiniz.
+          - link "Fırsattan yararlan (yeni bir pencerede açılır)" [ref=e427] [cursor=pointer]:
+            - /url: https://chatgpt.com/codex/team/start?openaicom-did=ca7d1635-62f6-4fed-92fa-e29119f78dd0&openaicom_referred=true
+            - text: Fırsattan yararlan
+            - img [ref=e428]
+            - generic [ref=e430]: (yeni bir pencerede açılır)
+        - generic [ref=e433]:
+          - heading "Otonom ajanlarla geliştirme yapmanın en iyi yolu" [level=2] [ref=e437]
+          - generic [ref=e439]:
+            - generic [ref=e441]:
+              - heading "Gerçek mühendislik çalışmaları için tasarlandı" [level=3] [ref=e442]
+              - paragraph [ref=e443]: Rutin çekme isteklerinden en zorlu problemlere kadar Codex; özellik geliştirme, karmaşık yeniden düzenlemeler, geçişler vb. gibi görevleri uçtan uca güvenilir şekilde tamamlar. Tüm bu süreçler, OpenAI'ın en üst seviye kodlama modelleri tarafından desteklenmektedir.
+            - img "Sol tarafta Codex, ChatGPT ve Sora gibi çalışma alanlarını ve projeleri listeleyen bir gezinme paneli yer almaktadır. Aktif görevler arasında oryantasyon iyileştirmeleri ve koyu renkli modun uygulanması yer alır." [ref=e451]
+          - generic [ref=e453]:
+            - generic [ref=e455]:
+              - heading "Çoklu otonom ajanlı iş akışları için tasarlandı" [level=3] [ref=e456]
+              - paragraph [ref=e457]: Codex uygulaması, otonom kodlamaya yönelik bir komuta merkezidir. Yerleşik çalışma ağaçları ve bulut ortamları sayesinde otonom ajanlar, projeler arasında paralel çalışarak normalde haftalar süren işleri günler içinde tamamlar.
+            - img "Codex kullanılarak bir iş parçacığından yeni bir beceri oluşturma veya mevcut bir beceri dosyasını karşıya yükleme seçeneklerini sunan ve alt bölümünde de önerilen ek becerilerin listelendiği yeni beceri oluşturma penceresi." [ref=e465]
+          - generic [ref=e467]:
+            - generic [ref=e469]:
+              - heading "Ekibinizin çalışma biçimine uyum sağlar" [level=3] [ref=e470]
+              - paragraph [ref=e471]: Beceriler özelliği sayesinde Codex, yalnızca kod yazmanın ötesine geçerek çekme isteklerini; kodu anlama, prototip oluşturma ve dokümantasyon gibi çıktılara dönüştüren çalışmalara doğrudan katkı sağlar ve ekibinizin standartlarıyla uyumlu şekilde çalışır.
+            - img "Kullanıcının, $openai-image stil becerisini kullanarak web sitesi varlıklarını bulutlara dönüştürmesini istediği bir Codex beceri iş akışını gösteren arayüz görünümü. Panelde, adım adım ilerlemeyi yansıtan durum mesajları (\"Thought for 3s\", \"Using skills\") ile birlikte, mavi bir gökyüzü arka planında bulutlardan oluşan bir köpek görselinin oluşturulmuş önizlemesi yer almaktadır." [ref=e479]
+          - generic [ref=e481]:
+            - generic [ref=e483]:
+              - heading "Sürekli arka plan çalışmaları için tasarlandı" [level=3] [ref=e484]
+              - paragraph [ref=e485]: Automations sayesinde Codex, tetikleme gerektirmeden çalışır; sorunları sınıflandırma, uyarı izleme, CI/CD vb gibi rutin ama kritik işleri üstlenir. Böylece siz asıl geliştirme sürecine odaklanabilirsiniz.
+            - img "Bekleyen değişiklikler, dal adı, satır ekleme ve kaldırmalarla değişen dosya sayısı, değişiklikleri açıklama alanı ve commit atma ya da pull request oluşturma düğmelerini gösteren bir commit iletişim kutusu." [ref=e493]
+          - generic [ref=e495]:
+            - generic [ref=e497]:
+              - heading "Ekibiniz genelinde çıtayı yükseltir" [level=3] [ref=e498]
+              - paragraph [ref=e499]: Codex; daha kapsamlı tasarımlar, güçlü testler ve yüksek sinyal değerine sahip kod incelemeleriyle temel kalite seviyesini yükseltir. Bu sayede sorunlar daha erken yakalanır ve ekibiniz güvenle teslimat yapar.
+            - img "Yerel bir çalışma alanına uygulanan tüm değişiklikleri gösteren bir onay paneli. Panelde; çalışma alanı adı, dal, ekleme ve silme işlemleriyle değişen dosyalar ve yerel platformda devam etmeye yönelik birincil işlem düğmesi yer almaktadır." [ref=e507]
+        - generic [ref=e510]:
+          - generic [ref=e513]:
+            - heading "Geliştirme yaptığınız her yerde çalışan aynı otonom ajan" [level=2] [ref=e514]
+            - paragraph [ref=e516]: Codex'i, ChatGPT hesabınızla entegre şekilde birçok farklı platformda kullanabilirsiniz.
+            - link "Daha fazla bilgi için geliştirici belgelerine göz atın (yeni bir pencerede açılır)" [ref=e519] [cursor=pointer]:
+              - /url: https://developers.openai.com/codex/
+              - text: Daha fazla bilgi için geliştirici belgelerine göz atın
+              - img [ref=e520]
+              - generic [ref=e522]: (yeni bir pencerede açılır)
+          - generic [ref=e525]:
+            - generic [ref=e526]:
+              - img "App-style coding interface titled “Let’s code,” set to a weather app. A prompt reads “Add exponential backoff to the notifications API,” showing a developer using Codex to request a specific backend improvement." [ref=e532]
+              - generic [ref=e533]:
+                - heading "Codex uygulamasında başlayın" [level=3] [ref=e535]
+                - link "MacOS için indir" [ref=e540] [cursor=pointer]:
+                  - /url: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg
+            - generic [ref=e541]:
+              - img "Code review interface showing recent changes after implementing dark mode. Two files are edited with added and removed lines, and a message says “Looks great, add tests!” indicating collaborative review and iteration within a development workflow." [ref=e547]
+              - generic [ref=e548]:
+                - heading "Düzenleyicinize geçiş yapın" [level=3] [ref=e550]
+                - button "Kendi IDE'nde dene" [ref=e556] [cursor=pointer]:
+                  - img [ref=e557]
+                  - text: Kendi IDE'nde dene
+            - generic [ref=e559]:
+              - img "Terminal-style interface showing OpenAI Codex (v0.91.0) with the model set to “gpt-5.2-codex medium.” A prompt reads “Hey Codex, implement dark mode,” indicating a developer asking Codex to modify code via the command line." [ref=e565]
+              - generic [ref=e566]:
+                - heading "Terminal üzerinde devam edin" [level=3] [ref=e568]
+                - button "$ npm i -g @openai/codex" [ref=e573] [cursor=pointer]:
+                  - generic [ref=e574]: $ npm i -g @openai/codex
+                  - img [ref=e575]
+        - generic [ref=e579]:
+          - generic [ref=e581]:
+            - heading "What builders are saying" [level=2] [ref=e585]
+            - group "Kullanıcı Görüşleri" [ref=e586]:
+              - generic [ref=e587]:
+                - generic [ref=e588]:
+                  - img "Codex app > Layout > Testimonials > daniel-sikorskiy 1" [ref=e592]
+                  - paragraph [ref=e593]: “At Wonderful, Codex CLI has completely replaced every other agentic harness for our core technology and architecture work requiring deep reasoning and understanding.”
+                - paragraph [ref=e594]: Daniel Sikorskiy, Chief Architect, Wonderful
+              - generic [ref=e595]:
+                - generic [ref=e596]:
+                  - img "Codex app > Layout > Testimonials > joey wang" [ref=e600]
+                  - paragraph [ref=e601]: “At Harvey, Codex transformed how we build by cutting early iteration time by 30–50%, freeing engineers to focus on system design and high-leverage decisions.”
+                - paragraph [ref=e602]: Joey Wang, Mobile Lead, Harvey
+              - generic [ref=e603]:
+                - generic [ref=e604]:
+                  - img "Codex app > Layout > Testimonials > tess-rosania 1" [ref=e608]
+                  - paragraph [ref=e609]: “With Codex, we ship in a weekend what previously took a quarter. It’s become our go-to for projects we wouldn’t have otherwise been able to take on.”
+                - paragraph [ref=e610]: Tess Rosania, Software Engineer, Sierra
+              - generic [ref=e611]:
+                - generic [ref=e612]:
+                  - img "Codex app > Layout > Testimonials > austin-ray 1" [ref=e616]
+                  - paragraph [ref=e617]: “The recent Codex releases have been a step change. Codex PR reviews catch bugs our team would have missed, and we ship with more confidence because of it. Now we’re pulling the CLI and desktop app into more of our workflows—each release raises the bar.”
+                - paragraph [ref=e618]: Austin Ray, AI Dev X Team Lead, Ramp
+              - generic [ref=e619]:
+                - generic [ref=e620]:
+                  - img "Codex app > Layout > Testimonials > dan-shipper 1" [ref=e624]
+                  - paragraph [ref=e625]: “Codex performed best in our backend Python code-review benchmark. It was the only one to catch tricky backward compatibility issues and consistently found the hard bugs that other bots missed.”
+                - paragraph [ref=e626]: Aaron Wang, Senior Software Engineer, Duolingo
+              - generic [ref=e627]:
+                - generic [ref=e628]:
+                  - img "Codex app > Layout > Testimonials > tres-wong-godfrey 1" [ref=e632]
+                  - paragraph [ref=e633]: “I needed to update another team’s codebase for a release. Codex handled the refactor and test generation, delivering fully tested code I handed back fast—keeping the feature on schedule without added risk.”
+                - paragraph [ref=e634]: Tres Wong-Godfrey, Tech Lead, Cisco Meraki
+          - generic [ref=e637]:
+            - heading "Codex'i hemen deneyin" [level=2] [ref=e638]
+            - generic [ref=e639]: Yapay zekayla geliştirip kullanıma sunmanıza yardımcı olan, ChatGPT destekli bir kodlama ajanı.
+            - link "MacOS için indir" [ref=e645] [cursor=pointer]:
+              - /url: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg
+    - contentinfo [ref=e646]:
+      - generic [ref=e648]:
+        - generic [ref=e649]:
+          - generic [ref=e650]:
+            - heading "Araştırmalarımız" [level=2] [ref=e651]
+            - list [ref=e652]:
+              - listitem [ref=e653]:
+                - link "Araştırma Dizini" [ref=e654] [cursor=pointer]:
+                  - /url: /tr-TR/research/index/
+              - listitem [ref=e655]:
+                - link "Araştırmalara Genel Bakış" [ref=e656] [cursor=pointer]:
+                  - /url: /tr-TR/research/
+              - listitem [ref=e657]:
+                - link "Misafir Araştırmacı Programı" [ref=e658] [cursor=pointer]:
+                  - /url: /tr-TR/residency/
+              - listitem [ref=e659]:
+                - link "Ekonomik Araştırma" [ref=e660] [cursor=pointer]:
+                  - /url: /tr-TR/signals/
+          - generic [ref=e661]:
+            - heading "En Son Gelişmeler" [level=2] [ref=e662]
+            - list [ref=e663]:
+              - listitem [ref=e664]:
+                - link "GPT-5" [ref=e665] [cursor=pointer]:
+                  - /url: /tr-TR/index/introducing-gpt-5-5/
+              - listitem [ref=e666]:
+                - link "GPT-5.4" [ref=e667] [cursor=pointer]:
+                  - /url: /tr-TR/index/introducing-gpt-5-4/
+              - listitem [ref=e668]:
+                - link "GPT-5.3 Instant" [ref=e669] [cursor=pointer]:
+                  - /url: /tr-TR/index/gpt-5-3-instant/
+              - listitem [ref=e670]:
+                - link "GPT-5.3-Codex" [ref=e671] [cursor=pointer]:
+                  - /url: /tr-TR/index/introducing-gpt-5-3-codex/
+          - generic [ref=e672]:
+            - heading "Güvenlik" [level=2] [ref=e673]
+            - list [ref=e674]:
+              - listitem [ref=e675]:
+                - link "Güvenlik Yaklaşımı" [ref=e676] [cursor=pointer]:
+                  - /url: /tr-TR/safety/
+              - listitem [ref=e677]:
+                - link "Güvenlik ve Gizlilik" [ref=e678] [cursor=pointer]:
+                  - /url: /tr-TR/security-and-privacy/
+              - listitem [ref=e679]:
+                - link "Güven ve Şeffaflık" [ref=e680] [cursor=pointer]:
+                  - /url: /tr-TR/trust-and-transparency/
+        - generic [ref=e681]:
+          - generic [ref=e682]:
+            - heading "ChatGPT" [level=2] [ref=e683]
+            - list [ref=e684]:
+              - listitem [ref=e685]:
+                - link "ChatGPT'yi Keşfet (yeni bir pencerede açılır)" [ref=e686] [cursor=pointer]:
+                  - /url: https://chatgpt.com/tr-TR/overview?openaicom-did=ca7d1635-62f6-4fed-92fa-e29119f78dd0&openaicom_referred=true
+                  - text: ChatGPT'yi Keşfet
+                  - img [ref=e687]
+                  - generic [ref=e689]: (yeni bir pencerede açılır)
+              - listitem [ref=e690]:
+                - link "Business" [ref=e691] [cursor=pointer]:
+                  - /url: https://chatgpt.com/tr-TR/business/business-plan?openaicom-did=ca7d1635-62f6-4fed-92fa-e29119f78dd0&openaicom_referred=true
+              - listitem [ref=e692]:
+                - link "Enterprise" [ref=e693] [cursor=pointer]:
+                  - /url: https://chatgpt.com/tr-TR/business/enterprise?openaicom-did=ca7d1635-62f6-4fed-92fa-e29119f78dd0&openaicom_referred=true
+              - listitem [ref=e694]:
+                - link "Eğitim" [ref=e695] [cursor=pointer]:
+                  - /url: https://chatgpt.com/tr-TR/business/education?openaicom-did=ca7d1635-62f6-4fed-92fa-e29119f78dd0&openaicom_referred=true
+              - listitem [ref=e696]:
+                - link "Fiyatlandırma (yeni bir pencerede açılır)" [ref=e697] [cursor=pointer]:
+                  - /url: https://chatgpt.com/tr-TR/pricing?openaicom-did=ca7d1635-62f6-4fed-92fa-e29119f78dd0&openaicom_referred=true
+                  - text: Fiyatlandırma
+                  - img [ref=e698]
+                  - generic [ref=e700]: (yeni bir pencerede açılır)
+              - listitem [ref=e701]:
+                - link "İndir (yeni bir pencerede açılır)" [ref=e702] [cursor=pointer]:
+                  - /url: https://chatgpt.com/tr-TR/download?openaicom-did=ca7d1635-62f6-4fed-92fa-e29119f78dd0&openaicom_referred=true
+                  - text: İndir
+                  - img [ref=e703]
+                  - generic [ref=e705]: (yeni bir pencerede açılır)
+          - generic [ref=e706]:
+            - heading "API Platformu" [level=2] [ref=e707]
+            - list [ref=e708]:
+              - listitem [ref=e709]:
+                - link "Platforma Genel Bakış" [ref=e710] [cursor=pointer]:
+                  - /url: /tr-TR/api/
+              - listitem [ref=e711]:
+                - link "Fiyatlandırma" [ref=e712] [cursor=pointer]:
+                  - /url: /tr-TR/api/pricing/
+              - listitem [ref=e713]:
+                - link "API oturumu aç (yeni bir pencerede açılır)" [ref=e714] [cursor=pointer]:
+                  - /url: https://platform.openai.com/login
+                  - text: API oturumu aç
+                  - img [ref=e715]
+                  - generic [ref=e717]: (yeni bir pencerede açılır)
+              - listitem [ref=e718]:
+                - link "Belgeler (yeni bir pencerede açılır)" [ref=e719] [cursor=pointer]:
+                  - /url: https://developers.openai.com/api/docs
+                  - text: Belgeler
+                  - img [ref=e720]
+                  - generic [ref=e722]: (yeni bir pencerede açılır)
+              - listitem [ref=e723]:
+                - link "Geliştirici Forumu (yeni bir pencerede açılır)" [ref=e724] [cursor=pointer]:
+                  - /url: https://community.openai.com/
+                  - text: Geliştirici Forumu
+                  - img [ref=e725]
+                  - generic [ref=e727]: (yeni bir pencerede açılır)
+        - generic [ref=e728]:
+          - generic [ref=e729]:
+            - heading "İşletmeler için" [level=2] [ref=e730]
+            - list [ref=e731]:
+              - listitem [ref=e732]:
+                - link "Business'a Genel Bakış" [ref=e733] [cursor=pointer]:
+                  - /url: /tr-TR/business/
+              - listitem [ref=e734]:
+                - link "Çözümler" [ref=e735] [cursor=pointer]:
+                  - /url: /tr-TR/solutions/
+              - listitem [ref=e736]:
+                - link "Satış Birimiyle İletişime Geç" [ref=e737] [cursor=pointer]:
+                  - /url: /tr-TR/contact-sales/
+          - generic [ref=e738]:
+            - heading "Şirket" [level=2] [ref=e739]
+            - list [ref=e740]:
+              - listitem [ref=e741]:
+                - link "Hakkımızda" [ref=e742] [cursor=pointer]:
+                  - /url: /tr-TR/about/
+              - listitem [ref=e743]:
+                - link "İlkelerimiz" [ref=e744] [cursor=pointer]:
+                  - /url: /tr-TR/charter/
+              - listitem [ref=e745]:
+                - link "Foundation (yeni bir pencerede açılır)" [ref=e746] [cursor=pointer]:
+                  - /url: https://openaifoundation.org/tr-TR/
+                  - text: Foundation
+                  - img [ref=e747]
+                  - generic [ref=e749]: (yeni bir pencerede açılır)
+              - listitem [ref=e750]:
+                - link "Kariyer Fırsatları" [ref=e751] [cursor=pointer]:
+                  - /url: /tr-TR/careers/
+              - listitem [ref=e752]:
+                - link "Marka" [ref=e753] [cursor=pointer]:
+                  - /url: /tr-TR/brand/
+          - generic [ref=e754]:
+            - heading "Destek" [level=2] [ref=e755]
+            - list [ref=e756]:
+              - listitem [ref=e757]:
+                - link "Yardım Merkezi (yeni bir pencerede açılır)" [ref=e758] [cursor=pointer]:
+                  - /url: https://help.openai.com/
+                  - text: Yardım Merkezi
+                  - img [ref=e759]
+                  - generic [ref=e761]: (yeni bir pencerede açılır)
+          - generic [ref=e762]:
+            - heading "Daha fazla" [level=2] [ref=e763]
+            - list [ref=e764]:
+              - listitem [ref=e765]:
+                - link "Haberler" [ref=e766] [cursor=pointer]:
+                  - /url: /tr-TR/news/
+              - listitem [ref=e767]:
+                - link "Hikayeler" [ref=e768] [cursor=pointer]:
+                  - /url: /tr-TR/stories/
+              - listitem [ref=e769]:
+                - link "Academy" [ref=e770] [cursor=pointer]:
+                  - /url: /tr-TR/academy/
+              - listitem [ref=e771]:
+                - link "Canlı Yayınlar" [ref=e772] [cursor=pointer]:
+                  - /url: /tr-TR/live/
+              - listitem [ref=e773]:
+                - link "Podcast" [ref=e774] [cursor=pointer]:
+                  - /url: /tr-TR/podcast/
+              - listitem [ref=e775]:
+                - link "RSS" [ref=e776] [cursor=pointer]:
+                  - /url: /news/rss.xml
+        - generic [ref=e778]:
+          - heading "Şartlar ve Politikalar" [level=2] [ref=e779]
+          - list [ref=e780]:
+            - listitem [ref=e781]:
+              - link "Kullanım Şartları" [ref=e782] [cursor=pointer]:
+                - /url: /tr-TR/policies/terms-of-use/
+            - listitem [ref=e783]:
+              - link "Gizlilik Politikası" [ref=e784] [cursor=pointer]:
+                - /url: /tr-TR/policies/privacy-policy/
+            - listitem [ref=e785]:
+              - link "Diğer Politikalar" [ref=e786] [cursor=pointer]:
+                - /url: /tr-TR/policies/
+      - generic [ref=e787]:
+        - generic [ref=e788]:
+          - link "X" [ref=e789] [cursor=pointer]:
+            - /url: https://x.com/OpenAI
+            - img [ref=e790]
+            - generic [ref=e792]: (yeni bir pencerede açılır)
+          - link "YouTube" [ref=e793] [cursor=pointer]:
+            - /url: https://www.youtube.com/OpenAI
+            - img [ref=e794]
+            - generic [ref=e796]: (yeni bir pencerede açılır)
+          - link "LinkedIn" [ref=e797] [cursor=pointer]:
+            - /url: https://www.linkedin.com/company/openai
+            - img [ref=e798]
+            - generic [ref=e800]: (yeni bir pencerede açılır)
+          - link "GitHub" [ref=e801] [cursor=pointer]:
+            - /url: https://github.com/openai
+            - img [ref=e802]
+            - generic [ref=e804]: (yeni bir pencerede açılır)
+          - link "Instagram" [ref=e805] [cursor=pointer]:
+            - /url: https://www.instagram.com/openai/
+            - img [ref=e806]
+            - generic [ref=e808]: (yeni bir pencerede açılır)
+          - link "TikTok" [ref=e809] [cursor=pointer]:
+            - /url: https://www.tiktok.com/@openai
+            - img [ref=e810]
+            - generic [ref=e812]: (yeni bir pencerede açılır)
+          - link "Discord" [ref=e813] [cursor=pointer]:
+            - /url: https://discord.gg/openai
+            - img [ref=e814]
+            - generic [ref=e816]: (yeni bir pencerede açılır)
+        - generic [ref=e817]:
+          - generic [ref=e818]: OpenAI © 2015–2026
+          - button "Çerezleri Yönet" [ref=e819] [cursor=pointer]
+        - generic [ref=e820]:
+          - button "Dili değiştir" [ref=e821] [cursor=pointer]:
+            - generic [ref=e822]:
+              - img [ref=e823]
+              - generic [ref=e826]: Türkçe
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - textbox "Yerel ayarları ada veya bölgeye göre arayın":
+                      - /placeholder: Ara
+  - alert [ref=e827]

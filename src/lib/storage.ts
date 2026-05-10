@@ -1,5 +1,74 @@
 import { supabase } from './supabase';
 
+// Common logo/favicon paths to probe inside a GitHub repo, in priority order.
+const REPO_LOGO_PATHS = [
+  'public/logo.svg',
+  'public/logo.png',
+  'public/favicon.svg',
+  'src/app/icon.svg',
+  'src/app/icon.png',
+  'public/favicon.ico',
+];
+
+// Detect and persist a logo URL for a project that doesn't have one yet.
+// For GitHub projects:
+//   1. Probe common logo/favicon file paths in the repo via raw.githubusercontent.com.
+//   2. If none found, fall back to the repo's `homepage` field → Google favicon.
+// For any project: also checks the LLM-extracted websiteUrl from analysis.
+// Never overwrites an existing logoUrl. Safe to call at any time.
+export async function autoDetectLogo(project: Project): Promise<void> {
+  if (project.logoUrl) return;
+
+  let detected: string | null = null;
+  let websiteUrl: string | null = project.analysis?.websiteUrl ?? null;
+
+  if (project.githubUrl) {
+    const m = project.githubUrl.match(/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/);
+    if (m) {
+      const [, owner, repo] = m;
+
+      // Fetch repo metadata: real default branch + homepage field.
+      let defaultBranch = 'main';
+      try {
+        const apiRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+          headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (apiRes.ok) {
+          const data = await apiRes.json() as { default_branch?: string; homepage?: string };
+          if (data.default_branch) defaultBranch = data.default_branch;
+          if (data.homepage && !websiteUrl) websiteUrl = data.homepage;
+        }
+      } catch { /* GitHub unreachable */ }
+
+      // Probe common logo/favicon paths in the repo.
+      for (const path of REPO_LOGO_PATHS) {
+        const url = `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${path}`;
+        try {
+          const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+          if (res.ok) { detected = url; break; }
+        } catch { /* try next */ }
+      }
+    }
+  }
+
+  // Fall back to website favicon (from GitHub homepage or LLM-extracted URL).
+  if (!detected && websiteUrl) {
+    try {
+      const host = new URL(websiteUrl).hostname;
+      detected = `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
+    } catch { /* unparseable */ }
+  }
+
+  if (!detected) return;
+
+  await supabase
+    .from('projects')
+    .update({ logo_url: detected })
+    .eq('id', project.id)
+    .eq('team_id', project.teamId);
+}
+
 function isMissingColumnError(error: unknown, column: string): boolean {
   if (!error || typeof error !== 'object') return false;
   const message = 'message' in error ? String(error.message ?? '').toLowerCase() : '';
@@ -29,6 +98,7 @@ export interface Project {
   campaigns?: Campaign[];
   socialProfiles?: { platform: string; url: string }[];
   analyticsPropertyId?: string;
+  logoUrl?: string;
 }
 
 export interface ProductAnalysis {
@@ -68,6 +138,8 @@ export interface ProductAnalysis {
   gtmStrategy: string;
   earlyAdopterChannels: string[];
   growthMetrics: string[];
+
+  websiteUrl?: string;
 
   // Update-only: populated on diff-based re-analysis
   improvements?: string[];
@@ -171,6 +243,7 @@ async function assembleProject(row: ProjectRow): Promise<Project> {
     createdAt: row.created_at as string,
     socialProfiles: (row.social_profiles as { platform: string; url: string }[]) ?? [],
     analyticsPropertyId: row.analytics_property_id as string | undefined,
+    logoUrl: row.logo_url as string | undefined,
     analysis,
     marketingContent: marketingContent.length > 0 ? marketingContent : undefined,
     feedbackAnalyses: feedbackAnalyses.length > 0 ? feedbackAnalyses : undefined,
@@ -303,6 +376,7 @@ export async function saveProject(project: Project): Promise<void> {
     last_analyzed_commit_sha: core.lastAnalyzedCommitSha,
     social_profiles: core.socialProfiles ?? [],
     analytics_property_id: core.analyticsPropertyId,
+    logo_url: core.logoUrl ?? null,
     created_at: core.createdAt,
   };
 

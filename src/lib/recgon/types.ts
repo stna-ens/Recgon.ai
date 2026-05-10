@@ -4,19 +4,14 @@
 // human + AI teammates. It reads a unified brain of open work, mints tasks,
 // and assigns each to the best-fit teammate.
 
-export type TeammateKind = 'human' | 'ai';
 export type TeammateStatus = 'active' | 'paused' | 'retired';
 
+export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+// Day-precision availability. Hour-of-day was removed; daily capacity is
+// derived from `Teammate.capacityHours / max(1, days.length)`.
 export type WorkingHours = {
-  tz: string; // IANA, e.g. 'Europe/Istanbul'
-  // Per-weekday window as [startHour, endHour] in 24h. Missing = day off.
-  mon?: [number, number];
-  tue?: [number, number];
-  wed?: [number, number];
-  thu?: [number, number];
-  fri?: [number, number];
-  sat?: [number, number];
-  sun?: [number, number];
+  days: Weekday[];
 };
 
 export type FitProfile = {
@@ -40,15 +35,12 @@ export type SkillStat = {
 export type Teammate = {
   id: string;
   teamId: string;
-  kind: TeammateKind;
   userId: string | null;
   displayName: string;
   avatarColor?: string | null;
   avatarUrl?: string | null;
   title?: string | null;
   skills: string[];
-  systemPrompt?: string | null;
-  modelPref?: 'gemini' | 'claude' | null;
   capacityHours: number;
   workingHours: WorkingHours | null;
   fitProfile: FitProfile;
@@ -101,6 +93,8 @@ export type VerificationStatus =
   | 'passed'
   | 'failed'
   | 'owner_override';
+
+export type RescheduleRequestStatus = 'none' | 'pending' | 'resolved' | 'dismissed';
 
 export type ProofPayload = {
   text?: string;
@@ -172,6 +166,14 @@ export type AgentTask = {
   verificationEvidence: VerificationEvidence | null;
   verifiedAt: string | null;
   verifiedBy: string | null;
+  scheduledDate: string | null;        // YYYY-MM-DD, start day (no time-of-day)
+  scheduledUntilDate: string | null;   // YYYY-MM-DD, end day (inclusive); null = single-day
+  scheduleNote: string | null;
+  rescheduleRequestStatus: RescheduleRequestStatus;
+  rescheduleRequestedAt: string | null;
+  rescheduleRequestedBy: string | null;
+  rescheduleRequestNote: string | null;
+  rescheduleRequestedDate: string | null; // YYYY-MM-DD
 };
 
 export type TaskRating = {
@@ -220,19 +222,4 @@ export type RecgonState = {
   brainSnapshot: BrainSnapshot | null;
   lastDispatchAt: string | null;
   assignmentLog: AssignmentLogEntry[];
-  rosterProposal: RosterProposal | null;
 };
-
-export type RosterProposal = {
-  proposedAt: string;
-  reasoning: string;
-  teammates: Array<{
-    displayName: string;
-    title: string;
-    skills: string[];
-    systemPrompt: string;
-    capacityHours: number;
-    rationale: string;
-  }>;
-};
-

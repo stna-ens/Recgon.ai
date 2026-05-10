@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProject, getProjectTeamId, saveProject, type ProductAnalysis } from '@/lib/storage';
+import { getProject, getProjectTeamId, saveProject, autoDetectLogo, type ProductAnalysis } from '@/lib/storage';
 import { analyzeIdea } from '@/lib/ideaAnalyzer';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '@/lib/codeAnalyzer';
 import { analyzeCompetitors } from '@/lib/competitorAnalyzer';
@@ -137,6 +137,7 @@ export async function POST(
           analysis = await analyzeIdea(project.description, (msg) => send({ type: 'progress', message: msg }), appContext);
           project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
           await saveProject(project);
+          await autoDetectLogo(project).catch(() => {});
           await recordAnalysis(session.user.id, session.user.email ?? undefined);
           send({ type: 'done', project });
           return;
@@ -153,7 +154,8 @@ export async function POST(
           const latestCommit = await getLatestCommit(project.githubUrl!, githubToken);
 
           if (latestCommit && latestCommit.sha === project.lastAnalyzedCommitSha) {
-            // No new commits since last analysis
+            // No new commits — still run logo detection in case it was never set.
+            await autoDetectLogo(project).catch(() => {});
             send({ type: 'done', project });
             return;
           }
@@ -218,6 +220,7 @@ export async function POST(
 
         project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
         await saveProject(project);
+        await autoDetectLogo(project).catch(() => {});
 
         // Record quota usage after successful save
         await recordAnalysis(session.user.id, session.user.email ?? undefined);

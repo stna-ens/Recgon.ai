@@ -14,11 +14,13 @@ import { analyzeCompetitors } from '../competitorAnalyzer';
 import { cloneGitHubRepo, getLatestCommit } from '../githubFetcher';
 import { runDispatch } from '../recgon/dispatcher';
 import { runTaskVerification, type TaskVerificationPayload } from '../recgon/verify';
+import { runCommitSummaryJob } from '../commitSummary';
 import {
   saveFeedbackToProject,
   saveProject,
   getProject,
   generateId,
+  autoDetectLogo,
   type ProductAnalysis,
 } from '../storage';
 import { getUserById } from '../userStorage';
@@ -102,6 +104,7 @@ async function runIdeaAnalysis(job: LLMJob): Promise<WorkerResult> {
   const analysisWithContext = await analyzeIdea(payload.description, undefined, appContext);
   project.analysis = { ...analysisWithContext, analyzedAt: new Date().toISOString() };
   await saveProject(project);
+  await autoDetectLogo(project).catch(() => {});
 
   return { projectId: project.id } as WorkerResult;
 }
@@ -150,6 +153,7 @@ async function runCodebaseAnalysis(job: LLMJob): Promise<WorkerResult> {
 
   project.analysis = { ...analysis, analyzedAt: new Date().toISOString() };
   await saveProject(project);
+  await autoDetectLogo(project).catch(() => {});
 
   return { projectId: project.id } as WorkerResult;
 }
@@ -209,12 +213,29 @@ async function runTaskVerificationJob(job: LLMJob): Promise<WorkerResult> {
   return result as unknown as WorkerResult;
 }
 
+// ── Commit summary ──────────────────────────────────────────────────────────
+// Plain-English, single-sentence read of one git commit. Persists to
+// `commit_summaries` (idempotent on (github_url, sha)). Read by the home
+// cockpit's "updates" column to replace raw commit messages like "bug fixes"
+// with Recgon's understanding of what actually changed.
+type CommitSummaryPayload = {
+  githubUrl: string;
+  sha: string;
+  token?: string;
+};
+async function runCommitSummary(job: LLMJob): Promise<WorkerResult> {
+  const payload = job.payload as CommitSummaryPayload;
+  const row = await runCommitSummaryJob(payload);
+  return row as unknown as WorkerResult;
+}
+
 const WORKERS: Partial<Record<JobKind, Worker>> = {
   feedback_analysis: withRecgonDispatch(runFeedbackAnalysis),
   idea_analysis: withRecgonDispatch(runIdeaAnalysis),
   codebase_analysis: withRecgonDispatch(runCodebaseAnalysis),
   competitor_analysis: runCompetitorAnalysis,
   task_verification: runTaskVerificationJob,
+  commit_summary: runCommitSummary,
 };
 
 export async function runJob(job: LLMJob): Promise<WorkerResult> {

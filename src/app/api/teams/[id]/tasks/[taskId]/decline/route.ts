@@ -41,7 +41,7 @@ export async function POST(
 
   // Log the decline against the previous assignee, then unassign and re-dispatch.
   const previousTeammateId = task.assignedTo;
-  await reassignTask(taskId, null, session.user.id);
+  await reassignTask(taskId, null, session.user.id, task.scheduleNote ? { deadline: null } : undefined);
   await logEvent({
     teamId,
     teammateId: previousTeammateId,

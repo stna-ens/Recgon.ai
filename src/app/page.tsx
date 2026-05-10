@@ -1,713 +1,666 @@
 'use client';
 
-import { useCallback, useEffect, useState, FormEvent } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useTeam } from '@/components/TeamProvider';
+import HomeFocus, { type FocusData } from '@/components/v2/HomeFocus';
+import HomeBoard, {
+  type BoardDecisions,
+  type BoardUpdate,
+  type BoardTeamPulse,
+} from '@/components/v2/HomeBoard';
+import HomePortfolio, { type PortfolioRow } from '@/components/v2/HomePortfolio';
+import SectionIndex from '@/components/v2/SectionIndex';
+import { cleanText, projectInitial, pulseShort } from '@/components/v2/utils';
 
-interface Project {
-  id: string;
-  name: string;
-  createdAt: string;
-  analyticsPropertyId?: string;
-  analysis?: {
-    overallScore?: number;
-    analyzedAt?: string;
-    [key: string]: unknown;
-  };
+interface OverviewPayload {
+  totalProjects: number;
+  todayFocus: FocusData | null;
+  decisionDeck: BoardDecisions;
+  updates: BoardUpdate[];
+  projectCards: PortfolioRow[];
+  teamPulse: BoardTeamPulse | null;
 }
 
-interface OverviewBrief {
-  brief: string;
-  focusArea: string;
+const EMPTY_DECISIONS: BoardDecisions = {
+  stuck: [], stuckTotal: 0,
+  failed: [], failedTotal: 0,
+  drift: [], driftTotal: 0,
+};
+
+const EMPTY_OVERVIEW: OverviewPayload = {
+  totalProjects: 0,
+  todayFocus: null,
+  decisionDeck: EMPTY_DECISIONS,
+  updates: [],
+  projectCards: [],
+  teamPulse: null,
+};
+
+const HOME_DEFAULT_VARIANT: 'refined' | 'classic' = 'classic';
+
+function totalDecisions(decisions: BoardDecisions): number {
+  return decisions.failedTotal + decisions.stuckTotal + decisions.driftTotal;
 }
 
-interface Action {
-  id: string;
-  title: string;
-  source: 'analysis' | 'feedback';
-  projectName: string;
-  priority: 'high' | 'med' | 'low';
-  surfacedAt: string | null;
-}
 
-interface Signal {
-  id: string;
-  label: string;
-  projectName: string | null;
-  createdAt: string;
-}
-
-interface AnalyticsDelta {
-  projectName: string;
-  sessionsCurrent: number;
-  sessionsPrevious: number;
-  deltaPct: number;
-}
-
-interface TaskSummary {
-  id: string;
-  title: string;
-  status: string;
-  priority: number;
-  projectId: string | null;
-}
-
-const TASK_OPEN_STATUSES = new Set([
-  'unassigned', 'assigned', 'accepted', 'in_progress', 'awaiting_review',
-]);
-
-function taskRank(t: TaskSummary): number {
-  if (t.status === 'awaiting_review') return 0;
-  if (t.priority <= 0) return 1;
-  if (t.priority === 1) return 2;
-  if (t.status === 'in_progress' || t.status === 'accepted') return 3;
-  return 4;
-}
-
-function taskStatusLabel(status: string): { label: string; color: string } {
-  switch (status) {
-    case 'awaiting_review': return { label: 'review', color: 'var(--warning)' };
-    case 'in_progress':     return { label: 'running', color: 'var(--signature)' };
-    case 'accepted':        return { label: 'queued', color: 'var(--txt-muted)' };
-    case 'assigned':        return { label: 'assigned', color: 'var(--txt-muted)' };
-    case 'unassigned':      return { label: 'open', color: 'var(--txt-faint)' };
-    default:                return { label: status, color: 'var(--txt-faint)' };
-  }
-}
-
-function taskPriorityChip(priority: number): { label: string; color: string } | null {
-  if (priority <= 0) return { label: 'urgent', color: 'var(--danger)' };
-  if (priority === 1) return { label: 'high', color: 'var(--warning)' };
-  return null;
-}
-
-// Strip stray markdown emphasis (**bold**, __bold__) from model output before
-// rendering as plain text. The dashboard never wants raw markdown leaking
-// through as literal asterisks.
-function cleanText(s: string): string {
-  return s
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/__(.+?)__/g, '$1')
-    .replace(/\*\*/g, '')
-    .replace(/__/g, '');
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
-const PRIORITY_COLOR = { high: 'var(--danger)', med: 'var(--warning)', low: 'var(--success)' };
-const PRIORITY_SHADOW = { high: '0 0 5px var(--danger)', med: 'none', low: 'none' };
-
-export default function OverviewPage() {
-  const router = useRouter();
+// V2 Home — the operator's cockpit.
+//
+// Three sections answering three questions, in priority order:
+//   1. HomeFocus     — what's my single most important product right now?
+//   2. HomeBoard     — what's waiting on me / what shipped / what's at risk?
+//   3. HomePortfolio — what's the full picture across products?
+//
+// Deliberately CUT from the previous design: workspace identity card,
+// status tile grid, AI workforce capacity widget, total-events headline,
+// per-category mini-chart grid, "deployment hash" chips, decorative pseudo-
+// metrics. None of those answer a real PM question. Throughput is not an
+// outcome.
+function V2HomeInner() {
   const { currentTeam } = useTeam();
-
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(true);
-
-  const [brief, setBrief] = useState<OverviewBrief | null>(null);
-  const [actions, setActions] = useState<Action[]>([]);
-  const [signals, setSignals] = useState<Signal[]>([]);
-  const [unreadFeedback, setUnreadFeedback] = useState(0);
-  const [analytics, setAnalytics] = useState<AnalyticsDelta[]>([]);
-  const [analyticsConfigured, setAnalyticsConfigured] = useState<boolean | null>(null);
-  const [tasks, setTasks] = useState<TaskSummary[]>([]);
-  const [coreLoading, setCoreLoading] = useState(true);
-  const [briefLoading, setBriefLoading] = useState(true);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
-  const [tasksLoading, setTasksLoading] = useState(true);
-
-  const [ask, setAsk] = useState('');
-
   const teamId = currentTeam?.id ?? null;
+  const searchParams = useSearchParams();
 
-  const loadOverview = useCallback(() => {
+  const [overview, setOverview] = useState<OverviewPayload>(EMPTY_OVERVIEW);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback((opts: { showSkeleton?: boolean } = {}) => {
     if (!teamId) return;
-    setProjectsLoading(true);
-    setCoreLoading(true);
-    setBriefLoading(true);
-    setAnalyticsLoading(true);
-    setTasksLoading(true);
-
-    fetch(`/api/projects?teamId=${teamId}`, { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : [])
-      .then((data) => { setProjects(data); setProjectsLoading(false); })
-      .catch(() => setProjectsLoading(false));
-
-    fetch(`/api/overview?teamId=${teamId}`, { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
+    if (opts.showSkeleton) setLoading(true);
+    // Two parallel fetches — overview is the slow one (LLM-dependent paths
+    // around updates/wins), team-pulse is fast (pure SQL aggregates). We
+    // merge them so the cockpit doesn't block on either.
+    Promise.all([
+      fetch(`/api/overview?teamId=${teamId}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/overview/team-pulse?teamId=${teamId}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([data, pulse]) => {
         if (data) {
-          setActions(data.actions ?? []);
-          setSignals(data.signals ?? []);
-          setUnreadFeedback(data.unreadFeedback ?? 0);
+          setOverview({
+            totalProjects: data.totalProjects ?? 0,
+            todayFocus: data.todayFocus ?? null,
+            decisionDeck: data.decisionDeck ?? EMPTY_DECISIONS,
+            updates: Array.isArray(data.updates) ? data.updates : [],
+            projectCards: Array.isArray(data.projectCards) ? data.projectCards : [],
+            teamPulse: pulse ?? null,
+          });
         }
-        setCoreLoading(false);
+        setLoading(false);
       })
-      .catch(() => setCoreLoading(false));
-
-    fetch(`/api/overview/brief?teamId=${teamId}`, { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.brief) setBrief(data.brief);
-        setBriefLoading(false);
-      })
-      .catch(() => setBriefLoading(false));
-
-    fetch(`/api/overview/analytics?teamId=${teamId}`, { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data) {
-          setAnalytics(data.analytics ?? []);
-          setAnalyticsConfigured(data.analyticsConfigured ?? null);
-        }
-        setAnalyticsLoading(false);
-      })
-      .catch(() => setAnalyticsLoading(false));
-
-    fetch(`/api/teams/${teamId}/tasks`, { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        const list: TaskSummary[] = Array.isArray(data?.tasks)
-          ? data.tasks.map((t: { id: string; title: string; status: string; priority: number; projectId: string | null }) => ({
-              id: t.id, title: t.title, status: t.status, priority: t.priority, projectId: t.projectId,
-            }))
-          : [];
-        setTasks(list);
-        setTasksLoading(false);
-      })
-      .catch(() => setTasksLoading(false));
+      .catch(() => setLoading(false));
   }, [teamId]);
 
-  useEffect(() => {
-    loadOverview();
-  }, [loadOverview]);
+  // Initial fetch: show skeleton. Subsequent team switches also show it.
+  useEffect(() => { load({ showSkeleton: true }); }, [load]);
 
+  // Refresh on focus / when tab becomes visible — silent background refresh.
   useEffect(() => {
     if (!teamId) return;
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') loadOverview();
-    };
+    const onFocus = () => load();
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', loadOverview);
     return () => {
+      window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', loadOverview);
     };
-  }, [loadOverview, teamId]);
+  }, [load, teamId]);
 
-  const analyzed = projects.filter((p) => p.analysis).length;
-  const analyzedProjects = projects.filter((p) => p.analysis);
-  const scoredProjects = analyzedProjects.filter((p) => p.analysis?.overallScore !== undefined);
-  const avgHealth = scoredProjects.length > 0
-    ? Math.round(scoredProjects.reduce((sum, p) => sum + p.analysis!.overallScore!, 0) / scoredProjects.length * 10) / 10
-    : null;
-  const needsAttention = scoredProjects.filter((p) => p.analysis!.overallScore! < 6).length;
-
-  const showAnalyticsNudge = !projectsLoading && !analyticsLoading
-    && analyticsConfigured === false
-    && analyzed > 0;
-
-  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
-  const topTasks = tasks
-    .filter((t) => TASK_OPEN_STATUSES.has(t.status))
-    .slice()
-    .sort((a, b) => taskRank(a) - taskRank(b))
-    .slice(0, 5);
-  const openTaskCount = tasks.filter((t) => TASK_OPEN_STATUSES.has(t.status)).length;
-
-  function submitAsk(e: FormEvent) {
-    e.preventDefault();
-    const q = ask.trim();
-    if (!q) { router.push('/mentor'); return; }
-    try { sessionStorage.setItem('mentor:prefill', q); } catch {}
-    router.push('/mentor');
-  }
-
-  const showEmpty = !projectsLoading && projects.length === 0;
-
-  if (showEmpty) {
-    return (
-      <div>
-        <div className="page-header" style={{ marginBottom: 40 }}>
-          <h2><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>overview</h2>
-          <p>{currentTeam?.name ? <strong>{currentTeam.name}</strong> : 'Loading…'}</p>
-        </div>
-        <div className="glass-card" style={{ textAlign: 'center', padding: '64px 32px' }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 16,
-            background: 'rgba(var(--signature-rgb), 0.08)',
-            border: '1px solid rgba(var(--signature-rgb), 0.2)',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--signature)', marginBottom: 20,
-          }}>
-            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-            </svg>
-          </div>
-          <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8, color: 'var(--txt-pure)' }}>
-            Welcome to Recgon
-          </h3>
-          <p style={{ fontSize: 14, color: 'var(--txt-muted)', maxWidth: 440, margin: '0 auto 24px', lineHeight: 1.6 }}>
-            Add your first project to get a health analysis, actionable priorities, and
-            a pulse from the mentor.
-          </p>
-          <div style={{ display: 'inline-flex', gap: 10 }}>
-            <Link href="/projects/new" className="btn btn-primary btn-sm">
-              Add your first project
-            </Link>
-            <Link href="/mentor" className="btn btn-secondary btn-sm">
-              Ask the mentor
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const showEmpty = !loading && overview.totalProjects === 0;
+  const homeParam = searchParams.get('home');
+  const variant =
+    homeParam === 'refined' ? 'refined'
+    : homeParam === 'classic' ? 'classic'
+    : HOME_DEFAULT_VARIANT;
 
   return (
-    <div>
-      {/* Header */}
-      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32 }}>
-        <div>
-          <h2><span style={{ color: 'var(--signature)', opacity: 0.5 }}>$ </span>overview</h2>
-          <p>
-            {currentTeam?.name
-              ? <><strong>{currentTeam.name}</strong> · {projects.length} project{projects.length !== 1 ? 's' : ''}</>
-              : 'Loading…'}
-          </p>
-        </div>
-      </div>
-
-      {/* Recgon pulse */}
-      <div className="glass-card" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <span className="recgon-label" style={{ margin: 0 }}>recgon's pulse</span>
-          {(avgHealth !== null || unreadFeedback > 0) && (
-            <span style={{
-              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-              fontSize: 11, color: 'var(--txt-faint)', letterSpacing: '0.2px',
-            }}>
-              {avgHealth !== null && (
-                <>
-                  avg health <strong style={{ color: 'var(--txt-pure)' }}>{avgHealth}</strong>
-                  {' · '}{analyzed} analyzed
-                  {needsAttention > 0 && <> · <span style={{ color: 'var(--warning)' }}>{needsAttention} slipping</span></>}
-                </>
-              )}
-              {unreadFeedback > 0 && (
-                <>
-                  {avgHealth !== null && ' · '}
-                  <Link href="/feedback" style={{ color: 'var(--signature)', textDecoration: 'none', fontWeight: 600 }}>
-                    {unreadFeedback} new feedback
-                  </Link>
-                </>
-              )}
-            </span>
-          )}
-        </div>
-        {briefLoading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[100, 80, 60].map((w) => (
-              <div key={w} style={{
-                height: 14, borderRadius: 6,
-                background: 'rgba(var(--signature-rgb), 0.08)',
-                width: `${w}%`,
-                animation: 'pulse 1.5s ease-in-out infinite',
-              }} />
-            ))}
-          </div>
-        ) : brief ? (
-          <div>
-            <p style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--txt-pure)', marginBottom: 12 }}>
-              {cleanText(brief.brief)}
+    <div className="v2-cockpit" data-home-variant={variant}>
+      {showEmpty ? (
+        <div className="glass-card is-static is-roomy v2-empty-hero">
+          <div className="v2-empty-num" aria-hidden="true">01</div>
+          <div className="v2-empty-body">
+            <h2 className="v2-empty-title">
+              <span className="v2-pink">Add</span> a product. Recgon takes it from there.
+            </h2>
+            <p className="v2-empty-text">
+              Connect a repo or describe an idea. You&apos;ll get a full product brief, a task queue, and a mentor that knows your context — within minutes.
             </p>
-            <p style={{
-              fontSize: 13.5, color: 'var(--signature)', fontWeight: 500,
-              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-              paddingTop: 12, borderTop: '1px solid var(--btn-secondary-border)',
-              marginBottom: 0,
-            }}>
-              → {cleanText(brief.focusArea)}
-            </p>
-          </div>
-        ) : analyzed === 0 ? (
-          <p style={{ fontSize: 13.5, color: 'var(--txt-muted)' }}>
-            Analyze a project to get your first pulse from the mentor.
-          </p>
-        ) : (
-          <p style={{ fontSize: 13.5, color: 'var(--txt-muted)' }}>Generating your pulse — refresh in a moment.</p>
-        )}
-
-        {analytics.length > 0 && (
-          <div style={{
-            marginTop: 16,
-            paddingTop: 14,
-            borderTop: '1px solid var(--btn-secondary-border)',
-            display: 'flex', flexWrap: 'wrap', gap: 16,
-          }}>
-            {analytics.map((a) => {
-              const up = a.deltaPct > 0;
-              const flat = a.deltaPct === 0;
-              const color = flat ? 'var(--txt-faint)' : up ? 'var(--success)' : 'var(--danger)';
-              const arrow = flat ? '·' : up ? '↑' : '↓';
-              return (
-                <div key={a.projectName} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                  fontSize: 11.5,
-                }}>
-                  <span style={{
-                    background: 'rgba(var(--signature-rgb), 0.08)',
-                    border: '1px solid rgba(var(--signature-rgb), 0.2)',
-                    color: 'var(--signature)',
-                    padding: '1px 7px', borderRadius: 'var(--r-pill)',
-                    fontSize: 10, fontWeight: 600, letterSpacing: '0.3px',
-                  }}>
-                    {a.projectName}
-                  </span>
-                  <span style={{ color: 'var(--txt-muted)' }}>
-                    sessions <strong style={{ color: 'var(--txt-pure)', fontWeight: 600 }}>{a.sessionsCurrent}</strong>
-                  </span>
-                  <span style={{ color, fontWeight: 600 }}>
-                    {arrow} {flat ? 'flat' : `${Math.abs(a.deltaPct)}%`}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {showAnalyticsNudge && (
-          <div style={{
-            marginTop: 14, padding: '10px 14px',
-            background: 'rgba(var(--signature-rgb), 0.05)',
-            border: '1px solid rgba(var(--signature-rgb), 0.15)',
-            borderRadius: 'var(--r-sm)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-          }}>
-            <span style={{ fontSize: 12.5, color: 'var(--txt-muted)' }}>
-              No analytics connected — link GA4 to see real traffic.
-            </span>
-            <Link href="/analytics" style={{
-              fontSize: 12, fontWeight: 600, color: 'var(--signature)',
-              textDecoration: 'none', whiteSpace: 'nowrap',
-            }}>
-              Connect →
+            <Link href="/projects" className="v2-empty-cta">
+              <span>Create your first project</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
             </Link>
           </div>
-        )}
-
-        {/* Ask mentor input */}
-        <form
-          onSubmit={submitAsk}
-          style={{
-            marginTop: 18,
-            display: 'flex', gap: 8, alignItems: 'stretch',
-          }}
-        >
-          <input
-            value={ask}
-            onChange={(e) => setAsk(e.target.value)}
-            placeholder="Ask Recgon…"
-            style={{
-              flex: 1,
-              padding: '10px 14px',
-              background: 'var(--bg-input)',
-              border: '1px solid var(--btn-secondary-border)',
-              borderRadius: 'var(--r-sm)',
-              color: 'var(--txt-pure)',
-              fontSize: 13.5,
-              outline: 'none',
-            }}
-          />
-          <button
-            type="submit"
-            style={{
-              padding: '10px 16px',
-              background: 'transparent',
-              border: '1px solid var(--btn-secondary-border)',
-              borderRadius: 'var(--r-sm)',
-              color: 'var(--txt-muted)',
-              fontSize: 12, fontWeight: 500,
-              cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
-            </svg>
-            {ask.trim() ? 'Ask' : 'Open terminal'}
-          </button>
-        </form>
-      </div>
-
-      {/* Active tasks — top 5 open, sorted by importance */}
-      {(tasksLoading || topTasks.length > 0) && (
-        <div className="glass-card" style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <span className="recgon-label" style={{ margin: 0 }}>active tasks</span>
-            {teamId && (
-              <Link
-                href={`/teams/${teamId}/tasks`}
-                style={{
-                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                  fontSize: 11, color: 'var(--txt-faint)', textDecoration: 'none',
-                  letterSpacing: '0.2px',
-                }}
-              >
-                {openTaskCount > topTasks.length ? `+${openTaskCount - topTasks.length} more · ` : ''}view all →
-              </Link>
-            )}
-          </div>
-
-          {tasksLoading ? (
-            <div className="skeleton-pulse" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1, 2, 3].map((i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(var(--signature-rgb), 0.2)', flexShrink: 0 }} />
-                  <div style={{ flex: 1, height: 12, borderRadius: 6, background: 'rgba(var(--signature-rgb), 0.08)' }} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div>
-              {topTasks.map((t, idx) => {
-                const status = taskStatusLabel(t.status);
-                const chip = taskPriorityChip(t.priority);
-                const projectName = t.projectId ? projectNameById.get(t.projectId) : null;
-                return (
-                  <Link
-                    key={t.id}
-                    href={teamId ? `/teams/${teamId}/tasks` : '#'}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 11,
-                      padding: '10px 0',
-                      borderBottom: idx < topTasks.length - 1 ? '1px dashed var(--btn-secondary-border)' : 'none',
-                      textDecoration: 'none', color: 'inherit',
-                    }}
-                  >
-                    <div style={{
-                      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                      background: status.color,
-                      boxShadow: t.status === 'awaiting_review' || t.priority <= 0
-                        ? `0 0 5px ${status.color}` : 'none',
-                    }} />
-                    <div style={{
-                      flex: 1, minWidth: 0,
-                      fontSize: 13.5, fontWeight: 500, color: 'var(--txt-pure)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {cleanText(t.title)}
-                    </div>
-                    {projectName && (
-                      <span style={{
-                        background: 'rgba(var(--signature-rgb), 0.08)',
-                        border: '1px solid rgba(var(--signature-rgb), 0.2)',
-                        color: 'var(--signature)',
-                        padding: '1px 8px', borderRadius: 'var(--r-pill)',
-                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                        fontSize: 10, fontWeight: 600, letterSpacing: '0.4px',
-                        textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0,
-                      }}>
-                        {projectName}
-                      </span>
-                    )}
-                    {chip && (
-                      <span style={{
-                        color: chip.color,
-                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                        fontSize: 10, fontWeight: 700, letterSpacing: '0.6px',
-                        textTransform: 'uppercase', flexShrink: 0,
-                      }}>
-                        {chip.label}
-                      </span>
-                    )}
-                    <span style={{
-                      color: 'var(--txt-faint)',
-                      fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                      fontSize: 10.5, letterSpacing: '0.3px',
-                      whiteSpace: 'nowrap', flexShrink: 0, minWidth: 56, textAlign: 'right',
-                    }}>
-                      {status.label}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
         </div>
+      ) : variant === 'classic' ? (
+        <ClassicHome overview={overview} loading={loading} />
+      ) : (
+        <RefinedHome overview={overview} loading={loading} />
       )}
 
-      {/* Actions + Signals */}
-      <div className="grid-2" style={{ marginBottom: 24 }}>
-
-        {/* Priority Actions */}
-        <div className="glass-card">
-          <span className="recgon-label">priority actions</span>
-          {coreLoading ? (
-            <div className="skeleton-pulse" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1, 2, 3].map((i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(var(--signature-rgb), 0.2)', marginTop: 5, flexShrink: 0 }} />
-                  <div style={{ flex: 1, height: 13, borderRadius: 6, background: 'rgba(var(--signature-rgb), 0.08)' }} />
-                </div>
-              ))}
-            </div>
-          ) : actions.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--txt-muted)' }}>
-              {analyzed === 0 ? 'Analyze a project to see action items.' : 'No actions right now — good shape!'}
-            </p>
-          ) : (
-            <div>
-              {(() => {
-                const groups: { projectName: string; items: Action[] }[] = [];
-                for (const a of actions) {
-                  const last = groups[groups.length - 1];
-                  if (last && last.projectName === a.projectName) last.items.push(a);
-                  else groups.push({ projectName: a.projectName, items: [a] });
-                }
-                return groups.map((group, gi) => (
-                  <div
-                    key={group.projectName + gi}
-                    style={{
-                      paddingTop: gi === 0 ? 4 : 14,
-                      paddingBottom: 4,
-                      borderTop: gi > 0 ? '1px solid var(--btn-secondary-border)' : 'none',
-                    }}
-                  >
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      marginBottom: 6,
-                    }}>
-                      <span style={{
-                        background: 'rgba(var(--signature-rgb), 0.08)',
-                        border: '1px solid rgba(var(--signature-rgb), 0.2)',
-                        color: 'var(--signature)',
-                        padding: '2px 9px', borderRadius: 'var(--r-pill)',
-                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                        fontSize: 10.5, fontWeight: 600, letterSpacing: '0.4px',
-                        textTransform: 'uppercase',
-                      }}>
-                        {group.projectName}
-                      </span>
-                      <span style={{
-                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                        fontSize: 10.5, color: 'var(--txt-faint)',
-                      }}>
-                        {group.items.length} action{group.items.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    {group.items.map((action, idx) => (
-                      <div
-                        key={action.id}
-                        style={{
-                          display: 'flex', alignItems: 'flex-start', gap: 11,
-                          padding: '9px 0',
-                          borderBottom: idx < group.items.length - 1 ? '1px dashed var(--btn-secondary-border)' : 'none',
-                        }}
-                      >
-                        <div style={{
-                          width: 7, height: 7, borderRadius: '50%', marginTop: 5, flexShrink: 0,
-                          background: PRIORITY_COLOR[action.priority],
-                          boxShadow: PRIORITY_SHADOW[action.priority],
-                        }} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 3, color: 'var(--txt-pure)' }}>
-                            {cleanText(action.title)}
-                          </div>
-                          <div style={{
-                            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                            fontSize: 11, color: 'var(--txt-faint)',
-                            display: 'flex', alignItems: 'center', gap: 7,
-                          }}>
-                            {action.source}
-                            {action.surfacedAt && (() => {
-                              const ageDays = Math.floor((Date.now() - new Date(action.surfacedAt).getTime()) / 86400000);
-                              if (ageDays < 1) return null;
-                              const stale = ageDays >= 14;
-                              return (
-                                <span style={{
-                                  color: stale ? 'var(--warning)' : 'var(--txt-faint)',
-                                  fontWeight: stale ? 600 : 400,
-                                }}>
-                                  · {ageDays}d
-                                </span>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ));
-              })()}
-            </div>
-          )}
-        </div>
-
-        {/* Recent Signals */}
-        <div className="glass-card">
-          <span className="recgon-label">recent signals</span>
-          {coreLoading ? (
-            <div className="skeleton-pulse" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ width: 44, height: 11, borderRadius: 4, background: 'rgba(var(--signature-rgb), 0.08)', flexShrink: 0 }} />
-                  <div style={{ flex: 1, height: 11, borderRadius: 4, background: 'rgba(var(--signature-rgb), 0.05)' }} />
-                </div>
-              ))}
-            </div>
-          ) : signals.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--txt-muted)' }}>
-              Nothing new in the last 7 days.
-            </p>
-          ) : (
-            <div>
-              {signals.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="list-enter"
-                  style={{
-                    display: 'flex', gap: 14, padding: '10px 0',
-                    borderBottom: idx < signals.length - 1 ? '1px solid var(--btn-secondary-border)' : 'none',
-                  }}
-                >
-                  <div style={{
-                    fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                    fontSize: 10.5, color: 'var(--txt-faint)',
-                    paddingTop: 2, whiteSpace: 'nowrap', minWidth: 48,
-                  }}>
-                    {timeAgo(item.createdAt)}
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--txt-muted)', lineHeight: 1.55 }}>
-                    {cleanText(item.label)}
-                    {item.projectName && (
-                      <> on <strong style={{ color: 'var(--signature)', fontWeight: 500 }}>{item.projectName}</strong></>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
+        .v2-cockpit {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          max-width: 1440px;
+          margin: 0 auto;
+          animation: v2cockpitFade 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+        @keyframes v2cockpitFade {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: none; }
+        }
+        .v2-cockpit > * {
+          animation: v2sectionFade 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+        .v2-cockpit > *:nth-child(1) { animation-delay: 30ms; }
+        .v2-cockpit > *:nth-child(2) { animation-delay: 80ms; }
+        .v2-cockpit > *:nth-child(3) { animation-delay: 180ms; }
+        .v2-cockpit > *:nth-child(4) { animation-delay: 240ms; }
+        .v2-cockpit > *:nth-child(5) { animation-delay: 340ms; }
+        .v2-cockpit > *:nth-child(6) { animation-delay: 400ms; }
+        @keyframes v2sectionFade {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: none; }
+        }
+
+        /* Spacing rhythm: the SectionIndex sits TIGHT to its section
+           (gap 14px above), but each (index + section) PAIR has more
+           breathing room from the previous pair. Achieved with a top
+           margin on every section-index AFTER the first. */
+        .v2-cockpit > .v2-sec-idx { margin-top: 16px; }
+        .v2-cockpit > .v2-sec-idx:first-child { margin-top: 0; }
+
+        /* Section index marker — number + label tight together, sub off
+           to the side. No decorative rule between them. */
+        .v2-sec-idx {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 3px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+        }
+        .v2-sec-idx-num {
+          font-size: 11px;
+          letter-spacing: 0.6px;
+          color: var(--signature);
+          font-weight: 700;
+          font-variant-numeric: tabular-nums;
+          padding: 2px 7px;
+          background: rgba(var(--signature-rgb), 0.08);
+          border: 1px solid rgba(var(--signature-rgb), 0.2);
+          border-radius: 4px;
+        }
+        .v2-sec-idx-lab {
+          font-size: 11px;
+          letter-spacing: 1.4px;
+          text-transform: uppercase;
+          color: var(--txt-pure);
+          font-weight: 700;
+        }
+
+        .v2-cockpit[data-home-variant='classic'] .v2-sec-idx {
+          min-height: 26px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-sec-idx-num {
+          border-radius: 6px;
+          background: rgba(var(--signature-rgb), 0.11);
+          box-shadow: 0 0 0 1px rgba(var(--signature-rgb), 0.06);
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-sec-idx-lab {
+          letter-spacing: 1px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-sec-idx-sub {
+          letter-spacing: 0;
+          color: var(--txt-muted);
+        }
+
+        /* Classic homepage polish: keep the same content, improve density,
+           rhythm, and visible actions. */
+        .v2-cockpit[data-home-variant='classic'] .v2-fc-shell {
+          border-radius: 12px;
+          padding: 18px 22px;
+          gap: 14px;
+          box-shadow:
+            0 18px 42px -24px rgba(0, 0, 0, 0.48),
+            inset 0 1px 0 rgba(255, 255, 255, 0.055);
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-fc-grid {
+          gap: 24px;
+          grid-template-columns: minmax(0, 1.42fr) minmax(300px, 0.88fr);
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-fc-name {
+          letter-spacing: 0;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-fc-callout {
+          border-radius: 10px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-fc-right {
+          border-radius: 10px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-fc-cta {
+          border-radius: 8px;
+        }
+
+        .v2-cockpit[data-home-variant='classic'] .v2-bd-grid {
+          gap: 12px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-bd-col.glass-card {
+          border-radius: 10px;
+          min-height: 244px;
+          padding: 18px 18px 48px;
+          gap: 13px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-bd-col-head {
+          gap: 10px;
+          padding-bottom: 11px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-bd-col-tag {
+          letter-spacing: 0.6px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-bd-counter-num {
+          font-size: 33px;
+          letter-spacing: 0;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-bd-counter-lab {
+          letter-spacing: 0;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-bd-dec {
+          border-radius: 7px;
+          padding: 10px 12px 10px 14px;
+          background: rgba(255,255,255,0.026);
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-pf {
+          gap: 12px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-pf-card {
+          border-radius: 10px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-pf-statusbar {
+          gap: 5px;
+        }
+        .v2-cockpit[data-home-variant='classic'] .v2-pf-rowlink {
+          min-height: 56px;
+        }
+        @media (max-width: 980px) {
+          .v2-cockpit[data-home-variant='classic'] .v2-fc-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .v2-sec-idx-sub {
+          margin-left: 6px;
+          font-size: 10.5px;
+          letter-spacing: 0.3px;
+          color: var(--txt-faint);
+          font-weight: 500;
+          text-transform: lowercase;
+        }
+        .v2-sec-idx-sub::before {
+          content: '·';
+          margin-right: 8px;
+          opacity: 0.5;
+        }
+        @media (max-width: 720px) {
+          .v2-sec-idx-sub { display: none; }
+        }
+
+        .v2-pink { color: var(--signature); }
+
+        .v2-home-mode {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          min-height: 24px;
+        }
+        .v2-home-action-classic,
+        .v2-home-pf-all {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 34px;
+          padding: 8px 13px;
+          border-radius: 7px;
+          font-size: 12px;
+          font-weight: 650;
+          text-decoration: none;
+          transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+        }
+        .v2-home-action-primary {
+          color: white;
+          background: var(--signature);
+          border: 1px solid var(--signature);
+        }
+        .v2-home-action-secondary {
+          color: var(--txt-pure);
+          background: rgba(255,255,255,0.045);
+          border: 1px solid var(--rule);
+        }
+        .v2-home-action-classic,
+        .v2-home-pf-all {
+          color: var(--txt-faint);
+          background: transparent;
+          border: 1px solid var(--rule);
+        }
+        .v2-home-action-classic:hover,
+        .v2-home-pf-all:hover {
+          transform: translateY(-1px);
+          color: var(--txt-pure);
+          border-color: rgba(var(--signature-rgb), 0.34);
+        }
+
+        .v2-home-pf {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .v2-home-pf-head {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .v2-home-pf-grow { flex: 1; }
+        .v2-home-pf-card {
+          padding: 6px;
+          border-radius: 10px;
+        }
+        .v2-home-pf-list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+        }
+        .v2-home-pf-row + .v2-home-pf-row {
+          border-top: 1px solid var(--rule);
+        }
+        .v2-home-pf-link {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          gap: 12px;
+          align-items: center;
+          min-height: 58px;
+          padding: 8px 10px;
+          border-radius: 7px;
+          text-decoration: none;
+          color: inherit;
+          transition: background 160ms ease;
+        }
+        .v2-home-pf-link:hover {
+          background: rgba(255,255,255,0.035);
+        }
+        .v2-home-pf-avatar {
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(var(--signature-rgb), 0.18);
+          border: 1px solid rgba(var(--signature-rgb), 0.22);
+          color: var(--txt-pure);
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 12px;
+          font-weight: 800;
+        }
+        .v2-home-pf-main {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .v2-home-pf-name {
+          color: var(--txt-pure);
+          font-size: 13px;
+          font-weight: 650;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .v2-home-pf-risk {
+          color: var(--txt-muted);
+          font-size: 12px;
+          line-height: 1.35;
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+        }
+        .v2-home-pf-meta {
+          display: flex;
+          align-items: flex-end;
+          flex-direction: column;
+          gap: 3px;
+          min-width: 72px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          color: var(--txt-faint);
+          font-size: 10px;
+          text-transform: lowercase;
+        }
+        .v2-home-pf-meta strong {
+          color: var(--txt-pure);
+          font-size: 13px;
+          font-variant-numeric: tabular-nums;
+        }
+        .v2-home-pf-row[data-pulse='stuck'] .v2-home-pf-meta strong,
+        .v2-home-pf-row[data-pulse='drifting'] .v2-home-pf-meta strong {
+          color: var(--danger, #dc2626);
+        }
+        .v2-home-pf-row[data-pulse='shipping'] .v2-home-pf-meta strong {
+          color: var(--success, #059669);
+        }
+        .v2-home-pf-empty {
+          margin: 0;
+          padding: 18px;
+          color: var(--txt-muted);
+          font-size: 13px;
+        }
+        .v2-home-pf-skel {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 8px;
+        }
+        .v2-home-pf-skel span {
+          height: 42px;
+          border-radius: 7px;
+          background: rgba(255,255,255,0.045);
+          animation: v2sectionFade 900ms ease-in-out infinite alternate;
+        }
+
+        /* --- EMPTY HERO --- */
+        .v2-empty-hero {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 36px;
+          align-items: center;
+        }
+        .v2-empty-num {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 96px;
+          font-weight: 200;
+          line-height: 1;
+          color: var(--signature);
+          letter-spacing: -0.05em;
+          font-variant-numeric: tabular-nums;
+          opacity: 0.92;
+        }
+        .v2-empty-title {
+          font-size: clamp(22px, 2.6vw, 28px);
+          font-weight: 600;
+          line-height: 1.25;
+          letter-spacing: -0.018em;
+          color: var(--txt-pure);
+          margin: 0 0 14px;
+        }
+        .v2-empty-text {
+          max-width: 520px;
+          font-size: 14.5px;
+          line-height: 1.65;
+          color: var(--txt-muted);
+          margin: 0 0 22px;
+        }
+        .v2-empty-cta {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 11px 18px;
+          background: var(--signature);
+          color: white;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: -0.005em;
+          text-decoration: none;
+          transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease;
+        }
+        .v2-empty-cta:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 28px -8px rgba(var(--signature-rgb), 0.45);
+        }
+        .v2-empty-cta svg { transition: transform 200ms ease; }
+        .v2-empty-cta:hover svg { transform: translateX(3px); }
+
+        @media (max-width: 720px) {
+          .v2-home-mode { justify-content: flex-start; }
+          .v2-home-pf-link {
+            grid-template-columns: auto minmax(0, 1fr);
+          }
+          .v2-home-pf-meta {
+            grid-column: 2;
+            align-items: flex-start;
+            flex-direction: row;
+          }
+          .v2-empty-hero { grid-template-columns: 1fr; gap: 18px; }
+          .v2-empty-num { font-size: 56px; }
         }
       `}</style>
     </div>
+  );
+}
+
+function ClassicHome({ overview, loading }: { overview: OverviewPayload; loading: boolean }) {
+  return (
+    <>
+      <SectionIndex idx="01" label="focus" sub="what needs your attention" />
+      <HomeFocus
+        focus={overview.todayFocus}
+        loading={loading}
+      />
+
+      <SectionIndex idx="02" label="board" />
+      <HomeBoard
+        decisions={overview.decisionDeck}
+        updates={overview.updates}
+        teamPulse={overview.teamPulse}
+        loading={loading}
+      />
+
+      <HomePortfolio
+        projects={overview.projectCards}
+        loading={loading}
+      />
+    </>
+  );
+}
+
+function RefinedHome({ overview, loading }: { overview: OverviewPayload; loading: boolean }) {
+  return (
+    <>
+      <div className="v2-home-mode">
+        <Link href="/?home=classic" className="v2-home-action-classic">classic view</Link>
+      </div>
+
+      <SectionIndex idx="01" label="next action" sub="what deserves your attention first" />
+      <HomeFocus
+        focus={overview.todayFocus}
+        loading={loading}
+      />
+
+      <SectionIndex idx="02" label="today's board" sub="decisions first, updates second" />
+      <HomeBoard
+        decisions={overview.decisionDeck}
+        updates={overview.updates}
+        teamPulse={overview.teamPulse}
+        loading={loading}
+        variant="refined"
+      />
+
+      <PortfolioSnapshot projects={overview.projectCards} loading={loading} />
+    </>
+  );
+}
+
+function PortfolioSnapshot({ projects, loading }: { projects: PortfolioRow[]; loading: boolean }) {
+  const visible = useMemo(() => {
+    return [...projects]
+      .sort((a, b) => {
+        const pulseOrder = (p: PortfolioRow['pulse']) =>
+          p === 'drifting' ? 0 : p === 'stuck' ? 1 : p === 'shipping' ? 2 : p === 'converging' ? 3 : 4;
+        return pulseOrder(a.pulse) - pulseOrder(b.pulse);
+      })
+      .slice(0, 5);
+  }, [projects]);
+
+  return (
+    <section className="v2-home-pf">
+      <header className="v2-home-pf-head">
+        <div className="v2-sec-idx" aria-label="Section 3, portfolio snapshot">
+          <span className="v2-sec-idx-num">03</span>
+          <span className="v2-sec-idx-lab">portfolio snapshot</span>
+        </div>
+        <span className="v2-home-pf-grow" />
+        <Link href="/projects" className="v2-home-pf-all">View all products</Link>
+      </header>
+
+      <div className="glass-card is-static v2-home-pf-card">
+        {loading ? (
+          <div className="v2-home-pf-skel">
+            <span />
+            <span />
+            <span />
+          </div>
+        ) : projects.length === 0 ? (
+          <p className="v2-home-pf-empty">No products yet.</p>
+        ) : (
+          <ul className="v2-home-pf-list">
+            {visible.map((p) => {
+              const risk = cleanText(p.topRisk) || cleanText(p.topNextStep) || 'No clear risk recorded yet.';
+              return (
+                <li key={p.id} className="v2-home-pf-row" data-pulse={p.pulse}>
+                  <Link href={`/projects/${p.id}`} className="v2-home-pf-link">
+                    <span className="v2-home-pf-avatar" aria-hidden="true">
+                      {p.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      ) : projectInitial(p.name)}
+                    </span>
+                    <span className="v2-home-pf-main">
+                      <span className="v2-home-pf-name">{p.name}</span>
+                      <span className="v2-home-pf-risk">{risk}</span>
+                    </span>
+                    <span className="v2-home-pf-meta">
+                      <span>{pulseShort(p.pulse)}</span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export default function V2HomePage() {
+  return (
+    <Suspense fallback={<div className="v2-cockpit" />}>
+      <V2HomeInner />
+    </Suspense>
   );
 }

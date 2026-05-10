@@ -10,17 +10,87 @@
 // the match. Bounded so newcomers aren't shut out and one bad rating doesn't
 // tank a strong teammate.
 //
-// Below MIN_FIT_SCORE the task stays unassigned and Recgon flags "no good fit".
+// Below MIN_FIT_SCORE the task falls to the team owner so a human picks.
+// Set high enough that an empty-skills random match doesn't squeak by.
 
 import { skillWeight } from './fitLearning';
 import type { AgentTask, BrainEntry, Teammate, TeammateWithStats, WorkingHours } from './types';
 
-export const MIN_FIT_SCORE = 0.25;
+// Why 0.4: with empty teammate skills the prior code scored ~0.45 from
+// availability + load + newcomer-fit alone, so 0.25 was effectively "anyone
+// goes". 0.4 means at least one of {real skill overlap, established fit
+// record} must contribute, otherwise the task bubbles to the owner.
+export const MIN_FIT_SCORE = 0.4;
 
 const W_SKILL = 0.45;
 const W_FIT = 0.30;
 const W_AVAIL = 0.15;
 const W_LOAD = 0.10;
+
+// Words tokenizing out of `teammate.title` that don't say anything about role.
+const TITLE_STOPWORDS = new Set([
+  'and', 'or', 'the', 'a', 'an', 'of', 'for', 'to', 'with', 'in', 'at',
+  'team', 'teammate', 'member', 'owner', 'lead', 'senior', 'junior', 'staff',
+  'principal', 'head', 'chief', 'co', 'mr', 'ms', 'mrs',
+]);
+
+// Shallow alias map so "social media" → social_media tag the LLM also emits.
+const TITLE_ALIASES: Record<string, string> = {
+  dev: 'engineering',
+  developer: 'engineering',
+  engineer: 'engineering',
+  programmer: 'engineering',
+  coder: 'engineering',
+  back: 'backend',
+  frontend: 'frontend',
+  front: 'frontend',
+  fullstack: 'engineering',
+  designer: 'design',
+  marketer: 'marketing',
+  growth: 'growth',
+  social: 'social_media',
+  media: 'social_media',
+  pm: 'product',
+  ceo: 'strategy',
+  cto: 'engineering',
+  founder: 'strategy',
+  support: 'customer_support',
+  customer: 'customer_support',
+  qa: 'qa',
+  tester: 'qa',
+  finance: 'finance',
+  ops: 'operations',
+  sales: 'sales',
+  data: 'analytics',
+  analyst: 'analytics',
+  research: 'research',
+  researcher: 'research',
+  copy: 'copywriting',
+  writer: 'content_writing',
+  content: 'content_writing',
+};
+
+function tokenizeTitle(title: string | undefined | null): string[] {
+  if (!title) return [];
+  // "Tester, Finance, Back-End Dev" → ["tester","finance","back","end","dev"]
+  const tokens = title
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !TITLE_STOPWORDS.has(t));
+  const out = new Set<string>();
+  for (const t of tokens) {
+    out.add(TITLE_ALIASES[t] ?? t);
+  }
+  // Compound: "social media" / "back end" handled via the alias on each word.
+  return [...out];
+}
+
+function teammateSkillSet(teammate: Pick<Teammate, 'skills' | 'title'>): string[] {
+  const explicit = (teammate.skills ?? []).map((s) => s.toLowerCase());
+  const fromTitle = tokenizeTitle(teammate.title);
+  return [...new Set([...explicit, ...fromTitle])];
+}
 
 function jaccard(a: string[], b: string[]): number {
   if (a.length === 0 && b.length === 0) return 0.5; // no signal — neutral
@@ -42,32 +112,18 @@ function fitForKind(teammate: Teammate, kind: string): number {
   return Math.max(0, Math.min(1, (score + 1) / 2));
 }
 
-export function isWithinWorkingHours(wh: WorkingHours | null, now: Date = new Date()): boolean {
-  if (!wh) return true; // null = always available (AI default)
-  const tz = wh.tz || 'UTC';
-  // Format hour in target timezone using Intl. Cheap enough to do per-call.
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    weekday: 'short',
-    hour: 'numeric',
-    hour12: false,
-  });
-  const parts = fmt.formatToParts(now);
-  const wd = (parts.find((p) => p.type === 'weekday')?.value ?? '').toLowerCase();
-  const hourStr = parts.find((p) => p.type === 'hour')?.value ?? '0';
-  const hour = parseInt(hourStr, 10);
-  const map: Record<string, keyof WorkingHours> = {
-    mon: 'mon', tue: 'tue', wed: 'wed', thu: 'thu', fri: 'fri', sat: 'sat', sun: 'sun',
-  };
-  const key = map[wd];
-  if (!key) return false;
-  const window = wh[key];
-  if (!Array.isArray(window)) return false;
-  return hour >= window[0] && hour < window[1];
+// Day-precision availability: does the teammate work on `now`'s UTC weekday?
+// Hour-of-day was removed when the calendar moved to day granularity.
+const WEEKDAY_BY_UTC_INDEX = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+
+export function isWorkingDay(wh: WorkingHours | null, now: Date = new Date()): boolean {
+  if (!wh) return true; // null = always available
+  const wd = WEEKDAY_BY_UTC_INDEX[now.getUTCDay()];
+  return wh.days.includes(wd);
 }
 
 function availabilityNow(teammate: Teammate, now: Date = new Date()): number {
-  return isWithinWorkingHours(teammate.workingHours, now) ? 1 : 0.3;
+  return isWorkingDay(teammate.workingHours, now) ? 1 : 0.3;
 }
 
 function loadHeadroom(inFlightHours: number, capacityHours: number, taskHours: number): number {
@@ -102,7 +158,11 @@ export function scoreTeammateForTask(
   task: MatchInput,
   now: Date = new Date(),
 ): MatchResult {
-  const baseSkillOverlap = jaccard(task.requiredSkills ?? [], teammate.skills ?? []);
+  // Union the teammate's explicit skills with role tokens parsed from their
+  // job `title`. This way a teammate with `title: "Social Media"` and an
+  // empty `skills[]` still gets recognized as the social-media person.
+  const teammateSkills = teammateSkillSet(teammate);
+  const baseSkillOverlap = jaccard(task.requiredSkills ?? [], teammateSkills);
   // Per-skill learning: weight the skill score by the teammate's recent
   // track record on the specific skills this task needs. 1.0 = no signal.
   const weight = skillWeight(teammate.fitProfile, task.requiredSkills ?? []);
@@ -142,13 +202,19 @@ export function pickBestMatch(
   now: Date = new Date(),
 ): MatchResult | null {
   // AI teammates are not dispatched to (the AI-doer side was removed).
-  const eligible = candidates.filter((c) => c.status === 'active' && c.kind !== 'ai');
-  if (eligible.length === 0) return null;
-  const scored = eligible.map((c) => scoreTeammateForTask(c, task, now));
-  scored.sort((a, b) => b.score - a.score);
-  const best = scored[0];
-  if (best.score < MIN_FIT_SCORE) return null;
-  return best;
+  return rankMatches(candidates, task, now)[0] ?? null;
+}
+
+export function rankMatches(
+  candidates: Scoreable[],
+  task: MatchInput,
+  now: Date = new Date(),
+): MatchResult[] {
+  const eligible = candidates.filter((c) => c.status === 'active');
+  return eligible
+    .map((c) => scoreTeammateForTask(c, task, now))
+    .filter((r) => r.score >= MIN_FIT_SCORE)
+    .sort((a, b) => b.score - a.score);
 }
 
 // Convenience for brain entries (same shape as AgentTask for matching purposes).
