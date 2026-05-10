@@ -1,11 +1,11 @@
-# Requirements: Recgon — Smarter AI Product Manager v2
+# Requirements: Recgon — Smarter AI Product Manager v3
 
 **Defined:** 2026-05-11
 **Core Value:** The right task gets to the right teammate at the right time, with reasoning the teammate can trust.
 
-> **Naming note:** "v1" below means *this milestone's committed scope* (the Smarter Dispatcher milestone), not Recgon as a whole. Pre-existing Recgon capabilities are captured as **Validated** in `PROJECT.md`.
+> **Naming note:** This milestone is the **Smarter Dispatcher v3** upgrade. Pre-existing Recgon capabilities (today's product) are captured as **Validated** in `PROJECT.md` and remain untouched. Each phase of v3 is purely additive on top of that foundation.
 
-## v1 Requirements (Smarter Dispatcher Milestone)
+## Milestone Requirements (Smarter Dispatcher v3)
 
 Each requirement maps to one of the canonical phases A → E from `.planning/research/SUMMARY.md`.
 
@@ -72,7 +72,7 @@ These apply across phases A — E and are enforced during phase planning and ver
 - [ ] **QUAL-05**: All new LLM calls go through the existing `chatViaChain` (Gemini → Claude fallback) and respect the existing `llm_health` circuit breaker.
 - [ ] **QUAL-06**: All new LLM calls use `temperature: 0` for deterministic re-runs.
 
-## v2 Requirements (deferred to a future milestone)
+## Deferred Requirements (next milestone)
 
 Acknowledged but not in this roadmap. Documented to prevent accidental scope creep AND to make it explicit they were considered.
 
@@ -93,7 +93,7 @@ Acknowledged but not in this roadmap. Documented to prevent accidental scope cre
 
 ### Feedback Loop
 
-- **FEEDBACK-01**: Rebuild user-feedback ingestion (removed 2026-05-11) as a brain input source — separate milestone, not v2.
+- **FEEDBACK-01**: Rebuild user-feedback ingestion (removed 2026-05-11) as a brain input source — separate milestone, not v3.
 
 ## Out of Scope
 
@@ -103,7 +103,7 @@ Explicitly excluded. Documented to prevent scope creep AND for future-me to reme
 |---------|--------|
 | Full-LLM dispatcher (LLM picks freely from all teammates, no math pre-filter) | Less predictable, less explainable, more expensive. Hybrid math + LLM judgment is the chosen approach (PROJECT.md Key Decisions). |
 | AI synthetic teammates | Removed in migration `20260505_remove_ai_teammates.sql`. Dispatcher routes only to real human users with email + calendar. |
-| AI tool-use for teammates (autonomous code execution) | Parked 2026-04-27 ("agents real work deferred"). v2 must not assume autonomous AI execution. |
+| AI tool-use for teammates (autonomous code execution) | Parked 2026-04-27 ("agents real work deferred"). v3 must not assume autonomous AI execution. |
 | Black-box assignment (no reasoning shown) | Explainability is core to Core Value. Every assignment must show a human-readable "why" line. |
 | Public fit-score leaderboards / gamification | Toxic team dynamics risk. Internal telemetry only; teammates see their own profile, never others' scores. |
 | Forced reassignment without owner override | Loss of agency. Owner can always manually override any AI pick. |
@@ -112,7 +112,7 @@ Explicitly excluded. Documented to prevent scope creep AND for future-me to reme
 | Synchronous LLM call inside a request handler | All new LLM work goes through the existing `llm_jobs` queue. Vercel functions are stateless and time-bounded. |
 | Mining personal (non-team) GitHub repos for skill inference | Privacy / consent boundary. Mining is scoped strictly to team-connected repos. |
 | Freeform "reason" string in LLM judgment output | Hallucination risk. Output schema is structured (`{chosen_index, tiebreaker_factor, confidence}`) only. |
-| User feedback ingestion (rebuild the removed feature) | Separate milestone. v2 inputs are codebase + analytics + GitHub only. |
+| User feedback ingestion (rebuild the removed feature) | Separate milestone. v3 inputs are codebase + analytics + GitHub only. |
 
 ## Traceability
 

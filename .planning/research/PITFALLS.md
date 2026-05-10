@@ -2,9 +2,9 @@
 
 **Domain:** Hybrid math + LLM dispatcher (live codebase signal, self-declared profiles, GitHub-inferred skills, LLM judgment overlay, personalized task framing)
 **Researched:** 2026-05-11
-**Milestone context:** Recgon v2 — brownfield on top of an already-shipped deterministic dispatcher (`src/lib/recgon/*`). Feedback removed. AI teammates removed. AI tool-use deferred.
+**Milestone context:** Recgon v3 — brownfield on top of an already-shipped deterministic dispatcher (`src/lib/recgon/*`). Feedback removed. AI teammates removed. AI tool-use deferred.
 
-This document is the failure-mode catalog. Every pitfall below was selected because it has bitten teams building exactly this kind of system (hybrid PM-style assignment over small dev teams), not generic "LLM apps are hard" advice. Each entry maps to a v2 roadmap phase so research flags carry forward into planning.
+This document is the failure-mode catalog. Every pitfall below was selected because it has bitten teams building exactly this kind of system (hybrid PM-style assignment over small dev teams), not generic "LLM apps are hard" advice. Each entry maps to a v3 roadmap phase so research flags carry forward into planning.
 
 Confidence: HIGH for items grounded in published post-mortems / well-known dispatcher behavior (Linear AI triage, GitHub Copilot routing, JIRA auto-assign). MEDIUM for items extrapolated from adjacent domains (recommender bias, OAuth-skill mining). Flags noted per entry.
 
@@ -368,9 +368,9 @@ Confidence: HIGH for items grounded in published post-mortems / well-known dispa
 **What goes wrong:** Recgon's `workingHours` model says Alice is free 9–13 on Tuesday. Her actual Google Calendar shows a recurring stand-up + a customer call. Assignment lands, deadline calculation is wrong, task slips, blame falls on Alice.
 
 **Prevention strategy:**
-- **External-calendar integration is parked for v2** (per `PROJECT.md` Out of Scope), so the prevention is *honesty*: schedule estimates surface as *suggestions*, not deadlines. UI language: "Suggested completion: Tuesday afternoon (assuming ~4h focus time)" — not "Due Tuesday 1pm."
+- **External-calendar integration is parked for v3** (per `PROJECT.md` Out of Scope), so the prevention is *honesty*: schedule estimates surface as *suggestions*, not deadlines. UI language: "Suggested completion: Tuesday afternoon (assuming ~4h focus time)" — not "Due Tuesday 1pm."
 - **Self-reported availability override.** Teammate profile UI includes "I'm at limited capacity this week" toggle that drops their `capacityHours` by 50% until cleared.
-- **When calendar integration arrives (post-v2)**, model deep-work fragmentation — a 4h block of meetings + 30-min gaps is not a 4h task slot.
+- **When calendar integration arrives (post-v3)**, model deep-work fragmentation — a 4h block of meetings + 30-min gaps is not a 4h task slot.
 
 ---
 
@@ -540,7 +540,7 @@ Confidence: HIGH for items grounded in published post-mortems / well-known dispa
 
 ## Phase-Specific Warnings (cross-reference for roadmap)
 
-| v2 Phase | Critical pitfalls to design against |
+| v3 Phase | Critical pitfalls to design against |
 |----------|-------------------------------------|
 | Live codebase signal | 7 (task explosion), 14 (rate limits), 15 (stale "live"), 16 (branch divergence), 25 (schema drift) |
 | Self-declared profile UI | 8 (consent), 21 (cold start), 13 (locale) |

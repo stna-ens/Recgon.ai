@@ -1,8 +1,8 @@
-# Roadmap: Recgon — Smarter AI Product Manager v2
+# Roadmap: Recgon — Smarter AI Product Manager v3
 
 ## Overview
 
-Recgon v2 evolves the dispatcher from pure math into an explainable, manager-feeling AI Product Manager. The journey: teammates first declare who they are (Phase 1), GitHub fills in the gaps (Phase 2), an LLM tiebreaker picks the best fit on close calls with reasoning (Phase 3), the AI reframes each task in the assignee's voice (Phase 4), then the brain finally sees live code changes and turns them into bounded tasks (Phases 5-6). Every phase is independently shippable end-to-end — at the end of Phase 1 a real teammate can already self-declare skills and the dispatcher already uses them.
+Recgon v3 evolves the dispatcher from pure math into an explainable, manager-feeling AI Product Manager. The journey: teammates first declare who they are (Phase 1), GitHub fills in the gaps (Phase 2), an LLM tiebreaker picks the best fit on close calls with reasoning (Phase 3), the AI reframes each task in the assignee's voice (Phase 4), then the brain finally sees live code changes and turns them into bounded tasks (Phases 5-6). Every phase is independently shippable end-to-end — at the end of Phase 1 a real teammate can already self-declare skills and the dispatcher already uses them.
 
 ## Phases
 
@@ -15,7 +15,7 @@ Recgon v2 evolves the dispatcher from pure math into an explainable, manager-fee
 - [ ] **Phase 3: LLM Judgment Overlay** — On close fit-score calls, an anonymized batched LLM tiebreaker picks the final assignee with a structured "why".
 - [ ] **Phase 4: Personalized Task Framing** — Queued reframe job rewrites each assigned task in the assignee's voice with where-to-start pointers.
 - [ ] **Phase 5: Live Code Infrastructure** — Incremental analyzer + per-file SHA cache; tree-sitter and Octokit added as server-only deps.
-- [ ] **Phase 6: Brain Integration & Cost Guards** — Brain consumes `LiveCodeDelta[]`; mint caps, WIP gate, cool-down, and v2 telemetry land.
+- [ ] **Phase 6: Brain Integration & Cost Guards** — Brain consumes `LiveCodeDelta[]`; mint caps, WIP gate, cool-down, and v3 telemetry land.
 
 ## Phase Details
 
@@ -89,7 +89,7 @@ Recgon v2 evolves the dispatcher from pure math into an explainable, manager-fee
 **Research recommended:** yes — `/gsd-research-phase` should resolve the GitHub App vs user-OAuth rate-limit decision before plan-check (flagged in SUMMARY.md Open Questions).
 
 ### Phase 6: Brain Integration & Cost Guards
-**Goal:** The brain consumes `LiveCodeDelta[]` alongside GA4 + GitHub-diff inputs; per-dispatch mint caps, capacity-aware WIP gates, and 7-day per-source cool-downs prevent task explosion; v2 telemetry (cost per run, LLM judgment count, fallback count, reframe count) is observable end-to-end via the existing logger.
+**Goal:** The brain consumes `LiveCodeDelta[]` alongside GA4 + GitHub-diff inputs; per-dispatch mint caps, capacity-aware WIP gates, and 7-day per-source cool-downs prevent task explosion; v3 telemetry (cost per run, LLM judgment count, fallback count, reframe count) is observable end-to-end via the existing logger.
 **Mode:** mvp
 **Depends on:** Phase 5 (live code summaries must exist before the brain can consume them)
 **Requirements:** LIVECODE-03, LIVECODE-04, LIVECODE-05, LIVECODE-06, QUAL-04
@@ -98,7 +98,7 @@ Recgon v2 evolves the dispatcher from pure math into an explainable, manager-fee
   2. When the team's open WIP exceeds 1.5× combined declared capacity hours, the brain skips new minting entirely for that run (no new assignments, no new emails) and resumes once WIP drops back below the threshold.
   3. The same signal family (same file family or same analytics drop) firing repeatedly over 7 days mints exactly one task in that window — not one task per cron run.
   4. Running a full dispatch cycle, an operator can query the logger and observe: total cost in USD for the run, count of LLM judgment calls (with fallback events broken out), count of `task_reframe` jobs queued, count of `live_code_summary` jobs queued.
-  5. With live code disabled (feature flag off per team), the brain still mints tasks from the pre-v2 sources — live code remains purely additive.
+  5. With live code disabled (feature flag off per team), the brain still mints tasks from the pre-v3 sources — live code remains purely additive.
 **Plans:** 4 plans hint — (1) `brain.ts` integration of `LiveCodeDelta[]` + feature flag, (2) per-dispatch mint cap + capacity-aware WIP gate in `dispatcher.ts`, (3) per-source 7-day cool-down via brain-entry dedupKey family hash, (4) telemetry: cost/judgment/fallback/reframe counters wired through existing `logger`.
 **Research recommended:** skip — standard patterns (extends existing `brain.ts` + `dispatcher.ts` + logger).
 

@@ -44,7 +44,7 @@ Recent decisions affecting current work:
 
 - Canonical build order: A→B→C→D→E from SUMMARY.md (single-dev, sequential; FEATURES.md parallelization rejected).
 - Phase 3 (LLM Judgment) and Phase 5 (Live Code Infrastructure) flagged for `/gsd-research-phase`.
-- All v2 work is additive — no schema mutation on `agent_teammates`; `profileMerge` is the read-path.
+- All v3 work is additive — no schema mutation on `agent_teammates`; `profileMerge` is the read-path.
 
 ### Pending Todos
 
@@ -60,7 +60,7 @@ None yet.
 
 ## Deferred Items
 
-Items acknowledged and carried forward (from REQUIREMENTS.md v2):
+Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|

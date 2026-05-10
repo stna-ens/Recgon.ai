@@ -1,6 +1,6 @@
 # Architecture Patterns
 
-**Domain:** LLM-augmented AI Product Manager / task dispatcher (Recgon v2)
+**Domain:** LLM-augmented AI Product Manager / task dispatcher (Recgon v3)
 **Researched:** 2026-05-11
 **Mode:** Project research — architecture dimension
 **Confidence:** HIGH (grounded in existing codebase maps)
@@ -13,7 +13,7 @@
 4. **Single source of truth for prompts (`prompts.ts`) and schemas (`schemas.ts`).** Every new LLM call gets a named prompt builder + a Zod schema, no inlining.
 5. **Audit everything the LLM decides.** Math score + LLM reasoning must both persist so the team can see *why* a task landed on them.
 
-## Recommended v2 Architecture
+## Recommended v3 Architecture
 
 ### Component Map (new vs existing)
 
@@ -39,14 +39,14 @@
 - `dispatcher.ts` remains the only orchestrator. It calls these libs in sequence and decides what to persist.
 - `profileMerge.ts` is computed *at dispatch time*, not stored. The three skill sources stay in their own columns / tables; the merge is a pure function. This avoids "which source is canonical?" ambiguity.
 
-## Data Flow (v2 pipeline)
+## Data Flow (v3 pipeline)
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
 │  Triggers                                                                 │
 │  • POST /api/teams/[id]/recgon/dispatch  (manual)                         │
 │  • GET  /api/cron/recgon-schedule        (daily 06:00 UTC)                │
-│  • GitHub webhook (optional, v2.x)       → enqueues live_code_summary job │
+│  • GitHub webhook (optional, v3.x)       → enqueues live_code_summary job │
 └────────────────────────────────────┬──────────────────────────────────────┘
                                      ▼
 ┌───────────────────────────────────────────────────────────────────────────┐

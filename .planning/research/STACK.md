@@ -1,13 +1,13 @@
-# Technology Stack — v2 Additions
+# Technology Stack — v3 Additions
 
-**Project:** Recgon — Smarter AI Product Manager v2
+**Project:** Recgon — Smarter AI Product Manager v3
 **Researched:** 2026-05-11
 **Mode:** Brownfield additions (do NOT re-research existing stack)
 **Overall confidence:** HIGH for library choices, MEDIUM for "do not add" calls
 
 ## Scope
 
-This document is **prescriptive**. It covers what to **add** to Recgon's existing stack (Next.js 16, Supabase, Gemini/Claude chain, `llm_jobs` queue) for the five v2 capabilities:
+This document is **prescriptive**. It covers what to **add** to Recgon's existing stack (Next.js 16, Supabase, Gemini/Claude chain, `llm_jobs` queue) for the five v3 capabilities:
 
 1. Live incremental codebase analyzer
 2. GitHub commit-history skill inference
@@ -238,16 +238,16 @@ These come up in any "smarter AI" milestone. Skipping them is intentional.
 | Excluded | Why Not | Revisit When |
 |----------|---------|--------------|
 | **Vector store** (pgvector, Pinecone, Weaviate, Qdrant) | Skill matching is bounded vocabulary (~50 tags). Cosine similarity on embeddings would replace deterministic Jaccard with a fuzzy black box, breaking the "explainable dispatcher" promise. Task-similarity matching for dedup is already covered by `dedupKey` + unique partial index. | Only if we add full-text search over arbitrary task descriptions / chat history at >10k row scale |
-| **Embeddings API** (`text-embedding-3-large`, Gemini embeddings) | Nothing in v2 needs semantic similarity. Skill inference is keyword aggregation, judgment is small-context reasoning, framing is generation. No embedding step. | If we ever do "find similar past tasks" UX |
+| **Embeddings API** (`text-embedding-3-large`, Gemini embeddings) | Nothing in v3 needs semantic similarity. Skill inference is keyword aggregation, judgment is small-context reasoning, framing is generation. No embedding step. | If we ever do "find similar past tasks" UX |
 | **LangChain JS / LangGraph / Mastra / CrewAI / AutoGen** | Recgon's pattern is "one prompt, one Zod schema, one provider-chain call." Agentic frameworks invert control and obscure the dispatcher's auditability. The whole point of math + LLM hybrid is *fewer* layers, not more. | If we ever build true multi-step autonomous agents (currently parked: "agents real work deferred") |
 | **Vercel AI SDK (`ai`)** | Excellent product, wrong fit here. We'd have two LLM abstractions, double the test surface, and gain nothing — no streaming UI for dispatcher, no provider-agnostic tool calling needed beyond what `chatViaChain` does. | If chat/terminal UX needs streaming structured output. The dispatcher path: no. |
-| **Inngest / Trigger.dev / BullMQ** | The existing `llm_jobs` queue + Vercel cron is enough for v2's workloads (incremental code analysis, skill inference, judgment, framing — all bounded, short-lived). A workflow engine is justified only when we need durable multi-step orchestration with retries that span hours and cross-step state. | If we add agentic multi-step workflows OR cross 100+ jobs/min sustained throughput |
+| **Inngest / Trigger.dev / BullMQ** | The existing `llm_jobs` queue + Vercel cron is enough for v3's workloads (incremental code analysis, skill inference, judgment, framing — all bounded, short-lived). A workflow engine is justified only when we need durable multi-step orchestration with retries that span hours and cross-step state. | If we add agentic multi-step workflows OR cross 100+ jobs/min sustained throughput |
 | **Linguist (`linguist-js`)** | GitHub GraphQL API gives us repo-level language breakdown for free. Per-commit language can be done with extension heuristics. Don't ship a 2MB parser. | Never, probably |
 | **Native `tree-sitter` C addon** | Build fragility on Vercel; bloats `serverExternalPackages`. `web-tree-sitter` (WASM) is the cleaner choice for serverless. | Only if WASM parse speed becomes a real bottleneck (~10× slower than native; unlikely at our file counts) |
 | **`ast-grep`** | Pattern-based search/rewrite, not what we need. Tree-sitter directly gives us symbol extraction. | If we add codemod / auto-fix features |
 | **`downshift` / `react-tag-input` / `react-hook-form`** | cmdk + Radix + plain state already covers the profile UX. | If form count grows past ~5 and validation logic gets deeply nested |
-| **A second auth provider** | NextAuth v5 is fine; v2 adds no new identity surface. | Never in v2 |
-| **A new database** | Supabase is locked per `.planning/PROJECT.md` constraints. All v2 state goes in new columns / new tables on the same Postgres. | Never in v2 |
+| **A second auth provider** | NextAuth v5 is fine; v3 adds no new identity surface. | Never in v3 |
+| **A new database** | Supabase is locked per `.planning/PROJECT.md` constraints. All v3 state goes in new columns / new tables on the same Postgres. | Never in v3 |
 
 ---
 
@@ -282,8 +282,8 @@ Bundle impact on the **client**: only `cmdk` (~7KB gzip). The Octokit + tree-sit
 | Skip `ast-grep` | HIGH | Context7 confirms it's a search/rewrite tool, not a symbol extractor — wrong primitive for our need |
 | Reuse `chatViaChain` for capabilities 3 + 4 (no Vercel AI SDK / LangChain) | HIGH | Direct reading of `src/lib/llm/providers.ts` shows we already have the abstraction; framework adoption would be additive surface area only |
 | `cmdk@1.1.1` for skill multi-select | HIGH | Context7 (`/dip/cmdk`), npm verified, matches existing Radix + Tailwind composition pattern |
-| Skip vector store / embeddings | MEDIUM | Based on current v2 scope. Fully justified for skill matching (bounded vocabulary). LOW confidence that we won't need them in v3 — flag for re-evaluation post-v2 |
-| Skip Inngest / workflow engine | HIGH | Existing `llm_jobs` queue + cron pattern is documented and load-tested in production; v2 adds bounded, short jobs that fit the same mold |
+| Skip vector store / embeddings | MEDIUM | Based on current v3 scope. Fully justified for skill matching (bounded vocabulary). LOW confidence that we won't need them in v3 — flag for re-evaluation post-v3 |
+| Skip Inngest / workflow engine | HIGH | Existing `llm_jobs` queue + cron pattern is documented and load-tested in production; v3 adds bounded, short jobs that fit the same mold |
 | Skip `linguist-js` | MEDIUM | GraphQL gives repo-level language data; per-commit via extension heuristics is "good enough" but not bulletproof. If we later see misclassifications hurting skill inference quality, revisit |
 
 ---

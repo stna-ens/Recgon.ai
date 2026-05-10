@@ -48,8 +48,8 @@ Recgon is an **AI Product Manager for small teams**. It ingests a team's project
 
 ### Active
 
-<!-- Milestone: Smarter AI Product Manager v2. The dispatcher today is pure math
-with stale code signal and no teammate self-profile. v2 makes it actually
+<!-- Milestone: Smarter AI Product Manager v3. The dispatcher today is pure math
+with stale code signal and no teammate self-profile. v3 makes it actually
 "understand" the project and the people. -->
 
 **Project understanding — live signal**
@@ -75,25 +75,25 @@ with stale code signal and no teammate self-profile. v2 makes it actually
 
 <!-- Explicit boundaries. Reasoning included so we don't re-add later. -->
 
-- **User feedback ingestion** — feature was removed 2026-05-11; reintroducing it is its own milestone, not part of v2. Brain inputs for this milestone are codebase + analytics + GitHub only.
+- **User feedback ingestion** — feature was removed 2026-05-11; reintroducing it is its own milestone, not part of v3. Brain inputs for this milestone are codebase + analytics + GitHub only.
 - **AI teammates** — removed in migration `20260505_remove_ai_teammates.sql`. Dispatcher routes only to real human users with email + calendar; no synthetic personas.
-- **AI tool-use for teammates** — parked 2026-04-27 ("agents real work deferred"). Tools that let AI teammates do work autonomously are not in scope for v2.
+- **AI tool-use for teammates** — parked 2026-04-27 ("agents real work deferred"). Tools that let AI teammates do work autonomously are not in scope for v3.
 - **Full-LLM dispatcher** (LLM picks from all teammates without math pre-filter) — rejected during scoping: less predictable, less explainable, more expensive. Hybrid math + LLM judgment is the chosen approach.
-- **Calendar / Slack integration for delivery** — current delivery is in-app + email via Resend. Slack and calendar push are deferred until v2 ships.
-- **Mobile-native UI** — landing page is mobile-aware (forced redirect on mobile), but the dispatcher / teammate / task surfaces are desktop-only for v2.
+- **Calendar / Slack integration for delivery** — current delivery is in-app + email via Resend. Slack and calendar push are deferred until v3 ships.
+- **Mobile-native UI** — landing page is mobile-aware (forced redirect on mobile), but the dispatcher / teammate / task surfaces are desktop-only for v3.
 
 ## Context
 
 **Stack:** Next.js 15 App Router + TypeScript + Tailwind. NextAuth v5 (JWT-only). Supabase PostgreSQL (service-role client, server-side). LLM via multi-provider chain (`@google/generative-ai` + `@anthropic-ai/sdk`). Deployed to Vercel (cron drains LLM job queue every minute).
 
-**Brownfield baseline:** Recgon is already a working product. The codebase has been mapped to `.planning/codebase/` (Architecture, Structure, Stack, Conventions, Integrations, Testing, Concerns). All v2 work builds on that foundation — no greenfield rewrites.
+**Brownfield baseline:** Recgon is already a working product. The codebase has been mapped to `.planning/codebase/` (Architecture, Structure, Stack, Conventions, Integrations, Testing, Concerns). All v3 work builds on that foundation — no greenfield rewrites.
 
-**Where the dispatcher lives:** `src/lib/recgon/{brain, dispatcher, taskMint, match, scheduler, skillTagger, verify, evidenceRouter, fitLearning, learn, types}.ts`. v2 changes will land primarily here plus new profile UI under `src/app/teams/[id]/`.
+**Where the dispatcher lives:** `src/lib/recgon/{brain, dispatcher, taskMint, match, scheduler, skillTagger, verify, evidenceRouter, fitLearning, learn, types}.ts`. v3 changes will land primarily here plus new profile UI under `src/app/teams/[id]/`.
 
 **Prior strategic threads:**
-- Agentic Revolution plan (chatbot tools, feedback pipeline, analytics agent, project health agent) — v2 advances the dispatcher half of that plan; feedback pipeline stays deferred.
-- Landing redesign (2026-05-10) — already shipped; v2 doesn't touch landing.
-- Vercel deployment plan — deferred; v2 ships through existing local-dev → main flow.
+- Agentic Revolution plan (chatbot tools, feedback pipeline, analytics agent, project health agent) — v3 advances the dispatcher half of that plan; feedback pipeline stays deferred.
+- Landing redesign (2026-05-10) — already shipped; v3 doesn't touch landing.
+- Vercel deployment plan — deferred; v3 ships through existing local-dev → main flow.
 
 **Recently completed cleanups (current branch state):**
 - Feedback feature fully removed (UI, backend, schemas, mock data) — 2026-05-11.
@@ -101,19 +101,19 @@ with stale code signal and no teammate self-profile. v2 makes it actually
 
 ## Constraints
 
-- **Tech stack**: Next.js 15 + TypeScript + Tailwind + Supabase — locked. No framework swaps in v2.
+- **Tech stack**: Next.js 15 + TypeScript + Tailwind + Supabase — locked. No framework swaps in v3.
 - **LLM costs**: Every LLM call costs money. Live-codebase analysis and LLM judgment overlay both add per-task LLM calls — design must keep per-task cost bounded (e.g. summarize before judging, cache profile inferences).
-- **Backwards compatibility**: Existing tasks, teammates, and brain runs must continue working through v2 rollout. New fields are additive; old assignments don't break when LLM judgment overlay is introduced.
+- **Backwards compatibility**: Existing tasks, teammates, and brain runs must continue working through v3 rollout. New fields are additive; old assignments don't break when LLM judgment overlay is introduced.
 - **Vercel runtime**: Functions are stateless and time-bounded. Long-running analysis must go through the existing `llm_jobs` queue + cron drain, not synchronous request handlers.
-- **Supabase as system of record**: All persistent state in PostgreSQL. No new databases / vector stores in v2 unless explicitly justified during planning.
+- **Supabase as system of record**: All persistent state in PostgreSQL. No new databases / vector stores in v3 unless explicitly justified during planning.
 - **Single dev**: One developer (eneskis). Roadmap should respect that — favor smaller phases over giant ones, even if individual phases ship slower.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| v2 milestone goal = smarter dispatcher (project understanding + teammate understanding + LLM judgment + reframing) | Closest current gap to "AI Product Manager" promise; foundation (math, EMA, teammates table) already exists | — Pending |
-| Drop user feedback from v2 inputs | Feature was removed 2026-05-11; rebuilding it would double scope; codebase + analytics are sufficient signal for v2 | — Pending |
+| v3 milestone goal = smarter dispatcher (project understanding + teammate understanding + LLM judgment + reframing) | Closest current gap to "AI Product Manager" promise; foundation (math, EMA, teammates table) already exists | — Pending |
+| Drop user feedback from v3 inputs | Feature was removed 2026-05-11; rebuilding it would double scope; codebase + analytics are sufficient signal for v3 | — Pending |
 | Hybrid math + LLM judgment over full-LLM dispatch | Predictable, explainable, fail-safe; preserves existing fairness math; LLM adds judgment on close calls only | — Pending |
 | Three-source skill model (self-declared profile + GitHub inference + existing EMA over time) | Each source covers a different cold-start / drift problem; layered model converges fastest | — Pending |
 | Personalized task framing per assignee | The single highest-leverage UX upgrade — turns dispatch into a manager-feeling experience | — Pending |

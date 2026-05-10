@@ -103,11 +103,11 @@ Recgon is an **AI Product Manager for small teams**. It ingests a team's project
 
 ### Constraints
 
-- **Tech stack**: Next.js 15 + TypeScript + Tailwind + Supabase — locked. No framework swaps in v2.
+- **Tech stack**: Next.js 15 + TypeScript + Tailwind + Supabase — locked. No framework swaps in v3.
 - **LLM costs**: Every LLM call costs money. Live-codebase analysis and LLM judgment overlay both add per-task LLM calls — design must keep per-task cost bounded (e.g. summarize before judging, cache profile inferences).
-- **Backwards compatibility**: Existing tasks, teammates, and brain runs must continue working through v2 rollout. New fields are additive; old assignments don't break when LLM judgment overlay is introduced.
+- **Backwards compatibility**: Existing tasks, teammates, and brain runs must continue working through v3 rollout. New fields are additive; old assignments don't break when LLM judgment overlay is introduced.
 - **Vercel runtime**: Functions are stateless and time-bounded. Long-running analysis must go through the existing `llm_jobs` queue + cron drain, not synchronous request handlers.
-- **Supabase as system of record**: All persistent state in PostgreSQL. No new databases / vector stores in v2 unless explicitly justified during planning.
+- **Supabase as system of record**: All persistent state in PostgreSQL. No new databases / vector stores in v3 unless explicitly justified during planning.
 - **Single dev**: One developer (eneskis). Roadmap should respect that — favor smaller phases over giant ones, even if individual phases ship slower.
 <!-- GSD:project-end -->
 

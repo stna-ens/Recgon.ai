@@ -1,6 +1,6 @@
-# Recgon v2 Research Summary
+# Recgon v3 Research Summary
 
-**Project:** Recgon — Smarter AI Product Manager v2
+**Project:** Recgon — Smarter AI Product Manager v3
 **Domain:** Hybrid math + LLM task dispatcher for small dev teams (brownfield milestone)
 **Researched:** 2026-05-11
 **Confidence:** HIGH
@@ -38,7 +38,7 @@ Client bundle impact: `cmdk` only. Octokit + tree-sitter are server-only → add
 
 **Table stakes already shipped (free):** TS-1 capacity respect, TS-2 working hours, TS-4 manual override, TS-5 deadline awareness, TS-8 LLM graceful fallback, TS-9 idempotent minting, TS-11 assignment email.
 
-**Must build in v2:**
+**Must build in v3:**
 
 | ID | Feature | Phase |
 |----|---------|-------|
