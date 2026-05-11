@@ -138,16 +138,18 @@ export default function FooterCta() {
           line-height: 1.1;
           color: var(--txt-pure);
         }
-        /* Light mode: difference-blend the title against the aurora.
-           color:#fff + mix-blend-mode:difference means:
-             - over white bg → renders black (max contrast)
-             - over pink aurora → renders complementary cyan/green (still
-               max contrast against pink)
-           So the title stays high-contrast wherever the ribbon falls,
-           without any JS hit-testing. */
+        /* Light mode: luminosity-blend the title against the aurora.
+           luminosity = take bg hue+saturation, apply source luminance.
+           So:
+             - over white (no chroma) → renders as grayscale at the
+               source's luminance ≈ near-black, bold and readable
+             - over pink aurora → borrows the pink hue at source's low
+               luminance ≈ very dark wine — palette-cohesive, no green
+           Dark source color is what drives the "dark text" feel; the
+           background decides whether that dark reads as gray or wine. */
         .lnd-cta-v1.is-light .lnd-cta-v1-title {
-          color: #fff;
-          mix-blend-mode: difference;
+          color: #1a1a1a;
+          mix-blend-mode: luminosity;
         }
         .lnd-cta-v1-sub {
           margin: 0 auto 40px;
@@ -156,15 +158,16 @@ export default function FooterCta() {
           color: var(--txt-muted);
           max-width: 480px;
         }
-        /* Light mode: difference-blend with a soft gray instead of pure
-           white — gives a comfortable mid-gray on the white sections and
-           a readable muted complement on the pink. Note: do NOT add
-           opacity here. opacity < 1 creates a new stacking context which
-           cuts mix-blend-mode off from the aurora behind, making the
-           blend silently fail and the text render as plain gray/white. */
+        /* Light mode: luminosity-blend the subtitle, same logic as the
+           title but with a higher source luminance so it reads as a
+           comfortable mid-gray on white and a mid-pink on the aurora —
+           noticeable color shift, still in palette.
+           Note: do NOT add opacity here. opacity < 1 creates a new
+           stacking context which cuts mix-blend-mode off from the aurora
+           behind and makes the blend silently fail. */
         .lnd-cta-v1.is-light .lnd-cta-v1-sub {
-          color: #b0b0b0;
-          mix-blend-mode: difference;
+          color: #6a6a6a;
+          mix-blend-mode: luminosity;
         }
         .lnd-cta-v1-row {
           display: inline-flex;
