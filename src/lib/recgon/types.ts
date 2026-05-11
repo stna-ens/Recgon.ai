@@ -48,6 +48,31 @@ export type Teammate = {
   createdAt: string;
 };
 
+// Phase 1 / PROFILE-03: team-level visibility toggle for self-declared profiles.
+// `team_visible` — collaborative default; teammates can read each other's profiles.
+// `owner_only` — stricter; only owners (and self) can read a teammate's profile.
+export type ProfileVisibility = 'team_visible' | 'owner_only';
+
+// Phase 1 / PROFILE-03: teammate-self-declared profile, additive over the
+// owner-typed `teammates` row. `profileMerge` (Plan 02) folds these into the
+// dispatcher's `Teammate` view; the raw vs canonical split keeps the
+// teammate-facing UI honest about what Recgon's normaliser did with their
+// input ("PostgreSQL — matched as: backend").
+export interface TeammateProfile {
+  id: string;
+  teamId: string;
+  userId: string;
+  skillsRaw: string[];
+  strengthsRaw: string[];
+  interestsRaw: string[];
+  skillsCanonical: string[];
+  strengthsCanonical: string[];
+  interestsCanonical: string[];
+  weeklyCapacityHours: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type TeammateWithStats = Teammate & {
   stars: number;
   ratingCount: number;

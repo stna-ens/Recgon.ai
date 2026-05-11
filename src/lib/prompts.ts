@@ -4,6 +4,8 @@
 // in one place rather than being scattered across lib files.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { CANONICAL_ROLES, CANONICAL_MODIFIERS } from '@/lib/recgon/skillVocabulary';
+
 // ── Codebase analysis ────────────────────────────────────────────────────────
 
 const STRUCTURED_QUALITY_RULES = `
@@ -890,9 +892,9 @@ export const TAG_TASK_SKILLS_SYSTEM = `You are Recgon's task router. Given a bat
 
 Pick from this canonical vocabulary (lowercase, snake_case). Use 2–4 tags per task. Prefer the most specific role tag first.
 
-Roles: engineering, frontend, backend, mobile, devops, design, ux_design, marketing, social_media, content_writing, copywriting, seo, ads, growth, analytics, data, sales, customer_support, product, strategy, research, qa, finance, operations, legal
+Roles: ${CANONICAL_ROLES.join(', ')}
 
-Modifiers (optional, only if obviously relevant): ai, ml, video, photo, branding, community, partnerships, fundraising, hiring
+Modifiers (optional, only if obviously relevant): ${CANONICAL_MODIFIERS.join(', ')}
 
 Hard rules:
 - A task to "implement", "build", "code", "fix bug", "refactor", "add UI", "add API", "add component" is engineering — never marketing/strategy.

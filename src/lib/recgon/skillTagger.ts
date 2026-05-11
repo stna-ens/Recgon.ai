@@ -11,10 +11,13 @@
 // invalid, missing entries) we fall back to the original requiredSkills so
 // dispatch never blocks on tagging.
 
+// Phase 1: canonical vocab moved to skillVocabulary.ts (PROFILE-02).
+
 import { logger } from '../logger';
 import { chatViaProviders } from '../llm/providers';
 import { TAG_TASK_SKILLS_SYSTEM, tagTaskSkillsUserPrompt } from '../prompts';
 import { TaskSkillTagsResponseSchema, parseAIResponse } from '../schemas';
+import { CANONICAL_SET } from './skillVocabulary';
 
 export type TaskForTagging = {
   id: string;
@@ -45,6 +48,10 @@ function sanitizeTags(raw: string[]): string[] {
     const norm = t.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '');
     if (!norm || norm.length > 32) continue;
     if (STOPWORD_TAGS.has(norm)) continue;
+    // Defense-in-depth: drop anything the LLM emitted outside the canonical
+    // vocab. PROFILE-02 / Pitfall 1: keeps tagger output and picker input
+    // strictly intersected on the same set.
+    if (!CANONICAL_SET.has(norm)) continue;
     out.add(norm);
     if (out.size >= 5) break;
   }
