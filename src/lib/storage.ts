@@ -94,7 +94,6 @@ export interface Project {
   createdAt: string;
   analysis?: ProductAnalysis;
   marketingContent?: MarketingContent[];
-  feedbackAnalyses?: FeedbackAnalysis[];
   campaigns?: Campaign[];
   socialProfiles?: { platform: string; url: string }[];
   analyticsPropertyId?: string;
@@ -165,30 +164,14 @@ export interface Campaign {
   createdAt: string;
 }
 
-export interface FeedbackAnalysis {
-  id: string;
-  rawFeedback: string[];
-  sentiment: string;
-  summary?: string;
-  sentimentBreakdown: { positive: number; neutral: number; negative: number };
-  themes: string[];
-  featureRequests: string[];
-  bugs: string[];
-  praises: string[];
-  developerPrompts: string[];
-  analyzedAt: string;
-  completedPrompts?: { promptIndex: number; completedAt: string; completedBy: string }[];
-}
-
 type ProjectRow = Record<string, unknown>;
 
 async function assembleProject(row: ProjectRow): Promise<Project> {
   const projectId = row.id as string;
 
-  const [analysisRes, marketingRes, feedbackRes, campaignsRes] = await Promise.all([
+  const [analysisRes, marketingRes, campaignsRes] = await Promise.all([
     supabase.from('project_analyses').select('data, analyzed_at').eq('project_id', projectId).maybeSingle(),
     supabase.from('marketing_content').select('*').eq('project_id', projectId).order('generated_at', { ascending: false }),
-    supabase.from('feedback_analyses').select('*').eq('project_id', projectId).order('analyzed_at', { ascending: false }),
     supabase.from('campaigns').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
   ]);
 
@@ -201,21 +184,6 @@ async function assembleProject(row: ProjectRow): Promise<Project> {
     platform: r.platform as string,
     content: r.content as Record<string, string>,
     generatedAt: r.generated_at as string,
-  }));
-
-  const feedbackAnalyses: FeedbackAnalysis[] = (feedbackRes.data ?? []).map((r: Record<string, unknown>) => ({
-    id: r.id as string,
-    rawFeedback: r.raw_feedback as string[],
-    sentiment: r.sentiment as string,
-    summary: (r.summary as string | null) ?? undefined,
-    sentimentBreakdown: r.sentiment_breakdown as FeedbackAnalysis['sentimentBreakdown'],
-    themes: r.themes as string[],
-    featureRequests: r.feature_requests as string[],
-    bugs: r.bugs as string[],
-    praises: r.praises as string[],
-    developerPrompts: r.developer_prompts as string[],
-    analyzedAt: r.analyzed_at as string,
-    completedPrompts: (r.completed_prompts as FeedbackAnalysis['completedPrompts']) ?? [],
   }));
 
   const campaigns: Campaign[] = (campaignsRes.data ?? []).map((r: Record<string, unknown>) => ({
@@ -246,7 +214,6 @@ async function assembleProject(row: ProjectRow): Promise<Project> {
     logoUrl: row.logo_url as string | undefined,
     analysis,
     marketingContent: marketingContent.length > 0 ? marketingContent : undefined,
-    feedbackAnalyses: feedbackAnalyses.length > 0 ? feedbackAnalyses : undefined,
     campaigns: campaigns.length > 0 ? campaigns : undefined,
   };
 }
@@ -361,7 +328,7 @@ export async function getProjectForTeams(id: string, teamIds: string[], userId?:
 }
 
 export async function saveProject(project: Project): Promise<void> {
-  const { analysis, marketingContent, feedbackAnalyses, campaigns, ...core } = project;
+  const { analysis, marketingContent, campaigns, ...core } = project;
 
   const basePayload = {
     id: core.id,
@@ -419,33 +386,6 @@ export async function saveProject(project: Project): Promise<void> {
       generated_at: mc.generatedAt,
     }));
     await supabase.from('marketing_content').upsert(rows);
-  }
-
-  // Upsert feedback if present
-  if (feedbackAnalyses && feedbackAnalyses.length > 0) {
-    const rows = feedbackAnalyses.map((fa) => ({
-      id: fa.id,
-      project_id: core.id,
-      raw_feedback: fa.rawFeedback,
-      sentiment: fa.sentiment,
-      summary: fa.summary ?? null,
-      sentiment_breakdown: fa.sentimentBreakdown,
-      themes: fa.themes,
-      feature_requests: fa.featureRequests,
-      bugs: fa.bugs,
-      praises: fa.praises,
-      developer_prompts: fa.developerPrompts,
-      analyzed_at: fa.analyzedAt,
-      completed_prompts: fa.completedPrompts ?? [],
-    }));
-    const { error } = await supabase.from('feedback_analyses').upsert(rows);
-    if (error && isMissingColumnError(error, 'summary')) {
-      const fallbackRows = rows.map(({ summary, ...row }) => row);
-      const fallback = await supabase.from('feedback_analyses').upsert(fallbackRows);
-      if (fallback.error) throw new Error(`Failed to save feedback analyses: ${fallback.error.message}`);
-    } else if (error) {
-      throw new Error(`Failed to save feedback analyses: ${error.message}`);
-    }
   }
 
   // Upsert campaigns if present
@@ -508,34 +448,6 @@ export async function updateProjectAnalyticsProperty(
     .update({ analytics_property_id: analyticsPropertyId })
     .eq('id', projectId)
     .eq('team_id', teamId);
-  return !error;
-}
-
-export async function saveFeedbackToProject(projectId: string, analysis: FeedbackAnalysis, teamId: string): Promise<boolean> {
-  const project = await getProject(projectId, teamId);
-  if (!project) return false;
-
-  const row = {
-    id: analysis.id,
-    project_id: projectId,
-    raw_feedback: analysis.rawFeedback,
-    sentiment: analysis.sentiment,
-    summary: analysis.summary ?? null,
-    sentiment_breakdown: analysis.sentimentBreakdown,
-    themes: analysis.themes,
-    feature_requests: analysis.featureRequests,
-    bugs: analysis.bugs,
-    praises: analysis.praises,
-    developer_prompts: analysis.developerPrompts,
-    analyzed_at: analysis.analyzedAt,
-  };
-
-  let { error } = await supabase.from('feedback_analyses').insert(row);
-  if (error && isMissingColumnError(error, 'summary')) {
-    const { summary, ...fallbackRow } = row;
-    const fallback = await supabase.from('feedback_analyses').insert(fallbackRow);
-    error = fallback.error;
-  }
   return !error;
 }
 

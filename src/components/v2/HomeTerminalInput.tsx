@@ -33,7 +33,7 @@ export default function HomeTerminalInput({ visible }: Props) {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="what should I ship next? why is feedback dropping? plan a launch…"
+          placeholder="what should I ship next? plan a launch…"
           className="v2-ask-input"
           aria-label="Open terminal"
         />

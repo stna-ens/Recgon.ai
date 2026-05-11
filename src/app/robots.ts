@@ -12,7 +12,6 @@ export default function robots(): MetadataRoute.Robots {
           '/api/',
           '/projects/',
           '/marketing/',
-          '/feedback/',
           '/analytics/',
           '/teams/',
           '/account/',

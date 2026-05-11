@@ -58,16 +58,28 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
     return () => window.removeEventListener('focus', onFocus);
   }, [fetch_]);
 
-  // Poll while verification is in-flight.
+  // Poll while verification is in-flight. Cancel timer when hidden, restart
+  // on visibility return — keeps the page snappy without burning idle ticks.
   useEffect(() => {
     verifyingRef.current = (data?.tasks ?? []).some(
       (t) => t.verificationStatus === 'auto_running' || t.verificationStatus === 'proof_evaluating',
     );
     if (!verifyingRef.current) return;
-    const id = setInterval(() => {
-      if (document.visibilityState === 'visible') fetch_();
-    }, 1500);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id != null) return;
+      id = setInterval(() => { fetch_(); }, 1500);
+    };
+    const stop = () => {
+      if (id != null) { clearInterval(id); id = null; }
+    };
+    const onVis = () => { document.hidden ? stop() : start(); };
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [data, fetch_]);
 
   // Detect narrow screen → single-day mode.

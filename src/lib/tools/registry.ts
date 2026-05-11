@@ -8,10 +8,6 @@ import { fetchAnalyticsTool } from './fetchAnalytics';
 import { generateContentTool } from './generateContent';
 import { generateCampaignTool } from './generateCampaign';
 
-// Feedback tools (queryFeedbackTool, collectFeedbackTool) are intentionally
-// unwired from the chat surface while source-collection is being rebuilt.
-// The tool files still exist for the worker pipeline; they just aren't
-// reachable from the model's tool-use loop.
 const ALL_TOOLS: ToolDefinition[] = [
   listProjectsTool as unknown as ToolDefinition,
   getProjectDetailsTool as unknown as ToolDefinition,

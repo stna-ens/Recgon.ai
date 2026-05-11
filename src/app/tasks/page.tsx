@@ -169,16 +169,29 @@ function V2TasksInner() {
   }, []);
 
   // Poll while a verification is in progress so the card updates without a
-  // manual refresh — same 1.5s cadence as v1 inbox.
+  // manual refresh — same 1.5s cadence as v1 inbox. Pause the timer entirely
+  // when the tab is hidden (browsers throttle hidden timers, but we'd rather
+  // own the lifecycle ourselves than wake-and-no-op).
   useEffect(() => {
     const verifying = tasks.some(
       (t) => t.verification_status === 'auto_running' || t.verification_status === 'proof_evaluating',
     );
     if (!verifying) return;
-    const id = setInterval(() => {
-      if (document.visibilityState === 'visible') refresh();
-    }, 1500);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id != null) return;
+      id = setInterval(() => { refresh(); }, 1500);
+    };
+    const stop = () => {
+      if (id != null) { clearInterval(id); id = null; }
+    };
+    const onVis = () => { document.hidden ? stop() : start(); };
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [tasks, refresh]);
 
   // Clear stale optimistic entries once the server state catches up. Once a

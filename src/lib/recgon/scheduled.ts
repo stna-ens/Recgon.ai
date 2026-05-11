@@ -59,7 +59,7 @@ export function buildScheduledEntries(
     sourceRef: { kind: 'health_check', week },
     title: 'Weekly product health check',
     description:
-      'Scan the team\'s open work, recent feedback, and analytics signals. Surface the single most important thing to focus on this week and one risk to watch.',
+      'Scan the team\'s open work and analytics signals. Surface the single most important thing to focus on this week and one risk to watch.',
     requiredSkills: ['strategy', 'product', 'roadmap', 'next_step'],
     priority: 1,
     estimatedHours: 2,

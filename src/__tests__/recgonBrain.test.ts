@@ -65,33 +65,6 @@ describe('brain.nextStepsFromProject', () => {
   });
 });
 
-describe('brain.devPromptsFromProject', () => {
-  it('skips completed prompts by index', () => {
-    const p = project({
-      feedbackAnalyses: [
-        {
-          id: 'fa1',
-          rawFeedback: [],
-          sentiment: 'mixed',
-          sentimentBreakdown: { positive: 0, neutral: 0, negative: 0 },
-          themes: [],
-          featureRequests: [],
-          bugs: [],
-          praises: [],
-          developerPrompts: ['Fix login', 'Improve perf', 'Add export'],
-          analyzedAt: '2026-01-01',
-          completedPrompts: [{ promptIndex: 1, completedAt: '2026-01-02', completedBy: 'u' }],
-        },
-      ],
-    });
-    const entries = __testing.devPromptsFromProject(p);
-    expect(entries).toHaveLength(2);
-    expect(entries[0].title).toBe('Fix login');
-    expect(entries[1].title).toBe('Add export');
-    expect(entries[0].kind).toBe('dev_prompt');
-  });
-});
-
 describe('brain.projectHealthFromProject', () => {
   it('keeps top risks as insights instead of minting them as tasks', async () => {
     const p = project({

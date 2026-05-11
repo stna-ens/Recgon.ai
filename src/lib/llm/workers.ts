@@ -7,7 +7,6 @@
 //
 // Failures thrown here surface to the drain loop, which calls `failJob()`
 // to schedule the next retry (or mark `dead` once `max_attempts` is hit).
-import { analyzeFeedback } from '../feedbackEngine';
 import { analyzeIdea } from '../ideaAnalyzer';
 import { analyzeCodebase, analyzeCodebaseUpdate } from '../codeAnalyzer';
 import { analyzeCompetitors } from '../competitorAnalyzer';
@@ -16,7 +15,6 @@ import { runDispatch } from '../recgon/dispatcher';
 import { runTaskVerification, type TaskVerificationPayload } from '../recgon/verify';
 import { runCommitSummaryJob } from '../commitSummary';
 import {
-  saveFeedbackToProject,
   saveProject,
   getProject,
   generateId,
@@ -29,60 +27,6 @@ import { buildProjectAppContext } from '../appContext';
 import type { JobKind, LLMJob } from './jobQueue';
 
 export type WorkerResult = Record<string, unknown>;
-
-// ── Feedback analysis ───────────────────────────────────────────────────────
-
-type FeedbackPayload = {
-  feedback: string[];
-  projectId?: string;
-  teamId?: string;
-};
-
-async function runFeedbackAnalysis(job: LLMJob): Promise<WorkerResult> {
-  const payload = job.payload as FeedbackPayload;
-  if (!Array.isArray(payload.feedback) || payload.feedback.length === 0) {
-    throw new Error('feedback_analysis job missing feedback array');
-  }
-
-  let project: Awaited<ReturnType<typeof getProject>> = undefined;
-  if (payload.projectId && payload.teamId) {
-    project = await getProject(payload.projectId, payload.teamId);
-  }
-
-  const result = await analyzeFeedback(
-    payload.feedback,
-    project ? buildProjectAppContext(project) : undefined,
-  );
-
-  // Persist to project if we were told which project this belongs to.
-  if (payload.projectId && payload.teamId) {
-    const analysis = {
-      id: generateId(),
-      rawFeedback: payload.feedback,
-      sentiment: result.overallSentiment,
-      summary: result.summary,
-      sentimentBreakdown: result.sentimentBreakdown,
-      themes: result.themes,
-      featureRequests: result.featureRequests,
-      bugs: result.bugs,
-      praises: result.praises,
-      developerPrompts: result.developerPrompts,
-      analyzedAt: new Date().toISOString(),
-    };
-    try {
-      await saveFeedbackToProject(payload.projectId, analysis, payload.teamId);
-    } catch (err) {
-      logger.warn('feedback worker failed to persist to project', {
-        jobId: job.id,
-        projectId: payload.projectId,
-        err: err instanceof Error ? err.message : String(err),
-      });
-      // Non-fatal — the LLM result is still returned.
-    }
-  }
-
-  return result as unknown as WorkerResult;
-}
 
 // ── Idea analysis ───────────────────────────────────────────────────────────
 
@@ -230,7 +174,6 @@ async function runCommitSummary(job: LLMJob): Promise<WorkerResult> {
 }
 
 const WORKERS: Partial<Record<JobKind, Worker>> = {
-  feedback_analysis: withRecgonDispatch(runFeedbackAnalysis),
   idea_analysis: withRecgonDispatch(runIdeaAnalysis),
   codebase_analysis: withRecgonDispatch(runCodebaseAnalysis),
   competitor_analysis: runCompetitorAnalysis,

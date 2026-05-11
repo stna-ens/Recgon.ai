@@ -80,9 +80,23 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
       .then((r) => r.json())
       .then((ps: CachedProject[]) => {
         setProjects(ps);
-        // Check for updates on analyzed GitHub projects
+        // Check for updates on analyzed GitHub projects. Each call hits the
+        // GitHub API, so cache results in sessionStorage with a 5-min TTL —
+        // navigating around the app shouldn't re-fan-out N requests.
         const githubProjects = ps.filter((p) => p.isGithub && p.analysis && p.lastAnalyzedCommitSha);
         if (githubProjects.length === 0) return;
+        const cacheKey = `recgon_update_status_${team.id}`;
+        const TTL_MS = 5 * 60 * 1000;
+        try {
+          const raw = sessionStorage.getItem(cacheKey);
+          if (raw) {
+            const cached = JSON.parse(raw) as { ts: number; statuses: Record<string, boolean> };
+            if (cached && typeof cached.ts === 'number' && Date.now() - cached.ts < TTL_MS) {
+              setProjectUpdateStatuses(cached.statuses ?? {});
+              return;
+            }
+          }
+        } catch { /* ignore parse errors */ }
         Promise.all(
           githubProjects.map((p) =>
             fetch(`/api/projects/${p.id}/check-updates?teamId=${team.id}`)
@@ -94,6 +108,9 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
           const statuses: Record<string, boolean> = {};
           for (const r of results) statuses[r.id] = r.hasUpdates;
           setProjectUpdateStatuses(statuses);
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), statuses }));
+          } catch { /* quota; non-fatal */ }
         });
       })
       .catch(() => setProjects([]));

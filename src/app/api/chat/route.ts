@@ -117,11 +117,10 @@ export async function POST(request: NextRequest) {
 
     const toolGuidance = `\n\nAI OUTPUT QUALITY CONTRACT:
 - Ground every answer in the project summaries, conversation history, recent activity, or tool results visible in this prompt.
-- Do not fabricate metrics, campaigns, feedback, files, implementation status, revenue, user counts, or analytics. If the needed fact is missing, say what is missing or call the correct tool.
+- Do not fabricate metrics, campaigns, files, implementation status, revenue, user counts, or analytics. If the needed fact is missing, say what is missing or call the correct tool.
 - Only call a tool when you need data NOT already in the system prompt: campaigns, marketing content, or live GA4 metrics.
 - Do NOT call get_project_details just because someone asks a general question about their project. If the answer is in the project summary above, answer from it directly.
 - Call tools for: running a new analysis, fetching live analytics, generating content, generating campaigns, or when the user explicitly asks to "show" or "fetch" something.
-- FEEDBACK FEATURE IS PAUSED. There is no feedback tool available. If the user asks you to analyze, collect, summarize, or fetch user feedback (Reddit, App Store, Twitter, comments, reviews, support tickets, etc.), do NOT attempt it and do NOT pretend to. Tell them feedback collection is being rebuilt and is unavailable right now. Suggest they revisit when the source-collection pipeline lands. Don't fabricate feedback themes from imagination.
 - If you call a tool, use the tool result as the source of truth and do not add unsupported details.
 - If the user just wants advice or brainstorming, answer directly without any tool call.
 - Before a final answer, check that every concrete claim is supported by known context or a tool result.
@@ -173,7 +172,7 @@ export async function POST(request: NextRequest) {
         // "missing project" error to the user.
         const projectAwareTools = new Set([
           'get_project_details', 'analyze_code', 'fetch_analytics',
-          'query_feedback', 'collect_feedback', 'generate_content', 'generate_campaign',
+          'generate_content', 'generate_campaign',
         ]);
         const findProjectInMessage = (text: string): string | null => {
           const quoted = text.match(/"([^"]{1,80})"/);

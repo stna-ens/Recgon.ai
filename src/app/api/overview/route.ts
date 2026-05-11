@@ -14,8 +14,6 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 const SIGNAL_LABELS: Record<string, string> = {
   analyze_code: 'analysis completed',
-  query_feedback: 'feedback analyzed',
-  collect_feedback: 'feedback collected',
   generate_content: 'content generated',
   generate_campaign: 'campaign planned',
   fetch_analytics: 'analytics refreshed',
@@ -97,18 +95,16 @@ export async function GET(request: NextRequest) {
     type Action = {
       id: string;
       title: string;
-      source: 'analysis' | 'feedback';
+      source: 'analysis';
       projectName: string;
       priority: 'high' | 'med' | 'low';
       surfacedAt: string | null;
     };
 
     const actions: Action[] = [];
-    let unreadFeedback = 0;
     const sevenDaysAgo = Date.now() - SEVEN_DAYS_MS;
 
     // Aggregates added for the v2 home cockpit redesign.
-    const sentimentBreakdown = { positive: 0, neutral: 0, negative: 0 };
     let slippingCount = 0;
     let analyzedCount = 0;
 
@@ -133,11 +129,8 @@ export async function GET(request: NextRequest) {
       analyzedAt: string | null;
       topRisk: string | null;
       topNextStep: string | null;
-      voice: string | null; // latest feedback summary or first praise/bug snippet
-      voiceTone: 'positive' | 'mixed' | 'negative' | null;
       // Momentum signals.
       betAgeDays: number | null;          // days since current top next-step was set (analysis age)
-      sentimentDelta: number | null;      // (latest pos% - prev pos%); null if <2 feedback analyses
       pulse: 'shipping' | 'converging' | 'stuck' | 'drifting' | 'idle';
       logoUrl?: string;
     };
@@ -163,7 +156,6 @@ export async function GET(request: NextRequest) {
       overallScore: number | null;
       topRisk: string | null;
       nextSteps: string[]; // up to 2
-      latestVoice: string | null;
       analyzedAt: string | null;
       // Scope counts — what Recgon found about this project
       risksCount: number;
@@ -204,74 +196,6 @@ export async function GET(request: NextRequest) {
             priority,
             surfacedAt: analysis.analyzedAt ?? null,
           });
-        }
-      }
-
-      const feedbackAnalyses = project.feedbackAnalyses;
-      let latestVoice: string | null = null;
-      let latestTone: ProjectCard['voiceTone'] = null;
-
-      if (feedbackAnalyses && feedbackAnalyses.length > 0) {
-        const latest = feedbackAnalyses[0];
-        const latestAt = latest.analyzedAt ?? null;
-        const developerPrompts = latest.developerPrompts ?? [];
-
-        // Aggregate sentiment from each project's MOST RECENT feedback analysis.
-        const sb = latest.sentimentBreakdown;
-        if (sb && typeof sb.positive === 'number') {
-          sentimentBreakdown.positive += sb.positive;
-          sentimentBreakdown.neutral += sb.neutral;
-          sentimentBreakdown.negative += sb.negative;
-        }
-
-        // Project-card "voice" — prefer the AI summary, fall back to first
-        // praise or bug snippet so the homepage always shows real customer
-        // voice (not a derived heuristic).
-        if (latest.summary && latest.summary.trim()) {
-          latestVoice = latest.summary.trim();
-        } else if (latest.praises?.length) {
-          latestVoice = latest.praises[0];
-        } else if (latest.bugs?.length) {
-          latestVoice = latest.bugs[0];
-        }
-        if (latestVoice) {
-          const pos = sb?.positive ?? 0;
-          const neg = sb?.negative ?? 0;
-          if (pos > neg * 1.5) latestTone = 'positive';
-          else if (neg > pos * 1.5) latestTone = 'negative';
-          else latestTone = 'mixed';
-        }
-
-        for (const prompt of developerPrompts.slice(0, 2)) {
-          actions.push({
-            id: `${project.id}-fb-${actions.length}`,
-            title: prompt,
-            source: 'feedback',
-            projectName: project.name,
-            priority: 'med',
-            surfacedAt: latestAt,
-          });
-        }
-
-        for (const fb of feedbackAnalyses) {
-          const at = fb.analyzedAt;
-          if (at && new Date(at).getTime() >= sevenDaysAgo) unreadFeedback++;
-
-          // Pull completed-prompt outcomes into the shipped feed.
-          const completed = fb.completedPrompts ?? [];
-          for (const cp of completed) {
-            if (!cp.completedAt) continue;
-            if (new Date(cp.completedAt).getTime() < sevenDaysAgo) continue;
-            const title = fb.developerPrompts?.[cp.promptIndex];
-            if (!title) continue;
-            shipped.push({
-              id: `${fb.id}-cp-${cp.promptIndex}`,
-              title,
-              kind: 'prompt',
-              projectName: project.name,
-              shippedAt: cp.completedAt,
-            });
-          }
         }
       }
 
@@ -320,21 +244,6 @@ export async function GET(request: NextRequest) {
             ? Math.max(0, Math.round((Date.now() - new Date(analysis.analyzedAt).getTime()) / (24 * 60 * 60 * 1000)))
             : null;
 
-        // Sentiment delta: requires ≥2 feedback analyses. Compares positive%
-        // share of the most recent vs the previous one.
-        let sentimentDelta: number | null = null;
-        if (feedbackAnalyses && feedbackAnalyses.length >= 2) {
-          const ratio = (sb: { positive?: number; neutral?: number; negative?: number } | undefined): number | null => {
-            if (!sb) return null;
-            const total = (sb.positive ?? 0) + (sb.neutral ?? 0) + (sb.negative ?? 0);
-            if (total === 0) return null;
-            return ((sb.positive ?? 0) / total) * 100;
-          };
-          const latestPct = ratio(feedbackAnalyses[0].sentimentBreakdown);
-          const prevPct = ratio(feedbackAnalyses[1].sentimentBreakdown);
-          if (latestPct !== null && prevPct !== null) sentimentDelta = Math.round(latestPct - prevPct);
-        }
-
         // Pulse badge — Recgon's one-word read on this project's vibe.
         const pulseScore = analysis.overallScore ?? 0;
         const hasShippedNextStep = (analysis.nextStepsTaken ?? []).some((s) => s.taken);
@@ -342,7 +251,7 @@ export async function GET(request: NextRequest) {
         let pulse: ProjectCard['pulse'] = 'idle';
         if (hasShippedNextStep) pulse = 'shipping';
         else if (pulseScore >= 7 && hasImprovements) pulse = 'converging';
-        else if ((sentimentDelta !== null && sentimentDelta < -5) || pulseScore < 5) pulse = 'drifting';
+        else if (pulseScore < 5) pulse = 'drifting';
         else if (betAgeDays !== null && betAgeDays > 14 && !hasImprovements) pulse = 'stuck';
         else pulse = 'idle';
 
@@ -354,10 +263,7 @@ export async function GET(request: NextRequest) {
           analyzedAt: analysis.analyzedAt ?? null,
           topRisk,
           topNextStep,
-          voice: latestVoice,
-          voiceTone: latestTone,
           betAgeDays,
-          sentimentDelta,
           pulse,
           logoUrl: project.logoUrl,
         });
@@ -374,7 +280,6 @@ export async function GET(request: NextRequest) {
             overallScore: typeof analysis.overallScore === 'number' ? analysis.overallScore : null,
             topRisk,
             nextSteps: (analysis.prioritizedNextSteps ?? []).filter((s) => s && s.trim()).slice(0, 3),
-            latestVoice,
             analyzedAt: analysis.analyzedAt ?? null,
             risksCount:
               (analysis.topRisks ?? []).filter((r) => r && r.trim()).length +
@@ -396,10 +301,7 @@ export async function GET(request: NextRequest) {
           analyzedAt: null,
           topRisk: null,
           topNextStep: null,
-          voice: latestVoice,
-          voiceTone: latestTone,
           betAgeDays: null,
-          sentimentDelta: null,
           pulse: 'idle',
           logoUrl: project.logoUrl,
         });
@@ -716,12 +618,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       actions: actions.slice(0, 5),
       signals,
-      unreadFeedback,
       // v2 cockpit aggregates ↓
       totalProjects: projects.length,
       analyzedCount,
       slippingCount,
-      sentimentBreakdown,
       priorityCounts,
       shipped: shipped.slice(0, 10),
       decisionDeck,

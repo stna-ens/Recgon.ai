@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
       .map((p) => [
         p.id,
         p.analysis?.analyzedAt ?? '',
-        p.feedbackAnalyses?.[0]?.analyzedAt ?? '',
         p.marketingContent?.[0]?.generatedAt ?? '',
         p.campaigns?.[0]?.createdAt ?? '',
       ].join(':'))
@@ -49,19 +48,12 @@ export async function GET(request: NextRequest) {
         swot?: { weaknesses?: string[] };
         prioritizedNextSteps?: string[];
       } | undefined;
-      const feedbackAnalyses = p.feedbackAnalyses as Array<{
-        themes?: string[];
-        result?: { themes?: string[] };
-      }> | undefined;
-      const latestFeedback = feedbackAnalyses?.[0];
       return {
         name: p.name,
         stage: analysis?.currentStage ?? null,
         weaknesses: analysis?.swot?.weaknesses?.slice(0, 2) ?? [],
         nextSteps: analysis?.prioritizedNextSteps?.slice(0, 2) ?? [],
-        feedbackThemes: (latestFeedback?.themes ?? latestFeedback?.result?.themes ?? []).slice(0, 2),
         marketingCount: (p.marketingContent as unknown[])?.length ?? 0,
-        feedbackCount: feedbackAnalyses?.length ?? 0,
       };
     });
 

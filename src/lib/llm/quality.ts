@@ -7,7 +7,6 @@ import type { ChatOptions } from './providers';
 export type LLMTaskKind =
   | 'codebase_analysis'
   | 'idea_analysis'
-  | 'feedback_analysis'
   | 'marketing_content'
   | 'campaign_plan'
   | 'analytics_insights'
@@ -19,7 +18,6 @@ export type LLMTaskKind =
 export const PROMPT_VERSIONS: Record<LLMTaskKind, string> = {
   codebase_analysis: '2026-04-25.grounded-v1',
   idea_analysis: '2026-04-25.grounded-v1',
-  feedback_analysis: '2026-04-25.actionable-v1',
   marketing_content: '2026-04-25.platform-v1',
   campaign_plan: '2026-04-25.tactical-v1',
   analytics_insights: '2026-04-25.data-backed-v1',
@@ -29,7 +27,7 @@ export const PROMPT_VERSIONS: Record<LLMTaskKind, string> = {
   mentor_chat: '2026-04-25.grounded-v1',
 };
 
-export type QualityProfile = 'analysis' | 'feedback' | 'marketing' | 'campaign' | 'analytics' | 'competitor' | 'social' | 'brief';
+export type QualityProfile = 'analysis' | 'marketing' | 'campaign' | 'analytics' | 'competitor' | 'social' | 'brief';
 
 export class AIQualityError extends Error {
   constructor(
@@ -99,34 +97,6 @@ function validateAnalysis(output: Record<string, unknown>, taskKind: LLMTaskKind
       issues.push(`${field} is too short to be useful`);
     }
   }
-  return issues;
-}
-
-function validateFeedback(output: Record<string, unknown>): string[] {
-  const issues: string[] = [];
-  const breakdown = output.sentimentBreakdown as Record<string, unknown> | undefined;
-  if (breakdown) {
-    const total = Number(breakdown.positive) + Number(breakdown.neutral) + Number(breakdown.negative);
-    if (!Number.isFinite(total) || Math.abs(total - 100) > 2) {
-      issues.push('sentimentBreakdown should total approximately 100');
-    }
-  }
-  if (typeof output.summary === 'string' && output.summary.trim().split(/\s+/).length < 18) {
-    issues.push('summary should explain the main pattern, friction, and positive signal');
-  }
-  addStringArrayIssues(issues, 'themes', output.themes, 1, 2);
-  addStringArrayIssues(issues, 'developerPrompts', output.developerPrompts, 1, 10);
-  const prompts = Array.isArray(output.developerPrompts) ? output.developerPrompts : [];
-  prompts.forEach((prompt, index) => {
-    if (typeof prompt !== 'string') return;
-    const lower = prompt.toLowerCase();
-    if (!/(implement|fix|add|update|change|refactor|create|remove|handle|validate|persist|surface)/.test(lower)) {
-      issues.push(`developerPrompts[${index}] lacks an implementation verb`);
-    }
-    if (!/(user|customer|feedback|expects|reported|requested|frustrated|confused)/.test(lower)) {
-      issues.push(`developerPrompts[${index}] does not preserve user context`);
-    }
-  });
   return issues;
 }
 
@@ -225,8 +195,6 @@ export function validateAIQuality(taskKind: LLMTaskKind, output: unknown, profil
   switch (effectiveProfile) {
     case 'analysis':
       return validateAnalysis(obj, taskKind);
-    case 'feedback':
-      return validateFeedback(obj);
     case 'marketing':
       return validateMarketing(obj);
     case 'campaign':
@@ -246,7 +214,6 @@ export function validateAIQuality(taskKind: LLMTaskKind, output: unknown, profil
 
 function defaultQualityProfile(taskKind: LLMTaskKind): QualityProfile | undefined {
   if (taskKind === 'codebase_analysis' || taskKind === 'idea_analysis') return 'analysis';
-  if (taskKind === 'feedback_analysis') return 'feedback';
   if (taskKind === 'marketing_content') return 'marketing';
   if (taskKind === 'campaign_plan') return 'campaign';
   if (taskKind === 'analytics_insights') return 'analytics';

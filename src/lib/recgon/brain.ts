@@ -3,13 +3,11 @@
 // Each reader produces BrainEntry[] with stable dedupKey so taskMint stays
 // idempotent. Sources:
 //   • prioritizedNextSteps         → 'next_step'
-//   • developerPrompts             → 'dev_prompt'
-//   • feedback bugs/themes rollup  → 'dev_prompt' / 'research'
 //   • growthMetrics                → 'analytics'
 //   • GitHub commit drift          → 'research'
 //
-// Completion is honoured: nextStepsTaken[].taken and completedPrompts[] mean
-// the entry should not be re-minted.
+// Completion is honoured: nextStepsTaken[].taken means the entry should not
+// be re-minted.
 
 import { getAllProjects } from '../storage';
 import { getLatestCommit } from '../githubFetcher';
@@ -17,7 +15,7 @@ import { logger } from '../logger';
 import { getUserById } from '../userStorage';
 import { getAnalyticsConfig } from '../analyticsStorage';
 import { fetchAnalyticsData } from '../analyticsEngine';
-import type { Project, FeedbackAnalysis, ProductAnalysis } from '../storage';
+import type { Project, ProductAnalysis } from '../storage';
 import type { BrainEntry, BrainSnapshot, TaskKind } from './types';
 
 function dedupKey(parts: string[]): string {
@@ -48,102 +46,6 @@ function nextStepsFromProject(project: Project): BrainEntry[] {
       projectId: project.id,
     });
   });
-  return entries;
-}
-
-function devPromptsFromProject(project: Project): BrainEntry[] {
-  const feedbackAnalyses = project.feedbackAnalyses ?? [];
-  const entries: BrainEntry[] = [];
-  for (const fa of feedbackAnalyses) {
-    if (!fa.developerPrompts?.length) continue;
-    const completedIdx = new Set(
-      (fa.completedPrompts ?? []).map((c) => c.promptIndex),
-    );
-    fa.developerPrompts.forEach((prompt, idx) => {
-      if (!prompt || completedIdx.has(idx)) return;
-      entries.push({
-        dedupKey: dedupKey(['dp', fa.id, String(idx)]),
-        kind: 'dev_prompt',
-        source: 'brain',
-        sourceRef: {
-          kind: 'dev_prompt',
-          projectId: project.id,
-          feedbackAnalysisId: fa.id,
-          index: idx,
-          prompt,
-        },
-        title: prompt.length > 80 ? prompt.slice(0, 77) + '…' : prompt,
-        description: prompt,
-        requiredSkills: ['code', 'engineering', 'dev_prompt'],
-        priority: 2,
-        estimatedHours: 3,
-        projectId: project.id,
-      });
-    });
-  }
-  return entries;
-}
-
-// ── Feedback rollup ────────────────────────────────────────────────────────
-//
-// Top unaddressed bugs become dev_prompt tasks; recurring themes become
-// research tasks. We dedupe across analyses by hashing the bug/theme text,
-// so re-running feedback analysis on overlapping content doesn't double-mint.
-
-const FEEDBACK_BUG_LIMIT = 5;
-const FEEDBACK_THEME_LIMIT = 3;
-
-function feedbackRollupFromProject(project: Project): BrainEntry[] {
-  const fas = project.feedbackAnalyses ?? [];
-  if (fas.length === 0) return [];
-  const entries: BrainEntry[] = [];
-  // Combine across all analyses but keep dedup keyed by the text + project so
-  // the same bug surfaced twice doesn't mint twice.
-  const seenBugs = new Set<string>();
-  const seenThemes = new Set<string>();
-  let bugsTaken = 0;
-  let themesTaken = 0;
-
-  for (const fa of fas) {
-    for (const bug of fa.bugs ?? []) {
-      if (bugsTaken >= FEEDBACK_BUG_LIMIT) break;
-      const norm = bug.trim().toLowerCase();
-      if (!norm || seenBugs.has(norm)) continue;
-      seenBugs.add(norm);
-      bugsTaken++;
-      entries.push({
-        dedupKey: dedupKey(['fb-bug', project.id, norm.slice(0, 60)]),
-        kind: 'dev_prompt',
-        source: 'brain',
-        sourceRef: { kind: 'feedback_bug', projectId: project.id, feedbackAnalysisId: fa.id, bug },
-        title: bug.length > 80 ? bug.slice(0, 77) + '…' : bug,
-        description: `User-reported bug from feedback analysis: ${bug}`,
-        requiredSkills: ['code', 'engineering', 'bugfix'],
-        priority: 1,
-        estimatedHours: 2,
-        projectId: project.id,
-      });
-    }
-    for (const theme of fa.themes ?? []) {
-      if (themesTaken >= FEEDBACK_THEME_LIMIT) break;
-      const norm = theme.trim().toLowerCase();
-      if (!norm || seenThemes.has(norm)) continue;
-      seenThemes.add(norm);
-      themesTaken++;
-      entries.push({
-        dedupKey: dedupKey(['fb-theme', project.id, norm.slice(0, 60)]),
-        kind: 'research',
-        source: 'brain',
-        sourceRef: { kind: 'feedback_theme', projectId: project.id, feedbackAnalysisId: fa.id, theme },
-        title: `Investigate recurring theme: ${theme.length > 50 ? theme.slice(0, 47) + '…' : theme}`,
-        description: `Recurring user-feedback theme that needs strategic attention: ${theme}`,
-        requiredSkills: ['research', 'product', 'strategy'],
-        priority: 2,
-        estimatedHours: 3,
-        projectId: project.id,
-      });
-    }
-  }
   return entries;
 }
 
@@ -299,8 +201,6 @@ export async function readUnifiedBrain(teamId: string): Promise<BrainSnapshot> {
   const entries: BrainEntry[] = [];
   for (const p of projects) {
     entries.push(...nextStepsFromProject(p));
-    entries.push(...devPromptsFromProject(p));
-    entries.push(...feedbackRollupFromProject(p));
     try {
       entries.push(...await projectHealthFromProject(p));
     } catch (err) {
@@ -342,10 +242,8 @@ export async function readUnifiedBrain(teamId: string): Promise<BrainSnapshot> {
 // Exported for tests so they can build entries without hitting Supabase.
 export const __testing = {
   nextStepsFromProject,
-  devPromptsFromProject,
-  feedbackRollupFromProject,
   projectHealthFromProject,
   githubDriftFromProject,
 };
 
-export type { Project, ProductAnalysis, FeedbackAnalysis };
+export type { Project, ProductAnalysis };

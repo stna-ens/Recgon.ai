@@ -824,7 +824,7 @@ export default function V2ProjectSettingsPage() {
                 </header>
                 <div className="v2-pset-section-body">
                   <p className="v2-pset-destroy-text">
-                    Deleting removes all analyses, feedback, marketing content, and tasks tied to this project.
+                    Deleting removes all analyses, marketing content, and tasks tied to this project.
                   </p>
                   <div className="v2-pset-destroy-actions">
                     {!confirmDelete ? (

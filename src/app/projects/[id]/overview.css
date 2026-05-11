@@ -766,14 +766,15 @@
         gap: 14px;
       }
       .v2-batt-card-head {
-        display: grid;
-        grid-template-columns: 50px 1fr auto;
-        align-items: center;
+        display: flex;
+        align-items: flex-start;
         gap: 12px;
         padding-bottom: 12px;
         border-bottom: 1px dashed var(--rule);
+        min-width: 0;
       }
       .v2-batt-rank {
+        flex: 0 0 auto;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
         font-size: 11px;
         font-weight: 800;
@@ -785,8 +786,10 @@
         border-radius: 4px;
         text-align: center;
         font-variant-numeric: tabular-nums;
+        line-height: 1.4;
       }
       .v2-batt-id {
+        flex: 1 1 auto;
         display: flex;
         align-items: baseline;
         gap: 10px;
@@ -794,10 +797,13 @@
         min-width: 0;
       }
       .v2-batt-name {
+        flex: 1 1 100%;
         font-size: 16px;
         font-weight: 700;
         color: var(--txt-pure);
         letter-spacing: -0.01em;
+        line-height: 1.35;
+        word-break: break-word;
       }
       .v2-batt-visit {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -819,6 +825,8 @@
         text-transform: lowercase;
       }
       .v2-batt-summary {
+        display: block;
+        width: 100%;
         font-size: 13px;
         line-height: 1.65;
         color: var(--txt-muted);

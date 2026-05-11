@@ -60,7 +60,7 @@ For codebase analysis, explicitly use file paths and file roles from the context
 export function analyzeUserPrompt(treeStr: string, filesStr: string, appContext?: string): string {
   return `${appContext ? `${appContext}\n\n` : ''}Analyze this codebase and give me a deep product and strategy analysis.
 
-Use the app context above to keep the analysis connected to the founder's saved feedback, marketing, campaigns, source profiles, and analytics setup. The codebase evidence is still the source of truth for what exists in the product; the app context explains how the rest of Recgon currently understands and uses that product.
+Use the app context above to keep the analysis connected to the founder's saved marketing, campaigns, source profiles, and analytics setup. The codebase evidence is still the source of truth for what exists in the product; the app context explains how the rest of Recgon currently understands and uses that product.
 
 FILE TREE:
 ${treeStr}
@@ -138,7 +138,7 @@ For idea analysis, distinguish stated facts from assumptions. Focus next steps o
 export function analyzeIdeaUserPrompt(description: string, appContext?: string): string {
   return `${appContext ? `${appContext}\n\n` : ''}Analyze this product idea and give me a deep product and strategy analysis.
 
-Use the app context above to keep the analysis connected to any saved feedback, marketing, campaigns, source profiles, and analytics setup. If the idea text and existing app context disagree, explain the current best interpretation through the analysis fields instead of pretending the conflict does not exist.
+Use the app context above to keep the analysis connected to any saved marketing, campaigns, source profiles, and analytics setup. If the idea text and existing app context disagree, explain the current best interpretation through the analysis fields instead of pretending the conflict does not exist.
 
 IDEA DESCRIPTION:
 ${description}`;
@@ -148,7 +148,7 @@ export function analyzeUpdateUserPrompt(existingAnalysis: object, diffStr: strin
   return `${appContext ? `${appContext}\n\n` : ''}Below is the current product analysis and a git diff showing recent changes. Update the analysis to accurately reflect the current state of the codebase, and populate the "improvements" and "nextStepsTaken" fields.
 
 Pay special attention to DELETED FILES — if a whole file is removed, the features/technologies it provided must be removed from the analysis unless they exist elsewhere.
-Use the app context above to connect the updated analysis to saved feedback, marketing, campaigns, source profiles, and analytics setup. The diff is the source of truth for product/code changes; the app context helps prioritize and interpret those changes.
+Use the app context above to connect the updated analysis to saved marketing, campaigns, source profiles, and analytics setup. The diff is the source of truth for product/code changes; the app context helps prioritize and interpret those changes.
 
 CURRENT ANALYSIS:
 ${JSON.stringify(existingAnalysis, null, 2)}
@@ -376,51 +376,6 @@ USER'S PROJECTS:
 ${projectContext}${memoryBlock}`;
 }
 
-// ── Feedback analysis ─────────────────────────────────────────────────────────
-
-export const FEEDBACK_SYSTEM = `You are an expert product manager and user feedback analyst. Your job is to:
-1. Analyze user feedback to identify patterns, sentiment, and actionable insights
-2. Generate specific, actionable developer prompts that can be given directly to an AI coding agent
-
-Respond with valid JSON only, no markdown, no code fences. Example structure (use actual values, not placeholders):
-{
-  "overallSentiment": "mixed",
-  "summary": "Users like the core workflow, but the strongest frustration is around playback reliability and confusing error states. Most of the near-term work should focus on stabilizing those flows before expanding sharing features.",
-  "sentimentBreakdown": {
-    "positive": 60,
-    "neutral": 20,
-    "negative": 20
-  },
-  "themes": ["Theme 1", "Theme 2"],
-  "featureRequests": ["Feature request 1", "Feature request 2"],
-  "bugs": ["Bug report 1", "Bug report 2"],
-  "praises": ["What users love 1", "What users love 2"],
-  "developerPrompts": [
-    "Implement X feature by adding Y to Z file. The user expects...",
-    "Fix the bug where... by modifying the... component to handle...",
-    "Improve the UX of... by adding... The user feedback suggests..."
-  ]
-}
-
-IMPORTANT: The developerPrompts should be SPECIFIC, ACTIONABLE prompts that a developer can directly give to an AI coding agent (like Copilot or Cursor). Each prompt should:
-- Describe exactly what to implement or fix
-- Reference specific components or areas if possible
-- Include the user's perspective and expected behavior
-- Be self-contained so the AI agent has full context
-- Start with an implementation verb such as Implement, Fix, Add, Update, Validate, Persist, or Surface
-- Avoid generic prompts like "improve UX" unless the desired state and user-facing behavior are explicit
-
-IMPORTANT: The summary should be a real 2-3 sentence summary of the feedback itself. It must be grounded in the actual comments, not a restatement of the sentiment percentages. Call out the main friction, the main request or expectation if there is one, and any positive signal worth protecting.`;
-
-export function feedbackUserPrompt(feedbackStr: string, appContext?: string): string {
-  return `${appContext ? `${appContext}\n\n` : ''}Analyze the following user feedback and generate developer prompts.
-
-Use the app context above to connect this feedback to the product analysis, previous feedback, marketing, campaigns, sources, and analytics setup when available. If the new feedback contradicts old context, trust the newer feedback but call out the shift in the summary or prompts.
-
-NEW FEEDBACK:
-${feedbackStr}`;
-}
-
 // ── Marketing content ─────────────────────────────────────────────────────────
 
 export const MARKETING_SYSTEM = {
@@ -484,7 +439,7 @@ Unique Selling Points: ${uniqueSellingPoints.join(', ')}
 ${websiteContent ? `\nLIVE WEBSITE CONTENT (use this for authentic messaging and tone):\n${websiteContent}` : ''}
 ${customPrompt ? `\nUser's Custom Instructions: ${customPrompt}\nMAKE SURE TO FOLLOW THESE INSTRUCTIONS CLOSELY.` : ''}
 
-Use the app context above to avoid repeating stale angles, reflect current feedback themes, and keep messaging consistent with the latest product analysis and campaigns.`;
+Use the app context above to avoid repeating stale angles and keep messaging consistent with the latest product analysis and campaigns.`;
 }
 
 // ── Campaign planning ─────────────────────────────────────────────────────────
@@ -610,7 +565,7 @@ Type: ${campaignType}
 Goal: ${goal}
 Duration: ${duration}
 
-Create a comprehensive, product-specific campaign plan. Use the app context above to adapt the plan to current feedback themes, previous campaigns, available source channels, analytics setup, and the latest product analysis.`;
+Create a comprehensive, product-specific campaign plan. Use the app context above to adapt the plan to previous campaigns, available source channels, analytics setup, and the latest product analysis.`;
 }
 
 // ── Analytics insights ────────────────────────────────────────────────────────
@@ -721,7 +676,7 @@ export function socialAnalysisUserPrompt(
 
 // ── Weekly overview brief ──────────────────────────────────────────────────────
 
-export const OVERVIEW_BRIEF_SYSTEM = `You are a sharp, direct product advisor acting as the CEO/PM for a software team. You receive a snapshot of all the team's active projects — their analysis scores, top weaknesses, recent feedback themes, and activity. You write a concise weekly brief.
+export const OVERVIEW_BRIEF_SYSTEM = `You are a sharp, direct product advisor acting as the CEO/PM for a software team. You receive a snapshot of all the team's active projects — their analysis scores, top weaknesses, and activity. You write a concise weekly brief.
 
 Respond with valid JSON only, no markdown, no code fences:
 {
@@ -861,9 +816,7 @@ export function overviewBriefUserPrompt(
     stage: string | null;
     weaknesses: string[];
     nextSteps: string[];
-    feedbackThemes: string[];
     marketingCount: number;
-    feedbackCount: number;
   }>,
 ): string {
   if (projects.length === 0) return 'No projects available yet.';
@@ -871,9 +824,8 @@ export function overviewBriefUserPrompt(
     const stage = p.stage ? `stage: ${p.stage}` : 'analyzed';
     const weak = p.weaknesses.length > 0 ? `top weakness: "${p.weaknesses[0]}"` : '';
     const next = p.nextSteps.length > 0 ? `next step: "${p.nextSteps[0]}"` : '';
-    const fb = p.feedbackThemes.length > 0 ? `feedback themes: ${p.feedbackThemes.join(', ')}` : '';
-    const parts = [stage, weak, next, fb].filter(Boolean);
-    return `- ${p.name} (${parts.join(' — ')}) · ${p.marketingCount} campaigns, ${p.feedbackCount} feedback runs`;
+    const parts = [stage, weak, next].filter(Boolean);
+    return `- ${p.name} (${parts.join(' — ')}) · ${p.marketingCount} campaigns`;
   });
   return `Team projects this week:\n${lines.join('\n')}\n\nWrite the weekly brief.`;
 }

@@ -157,17 +157,29 @@ export function ProjectTasksListView() {
   }, [refresh]);
 
   // Poll while a verification is in flight so the row updates without reload.
-  // Mirrors the inbox cadence (1.5s) so per-stage chip text catches transitions.
+  // Mirrors the inbox cadence (1.5s). Cancel the timer when the tab hides
+  // and re-create on show — saves spurious wake-ups on a hidden tab.
   const verifyingRef = useRef(false);
   useEffect(() => {
     verifyingRef.current = tasks.some(
       (t) => t.verificationStatus === 'auto_running' || t.verificationStatus === 'proof_evaluating',
     );
     if (!verifyingRef.current) return;
-    const id = setInterval(() => {
-      if (document.visibilityState === 'visible') refresh();
-    }, 1500);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id != null) return;
+      id = setInterval(() => { refresh(); }, 1500);
+    };
+    const stop = () => {
+      if (id != null) { clearInterval(id); id = null; }
+    };
+    const onVis = () => { document.hidden ? stop() : start(); };
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [tasks, refresh]);
 
   const counts = useMemo(() => ({
@@ -530,7 +542,7 @@ export function ProjectTasksListView() {
                   ? 'No tasks under review.'
                   : filter === 'done'
                     ? 'No tasks shipped yet.'
-                    : 'No tasks for this project yet. The mentor mints tasks from analysis & feedback.'}
+                    : 'No tasks for this project yet. The mentor mints tasks from analysis.'}
           </p>
         </div>
       ) : grouped ? (

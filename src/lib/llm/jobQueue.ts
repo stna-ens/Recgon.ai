@@ -3,7 +3,6 @@ import { supabase } from '../supabase';
 import { logger } from '../logger';
 
 export type JobKind =
-  | 'feedback_analysis'
   | 'codebase_analysis'
   | 'competitor_analysis'
   | 'idea_analysis'

@@ -1,126 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { cleanText, relTimeShort } from './utils';
 
-// Canvas-based interactive dot field. Renders an evenly spaced grid of
-// signature-pink dots; each dot's radius and opacity scale up as the cursor
-// approaches it (smoothstep falloff within REACH px). All dots are real —
-// no CSS mask, no spotlight cheat. Pointer events attach to the parent
-// .v2-fc-shell so the entire card surface drives the effect.
-function FocusBackplate() {
-  const ref = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const c = ref.current;
-    if (!c) return;
-    const ctx = c.getContext('2d')!;
-    const dpr = window.devicePixelRatio || 1;
-    let raf = 0;
-    let mx = -9999, my = -9999;
-    let tx = -9999, ty = -9999; // eased pointer (smoother trail)
-
-    const SPACING = 18;
-    const BASE_R = 0.9;
-    const MAX_R = 3;
-    const MAX_A = 1;
-    const REACH = 120;
-
-    const resize = () => {
-      const r = c.getBoundingClientRect();
-      c.width = r.width * dpr;
-      c.height = r.height * dpr;
-      c.style.width = `${r.width}px`;
-      c.style.height = `${r.height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(c);
-
-    const parent = c.parentElement?.parentElement; // .v2-fc-shell
-    const onMove = (e: PointerEvent) => {
-      const r = c.getBoundingClientRect();
-      mx = e.clientX - r.left;
-      my = e.clientY - r.top;
-    };
-    const onLeave = () => { mx = -9999; my = -9999; };
-    parent?.addEventListener('pointermove', onMove);
-    parent?.addEventListener('pointerleave', onLeave);
-
-    // Read the dot color and base alpha on every frame so theme switches
-    // (light↔dark) pick up live without remounting the canvas. Falls back
-    // to signature pink, then a saturated default if neither token is set.
-    const rootStyle = getComputedStyle(document.documentElement);
-    const readDotRgb = () =>
-      rootStyle.getPropertyValue('--dot-rgb').trim()
-      || rootStyle.getPropertyValue('--signature-rgb').trim()
-      || '236, 72, 153';
-    const readBaseA = () => {
-      const v = parseFloat(rootStyle.getPropertyValue('--dot-base-a'));
-      return Number.isFinite(v) ? v : 0.26;
-    };
-
-    const draw = () => {
-      // Smooth the cursor follow so the dot lift feels continuous, not jumpy.
-      tx += (mx - tx) * 0.25;
-      ty += (my - ty) * 0.25;
-      const sig = readDotRgb();
-      const BASE_A = readBaseA();
-
-      const w = c.clientWidth;
-      const h = c.clientHeight;
-      ctx.clearRect(0, 0, w, h);
-
-      const cols = Math.ceil(w / SPACING) + 1;
-      const rows = Math.ceil(h / SPACING) + 1;
-      const offX = SPACING / 2;
-      const offY = SPACING / 2;
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const x = offX + col * SPACING;
-          const y = offY + row * SPACING;
-          const dx = x - tx;
-          const dy = y - ty;
-          const d = Math.hypot(dx, dy);
-          let t = 0;
-          if (d < REACH) {
-            const u = 1 - d / REACH;
-            t = u * u * (3 - 2 * u); // smoothstep
-          }
-          // Repel: dots within REACH are pushed AWAY from the cursor along
-          // the cursor→dot unit vector. Push amount peaks at PUSH_MAX and
-          // tapers with the same smoothstep falloff used for size/alpha.
-          const safeD = d || 0.0001;
-          const ux = dx / safeD;
-          const uy = dy / safeD;
-          const PUSH_MAX = 14;
-          const px = x + ux * PUSH_MAX * t;
-          const py = y + uy * PUSH_MAX * t;
-          const r = BASE_R + (MAX_R - BASE_R) * t;
-          const a = BASE_A + (MAX_A - BASE_A) * t;
-          ctx.fillStyle = `rgba(${sig}, ${a})`;
-          ctx.beginPath();
-          ctx.arc(px, py, r, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      parent?.removeEventListener('pointermove', onMove);
-      parent?.removeEventListener('pointerleave', onLeave);
-    };
-  }, []);
-
-  return <canvas ref={ref} className="v2-fc-canvas" aria-hidden="true" />;
-}
+// Background canvas effect — lazy-loaded so it doesn't sit on the critical
+// dashboard render path. The component already self-pauses when off-screen
+// or when the tab is hidden, but deferring the JS for it avoids paying for
+// it during initial paint of the home view.
+const LandingDotField = dynamic(
+  () => import('@/components/landing/LandingDotField'),
+  { ssr: false },
+);
 
 export interface FocusData {
   projectId: string;
@@ -130,7 +21,6 @@ export interface FocusData {
   overallScore: number | null;
   topRisk: string | null;
   nextSteps: string[];
-  latestVoice: string | null;
   analyzedAt: string | null;
   risksCount: number;
   nextStepsCount: number;
@@ -289,7 +179,7 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
         {/* Interactive dot field — each dot lifts and brightens with cursor
             proximity (canvas-rendered, real per-dot reaction). */}
         <div className="v2-fc-backplate" aria-hidden="true">
-          <FocusBackplate />
+          <LandingDotField mode="parent" />
         </div>
 
         {/* TOP STRIP — status chip + project metadata line (this is where the dots show) */}
@@ -427,20 +317,6 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
 
             </div>
 
-            {/* BOTTOM — user voice or empty placeholder */}
-            <div className="v2-fc-right-bottom">
-              {focus.latestVoice ? (
-                <>
-                  <span className="v2-fc-right-tag">latest user voice</span>
-                  <p className="v2-fc-voice-text">&ldquo;{cleanText(focus.latestVoice)}&rdquo;</p>
-                </>
-              ) : (
-                <>
-                  <span className="v2-fc-right-tag">no user voice yet</span>
-                  <p className="v2-fc-voice-empty">Connect a feedback source to surface user reactions here.</p>
-                </>
-              )}
-            </div>
           </div>
 
         </div>

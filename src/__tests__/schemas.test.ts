@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import {
   AnalysisResultSchema,
-  FeedbackResultSchema,
   InstagramContentSchema,
   TikTokContentSchema,
   GoogleAdsContentSchema,
@@ -13,41 +13,35 @@ import {
 // ── parseAIResponse ──────────────────────────────────────────────────────────
 
 describe('parseAIResponse', () => {
-  const simpleSchema = FeedbackResultSchema;
+  const simpleSchema = z.object({
+    sentiment: z.enum(['positive', 'neutral', 'negative']),
+    score: z.number(),
+  });
 
-  const validFeedback = {
-    overallSentiment: 'positive',
-    summary: 'Users are happy with speed, but they want dark mode.',
-    sentimentBreakdown: { positive: 80, neutral: 15, negative: 5 },
-    themes: ['usability'],
-    featureRequests: ['dark mode'],
-    bugs: [],
-    praises: ['fast'],
-    developerPrompts: ['add dark mode'],
-  };
+  const validPayload = { sentiment: 'positive' as const, score: 80 };
 
   it('parses valid JSON directly', () => {
-    const result = parseAIResponse(JSON.stringify(validFeedback), simpleSchema);
-    expect(result.overallSentiment).toBe('positive');
-    expect(result.sentimentBreakdown.positive).toBe(80);
+    const result = parseAIResponse(JSON.stringify(validPayload), simpleSchema);
+    expect(result.sentiment).toBe('positive');
+    expect(result.score).toBe(80);
   });
 
   it('handles markdown-wrapped JSON (```json ... ```)', () => {
-    const wrapped = '```json\n' + JSON.stringify(validFeedback) + '\n```';
+    const wrapped = '```json\n' + JSON.stringify(validPayload) + '\n```';
     const result = parseAIResponse(wrapped, simpleSchema);
-    expect(result.overallSentiment).toBe('positive');
+    expect(result.sentiment).toBe('positive');
   });
 
   it('handles markdown-wrapped JSON without language tag', () => {
-    const wrapped = '```\n' + JSON.stringify(validFeedback) + '\n```';
+    const wrapped = '```\n' + JSON.stringify(validPayload) + '\n```';
     const result = parseAIResponse(wrapped, simpleSchema);
-    expect(result.overallSentiment).toBe('positive');
+    expect(result.sentiment).toBe('positive');
   });
 
   it('extracts JSON from surrounding text', () => {
-    const messy = 'Here is the result:\n' + JSON.stringify(validFeedback) + '\nHope that helps!';
+    const messy = 'Here is the result:\n' + JSON.stringify(validPayload) + '\nHope that helps!';
     const result = parseAIResponse(messy, simpleSchema);
-    expect(result.overallSentiment).toBe('positive');
+    expect(result.sentiment).toBe('positive');
   });
 
   it('throws on no JSON found', () => {
@@ -55,7 +49,7 @@ describe('parseAIResponse', () => {
   });
 
   it('throws on invalid schema match', () => {
-    const invalid = JSON.stringify({ overallSentiment: 'invalid_value' });
+    const invalid = JSON.stringify({ sentiment: 'invalid_value', score: 0 });
     expect(() => parseAIResponse(invalid, simpleSchema)).toThrow();
   });
 });
@@ -118,31 +112,6 @@ describe('AnalysisResultSchema', () => {
 
   it('rejects missing required fields', () => {
     expect(() => AnalysisResultSchema.parse({ name: 'Test' })).toThrow();
-  });
-});
-
-// ── FeedbackResultSchema ─────────────────────────────────────────────────────
-
-describe('FeedbackResultSchema', () => {
-  it('validates sentiment enum values', () => {
-    for (const s of ['positive', 'neutral', 'negative', 'mixed']) {
-      const result = FeedbackResultSchema.parse({
-        overallSentiment: s,
-        summary: 'Test summary',
-        sentimentBreakdown: { positive: 50, neutral: 30, negative: 20 },
-        themes: [], featureRequests: [], bugs: [], praises: [], developerPrompts: [],
-      });
-      expect(result.overallSentiment).toBe(s);
-    }
-  });
-
-  it('rejects sentiment breakdown out of range', () => {
-    expect(() => FeedbackResultSchema.parse({
-      overallSentiment: 'positive',
-      summary: 'Test summary',
-      sentimentBreakdown: { positive: 150, neutral: 0, negative: 0 },
-      themes: [], featureRequests: [], bugs: [], praises: [], developerPrompts: [],
-    })).toThrow();
   });
 });
 

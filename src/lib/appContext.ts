@@ -21,7 +21,6 @@ function compactJson(value: unknown, max = 700): string {
 
 export function buildProjectAppContext(project: Project, limit = DEFAULT_LIMIT): string {
   const analysis = project.analysis;
-  const feedback = project.feedbackAnalyses ?? [];
   const marketing = project.marketingContent ?? [];
   const campaigns = project.campaigns ?? [];
 
@@ -32,8 +31,8 @@ export function buildProjectAppContext(project: Project, limit = DEFAULT_LIMIT):
     `Source: ${project.sourceType ?? (project.isGithub ? 'github' : 'unknown')}${project.githubUrl ? ` (${project.githubUrl})` : ''}`,
     project.analyticsPropertyId ? `Analytics: GA4 connected (${project.analyticsPropertyId})` : 'Analytics: not connected or no property saved',
     project.socialProfiles?.length
-      ? `Feedback/source profiles: ${project.socialProfiles.map((p) => `${p.platform}: ${p.url}`).join('; ')}`
-      : 'Feedback/source profiles: none configured',
+      ? `Source profiles: ${project.socialProfiles.map((p) => `${p.platform}: ${p.url}`).join('; ')}`
+      : 'Source profiles: none configured',
   ].filter(Boolean);
 
   if (analysis) {
@@ -52,20 +51,6 @@ export function buildProjectAppContext(project: Project, limit = DEFAULT_LIMIT):
     );
   } else {
     sections.push('', 'Latest product analysis: none yet');
-  }
-
-  if (feedback.length > 0) {
-    const recent = feedback.slice(0, 3).map((run, index) => [
-      `Run ${index + 1} (${run.analyzedAt}, ${run.sentiment}):`,
-      `summary=${clip(run.summary, 450) || 'none'}`,
-      `themes=${list(run.themes, 5).join('; ') || 'none'}`,
-      `featureRequests=${list(run.featureRequests, 4).join('; ') || 'none'}`,
-      `bugs=${list(run.bugs, 4).join('; ') || 'none'}`,
-      `developerPrompts=${list(run.developerPrompts, 4, 220).join('; ') || 'none'}`,
-    ].join(' '));
-    sections.push('', `Recent feedback analyses (${feedback.length} total):`, ...recent);
-  } else {
-    sections.push('', 'Recent feedback analyses: none yet');
   }
 
   if (marketing.length > 0) {

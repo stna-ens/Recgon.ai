@@ -21,12 +21,6 @@ describe('unified brain wiring', () => {
     ]));
   });
 
-  it('keeps feedback tools unwired from the chat surface while collection is paused', () => {
-    const names = listTools().map((tool) => tool.name);
-    expect(names).not.toContain('query_feedback');
-    expect(names).not.toContain('collect_feedback');
-  });
-
   it('exports Gemini-safe function declarations for registered tools', () => {
     const declarations = geminiFunctionDeclarations();
     const names = declarations.map((declaration) => declaration.name);
@@ -52,7 +46,7 @@ describe('unified brain wiring', () => {
         name: 'Recgon',
         description: 'Turns product data into founder actions.',
         techStack: ['Next.js'],
-        features: ['Project analysis', 'Feedback analysis'],
+        features: ['Project analysis'],
         targetAudience: 'Solo founders',
         uniqueSellingPoints: ['All product context in one place'],
         problemStatement: 'Founders lack connected context.',
@@ -70,19 +64,6 @@ describe('unified brain wiring', () => {
         growthMetrics: ['Activation'],
         analyzedAt: '2026-04-25T00:00:00.000Z',
       },
-      feedbackAnalyses: [{
-        id: 'feedback-1',
-        rawFeedback: ['Setup is confusing'],
-        sentiment: 'mixed',
-        summary: 'Users like the value but struggle with setup.',
-        sentimentBreakdown: { positive: 40, neutral: 20, negative: 40 },
-        themes: ['Setup clarity'],
-        featureRequests: ['Show setup progress'],
-        bugs: [],
-        praises: ['Useful analysis'],
-        developerPrompts: ['Add setup progress feedback.'],
-        analyzedAt: '2026-04-25T00:00:00.000Z',
-      }],
       marketingContent: [{
         id: 'content-1',
         platform: 'instagram',
@@ -103,7 +84,6 @@ describe('unified brain wiring', () => {
     const context = buildProjectAppContext(project);
 
     expect(context).toContain('Latest product analysis');
-    expect(context).toContain('Recent feedback analyses');
     expect(context).toContain('Recent marketing content');
     expect(context).toContain('Recent campaigns');
     expect(context).toContain('GA4 connected');
@@ -155,8 +135,6 @@ describe('unified brain wiring', () => {
 
     const toolFiles = [
       'src/lib/tools/analyzeCode.ts',
-      'src/lib/tools/queryFeedback.ts',
-      'src/lib/tools/collectFeedback.ts',
       'src/lib/tools/generateContent.ts',
       'src/lib/tools/generateCampaign.ts',
       'src/lib/tools/fetchAnalytics.ts',

@@ -11,11 +11,9 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 // Maps the raw `activities.tool_name` token to a readable verb + the
 // observability category it falls into. Categories drive the 14-day
 // stacked chart legend.
-type Category = 'analysis' | 'feedback' | 'content' | 'completion' | 'agent';
+type Category = 'analysis' | 'content' | 'completion' | 'agent';
 const TOOL_MAP: Record<string, { verb: string; category: Category }> = {
   analyze_code: { verb: 'analyzed codebase', category: 'analysis' },
-  query_feedback: { verb: 'analyzed feedback', category: 'feedback' },
-  collect_feedback: { verb: 'collected feedback', category: 'feedback' },
   generate_content: { verb: 'generated content', category: 'content' },
   generate_campaign: { verb: 'planned campaign', category: 'content' },
   fetch_analytics: { verb: 'refreshed analytics', category: 'analysis' },
@@ -24,7 +22,7 @@ const TOOL_MAP: Record<string, { verb: string; category: Category }> = {
 
 interface FeedItem {
   id: string;
-  kind: 'analysis' | 'feedback' | 'content' | 'task_completed' | 'job_done' | 'agent';
+  kind: 'analysis' | 'content' | 'task_completed' | 'job_done' | 'agent';
   category: Category;
   verb: string;
   detail: string | null;
@@ -37,7 +35,6 @@ interface FeedItem {
 interface DayBucket {
   date: string;            // YYYY-MM-DD
   analysis: number;
-  feedback: number;
   content: number;
   completion: number;
   agent: number;
@@ -91,7 +88,6 @@ export async function GET(request: NextRequest) {
       feed.push({
         id: `act-${a.id}`,
         kind: map.category === 'analysis' ? 'analysis'
-            : map.category === 'feedback' ? 'feedback'
             : map.category === 'content'  ? 'content'
             : 'agent',
         category: map.category,
@@ -133,7 +129,6 @@ export async function GET(request: NextRequest) {
       buckets.push({
         date: d.toISOString().slice(0, 10),
         analysis: 0,
-        feedback: 0,
         content: 0,
         completion: 0,
         agent: 0,

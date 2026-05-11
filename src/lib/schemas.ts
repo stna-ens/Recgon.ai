@@ -97,25 +97,6 @@ export const SocialAnalysisResponseSchema = z.object({
 export type SocialProfileInsight = z.infer<typeof SocialProfileInsightSchema>;
 export type SocialAnalysisResponse = z.infer<typeof SocialAnalysisResponseSchema>;
 
-// ── Feedback analysis ─────────────────────────────────────────────────────────
-
-export const FeedbackResultSchema = z.object({
-  overallSentiment: z.enum(['positive', 'neutral', 'negative', 'mixed']),
-  summary: z.string(),
-  sentimentBreakdown: z.object({
-    positive: z.number().min(0).max(100),
-    neutral: z.number().min(0).max(100),
-    negative: z.number().min(0).max(100),
-  }),
-  themes: z.array(z.string()),
-  featureRequests: z.array(z.string()),
-  bugs: z.array(z.string()),
-  praises: z.array(z.string()),
-  developerPrompts: z.array(z.string()),
-});
-
-export type FeedbackResult = z.infer<typeof FeedbackResultSchema>;
-
 // ── Marketing content ─────────────────────────────────────────────────────────
 
 export const InstagramContentSchema = z.object({

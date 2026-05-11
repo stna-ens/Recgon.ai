@@ -39,7 +39,6 @@ interface ProjectLite {
   name: string;
   analysis?: unknown;
   marketingContent?: unknown[];
-  feedbackAnalyses?: unknown[];
 }
 
 type SlashMode =
@@ -641,10 +640,6 @@ export default function TerminalShell() {
         (acc, p) => acc + (p.marketingContent?.length ?? 0),
         0,
       ),
-      feedback: projects.reduce(
-        (acc, p) => acc + (p.feedbackAnalyses?.length ?? 0),
-        0,
-      ),
     }),
     [projects],
   );
@@ -760,8 +755,6 @@ export default function TerminalShell() {
                   <span>analyzed</span>
                   <strong>{stats.campaigns}</strong>
                   <span>campaigns</span>
-                  <strong>{stats.feedback}</strong>
-                  <span>feedback</span>
                 </span>
               </div>
               <div className="terminal-line is-output">

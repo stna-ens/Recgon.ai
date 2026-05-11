@@ -1,8 +1,8 @@
 // Status polling endpoint for queued LLM jobs.
 //
 // Client polls this to follow a `{ status: 'queued', jobId }` response from
-// an inline-first API route (e.g. /api/feedback/analyze). Returns the job's
-// current status and — once succeeded — the result payload.
+// an inline-first API route. Returns the job's current status and — once
+// succeeded — the result payload.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';

@@ -37,8 +37,8 @@ export default function DeleteProjectModal({
           </button>
         </div>
         <p className="v2-modal-hint">
-          Delete <strong>{projectName}</strong>? This removes the project, its analysis history, generated marketing,
-          and feedback runs. This cannot be undone.
+          Delete <strong>{projectName}</strong>? This removes the project, its analysis history, and generated
+          marketing. This cannot be undone.
         </p>
         <div className="v2-modal-actions">
           <div className="v2-modal-spacer" />
