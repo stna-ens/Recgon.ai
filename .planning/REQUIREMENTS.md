@@ -14,9 +14,9 @@ Each requirement maps to one of the canonical phases A → E from `.planning/res
 - [ ] **PROFILE-01**: A teammate can fill in their own profile (skills, strengths, interests, weekly capacity hours) from a per-team page at `/teams/[id]/me`.
 - [ ] **PROFILE-02**: The skill picker uses a single canonical vocabulary (from `skillVocabulary.ts`) shared with the existing `skillTagger` so task `requiredSkills` and teammate `skills` use the same labels.
 - [ ] **PROFILE-03**: Self-declared profile data is stored in a new `teammate_profiles` table (separate from `agent_teammates`), additive, never overwrites existing fields.
-- [ ] **PROFILE-04**: The dispatcher reads from a `profileMerge` pure function that combines self-declared + (eventually) GitHub-inferred + EMA history at dispatch time — no schema mutation on the existing `agent_teammates` table.
-- [ ] **PROFILE-05**: A teammate can update their profile at any time; subsequent dispatcher runs respect the new values within one cron cycle.
-- [ ] **PROFILE-06**: Capacity hours declared in the profile feed into the existing load-headroom math in `match.ts` without changing the math itself.
+- [x] **PROFILE-04**: The dispatcher reads from a `profileMerge` pure function that combines self-declared + (eventually) GitHub-inferred + EMA history at dispatch time — no schema mutation on the existing `agent_teammates` table.
+- [x] **PROFILE-05**: A teammate can update their profile at any time; subsequent dispatcher runs respect the new values within one cron cycle.
+- [x] **PROFILE-06**: Capacity hours declared in the profile feed into the existing load-headroom math in `match.ts` without changing the math itself.
 
 ### Skill Inference (Phase B — GitHub signal)
 
@@ -123,9 +123,9 @@ Filled by the roadmapper. Each requirement maps to exactly one phase.
 | PROFILE-01 | Phase 1 | Pending |
 | PROFILE-02 | Phase 1 | Pending |
 | PROFILE-03 | Phase 1 | Pending |
-| PROFILE-04 | Phase 1 | Pending |
-| PROFILE-05 | Phase 1 | Pending |
-| PROFILE-06 | Phase 1 | Pending |
+| PROFILE-04 | Phase 1 | Complete |
+| PROFILE-05 | Phase 1 | Complete |
+| PROFILE-06 | Phase 1 | Complete |
 | SKILL-01 | Phase 2 | Pending |
 | SKILL-02 | Phase 2 | Pending |
 | SKILL-03 | Phase 2 | Pending |
