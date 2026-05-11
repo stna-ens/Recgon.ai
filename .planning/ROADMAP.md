@@ -32,7 +32,7 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
   5. Any new LLM call introduced in this phase (none expected, but reserved for prompt-driven helpers) routes through `chatViaChain` with `temperature: 0` — no direct `getGeminiClient()` calls in new code.
 **Plans:** 4 plans
 - [ ] `01-01-PLAN.md` — Extract canonical `skillVocabulary.ts`, write additive `teammate_profiles` migration + `teams.profile_visibility` column, install `cmdk@^1.1.1`, push migration. (Walking Skeleton.)
-- [ ] `01-02-PLAN.md` — Pure `profileMerge.ts` (field-level fallback, D-06/D-08) + additive interest-nudge term in `match.ts` (≤ 0.05, D-03). Pure-function unit tests.
+- [x] `01-02-PLAN.md` — Pure `profileMerge.ts` (field-level fallback, D-06/D-08) + additive interest-nudge term in `match.ts` (≤ 0.05, D-03). Pure-function unit tests. **Complete 2026-05-11** — see `.planning/phases/01-profile-foundation/01-02-SUMMARY.md`.
 - [ ] `01-03-PLAN.md` — `/teams/[id]/me` RSC + `ProfileForm` (cmdk pills, D-12/D-14), `POST + GET /api/teams/[id]/profile` (visibility enforcement, D-17..D-20), one `chatViaChain` normalization call (QUAL-05/06), `profileStorage.ts`, prompts + Zod schema, nav link.
 - [ ] `01-04-PLAN.md` — Wire `profileMerge` into both dispatcher entry points (`runDispatch` + `dispatchTask`), unit + E2E smoke test that a self-declared skill changes assignment, human-verify checkpoint.
 **Research recommended:** skip — standard patterns (profileMerge weight ratios flagged for in-plan simulation, not full `/gsd-research-phase`).

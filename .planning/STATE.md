@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 1 planning complete — ready to execute
-last_updated: "2026-05-11T15:52:47.894Z"
-last_activity: 2026-05-11 -- Phase 01 execution started
+last_updated: "2026-05-11T16:00:00.000Z"
+last_activity: 2026-05-11 -- Plan 01-02 complete (profileMerge + interest-nudge)
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 ## Current Position
 
 Phase: 01 (profile-foundation) — EXECUTING
-Plan: 1 of 4
+Plan: 3 of 4 (next: `01-03-PLAN.md` — `/teams/[id]/me` UI + profile API)
 Status: Executing Phase 01
-Last activity: 2026-05-11 -- Phase 01 execution started
+Last activity: 2026-05-11 -- Plan 01-02 complete (profileMerge + interest-nudge)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 86 | 3 tasks | 7 files |
+| Phase 01 P02 | 360 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,7 @@ Recent decisions affecting current work:
 - D-10 nav-link surface = `TeamSwitcher.tsx` dropdown (the planning artifacts originally assumed a non-existent `src/app/teams/[id]/page.tsx`).
 - Phase 1 dispatcher rebind: `dispatchSingleTask` receives `mergedTeammates`; `backfillLegacySchedules` keeps raw `teammates` (scheduling ≠ assignment math).
 - [Phase ?]: Plan 01-01 (Phase 1 foundation) implemented: canonical skill vocab module, additive teammate_profiles migration, cmdk@^1.1.1. Task 1.4 (supabase db push) pending operator.
+- Plan 01-02: profileMerge pure function (field-level fallback, strengths-fold, interests passthrough) + additive interest-nudge in match.ts (INTEREST_NUDGE_WEIGHT=0.03, ≤ 0.05 cap, applied AFTER weighted sum, cannot flip strict-better-skill candidate). All 20 unit tests pass; tsc clean.
 
 ### Pending Todos
 
@@ -93,7 +95,7 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-11T15:52:35.000Z
-Stopped at: Phase 1 planning complete — ready to execute
+Last session: 2026-05-11T16:00:00.000Z
+Stopped at: Plan 01-02 complete (profileMerge + interest-nudge) — ready for Plan 01-03
 Resume file: None
-Resume command: `/gsd-execute-phase 1` (executes plans 01-01 through 01-04 in wave order)
+Resume command: `/gsd-execute-phase 1` (continues with `01-03-PLAN.md`)
