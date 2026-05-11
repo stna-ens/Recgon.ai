@@ -155,6 +155,25 @@ export default function TeamSwitcher() {
             </button>
           ))}
           <Link
+            href={`/teams/${currentTeam.id}/me`}
+            className="team-switcher-profile-link"
+            onClick={() => setOpen(false)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '9px 12px',
+              borderTop: '1px solid var(--border)',
+              color: 'var(--txt)',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              textDecoration: 'none',
+            }}
+          >
+            My profile
+          </Link>
+          <Link
             href={manageHref}
             className="team-switcher-manage-link"
             onClick={() => setOpen(false)}
