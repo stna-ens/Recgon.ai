@@ -228,6 +228,7 @@ export default function Aurora({
       uniforms.uAmplitude.value = propsRef.current.amplitude ?? 1.0;
       uniforms.uBlend.value = propsRef.current.blend ?? blend;
       uniforms.uColorStops.value = stopsToArray(propsRef.current.colorStops ?? colorStops);
+      uniforms.uLightMode.value = propsRef.current.lightMode ? 1.0 : 0.0;
       renderer.render({ scene: mesh });
       animateId = requestAnimationFrame(update);
     };
