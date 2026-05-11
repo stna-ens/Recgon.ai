@@ -27,6 +27,14 @@ const W_FIT = 0.30;
 const W_AVAIL = 0.15;
 const W_LOAD = 0.10;
 
+// D-03 / Pitfall 3: interest-nudge is the ONLY allowed math touch in Phase 1.
+// Applied AFTER the weighted sum as an additive term — never as one of the
+// four weighted components — so a small overlap on interests can break a tie
+// between similarly-skilled candidates but CANNOT flip a strictly better-
+// skilled candidate. ≤ 0.05 hard cap. Starting value 0.03 leaves room and
+// respects Pitfall 3 (skill-first selection).
+const INTEREST_NUDGE_WEIGHT = 0.03;
+
 // Words tokenizing out of `teammate.title` that don't say anything about role.
 const TITLE_STOPWORDS = new Set([
   'and', 'or', 'the', 'a', 'an', 'of', 'for', 'to', 'with', 'in', 'at',
@@ -150,6 +158,11 @@ export type MatchResult = {
     fitForKind: number;
     availabilityNow: number;
     loadHeadroom: number;
+    // D-03 / Phase 1: additive nudge applied AFTER the weighted sum. Reported
+    // separately in the breakdown so callers can inspect / debug ties; the
+    // top-level `score` already includes this. 0 when teammate has no
+    // matching interest (or no `interests` field at all — back-compat).
+    interestNudge: number;
   };
 };
 
@@ -179,11 +192,28 @@ export function scoreTeammateForTask(
       ? stats.inFlightHours
       : (stats.inFlightCount ?? 0) * FALLBACK_HOURS_PER_TASK;
   const load = loadHeadroom(inFlightHours, teammate.capacityHours, task.estimatedHours ?? 1);
-  const score =
+  const baseScore =
     W_SKILL * skillOverlap +
     W_FIT * fit +
     W_AVAIL * avail +
     W_LOAD * load;
+
+  // D-03 / Pitfall 3: additive interest-nudge — applied AFTER the weighted
+  // sum, capped at INTEREST_NUDGE_WEIGHT (≤ 0.05). Cannot flip a strictly
+  // better-skill candidate; only breaks ties between similarly-skilled
+  // candidates. Reads `teammate.interests` if present (set by profileMerge);
+  // back-compat for old callers without the field (undefined → 0 nudge).
+  const candidateInterests =
+    (teammate as Teammate & { interests?: string[] }).interests ?? [];
+  const taskTags = [...(task.requiredSkills ?? [])].map((s) => s.toLowerCase());
+  const interestOverlap = candidateInterests.some((i) =>
+    taskTags.includes(i.toLowerCase()),
+  )
+    ? 1
+    : 0;
+  const interestNudge = interestOverlap * INTEREST_NUDGE_WEIGHT;
+  const score = baseScore + interestNudge;
+
   return {
     teammate,
     score,
@@ -192,6 +222,7 @@ export function scoreTeammateForTask(
       fitForKind: fit,
       availabilityNow: avail,
       loadHeadroom: load,
+      interestNudge,
     },
   };
 }
