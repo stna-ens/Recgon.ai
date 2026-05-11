@@ -1,11 +1,12 @@
 ---
 phase: 1
 slug: profile-foundation
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-11
 revised: 2026-05-11
+reviewed_at: 2026-05-11T00:00:00Z
 ---
 
 # Phase 1 — UI Design Contract
