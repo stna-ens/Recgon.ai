@@ -164,8 +164,7 @@ export default async function OpengraphImage() {
               maxWidth: 880,
             }}
           >
-            AI-powered product strategy, marketing, feedback analysis, and
-            mentorship — in one place.
+            AI-powered product strategy, marketing, and mentorship — in one place.
           </div>
 
           {/* Bottom row: feature chips */}
@@ -176,7 +175,7 @@ export default async function OpengraphImage() {
               marginTop: 48,
             }}
           >
-            {['Codebase', 'Marketing', 'Feedback', 'Analytics'].map((label) => (
+            {['Codebase', 'Marketing', 'Campaigns', 'Analytics'].map((label) => (
               <div
                 key={label}
                 style={{

@@ -5,8 +5,8 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
         body {
           display: block !important;
           overflow: auto !important;
+          height: auto !important;
           min-height: 100vh;
-          background: #000;
         }
       `}</style>
       {children}

@@ -154,10 +154,25 @@ export default function Aurora({
 
     const geometry = new Triangle(gl);
 
-    const colorStopsArray = colorStops.map((hex) => {
-      const c = new Color(hex);
-      return [c.r, c.g, c.b];
-    });
+    // Cache the parsed color stops keyed by their joined hex string. The
+    // shader needs `[r,g,b]` triples, which previously meant allocating
+    // three new `Color` instances and a fresh outer array on EVERY frame.
+    // Color stops change rarely (theme toggle), so memoize by the stop
+    // signature and reuse the same buffer otherwise.
+    let cachedStopsKey = '';
+    let cachedStopsArr: number[][] = [];
+    const stopsToArray = (stops: string[]): number[][] => {
+      const key = stops.join('|');
+      if (key === cachedStopsKey) return cachedStopsArr;
+      cachedStopsKey = key;
+      cachedStopsArr = stops.map((hex) => {
+        const c = new Color(hex);
+        return [c.r, c.g, c.b];
+      });
+      return cachedStopsArr;
+    };
+
+    const colorStopsArray = stopsToArray(colorStops);
 
     program = new Program(gl, {
       vertex: VERT,
@@ -174,27 +189,71 @@ export default function Aurora({
     const mesh = new Mesh(gl, { geometry, program });
     ctn.appendChild(gl.canvas);
 
+    // Visibility / viewport gates. Aurora is a fragment-shader fullscreen
+    // pass — even small changes (amplitude, time) trigger a full GPU draw.
+    // When the canvas is offscreen or the tab is hidden we avoid scheduling
+    // any rAF at all and resume on the next observable transition.
     let animateId = 0;
+    let visible = !document.hidden;
+    let onScreen = true;
+    let running = false;
+
     const update = (t: number) => {
-      animateId = requestAnimationFrame(update);
-      if (document.hidden) return;
+      animateId = 0;
+      if (!visible || !onScreen) {
+        running = false;
+        return;
+      }
       const { time = t * 0.01, speed: spd = 1.0 } = propsRef.current as AuroraProps & { time?: number };
       const uniforms = program.uniforms as Record<string, { value: unknown }>;
       uniforms.uTime.value = time * (spd ?? 1) * 0.1;
       uniforms.uAmplitude.value = propsRef.current.amplitude ?? 1.0;
       uniforms.uBlend.value = propsRef.current.blend ?? blend;
-      const stops = propsRef.current.colorStops ?? colorStops;
-      uniforms.uColorStops.value = stops.map((hex) => {
-        const c = new Color(hex);
-        return [c.r, c.g, c.b];
-      });
+      uniforms.uColorStops.value = stopsToArray(propsRef.current.colorStops ?? colorStops);
       renderer.render({ scene: mesh });
+      animateId = requestAnimationFrame(update);
     };
-    animateId = requestAnimationFrame(update);
+    const start = () => {
+      if (running) return;
+      if (!visible || !onScreen) return;
+      running = true;
+      animateId = requestAnimationFrame(update);
+    };
+    const stop = () => {
+      if (animateId) cancelAnimationFrame(animateId);
+      animateId = 0;
+      running = false;
+    };
+
+    const onVisibility = () => {
+      visible = !document.hidden;
+      if (visible) start();
+      else stop();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    let io: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(
+        (entries) => {
+          const e = entries[0];
+          if (!e) return;
+          onScreen = e.isIntersecting;
+          if (onScreen) start();
+          else stop();
+        },
+        { rootMargin: '64px' },
+      );
+      io.observe(ctn);
+    }
+
+    start();
     resize();
 
     return () => {
-      cancelAnimationFrame(animateId);
+      stop();
+      io?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('resize', resize);
       if (ctn && (gl.canvas as HTMLCanvasElement).parentNode === ctn) {
         ctn.removeChild(gl.canvas);

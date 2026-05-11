@@ -2,101 +2,58 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
+import { Code, BarChart3, ListTodo, UserCheck, ShieldCheck, Terminal } from 'lucide-react';
 import RecgonLogo from '@/components/RecgonLogo';
-import DecryptedText from '@/components/landing/DecryptedText';
-import { AUDIENCE, MONO, PINK, features, steps } from '@/components/landing/constants';
+import DecryptedText from './DecryptedText';
+import LandingDotField from './LandingDotField';
 
-const Aurora = dynamic(() => import('@/components/landing/Aurora'), { ssr: false });
+const Aurora = dynamic(() => import('./Aurora'), { ssr: false });
 
-const MATRIX_CHARS = '01{}[]()<>/\\|+-=*#@$%&!?.,:;';
-const DEVICE_WORDS = ['laptop.', 'Mac.', 'desktop.', 'PC.'];
+const AUDIENCE = [
+  'small teams',
+  'early-stage startups',
+  'indie hackers',
+  'founding teams',
+  'side projects',
+  'solo founders',
+  'product teams',
+];
 
-type MatrixColumn = {
-  left: string;
-  width: string;
-  duration: string;
-  delay: string;
-  opacity: number;
-  text: string;
-};
+const DEVICES = ['laptop.', 'desktop.', 'Mac.', 'PC.'];
 
-function MatrixRain() {
-  const [columns, setColumns] = useState<MatrixColumn[]>([]);
+const CAPABILITIES = [
+  { Icon: Code,        title: 'Codebase analysis',  body: 'Paste a GitHub repo. Recgon reads it and ranks the next moves — stage, risks, growth levers.' },
+  { Icon: BarChart3,   title: 'Analytics pulse',    body: 'Connect GA4. Traffic, channels, and funnel signals get folded into your weekly brief.' },
+  { Icon: ListTodo,    title: 'Auto task minting',  body: 'Strategy, dev, marketing, analytics, research — tasks are written from your unified snapshot.' },
+  { Icon: UserCheck,   title: 'Skill-aware assign', body: 'Each task gets scored against every teammate by skill, load, and calendar — best fit wins.' },
+  { Icon: ShieldCheck, title: 'Task verification',  body: 'When a task is marked done, Recgon checks the evidence against the original acceptance criteria.' },
+  { Icon: Terminal,    title: 'Slash terminal',     body: '/analyze, /analytics, /content — every analysis and assignment is one slash away.' },
+];
 
-  useEffect(() => {
-    const cols = 16;
-    const arr: MatrixColumn[] = Array.from({ length: cols }, (_, i) => {
-      const len = 12 + Math.floor(Math.random() * 12);
-      let text = '';
-      for (let j = 0; j < len; j++) {
-        text += MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)] + '\n';
-      }
-      return {
-        left: `${((i + 0.5) * (100 / cols)).toFixed(2)}%`,
-        width: `${(100 / cols).toFixed(2)}%`,
-        duration: `${(7 + Math.random() * 6).toFixed(2)}s`,
-        delay: `${(-Math.random() * 8).toFixed(2)}s`,
-        opacity: Number((0.12 + Math.random() * 0.22).toFixed(2)),
-        text,
-      };
-    });
-    setColumns(arr);
-  }, []);
+const STEPS = [
+  { num: '01', title: 'Connect.', body: 'Link your GitHub repo and GA4 property. Add your teammates with their roles.' },
+  { num: '02', title: 'Analyze.', body: 'Recgon reads the code and the traffic, then ranks the next steps per project.' },
+  { num: '03', title: 'Act.',     body: 'Tasks land on the right teammate’s calendar. You see what shipped and what slipped.' },
+];
 
-  return (
-    <div
-      aria-hidden
-      style={{
-        position: 'absolute',
-        inset: 0,
-        overflow: 'hidden',
-        pointerEvents: 'none',
-      }}
-    >
-      {columns.map((col, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: col.left,
-            width: col.width,
-            transform: 'translateX(-50%)',
-            textAlign: 'center',
-            fontFamily: MONO,
-            fontSize: '11px',
-            fontWeight: 500,
-            lineHeight: 1.25,
-            color: PINK,
-            opacity: col.opacity,
-            whiteSpace: 'pre',
-            textShadow: '0 0 4px rgba(240,184,208,0.25)',
-            animation: `mlMatrixFall ${col.duration} linear ${col.delay} infinite`,
-            willChange: 'transform',
-          }}
-        >
-          {col.text}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RotatingWord({ word, decryptKey, started }: { word: string; decryptKey: number; started: boolean }) {
-  if (!started) return <>{word}</>;
-  return (
-    <DecryptedText
-      key={decryptKey}
-      text={word}
-      animateOn="view"
-      sequential
-      speed={40}
-      maxIterations={12}
-      className="pink-decrypted-char"
-      encryptedClassName="pink-encrypted-char"
-    />
-  );
-}
+const FAQ = [
+  {
+    q: 'What is Recgon?',
+    a: 'An AI Product Manager for small teams. Reads your codebase, GA4 analytics, and team activity, then surfaces what to ship next and auto-assigns each task to the best-fit teammate.',
+  },
+  {
+    q: 'How does task assignment work?',
+    a: 'Each task is scored against every teammate by skill match, current workload, and open time on their calendar. The best fit gets assigned and pinged.',
+  },
+  {
+    q: 'Does Recgon do the work itself?',
+    a: 'No. Recgon plans, prioritizes, schedules, and verifies — your team ships.',
+  },
+  {
+    q: 'Is there a Claude Code integration?',
+    a: 'Yes. Recgon ships an MCP server so Claude Code can read your analysis, pick up a next step, implement it, and mark it complete.',
+  },
+];
 
 function useReveal<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
@@ -107,14 +64,10 @@ function useReveal<T extends HTMLElement>() {
     const obs = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setVisible(true);
-            obs.disconnect();
-            break;
-          }
+          if (entry.isIntersecting) { setVisible(true); obs.disconnect(); break; }
         }
       },
-      { threshold: 0.15 },
+      { threshold: 0.12 },
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -130,7 +83,7 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
       style={{
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(14px)',
-        transition: `opacity 0.7s ease ${delay}ms, transform 0.7s ease ${delay}ms`,
+        transition: `opacity 0.6s var(--ease-out, ease) ${delay}ms, transform 0.6s var(--ease-out, ease) ${delay}ms`,
       }}
     >
       {children}
@@ -138,833 +91,902 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   );
 }
 
+type TermLine = { kind: 'cmd' | 'note' | 'out' | 'ok'; text: string };
+const TERM_SCRIPT: TermLine[] = [
+  { kind: 'cmd',  text: '/analyze acme/storefront' },
+  { kind: 'note', text: '# reading 384 files · 18.2k loc' },
+  { kind: 'out',  text: 'stage: growth · top risk: webhook retries' },
+  { kind: 'note', text: '# matching teammates by skill + calendar' },
+  { kind: 'ok',   text: '→ assigned 4 tasks · 3 owners' },
+];
+
+function TerminalDemo() {
+  const { ref, visible } = useReveal<HTMLDivElement>();
+  const [lineIdx, setLineIdx] = useState(0);
+  const [charIdx, setCharIdx] = useState(0);
+  const [cycle, setCycle] = useState(0);
+
+  useEffect(() => {
+    if (!visible) return;
+    const reduce = typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      setLineIdx(TERM_SCRIPT.length);
+      return;
+    }
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const current = TERM_SCRIPT[lineIdx];
+
+    if (!current) {
+      // Hold the finished frame for a beat, then reset and replay.
+      timer = setTimeout(() => {
+        setLineIdx(0);
+        setCharIdx(0);
+        setCycle((c) => c + 1);
+      }, 4200);
+    } else if (charIdx < current.text.length) {
+      // Commands type slower so the prompt feels like a user; outputs flush
+      // fast so the rhythm reads like a real CLI.
+      const delay =
+        current.kind === 'cmd' ? 42 :
+        current.kind === 'note' ? 14 :
+        18;
+      timer = setTimeout(() => setCharIdx(charIdx + 1), delay);
+    } else {
+      // Pause between lines so the eye can settle.
+      const pause = current.kind === 'cmd' ? 420 : 280;
+      timer = setTimeout(() => {
+        setLineIdx(lineIdx + 1);
+        setCharIdx(0);
+      }, pause);
+    }
+
+    return () => { if (timer) clearTimeout(timer); };
+  }, [visible, lineIdx, charIdx, cycle]);
+
+  const lines = TERM_SCRIPT.map((l, i) => {
+    if (i < lineIdx) return { ...l, text: l.text };
+    if (i === lineIdx) return { ...l, text: l.text.slice(0, charIdx) };
+    return null;
+  });
+
+  return (
+    <div ref={ref} className="mlnd-term">
+      <div className="mlnd-term-bar">
+        <span className="mlnd-term-dot" data-c="r" />
+        <span className="mlnd-term-dot" data-c="y" />
+        <span className="mlnd-term-dot" data-c="g" />
+        <span className="mlnd-term-bar-title">recgon — terminal</span>
+      </div>
+      <div className="mlnd-term-body">
+        {lines.map((l, i) => {
+          if (!l) return null;
+          if (l.kind === 'cmd') {
+            return (
+              <div key={i} className="mlnd-term-line mlnd-term-cmd">
+                <span className="mlnd-term-prompt">$</span>
+                <span>{l.text}</span>
+                {i === lineIdx && (
+                  <span className="mlnd-term-cursor mlnd-term-cursor-inline" aria-hidden="true" />
+                )}
+              </div>
+            );
+          }
+          const cls =
+            l.kind === 'note' ? 'mlnd-term-note' :
+            l.kind === 'out' ? 'mlnd-term-out' :
+            'mlnd-term-ok';
+          return (
+            <div key={i} className={`mlnd-term-line ${cls}`}>
+              {l.text}
+            </div>
+          );
+        })}
+        {lineIdx >= TERM_SCRIPT.length && (
+          <div className="mlnd-term-line mlnd-term-cmd">
+            <span className="mlnd-term-prompt">$</span>
+            <span className="mlnd-term-cursor" aria-hidden="true" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RotatingWord({ word, decryptKey, started }: { word: string; decryptKey: number; started: boolean }) {
+  if (!started) return <>{word}</>;
+  return (
+    <DecryptedText
+      key={decryptKey}
+      text={word}
+      animateOn="view"
+      sequential
+      speed={36}
+      maxIterations={12}
+      className="mlnd-rot-decoded"
+      encryptedClassName="mlnd-rot-encoded"
+    />
+  );
+}
+
 export default function MobileLanding() {
   const [heroDone, setHeroDone] = useState(false);
-  const [audIndex, setAudIndex] = useState(0);
+  const [audIdx, setAudIdx] = useState(0);
   const [audKey, setAudKey] = useState(0);
   const [audStarted, setAudStarted] = useState(false);
-  const [deviceIndex, setDeviceIndex] = useState(0);
-  const [deviceKey, setDeviceKey] = useState(0);
-  const [deviceStarted, setDeviceStarted] = useState(false);
+  const [devIdx, setDevIdx] = useState(0);
+  const [devKey, setDevKey] = useState(0);
+  const [devStarted, setDevStarted] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
+  // Audience rotator — fires only after the hero decrypt finishes so the
+  // first paint is "for small teams" cleanly.
   useEffect(() => {
     if (!heroDone) return;
-    const interval = setInterval(() => {
+    const id = setInterval(() => {
       setAudStarted(true);
-      setAudIndex((i) => (i + 1) % AUDIENCE.length);
+      setAudIdx((i) => (i + 1) % AUDIENCE.length);
       setAudKey((k) => k + 1);
     }, 2800);
-    return () => clearInterval(interval);
+    return () => clearInterval(id);
   }, [heroDone]);
 
+  // Device rotator — independent loop for the final CTA's "Built for your X"
+  // line. Doesn't wait for the hero since the CTA is far below the fold.
   useEffect(() => {
-    const interval = setInterval(() => {
-      setDeviceStarted(true);
-      setDeviceIndex((i) => (i + 1) % DEVICE_WORDS.length);
-      setDeviceKey((k) => k + 1);
-    }, 2800);
-    return () => clearInterval(interval);
+    const id = setInterval(() => {
+      setDevStarted(true);
+      setDevIdx((i) => (i + 1) % DEVICES.length);
+      setDevKey((k) => k + 1);
+    }, 2400);
+    return () => clearInterval(id);
+  }, []);
+
+  // Touch-only "tap pulse" for any .glass-card — fires the hover-lift
+  // animation on pointerdown and self-cancels on animationend. This is
+  // what desktop `:hover` is supposed to feel like on a phone.
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
+      const target = e.target as HTMLElement | null;
+      const card = target?.closest?.('.glass-card') as HTMLElement | null;
+      if (!card || card.classList.contains('is-tap-pulse')) return;
+      card.classList.add('is-tap-pulse');
+      const clear = () => {
+        card.classList.remove('is-tap-pulse');
+        card.removeEventListener('animationend', clear);
+      };
+      card.addEventListener('animationend', clear);
+      // Belt-and-braces — if animationend doesn't fire (interrupted,
+      // off-screen, etc.) make sure the class is gone in <600ms.
+      window.setTimeout(clear, 600);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
   }, []);
 
   return (
-    <div style={{ background: '#000', color: '#fff', overflowX: 'hidden', WebkitTapHighlightColor: 'rgba(240,184,208,0.2)' }}>
+    <div className="mlnd-root dark">
+      {/* Mobile is dark-by-default. Scoping `dark` locally flips theme tokens
+          without touching next-themes. Body-bg override keeps overscroll black. */}
       <style>{`
-        @keyframes mlFadeUp {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes mlBlink {
-          0%, 50% { opacity: 1; }
-          50.01%, 100% { opacity: 0; }
-        }
-        @keyframes mlMatrixFall {
-          0%   { transform: translate(-50%, -100%); }
-          100% { transform: translate(-50%, 100dvh); }
-        }
-        .ml-encrypted-char { color: rgba(240,184,208,0.55); }
-        .ml-decrypted-char  { color: #ffffff; }
-        .pink-encrypted-char { color: rgba(240,184,208,0.35); }
-        .pink-decrypted-char { color: #f0b8d0; }
-        .ml-btn { touch-action: manipulation; transition: transform 0.15s ease, background 0.25s ease, border-color 0.25s ease; }
-        .ml-btn:active { transform: scale(0.98); }
-        @media (prefers-reduced-motion: reduce) {
-          .ml-no-motion { animation: none !important; transition: none !important; }
-        }
+        html, body { background: #000 !important; color-scheme: dark; }
       `}</style>
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section
-        style={{
-          position: 'relative',
-          minHeight: '100dvh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
-          <MatrixRain />
+      {/* ── Hero (bottom-anchored, full viewport) ──────────────────────── */}
+      <section className="mlnd-hero">
+        <div className="mlnd-hero-aurora" aria-hidden="true">
+          <Aurora colorStops={['#0a0205', '#c2357a', '#0a0205']} amplitude={0.9} blend={0.55} speed={0.35} />
         </div>
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 1,
-            pointerEvents: 'none',
-            background:
-              'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.1) 30%, rgba(0,0,0,0.92) 82%)',
-          }}
-        />
+        <div className="mlnd-hero-bg" aria-hidden="true">
+          <LandingDotField mode="parent" spacing={20} reach={160} autoRoam baseRadius={1} maxRadius={3.4} />
+        </div>
+        <div className="mlnd-hero-fade" aria-hidden="true" />
 
-        {/* Status bar */}
-        <header
-          style={{
-            position: 'relative',
-            zIndex: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '18px 18px 0',
-          }}
-        >
-          <span style={{ color: PINK, display: 'flex', alignItems: 'center' }}>
-            <RecgonLogo size={22} uid="ml-logo-header" />
-          </span>
-          <span
-            style={{
-              fontFamily: MONO,
-              fontSize: '10px',
-              fontWeight: 700,
-              letterSpacing: '1.4px',
-              textTransform: 'uppercase',
-              color: 'rgba(240,184,208,0.7)',
-            }}
-          >
-            // v0.1
-          </span>
+        <header className="mlnd-header">
+          <span className="mlnd-brand"><RecgonLogo size={22} uid="mlnd-logo-h" /></span>
+          <span className="mlnd-vtag">{'// v2'}</span>
         </header>
 
-        {/* Spacer to push content toward bottom */}
-        <div style={{ flex: 1 }} />
+        <div className="mlnd-hero-spacer" />
 
-        {/* Hero content — bottom-anchored */}
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 2,
-            padding: '0 18px 32px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-          }}
-        >
-          <div
-            style={{
-              fontFamily: MONO,
-              fontSize: '10px',
-              fontWeight: 700,
-              color: PINK,
-              textTransform: 'uppercase',
-              letterSpacing: '1.6px',
-              marginBottom: '18px',
-              opacity: 0.85,
-            }}
-          >
-            {heroDone ? (
-              <>// for <RotatingWord word={AUDIENCE[audIndex]} decryptKey={audKey} started={audStarted} /></>
-            ) : (
-              '// for solo founders'
-            )}
+        <div className="mlnd-hero-stack">
+          <div className="recgon-label mlnd-aud" aria-live="polite">
+            for {heroDone ? (
+              <RotatingWord word={AUDIENCE[audIdx]} decryptKey={audKey} started={audStarted} />
+            ) : 'small teams'}
           </div>
 
-          <h1
-            style={{
-              fontFamily: MONO,
-              fontSize: 'clamp(1.9rem, 9vw, 2.6rem)',
-              fontWeight: 700,
-              letterSpacing: '-1.2px',
-              lineHeight: 1.08,
-              margin: '0 0 18px',
-              color: '#fff',
-            }}
-          >
+          <h1 className="mlnd-h1">
             {!heroDone ? (
               <DecryptedText
-                text="The Coach Solo Founders Don't Have"
+                text="One brain for small teams."
                 animateOn="view"
                 sequential
-                speed={40}
+                speed={36}
                 maxIterations={12}
-                className="ml-decrypted-char"
-                encryptedClassName="ml-encrypted-char"
+                className="mlnd-h1-decoded"
+                encryptedClassName="mlnd-h1-encoded"
                 onComplete={() => setHeroDone(true)}
               />
             ) : (
               <>
-                The Coach{' '}
-                <span style={{ color: PINK }}>
-                  <RotatingWord word={AUDIENCE[audIndex]} decryptKey={audKey} started={audStarted} />
-                </span>{' '}
-                Don&apos;t Have
+                One brain for{' '}
+                <span className="mlnd-h1-accent">
+                  <RotatingWord
+                    word={`${AUDIENCE[audIdx]}.`}
+                    decryptKey={audKey + 1000}
+                    started={audStarted}
+                  />
+                </span>
               </>
             )}
           </h1>
 
-          <p
-            style={{
-              fontSize: '14px',
-              lineHeight: 1.65,
-              color: 'rgba(255,255,255,0.6)',
-              margin: '0 0 26px',
-              maxWidth: '34ch',
-            }}
-          >
-            Analyze your code. Generate marketing. Turn feedback into developer prompts.
+          <p className="mlnd-sub">
+            Recgon reads your codebase, analytics, and team — then decides what to ship next and who should ship it.
           </p>
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '16px 18px',
-              borderRadius: '14px',
-              background: 'rgba(240,184,208,0.06)',
-              border: '1px solid rgba(240,184,208,0.22)',
-              marginBottom: '10px',
-            }}
-          >
-            <span
-              style={{
-                fontFamily: MONO,
-                fontSize: '18px',
-                color: PINK,
-                lineHeight: 1,
-                flexShrink: 0,
-              }}
-            >
-              {'>_'}
-            </span>
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontFamily: MONO,
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: PINK,
-                  textTransform: 'uppercase',
-                  letterSpacing: '1.4px',
-                  marginBottom: '3px',
-                }}
-              >
-                // desktop only — for now
-              </div>
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: 'rgba(255,255,255,0.55)',
-                  lineHeight: 1.5,
-                }}
-              >
-                Sign up from your laptop. Mobile app is coming soon.
-              </div>
-            </div>
-          </div>
-          <a
-            href="#ml-features"
-            className="ml-btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '52px',
-              borderRadius: '14px',
-              fontFamily: MONO,
-              fontSize: '14px',
-              fontWeight: 500,
-              color: 'rgba(255,255,255,0.85)',
-              textDecoration: 'none',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.12)',
-            }}
-          >
-            See what you&apos;ll get ↓
+          <a href="#mlnd-features" className="mlnd-cta-ghost">
+            See what you’ll get ↓
           </a>
         </div>
       </section>
 
-      {/* ── Features ─────────────────────────────────────────────────────── */}
-      <section
-        id="ml-features"
-        style={{
-          position: 'relative',
-          background: '#000',
-          padding: '84px 18px 72px',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 0,
-            pointerEvents: 'none',
-            backgroundImage: 'radial-gradient(rgba(240,184,208,0.11) 1px, transparent 1px)',
-            backgroundSize: '22px 22px',
-            WebkitMaskImage: 'radial-gradient(ellipse 90% 70% at 50% 40%, black 30%, transparent 100%)',
-            maskImage: 'radial-gradient(ellipse 90% 70% at 50% 40%, black 30%, transparent 100%)',
-          }}
-        />
-        <div style={{ position: 'relative', zIndex: 1 }}>
+      {/* ── Features ───────────────────────────────────────────────────── */}
+      <section id="mlnd-features" className="mlnd-section mlnd-features">
+        <div className="mlnd-section-bg" aria-hidden="true">
+          <LandingDotField mode="parent" spacing={28} reach={180} autoRoam baseRadius={0.7} maxRadius={2.4} baseAlpha={0.16} />
+        </div>
+        <div className="mlnd-section-inner">
           <Reveal>
-            <div
-              style={{
-                fontFamily: MONO,
-                fontSize: '10px',
-                fontWeight: 700,
-                color: PINK,
-                textTransform: 'uppercase',
-                letterSpacing: '1.6px',
-                marginBottom: '14px',
-              }}
-            >
-              // capabilities · 06
-            </div>
-            <h2
-              style={{
-                fontFamily: MONO,
-                fontSize: '1.55rem',
-                fontWeight: 700,
-                letterSpacing: '-0.6px',
-                lineHeight: 1.15,
-                color: '#fff',
-                margin: '0 0 36px',
-              }}
-            >
+            <span className="recgon-label">capabilities · 06</span>
+            <h2 className="mlnd-h2">
               Everything you need,
               <br />
-              <span style={{ color: 'rgba(255,255,255,0.55)' }}>nothing you don&apos;t.</span>
+              <span className="mlnd-h2-soft">nothing you don’t.</span>
             </h2>
           </Reveal>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {features.map((feature, i) => (
-              <Reveal key={feature.title} delay={i * 70}>
-                <div
-                  style={{
-                    position: 'relative',
-                    padding: '20px 20px 20px 22px',
-                    borderRadius: '14px',
-                    background:
-                      'linear-gradient(135deg, rgba(240,184,208,0.05) 0%, rgba(255,255,255,0.02) 60%, rgba(255,255,255,0) 100%)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    borderLeft: '2px solid rgba(240,184,208,0.45)',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'baseline',
-                      justifyContent: 'space-between',
-                      marginBottom: '10px',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: MONO,
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: PINK,
-                        letterSpacing: '1px',
-                        opacity: 0.75,
-                      }}
-                    >
-                      [{String(i + 1).padStart(2, '0')}]
-                    </span>
-                    <span style={{ fontFamily: MONO, fontSize: '20px', color: PINK, opacity: 0.9 }}>
-                      {feature.icon}
-                    </span>
+          <div className="mlnd-cap-list">
+            {CAPABILITIES.map(({ Icon, title, body }, i) => (
+              <Reveal key={title} delay={i * 60}>
+                <article className="glass-card mlnd-cap">
+                  <div className="mlnd-cap-head">
+                    <span className="mlnd-cap-num">[{String(i + 1).padStart(2, '0')}]</span>
+                    <span className="mlnd-cap-icon"><Icon size={18} strokeWidth={2} /></span>
                   </div>
-                  <h3
-                    style={{
-                      fontFamily: MONO,
-                      fontSize: '15px',
-                      fontWeight: 700,
-                      letterSpacing: '-0.2px',
-                      color: '#fff',
-                      margin: '0 0 6px',
-                    }}
-                  >
-                    {feature.title}
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: '13px',
-                      lineHeight: 1.6,
-                      color: 'rgba(255,255,255,0.5)',
-                      margin: 0,
-                    }}
-                  >
-                    {feature.description}
-                  </p>
-                </div>
+                  <h3 className="mlnd-cap-title">{title}</h3>
+                  <p className="mlnd-cap-body">{body}</p>
+                </article>
               </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── How It Works (timeline) ──────────────────────────────────────── */}
-      <section style={{ background: '#050505', padding: '84px 18px 72px' }}>
+      {/* ── How it works (vertical timeline) ───────────────────────────── */}
+      <section className="mlnd-section mlnd-how">
         <Reveal>
-          <div
-            style={{
-              fontFamily: MONO,
-              fontSize: '10px',
-              fontWeight: 700,
-              color: PINK,
-              textTransform: 'uppercase',
-              letterSpacing: '1.6px',
-              marginBottom: '14px',
-            }}
-          >
-            // workflow
-          </div>
-          <h2
-            style={{
-              fontFamily: MONO,
-              fontSize: '1.55rem',
-              fontWeight: 700,
-              letterSpacing: '-0.6px',
-              lineHeight: 1.15,
-              color: '#fff',
-              margin: '0 0 40px',
-            }}
-          >
+          <span className="recgon-label">workflow</span>
+          <h2 className="mlnd-h2">
             Three steps.
             <br />
-            <span style={{ color: 'rgba(255,255,255,0.55)' }}>Zero friction.</span>
+            <span className="mlnd-h2-soft">Zero friction.</span>
           </h2>
         </Reveal>
 
-        <div style={{ position: 'relative', paddingLeft: '38px' }}>
-          {/* rail */}
-          <div
-            aria-hidden
-            style={{
-              position: 'absolute',
-              left: '13px',
-              top: '8px',
-              bottom: '8px',
-              width: '1px',
-              background:
-                'linear-gradient(to bottom, rgba(240,184,208,0.5) 0%, rgba(240,184,208,0.15) 50%, rgba(240,184,208,0) 100%)',
-            }}
-          />
-          {steps.map((step, i) => (
-            <Reveal key={step.number} delay={i * 120}>
-              <div style={{ position: 'relative', paddingBottom: i === steps.length - 1 ? 0 : '36px' }}>
-                {/* dot */}
-                <div
-                  aria-hidden
-                  style={{
-                    position: 'absolute',
-                    left: '-32px',
-                    top: '4px',
-                    width: '14px',
-                    height: '14px',
-                    borderRadius: '50%',
-                    background: '#050505',
-                    border: `2px solid ${PINK}`,
-                    boxShadow: '0 0 0 4px rgba(240,184,208,0.12)',
-                  }}
-                />
-                <div
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    color: PINK,
-                    letterSpacing: '1.2px',
-                    marginBottom: '6px',
-                    opacity: 0.8,
-                  }}
-                >
-                  STEP {step.number}
-                </div>
-                <h3
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    color: '#fff',
-                    margin: '0 0 6px',
-                    letterSpacing: '-0.2px',
-                  }}
-                >
-                  {step.title}
-                </h3>
-                <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
-                  {step.description}
-                </p>
+        <div className="mlnd-timeline">
+          <div className="mlnd-timeline-rail" aria-hidden="true" />
+          {STEPS.map((s, i) => (
+            <Reveal key={s.num} delay={i * 100}>
+              <div className="mlnd-step" data-last={i === STEPS.length - 1 ? 'true' : 'false'}>
+                <div className="mlnd-step-dot" aria-hidden="true" />
+                <span className="recgon-label mlnd-step-label">step {s.num}</span>
+                <h3 className="mlnd-step-title">{s.title}</h3>
+                <p className="mlnd-step-body">{s.body}</p>
               </div>
             </Reveal>
           ))}
         </div>
       </section>
 
-      {/* ── Claude MCP ───────────────────────────────────────────────────── */}
-      <section style={{ background: '#000', padding: '84px 18px 72px' }}>
+      {/* ── Terminal (Claude / slash commands) ─────────────────────────── */}
+      <section className="mlnd-section">
         <Reveal>
-          <div
-            style={{
-              fontFamily: MONO,
-              fontSize: '10px',
-              fontWeight: 700,
-              color: PINK,
-              textTransform: 'uppercase',
-              letterSpacing: '1.6px',
-              marginBottom: '14px',
-            }}
-          >
-            // claude integration
-          </div>
-          <h2
-            style={{
-              fontFamily: MONO,
-              fontSize: '1.55rem',
-              fontWeight: 700,
-              letterSpacing: '-0.6px',
-              lineHeight: 1.15,
-              color: '#fff',
-              margin: '0 0 16px',
-            }}
-          >
-            Claude&apos;s <span style={{ color: PINK }}>Best Friend</span>
+          <span className="recgon-label">the terminal</span>
+          <h2 className="mlnd-h2">
+            Same brain.
+            <br />
+            <span className="mlnd-h2-soft">Command-line interface.</span>
           </h2>
-          <p
-            style={{
-              fontSize: '14px',
-              lineHeight: 1.65,
-              color: 'rgba(255,255,255,0.5)',
-              margin: '0 0 28px',
-            }}
-          >
-            Recgon plugs into Claude Code via MCP — Claude reads your analysis, takes action, marks it done.
+          <p className="mlnd-lede">
+            Every analysis, every assignment, every report is one slash away.
           </p>
         </Reveal>
 
-        {/* Compact terminal strip */}
         <Reveal delay={80}>
-          <div
-            style={{
-              position: 'relative',
-              borderRadius: '14px',
-              overflow: 'hidden',
-              background: '#0d0d0d',
-              border: '1px solid rgba(240,184,208,0.18)',
-              boxShadow: '0 30px 60px -30px rgba(240,184,208,0.25)',
-            }}
-          >
-            <div
-              style={{
-                background: '#161616',
-                padding: '10px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
-              }}
-            >
-              <div style={{ width: 9, height: 9, borderRadius: '50%', background: '#ff5f57' }} />
-              <div style={{ width: 9, height: 9, borderRadius: '50%', background: '#febc2e' }} />
-              <div style={{ width: 9, height: 9, borderRadius: '50%', background: '#28c840' }} />
-              <span
-                style={{
-                  fontFamily: MONO,
-                  fontSize: '10px',
-                  color: 'rgba(255,255,255,0.3)',
-                  marginLeft: '10px',
-                }}
-              >
-                claude — recgon-mcp
-              </span>
-            </div>
-            <div
-              style={{
-                padding: '18px 18px 20px',
-                fontFamily: MONO,
-                fontSize: '11.5px',
-                lineHeight: 1.85,
-              }}
-            >
-              <div>
-                <span style={{ color: 'rgba(255,255,255,0.25)' }}>$ </span>
-                <span style={{ color: PINK }}>list_projects</span>
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>()</span>
-              </div>
-              <div>
-                <span style={{ color: 'rgba(255,255,255,0.25)' }}>$ </span>
-                <span style={{ color: PINK }}>get_project_analysis</span>
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>(</span>
-                <span style={{ color: '#98c379' }}>&quot;my-saas&quot;</span>
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>)</span>
-              </div>
-              <div>
-                <span style={{ color: 'rgba(255,255,255,0.25)' }}>$ </span>
-                <span style={{ color: PINK }}>get_actionable_items</span>
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>(</span>
-                <span style={{ color: '#98c379' }}>&quot;my-saas&quot;</span>
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>)</span>
-              </div>
-              <div>
-                <span style={{ color: 'rgba(255,255,255,0.25)' }}>$ </span>
-                <span style={{ color: PINK }}>mark_item_complete</span>
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>({'{ ... }'})</span>
-              </div>
-              <div style={{ height: '8px' }} />
-              <div style={{ color: '#28c840' }}>✓ tracked in Recgon</div>
-              <div style={{ marginTop: '2px' }}>
-                <span style={{ color: 'rgba(255,255,255,0.25)' }}>$ </span>
-                <span
-                  className="ml-no-motion"
-                  style={{
-                    display: 'inline-block',
-                    width: '7px',
-                    height: '12px',
-                    background: 'rgba(255,255,255,0.5)',
-                    verticalAlign: 'middle',
-                    animation: 'mlBlink 1s steps(1) infinite',
-                  }}
-                />
-              </div>
-            </div>
-          </div>
+          <TerminalDemo />
         </Reveal>
 
-        <div
-          style={{
-            marginTop: '20px',
-            fontFamily: MONO,
-            fontSize: '11px',
-            color: 'rgba(255,255,255,0.28)',
-            textAlign: 'center',
-          }}
-        >
-          // You stay in control. Claude asks before it acts.
+        <div className="mlnd-mcp-note">{'// claude code reads, acts, marks done — tracked here'}</div>
+      </section>
+
+      {/* ── FAQ ────────────────────────────────────────────────────────── */}
+      <section className="mlnd-section mlnd-faq">
+        <div className="mlnd-section-bg" aria-hidden="true">
+          <LandingDotField mode="parent" spacing={30} reach={170} autoRoam baseRadius={0.7} maxRadius={2.2} baseAlpha={0.14} />
+        </div>
+        <div className="mlnd-section-inner">
+          <Reveal>
+            <span className="recgon-label">faq</span>
+            <h2 className="mlnd-h2">Common questions.</h2>
+          </Reveal>
+
+          <div className="mlnd-faq-list">
+            {FAQ.map(({ q, a }, i) => {
+              const isOpen = openFaq === i;
+              return (
+                <Reveal key={q} delay={i * 60}>
+                  <div className={`glass-card mlnd-faq-item ${isOpen ? 'is-open' : ''}`}>
+                    <button
+                      type="button"
+                      className="mlnd-faq-trigger"
+                      onClick={() => setOpenFaq(isOpen ? null : i)}
+                      aria-expanded={isOpen}
+                    >
+                      <span>{q}</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                    {isOpen && <p className="mlnd-faq-body">{a}</p>}
+                  </div>
+                </Reveal>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* ── FAQ ──────────────────────────────────────────────────────────── */}
-      <section id="ml-faq" style={{ background: '#050505', padding: '84px 18px 72px' }}>
-        <Reveal>
-          <div
-            style={{
-              fontFamily: MONO,
-              fontSize: '10px',
-              fontWeight: 700,
-              color: PINK,
-              textTransform: 'uppercase',
-              letterSpacing: '1.6px',
-              marginBottom: '14px',
-            }}
-          >
-            // faq
-          </div>
-          <h2
-            style={{
-              fontFamily: MONO,
-              fontSize: '1.55rem',
-              fontWeight: 700,
-              letterSpacing: '-0.6px',
-              lineHeight: 1.15,
-              color: '#fff',
-              margin: '0 0 36px',
-            }}
-          >
-            Common questions
-          </h2>
-        </Reveal>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {[
-            {
-              q: 'What is Recgon?',
-              a: 'An AI platform for solo founders and indie hackers. It analyzes your product (GitHub repo or plain-text idea), generates marketing content, plans campaigns, turns user feedback into dev prompts, and mentors you through growth.',
-            },
-            {
-              q: 'How does product analysis work?',
-              a: "Paste a GitHub URL or describe your idea. AI reads your repo (or brief), extracts your product's purpose, stack, and features, and builds a full profile in seconds.",
-            },
-            {
-              q: 'What marketing content can it generate?',
-              a: 'Platform-ready copy for Instagram, TikTok, and Google Ads — grounded in your actual product. Also creates campaign timelines and content calendars.',
-            },
-            {
-              q: 'Does it integrate with Claude Code?',
-              a: 'Yes. Via MCP, Claude can read your analysis, pick up prioritized next steps, implement them, and mark them done — all tracked in Recgon.',
-            },
-            {
-              q: 'Is Recgon free?',
-              a: 'Yes, free to get started. Sign up from your laptop to begin analyzing your product.',
-            },
-          ].map(({ q, a }, i) => (
-            <Reveal key={q} delay={i * 60}>
-              <div
-                style={{
-                  padding: '18px 18px 18px 20px',
-                  borderRadius: '14px',
-                  background:
-                    'linear-gradient(135deg, rgba(240,184,208,0.05) 0%, rgba(255,255,255,0.02) 60%, rgba(255,255,255,0) 100%)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderLeft: '2px solid rgba(240,184,208,0.35)',
-                }}
-              >
-                <h3
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: '14px',
-                    fontWeight: 700,
-                    color: '#fff',
-                    margin: '0 0 8px',
-                    letterSpacing: '-0.1px',
-                  }}
-                >
-                  {q}
-                </h3>
-                <p style={{ fontSize: '13px', lineHeight: 1.65, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
-                  {a}
-                </p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Final CTA ────────────────────────────────────────────────────── */}
-      <section style={{ position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+      {/* ── Final CTA — Aurora-backed "Built for your <device>" ────────── */}
+      <section className="mlnd-final">
+        <div className="mlnd-final-aurora" aria-hidden="true">
           <Aurora colorStops={['#1a0a10', '#f0b8d0', '#1a0a10']} amplitude={0.7} blend={0.4} speed={0.5} />
         </div>
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            padding: '110px 20px 120px',
-            textAlign: 'center',
-          }}
-        >
+        <div className="mlnd-final-veil" aria-hidden="true" />
+        <div className="mlnd-final-inner">
           <Reveal>
-            <div
-              style={{
-                fontFamily: MONO,
-                fontSize: '10px',
-                fontWeight: 700,
-                color: PINK,
-                textTransform: 'uppercase',
-                letterSpacing: '2px',
-                marginBottom: '18px',
-              }}
-            >
-              // desktop only
-            </div>
-            <h2
-              style={{
-                fontFamily: MONO,
-                fontSize: '1.7rem',
-                fontWeight: 700,
-                letterSpacing: '-0.8px',
-                color: '#fff',
-                margin: '0 0 16px',
-                lineHeight: 1.12,
-              }}
-            >
+            <span className="recgon-label mlnd-final-tag">desktop only</span>
+            <h2 className="mlnd-final-title">
               Built for your
               <br />
-              <span style={{ color: PINK }}>
-                <RotatingWord
-                  word={DEVICE_WORDS[deviceIndex]}
-                  decryptKey={deviceKey}
-                  started={deviceStarted}
-                />
+              <span className="mlnd-final-accent">
+                <RotatingWord word={DEVICES[devIdx]} decryptKey={devKey} started={devStarted} />
               </span>
             </h2>
-            <p
-              style={{
-                fontSize: '14px',
-                color: 'rgba(255,255,255,0.6)',
-                maxWidth: '32ch',
-                margin: '0 auto 28px',
-                lineHeight: 1.6,
-              }}
-            >
-              Recgon&apos;s a tool you use while you build. Open it on your laptop to sign up — mobile is on the way.
+            <p className="mlnd-final-body">
+              Recgon’s a tool you use while you build. Open it on a laptop to sign up — mobile is on the way.
             </p>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '14px 22px',
-                borderRadius: '12px',
-                background: 'rgba(0,0,0,0.5)',
-                border: '1px solid rgba(240,184,208,0.3)',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: MONO,
-                  fontSize: '14px',
-                  color: PINK,
-                  lineHeight: 1,
-                }}
-              >
-                {'$'}
-              </span>
-              <span
-                style={{
-                  fontFamily: MONO,
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: 'rgba(255,255,255,0.88)',
-                  letterSpacing: '0.3px',
-                }}
-              >
-                open recgon.app on desktop
-              </span>
+            <div className="mlnd-final-pill">
+              <span className="mlnd-final-pill-glyph">$</span>
+              <span className="mlnd-final-pill-text">open recgon.app on desktop</span>
             </div>
           </Reveal>
         </div>
       </section>
 
-      {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer
-        style={{
-          background: '#000',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          padding: '32px 20px 40px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '14px',
-        }}
-      >
-        <span style={{ color: PINK, display: 'flex' }}>
-          <RecgonLogo size={22} uid="ml-logo-footer" />
-        </span>
-        <p
-          style={{
-            fontFamily: MONO,
-            fontSize: '11px',
-            color: 'rgba(255,255,255,0.3)',
-            margin: 0,
-            letterSpacing: '0.4px',
-          }}
-        >
-          recgon — built for builders
-        </p>
+      {/* ── Footer ─────────────────────────────────────────────────────── */}
+      <footer className="mlnd-foot">
+        <span className="mlnd-foot-brand"><RecgonLogo size={22} uid="mlnd-logo-f" /></span>
+        <p className="mlnd-foot-line">recgon — built for builders</p>
       </footer>
+
+      <style>{`
+        .mlnd-root {
+          background: var(--bg-deep);
+          color: var(--txt-pure);
+          min-height: 100vh;
+          min-height: 100svh;
+          overflow-x: hidden;
+          -webkit-tap-highlight-color: rgba(var(--signature-rgb), 0.2);
+        }
+
+        /* ─────────── HERO ─────────── */
+        .mlnd-hero {
+          position: relative;
+          min-height: 100svh;
+          overflow: hidden;
+          isolation: isolate;
+          display: flex;
+          flex-direction: column;
+        }
+        .mlnd-hero-aurora {
+          position: absolute;
+          inset: -10% -10% 0 -10%;
+          z-index: 0;
+          pointer-events: none;
+          opacity: 0.85;
+          mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 92%);
+          -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 92%);
+        }
+        .mlnd-hero-bg {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          mix-blend-mode: screen;
+          opacity: 0.65;
+        }
+        .mlnd-hero-bg > canvas { width: 100%; height: 100%; }
+        .mlnd-hero-fade {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          pointer-events: none;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.05) 32%, rgba(0,0,0,0.78) 88%, rgba(0,0,0,0.95) 100%);
+        }
+
+        .mlnd-header {
+          position: relative;
+          z-index: 3;
+          padding: 18px 18px 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .mlnd-brand { color: var(--signature); display: inline-flex; }
+        .mlnd-vtag {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 10px;
+          letter-spacing: 1.4px;
+          text-transform: uppercase;
+          color: var(--signature);
+          opacity: 0.7;
+          font-weight: 700;
+        }
+
+        .mlnd-hero-spacer { flex: 1; }
+
+        .mlnd-hero-stack {
+          position: relative;
+          z-index: 3;
+          padding: 0 18px 32px;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .mlnd-aud {
+          margin: 0 0 18px;
+          opacity: 0.9;
+          font-size: 10px;
+          letter-spacing: 1.6px;
+        }
+        .mlnd-rot-encoded { color: rgba(var(--signature-rgb), 0.35); }
+        .mlnd-rot-decoded { color: var(--signature); }
+
+        .mlnd-h1 {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: clamp(1.9rem, 9vw, 2.6rem);
+          font-weight: 700;
+          letter-spacing: -1.2px;
+          line-height: 1.08;
+          margin: 0 0 18px;
+          color: var(--txt-pure);
+        }
+        .mlnd-h1-encoded { color: rgba(var(--signature-rgb), 0.55); }
+        .mlnd-h1-decoded { color: var(--txt-pure); }
+        .mlnd-h1-accent { color: var(--signature); }
+
+        .mlnd-sub {
+          font-size: 14px;
+          line-height: 1.65;
+          color: var(--txt-muted);
+          margin: 0 0 24px;
+          max-width: 34ch;
+        }
+
+        .mlnd-cta-ghost {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 52px;
+          border-radius: 14px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--txt-pure);
+          text-decoration: none;
+          background: rgba(var(--signature-rgb), 0.05);
+          border: 1px solid rgba(var(--signature-rgb), 0.22);
+          touch-action: manipulation;
+          transition: transform 0.15s ease, background 0.25s ease, border-color 0.25s ease;
+        }
+        .mlnd-cta-ghost:active { transform: scale(0.98); }
+
+        /* ─────────── Generic section ─────────── */
+        .mlnd-section {
+          position: relative;
+          background: var(--bg-deep);
+          padding: 84px 18px 72px;
+        }
+        .mlnd-section.mlnd-features { background: var(--bg-deep); }
+        /* Subtle alt-band via a slightly elevated dark substrate — pure
+           bg-deep everywhere would flatten the section rhythm. */
+        .mlnd-section.mlnd-how,
+        .mlnd-section.mlnd-faq {
+          background: linear-gradient(180deg, var(--bg-deep) 0%, rgba(var(--signature-rgb), 0.03) 100%);
+        }
+
+        .mlnd-section-bg {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+          overflow: hidden;
+        }
+        .mlnd-section-bg > canvas { width: 100%; height: 100%; }
+        .mlnd-features .mlnd-section-bg,
+        .mlnd-faq .mlnd-section-bg {
+          -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 40%, black 35%, transparent 100%);
+          mask-image: radial-gradient(ellipse 95% 75% at 50% 40%, black 35%, transparent 100%);
+        }
+        .mlnd-section-inner {
+          position: relative;
+          z-index: 1;
+        }
+
+        .mlnd-h2 {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 1.55rem;
+          font-weight: 700;
+          letter-spacing: -0.6px;
+          line-height: 1.15;
+          color: var(--txt-pure);
+          margin: 0 0 36px;
+        }
+        .mlnd-h2-soft { color: var(--txt-muted); }
+        .mlnd-lede {
+          margin: -16px 0 28px;
+          font-size: 14px;
+          line-height: 1.6;
+          color: var(--txt-muted);
+        }
+
+        /* ─────────── Capabilities (v2 glass-card) ─────────── */
+        .mlnd-cap-list { display: flex; flex-direction: column; gap: 14px; }
+        /* glass-card class provides the surface; this override just tightens
+           the padding for a mobile-friendly density. */
+        .mlnd-cap {
+          padding: 20px !important;
+          border-radius: 14px !important;
+        }
+        .mlnd-cap-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 10px;
+        }
+        .mlnd-cap-num {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--signature);
+          letter-spacing: 1px;
+          opacity: 0.85;
+        }
+        .mlnd-cap-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: rgba(var(--signature-rgb), 0.12);
+          color: var(--signature);
+        }
+        .mlnd-cap-title {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 15px;
+          font-weight: 700;
+          letter-spacing: -0.2px;
+          color: var(--txt-pure);
+          margin: 0 0 6px;
+        }
+        .mlnd-cap-body {
+          font-size: 13px;
+          line-height: 1.6;
+          color: var(--txt-muted);
+          margin: 0;
+        }
+
+        /* ─────────── Timeline ─────────── */
+        .mlnd-timeline {
+          position: relative;
+          padding-left: 38px;
+        }
+        .mlnd-timeline-rail {
+          position: absolute;
+          left: 13px;
+          top: 8px;
+          bottom: 8px;
+          width: 1px;
+          background: linear-gradient(to bottom,
+            rgba(var(--signature-rgb), 0.5) 0%,
+            rgba(var(--signature-rgb), 0.15) 50%,
+            rgba(var(--signature-rgb), 0) 100%);
+          overflow: hidden;
+        }
+        .mlnd-timeline-rail::after {
+          content: '';
+          position: absolute;
+          left: -1px;
+          right: -1px;
+          height: 40%;
+          background: linear-gradient(to bottom,
+            transparent 0%,
+            rgba(var(--signature-rgb), 0.85) 50%,
+            transparent 100%);
+          filter: blur(0.5px);
+          animation: mlndRailSweep 3.6s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+        }
+        @keyframes mlndRailSweep {
+          0%   { transform: translateY(-100%); opacity: 0; }
+          12%  { opacity: 1; }
+          88%  { opacity: 1; }
+          100% { transform: translateY(260%); opacity: 0; }
+        }
+        .mlnd-step {
+          position: relative;
+          padding-bottom: 36px;
+        }
+        .mlnd-step[data-last='true'] { padding-bottom: 0; }
+        .mlnd-step-dot {
+          position: absolute;
+          left: -32px;
+          top: 4px;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: var(--bg-deep);
+          border: 2px solid var(--signature);
+          box-shadow: 0 0 0 4px rgba(var(--signature-rgb), 0.12);
+          animation: mlndDotPulse 2.8s ease-in-out infinite;
+        }
+        .mlnd-step:nth-of-type(2) .mlnd-step-dot { animation-delay: 0.6s; }
+        .mlnd-step:nth-of-type(3) .mlnd-step-dot { animation-delay: 1.2s; }
+        @keyframes mlndDotPulse {
+          0%, 100% { box-shadow: 0 0 0 4px rgba(var(--signature-rgb), 0.10), 0 0 0 0 rgba(var(--signature-rgb), 0.0); }
+          50%      { box-shadow: 0 0 0 4px rgba(var(--signature-rgb), 0.18), 0 0 14px 2px rgba(var(--signature-rgb), 0.35); }
+        }
+        .mlnd-step-label {
+          margin: 0 0 6px;
+          opacity: 0.85;
+          font-size: 11px;
+          letter-spacing: 1.2px;
+        }
+        .mlnd-step-title {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--txt-pure);
+          margin: 0 0 6px;
+          letter-spacing: -0.2px;
+        }
+        .mlnd-step-body {
+          font-size: 13px;
+          line-height: 1.6;
+          color: var(--txt-muted);
+          margin: 0;
+        }
+
+        /* ─────────── Terminal ─────────── */
+        .mlnd-term {
+          position: relative;
+          border-radius: 14px;
+          overflow: hidden;
+          background: var(--bg-deep);
+          border: 1px solid rgba(var(--signature-rgb), 0.18);
+          box-shadow: 0 30px 60px -30px rgba(var(--signature-rgb), 0.25);
+        }
+        .mlnd-term-bar {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 10px 14px;
+          background: rgba(var(--signature-rgb), 0.05);
+          border-bottom: 1px solid rgba(var(--signature-rgb), 0.1);
+        }
+        .mlnd-term-dot { width: 9px; height: 9px; border-radius: 50%; }
+        .mlnd-term-dot[data-c='r'] { background: #ff5f57; }
+        .mlnd-term-dot[data-c='y'] { background: #febc2e; }
+        .mlnd-term-dot[data-c='g'] { background: #28c840; }
+        .mlnd-term-bar-title {
+          margin-left: 10px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 10px;
+          color: var(--txt-faint);
+        }
+        .mlnd-term-body {
+          padding: 18px 18px 20px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11.5px;
+          line-height: 1.85;
+        }
+        .mlnd-term-line { display: flex; gap: 8px; }
+        .mlnd-term-prompt { color: var(--signature); flex-shrink: 0; font-weight: 700; }
+        .mlnd-term-cmd { color: var(--txt-pure); }
+        .mlnd-term-note { color: var(--txt-faint); font-style: italic; padding-left: 14px; opacity: 0.85; }
+        .mlnd-term-out { color: var(--txt-muted); padding-left: 14px; }
+        .mlnd-term-ok { color: var(--success, #34C759); padding-left: 14px; font-weight: 600; }
+        .mlnd-term-cursor {
+          display: inline-block;
+          width: 7px;
+          height: 12px;
+          background: var(--signature);
+          vertical-align: middle;
+          animation: mlndBlink 1s steps(1) infinite;
+        }
+        .mlnd-term-cursor-inline {
+          width: 6px;
+          height: 11px;
+          margin-left: 4px;
+          opacity: 0.85;
+        }
+        @keyframes mlndBlink {
+          0%, 50% { opacity: 1; }
+          50.01%, 100% { opacity: 0; }
+        }
+        .mlnd-mcp-note {
+          margin-top: 20px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px;
+          color: var(--txt-faint);
+          text-align: center;
+        }
+
+        /* ─────────── FAQ (v2 glass-card) ─────────── */
+        .mlnd-faq-list { display: flex; flex-direction: column; gap: 10px; }
+        .mlnd-faq-item {
+          padding: 0 !important;
+          border-radius: 14px !important;
+          overflow: hidden;
+        }
+        .mlnd-faq-trigger {
+          all: unset;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          width: 100%;
+          padding: 18px 18px 18px 20px;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--txt-pure);
+          letter-spacing: -0.1px;
+          cursor: pointer;
+          box-sizing: border-box;
+        }
+        .mlnd-faq-trigger svg {
+          color: var(--signature);
+          transition: transform 0.25s var(--ease-out, ease);
+          flex-shrink: 0;
+        }
+        .mlnd-faq-item.is-open .mlnd-faq-trigger svg { transform: rotate(180deg); }
+        .mlnd-faq-body {
+          margin: 0;
+          padding: 0 18px 18px 20px;
+          font-size: 13px;
+          line-height: 1.65;
+          color: var(--txt-muted);
+        }
+
+        /* ─────────── Final CTA ─────────── */
+        .mlnd-final {
+          position: relative;
+          overflow: hidden;
+          background: #000;
+          isolation: isolate;
+        }
+        .mlnd-final-aurora {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+        }
+        .mlnd-final-veil {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          background: radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.45) 70%, rgba(0,0,0,0.85) 100%);
+          pointer-events: none;
+        }
+        .mlnd-final-inner {
+          position: relative;
+          z-index: 2;
+          padding: 110px 20px 120px;
+          text-align: center;
+        }
+        .mlnd-final-tag {
+          margin: 0 0 18px;
+          font-size: 10px;
+          letter-spacing: 2px;
+          opacity: 0.95;
+        }
+        .mlnd-final-title {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 1.7rem;
+          font-weight: 700;
+          letter-spacing: -0.8px;
+          color: #fff;
+          margin: 0 0 16px;
+          line-height: 1.12;
+        }
+        .mlnd-final-accent { color: var(--signature); }
+        .mlnd-final-body {
+          font-size: 14px;
+          color: rgba(255,255,255,0.6);
+          max-width: 32ch;
+          margin: 0 auto 28px;
+          line-height: 1.6;
+        }
+        .mlnd-final-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 14px 22px;
+          border-radius: 12px;
+          background: rgba(0,0,0,0.5);
+          border: 1px solid rgba(240,184,208,0.3);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          animation: mlndPillBreathe 3.6s ease-in-out infinite;
+        }
+        @keyframes mlndPillBreathe {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(240,184,208,0.18); border-color: rgba(240,184,208,0.28); }
+          50%      { box-shadow: 0 0 28px 4px rgba(240,184,208,0.22); border-color: rgba(240,184,208,0.45); }
+        }
+        .mlnd-final-pill-glyph {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 14px;
+          color: var(--signature);
+          line-height: 1;
+        }
+        .mlnd-final-pill-text {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.88);
+          letter-spacing: 0.3px;
+        }
+
+        /* ─────────── Footer ─────────── */
+        .mlnd-foot {
+          background: var(--bg-deep);
+          border-top: 1px solid rgba(var(--signature-rgb), 0.08);
+          padding: 32px 20px 40px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 14px;
+        }
+        .mlnd-foot-brand { color: var(--signature); display: inline-flex; }
+        .mlnd-foot-line {
+          margin: 0;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px;
+          color: var(--txt-faint);
+          letter-spacing: 0.4px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .mlnd-term-cursor,
+          .mlnd-timeline-rail::after,
+          .mlnd-step-dot,
+          .mlnd-final-pill { animation: none !important; }
+        }
+      `}</style>
     </div>
   );
 }

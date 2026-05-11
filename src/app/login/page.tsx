@@ -32,15 +32,6 @@ const FEATURES = [
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
     ),
-    title: 'Feedback Intelligence',
-    desc: 'Paste comments or scrape Instagram — get sentiment, themes, and dev prompts.',
-  },
-  {
-    icon: (
-      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
-      </svg>
-    ),
     title: 'Everything in Minutes',
     desc: 'What used to take a team days now runs in a single session, start to finish.',
   },

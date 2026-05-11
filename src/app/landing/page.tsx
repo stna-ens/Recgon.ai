@@ -1,32 +1,32 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
-import LandingClientShell from '@/components/landing/LandingClientShell';
+import LandingV2Shell from '@/components/landing/LandingV2Shell';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://recgon.app';
 
 export const metadata: Metadata = {
-  title: "Recgon — The Coach Solo Founders Don't Have",
+  title: 'Recgon — The AI Product Manager for small teams',
   description:
-    'Recgon analyzes your product — from a GitHub repo or a plain-text idea — generates marketing content, plans campaigns, and turns user feedback into developer prompts, so you can stop guessing and start shipping.',
+    'Recgon reads your codebase, GA4 analytics, and team activity — then decides what to ship next and assigns each task to the best-fit teammate.',
   keywords: [
-    'AI for solo founders',
-    'indie hacker tools',
-    'product analysis AI',
-    'marketing content generator',
-    'feedback analysis tool',
-    'AI mentor for startups',
-    'product analytics AI',
-    'campaign planning tool',
-    'solo founder software',
-    'startup growth tools',
+    'AI product manager',
+    'AI PM',
+    'product management AI',
+    'small team product tool',
+    'codebase analysis AI',
+    'auto task assignment',
+    'ai task assignment',
+    'startup product tool',
+    'indie hacker pm',
+    'team task scheduler',
   ],
   alternates: {
     canonical: `${BASE_URL}/landing`,
   },
   openGraph: {
-    title: "Recgon — The Coach Solo Founders Don't Have",
+    title: 'Recgon — The AI Product Manager for small teams',
     description:
-      'AI-powered product analysis, marketing content, campaign planning, feedback analysis, and mentorship for solo founders and indie hackers.',
+      'One brain for the whole team. Recgon reads code, analytics, and team activity, then assigns the next move to the right teammate.',
     type: 'website',
     url: `${BASE_URL}/landing`,
     siteName: 'Recgon',
@@ -35,15 +35,15 @@ export const metadata: Metadata = {
         url: `${BASE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'Recgon — AI coach for solo founders',
+        alt: 'Recgon — AI product manager for small teams',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "Recgon — The Coach Solo Founders Don't Have",
+    title: 'Recgon — The AI Product Manager for small teams',
     description:
-      'AI-powered product analysis, marketing content, feedback analysis, and mentorship for solo founders.',
+      'Reads your codebase, analytics, and team. Decides what to ship next. Assigns it to the right teammate.',
     images: [`${BASE_URL}/og-image.png`],
   },
   robots: {
@@ -66,7 +66,7 @@ const jsonLd = {
         url: `${BASE_URL}/favicon.svg`,
       },
       description:
-        'Recgon is an AI-powered platform for solo founders and indie hackers — product analysis (from a GitHub repo or a plain-text idea), marketing content generation, campaign planning, feedback analysis, and AI mentorship.',
+        'Recgon is an AI Product Manager for small teams. It reads codebase, GA4 analytics, and team activity, then surfaces the next move and assigns it to the best-fit teammate.',
     },
     {
       '@type': 'WebSite',
@@ -74,11 +74,6 @@ const jsonLd = {
       url: BASE_URL,
       name: 'Recgon',
       publisher: { '@id': `${BASE_URL}/#organization` },
-      potentialAction: {
-        '@type': 'SearchAction',
-        target: { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/?q={search_term_string}` },
-        'query-input': 'required name=search_term_string',
-      },
     },
     {
       '@type': 'SoftwareApplication',
@@ -87,20 +82,15 @@ const jsonLd = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'AI-powered product platform for solo founders. Analyzes a GitHub repo or a plain-text idea, generates marketing content for Instagram, TikTok, and Google Ads, plans campaigns, analyzes user feedback, and provides AI mentorship.',
-      offers: {
-        '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'USD',
-        description: 'Free to get started',
-      },
+        'AI Product Manager for small teams. Ingests codebase, analytics, and team activity, generates prioritized next steps, and auto-assigns tasks to teammates by skill and calendar availability.',
       featureList: [
-        'Product analysis via AI (GitHub repo or plain-text idea)',
-        'Marketing content generation for Instagram, TikTok, and Google Ads',
-        'Campaign planning and content calendars',
-        'User feedback sentiment analysis',
-        'GA4-powered analytics dashboard',
-        'AI mentor chatbot with product context',
+        'Codebase analysis (GitHub) with SWOT, risks, growth levers, and ranked next steps',
+        'GA4 analytics ingestion and AI-summarized insights',
+        'Auto-minted task pipeline (next_step, dev_prompt, marketing, analytics, research)',
+        'Skill- and calendar-aware task assignment to teammates',
+        'AI task verification against acceptance criteria',
+        'Cockpit home with today\'s focus, decision deck, and team pulse',
+        'Slash-command terminal interface',
         'Claude Code MCP integration',
       ],
       creator: { '@id': `${BASE_URL}/#organization` },
@@ -113,31 +103,31 @@ const jsonLd = {
           name: 'What is Recgon?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Recgon is an AI-powered platform for solo founders and indie hackers. It analyzes your product — from a GitHub repo or a plain-text idea — generates platform-ready marketing content (Instagram, TikTok, Google Ads), plans campaigns, analyzes user feedback into actionable developer prompts, and provides an AI mentor that knows your product inside out.',
+            text: 'Recgon is an AI Product Manager for small teams. It reads your codebase, GA4 analytics, and team activity, then surfaces what to ship next and automatically assigns each task to the best-fit teammate by skill and calendar.',
           },
         },
         {
           '@type': 'Question',
-          name: 'How does Recgon analyze your product?',
+          name: 'How does the analysis work?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: "You paste a GitHub URL or describe your idea in plain text. Recgon's AI reads the repo (or brief), extracts the product's purpose, tech stack, features, and limitations, and builds a comprehensive product profile in seconds.",
+            text: 'Connect a GitHub repo and a GA4 property. Recgon ingests the code and the traffic, builds a running snapshot of your product (stage, SWOT, top risks, growth levers, prioritized next steps), and refreshes it whenever new commits land.',
           },
         },
         {
           '@type': 'Question',
-          name: 'What marketing content can Recgon generate?',
+          name: 'How does task assignment work?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Recgon generates platform-ready copy for Instagram posts, TikTok captions, and Google Ads — all grounded in what your product actually does based on the product analysis. It also creates structured campaign timelines and content calendars.',
+            text: 'Each task is scored against every active teammate by skill match, current workload, and open time on their calendar. The best fit gets assigned and pinged. If no teammate scores above the minimum fit threshold, the task is left unassigned for you to triage.',
           },
         },
         {
           '@type': 'Question',
-          name: 'How does the feedback analysis work?',
+          name: 'Does Recgon do the work itself?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'You paste user feedback manually or scrape Instagram comments. Recgon performs sentiment analysis and converts the feedback into actionable developer prompts so you know exactly what to build next.',
+            text: 'No. Recgon assigns work to humans. It plans, prioritizes, schedules, and verifies — your team ships.',
           },
         },
         {
@@ -145,23 +135,7 @@ const jsonLd = {
           name: 'Does Recgon integrate with Claude Code?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Yes. Recgon ships a Claude Code MCP (Model Context Protocol) server. Claude can call list_projects(), get_actionable_items(), and mark_item_complete() — reading your product analysis, picking up next steps, implementing them, and marking them done, all tracked in Recgon.',
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'Who is Recgon for?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Recgon is built for solo founders, indie hackers, small teams, early-stage startups, and side project builders who need the strategic advice of a cofounder and the execution support of a marketing team — without the headcount.',
-          },
-        },
-        {
-          '@type': 'Question',
-          name: 'Is Recgon free?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Yes, Recgon is free to get started. Create an account and begin analyzing your product right away.',
+            text: 'Yes. Recgon ships an MCP server so Claude Code can read your product analysis, pick up an actionable next step, implement it, and mark it complete — all tracked back in Recgon.',
           },
         },
       ],
@@ -177,7 +151,7 @@ export default function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      {/* SSR content layer: visible to crawlers and AI models, visually hidden */}
+      {/* SSR content layer: visible to crawlers and AI models, visually hidden. */}
       <div
         aria-hidden="true"
         style={{
@@ -189,34 +163,31 @@ export default function LandingPage() {
           whiteSpace: 'nowrap',
         }}
       >
-        <h1>Recgon — The Coach Solo Founders Don&apos;t Have</h1>
+        <h1>Recgon — The AI Product Manager for small teams</h1>
         <p>
-          Recgon analyzes your product — from a GitHub repo or a plain-text idea — generates
-          marketing content, plans campaigns, and turns user feedback into developer prompts — so
-          solo founders, indie hackers, and small teams can stop guessing and start shipping.
+          One brain for the whole team. Recgon reads your codebase, GA4 analytics, and team activity, then decides what to ship next and assigns each task to the best-fit teammate by skill match and calendar availability.
         </p>
-        <h2>Features</h2>
+        <h2>What Recgon does</h2>
         <ul>
-          <li>Product Analysis — paste a GitHub URL or describe your idea; AI extracts a full product profile</li>
-          <li>Marketing Content — Instagram, TikTok, and Google Ads copy grounded in your product</li>
-          <li>Campaign Planning — timelines, content calendars, and messaging strategies</li>
-          <li>Feedback Analysis — sentiment breakdowns and actionable developer prompts</li>
-          <li>Analytics Dashboard — GA4-powered insights and AI-generated traffic analysis</li>
-          <li>AI Mentor — chatbot with full product context for strategy and feature advice</li>
+          <li>Reads your GitHub codebase and produces stage, SWOT, top risks, growth levers, and a ranked next-step list per project</li>
+          <li>Ingests GA4 analytics and summarizes traffic, channels, and funnel signals</li>
+          <li>Mints tasks from this unified signal (next_step, dev_prompt, marketing, analytics, research)</li>
+          <li>Auto-assigns each task to the best-fit teammate using skill scores and calendar availability</li>
+          <li>Verifies completed work against acceptance criteria</li>
+          <li>Surfaces a daily cockpit: today&apos;s focus, decision deck, team pulse, and what shipped</li>
         </ul>
-        <h2>How It Works</h2>
+        <h2>How it works</h2>
         <ol>
-          <li>Add Project — paste a GitHub URL or describe your idea in plain text</li>
-          <li>Analyze — AI reads your repo or brief and builds a comprehensive product profile</li>
-          <li>Act — generate marketing content, plan campaigns, analyze feedback, and grow</li>
+          <li>Connect a GitHub repo, a GA4 property, and your teammates</li>
+          <li>Recgon analyzes and produces a running product snapshot</li>
+          <li>Tasks land on the right teammate&apos;s calendar; you see what to ship today</li>
         </ol>
-        <h2>Claude Code Integration</h2>
+        <h2>Who it&apos;s for</h2>
         <p>
-          Recgon plugs into Claude Code via MCP. Claude reads your product analysis, picks up
-          actionable next steps, implements them, and marks them done — all tracked in Recgon.
+          Small teams (2-10) with a founder running product. Indie hackers, early-stage startups, and side-project teams that need a PM&apos;s strategic loop and a project manager&apos;s assignment discipline — without the headcount.
         </p>
       </div>
-      <LandingClientShell />
+      <LandingV2Shell />
     </>
   );
 }

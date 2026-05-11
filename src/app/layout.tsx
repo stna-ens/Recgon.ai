@@ -18,10 +18,10 @@ export const metadata: Metadata = {
     default: 'Recgon — The Coach Solo Founders Don\'t Have',
     template: '%s | Recgon',
   },
-  description: 'Recgon is the mentor and cofounder in your corner — analyzes your product, plans campaigns, reads your feedback, and tells you the truth.',
+  description: 'Recgon is the mentor and cofounder in your corner — analyzes your product, plans campaigns, and tells you the truth.',
   openGraph: {
     title: 'Recgon — The Coach Solo Founders Don\'t Have',
-    description: 'AI-powered product strategy, marketing content, feedback analysis, and mentorship for solo founders.',
+    description: 'AI-powered product strategy, marketing content, and mentorship for solo founders.',
     type: 'website',
     url: 'https://recgon.app',
     siteName: 'Recgon',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Recgon — The Coach Solo Founders Don\'t Have',
-    description: 'AI-powered product strategy, marketing content, feedback analysis, and mentorship for solo founders.',
+    description: 'AI-powered product strategy, marketing content, and mentorship for solo founders.',
     images: ['/opengraph-image'],
   },
   robots: {
