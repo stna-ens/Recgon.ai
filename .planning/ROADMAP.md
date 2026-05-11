@@ -30,7 +30,11 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
   3. The skill picker in the profile UI and the task `requiredSkills` produced by `skillTagger` show the same labels for the same concepts — no parallel vocabulary drift.
   4. `agent_teammates` table schema is unchanged; `teammate_profiles` exists as a separate additive table; all dispatcher reads go through `profileMerge(self, inferred=null, ema)` so Phase 2 can slot in without touching Phase 1 code paths.
   5. Any new LLM call introduced in this phase (none expected, but reserved for prompt-driven helpers) routes through `chatViaChain` with `temperature: 0` — no direct `getGeminiClient()` calls in new code.
-**Plans:** 4 plans hint — (1) `skillVocabulary.ts` + `teammate_profiles` migration, (2) `profileMerge.ts` pure function + unit tests + simulation vs `agent_tasks` history, (3) `/teams/[id]/me` page + ProfileForm client component using `cmdk`, (4) dispatcher wiring + e2e smoke that a self-declared skill changes assignment within one cron cycle.
+**Plans:** 4 plans
+- [ ] `01-01-PLAN.md` — Extract canonical `skillVocabulary.ts`, write additive `teammate_profiles` migration + `teams.profile_visibility` column, install `cmdk@^1.1.1`, push migration. (Walking Skeleton.)
+- [ ] `01-02-PLAN.md` — Pure `profileMerge.ts` (field-level fallback, D-06/D-08) + additive interest-nudge term in `match.ts` (≤ 0.05, D-03). Pure-function unit tests.
+- [ ] `01-03-PLAN.md` — `/teams/[id]/me` RSC + `ProfileForm` (cmdk pills, D-12/D-14), `POST + GET /api/teams/[id]/profile` (visibility enforcement, D-17..D-20), one `chatViaChain` normalization call (QUAL-05/06), `profileStorage.ts`, prompts + Zod schema, nav link.
+- [ ] `01-04-PLAN.md` — Wire `profileMerge` into both dispatcher entry points (`runDispatch` + `dispatchTask`), unit + E2E smoke test that a self-declared skill changes assignment, human-verify checkpoint.
 **Research recommended:** skip — standard patterns (profileMerge weight ratios flagged for in-plan simulation, not full `/gsd-research-phase`).
 
 ### Phase 2: GitHub Skill Inference
