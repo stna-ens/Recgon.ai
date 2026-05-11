@@ -36,4 +36,8 @@ yarn-error.log*
 *.preview.html
 *-preview.png
 landing-*.png
+recgon-*.png
 .claude/
+
+# playwright snapshots (local dev artifacts)
+.playwright-mcp/
