@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: false
 preset: none
 created: 2026-05-11
+revised: 2026-05-11
 ---
 
 # Phase 1 — UI Design Contract
@@ -50,19 +51,21 @@ Declared values (all multiples of 4, sourced from existing CSS rhythm):
 
 ## Typography
 
-Three sizes + one display variant. Two weights only.
+Three sizes + one display variant. Two weights only. **Exactly 4 sizes declared — no exceptions.**
 
 | Role | Size | Weight | Line Height | Font | Where it lives |
 |------|------|--------|-------------|------|----------------|
 | Display | 28px | 600 | 1.2 | Inter | Page heading: "Your profile" |
 | Heading | 20px | 600 | 1.3 | Inter | Section heading inside form card; disabled placeholder heading |
 | Body | 16px | 400 | 1.5 | Inter | Form field input text, helper copy, pill chip raw text |
-| Label | 12px | 500 | 1.4 | JetBrains Mono, letter-spacing 0.04em, uppercase | Field labels (`SKILLS`, `STRENGTHS`, `INTERESTS`, `WEEKLY CAPACITY`); `matched as:` annotation; "COMING SOON" badge |
+| Label | 12px | 500 | 1.4 | JetBrains Mono, letter-spacing 0.04em, uppercase | Field labels (`SKILLS`, `STRENGTHS`, `INTERESTS`, `WEEKLY CAPACITY`); `CANONICAL` / `OTHERS` suggestion-popover badges; "COMING SOON" badge; capacity suffix |
+| Label (annotation variant) | 12px | 400 | 1.4 | JetBrains Mono | `matched as canonical` pill annotation — **same 12px size as the Label role**, distinguished by weight 400 (vs 500), normal case (vs uppercase), and `var(--txt-faint)` color (vs `var(--txt-pure)`) |
 
 **Strict weight palette:** 400 (regular body) + 600 (heading / button / emphasis). The Inter `500` weight already loaded in `globals.css` is reserved for the JetBrains Mono label role above and the nav-link label — DO NOT introduce 500-weight Inter on this page.
 
-**`matched as:` annotation rendering (resolves CONTEXT discretion item):** Render inline, **immediately below the pill chip raw text**, in JetBrains Mono 11px / weight 400 / `color: var(--txt-faint)`, prefixed with the literal text `matched as `. The pill becomes a two-line chip: raw on line 1, `matched as backend` on line 2.
+**`matched as:` annotation rendering (resolves CONTEXT discretion item):** Render inline, **immediately below the pill chip raw text**, in **JetBrains Mono 12px / weight 400 / `color: var(--txt-faint)`**, prefixed with the literal text `matched as `. The pill becomes a two-line chip: raw on line 1, `matched as backend` on line 2.
 
+  - **Why 12px (not a 5th size):** The annotation MUST stay within the 4-size budget. Visual hierarchy between the Label role (`SKILLS` uppercase, 500 weight, `--txt-pure`) and the annotation variant (`matched as backend`, 400 weight, normal case, `--txt-faint`) is carried by **color and font-family**, not size. Both are 12px JetBrains Mono.
   - **Justification over the tooltip and the "Recgon sees these as:" footer alternatives:**
     - Always-visible (D-14 explicitly requires the teammate to see how Recgon read them — a hover tooltip hides it for keyboard users and mobile; a separate footer creates two parallel lists the teammate has to mentally zip together).
     - Survives the disabled / read-only render needed for cross-teammate viewing when `profile_visibility = team_visible`.
@@ -130,6 +133,7 @@ Voice rule (D-21): Recgon IS the AI PM. Copy speaks AS Recgon — never about an
 | Disabled placeholder badge | `COMING SOON` |
 | Disabled placeholder body | `Once you connect a repo, I'll look at what you actually ship and add it here. You'll get to confirm or reject each one.` |
 | Discovery nav link (in team menu, per D-10) | `My profile` |
+| Pill chip remove button accessible label | `Remove {chip text}` — e.g. `Remove PostgreSQL`, `Remove shipping fast`. Rendered as `aria-label` on the `<button>` wrapping the `X` icon (icon-only button, no visible text). |
 
 **Strict copy bans on this page (enforced by gsd-ui-checker):**
 - The strings `AI`, `Powered by`, `LLM`, `Gemini`, `Claude`, `model`, `algorithm`, `machine learning` MUST NOT appear in any user-facing copy on this page.
@@ -206,18 +210,25 @@ Max content width: `680px`, centered. (Matches the readable column width used on
 1. As the user types, a `<Popover>` opens below the surface (anchored to the input, NOT the surface — keeps popover stable when pill count changes). Popover surface uses `--glass-substrate` + `--shadow-float` + `--r-md`, max-height 240px, internal scroll via Radix `<ScrollArea>`.
 2. Popover content is a `<Command>` from `cmdk` showing ranked suggestions (planner chooses ranking algo — prefix, fuzzy, recent-in-team).
 3. **Keyboard contract:** `ArrowDown` / `ArrowUp` navigate, `Enter` commits highlighted suggestion as a pill, `Esc` closes popover (input retains text). `Backspace` on empty input removes the rightmost pill. `,` (comma) or `Enter` on free-typed text the popover doesn't recognize commits it as a raw-only pill (will be normalized server-side on save — D-12).
-4. Suggestions show canonical-vocab matches first (badged with a 10px JetBrains Mono `CANONICAL` chip in `--txt-faint`), then free-text matches from other teammates (badged `OTHERS` in `--txt-faint`). Max 8 suggestions visible without scrolling.
+4. Suggestions show canonical-vocab matches first (badged with a 12px JetBrains Mono `CANONICAL` chip in `--txt-faint` — uses the standard Label role size, not a smaller variant), then free-text matches from other teammates (badged `OTHERS` in `--txt-faint`, same 12px). Max 8 suggestions visible without scrolling.
 5. Selected suggestion has a 2px left border in `var(--signature)` and `--glass-active` background — only place in the popover that uses accent.
 
-**Pill chip:**
+**Pill chip anatomy:**
 - Height: 28px visual / 32px hit-area.
 - Background: `--btn-secondary-bg`. Border: 1px `--btn-secondary-border`. Radius: `--r-sm` (14px).
 - Padding: 4px 8px 4px 12px (more on left because the X is on the right).
-- Content: line 1 = raw text in Inter 14px/400 `--txt-pure`; line 2 = `matched as canonical` in JetBrains Mono 11px/400 `--txt-faint`.
-- Trailing X button: 16px lucide `X` icon inside a 16px circle, `--txt-muted` → `--danger` on hover. Click removes the pill. Pill removal animates opacity 1→0 over `--dur-fast` (0.15s) then collapses width — uses the `--ease-out` token.
+- **Content structure:**
+  - Line 1 (raw text): Inter 16px / 400 / `var(--txt-pure)` — uses the Body typography role.
+  - Line 2 (annotation): `matched as canonical` in **JetBrains Mono 12px / 400 / `var(--txt-faint)`** — uses the Label (annotation variant) typography role. Same 12px size as the field labels and suggestion badges; distinguished from them by lowercase, weight 400, and `--txt-faint` color.
+- **Trailing remove (X) button — accessibility contract:**
+  - Visual: 16px lucide `X` icon centered inside a 32×32px hit-area (8px visual circle, 12px transparent padding all around).
+  - Color: `--txt-muted` by default, `--danger` on hover.
+  - **`aria-label="Remove {chip text}"`** — REQUIRED on the `<button>` element wrapping the icon. The `{chip text}` interpolation uses the raw text shown on line 1 of the pill, NOT the canonical match. Example: a pill displaying `PostgreSQL` → `<button aria-label="Remove PostgreSQL">`. A pill displaying `shipping fast` → `<button aria-label="Remove shipping fast">`. This prevents a WCAG 2.1 SC 1.1.1 failure (non-text content must have a text alternative) since the button has no visible text.
+  - The `<X>` lucide icon itself MUST carry `aria-hidden="true"` so screen readers only announce the button's `aria-label`, not "x" twice.
+  - Click removes the pill. Pill removal animates opacity 1→0 over `--dur-fast` (0.15s) then collapses width — uses the `--ease-out` token.
 - **No accent on pills. No hover scale. No glass treatment on pills** (would violate "no stacked glass" rule, since pills sit inside an already-glassy form card).
 
-**Pre-save state (after user types, before clicking Save):** New pills typed but not yet saved have NO `matched as:` line (server hasn't normalized them). Render line 2 as `matched as …` in `--txt-faint` with the three dots literal — signals "we'll figure this out when you save." After successful save, the page re-renders with the real canonical line.
+**Pre-save state (after user types, before clicking Save):** New pills typed but not yet saved have NO `matched as:` line resolved (server hasn't normalized them). Render line 2 as `matched as …` in **JetBrains Mono 12px / 400 / `var(--txt-faint)`** with the three dots literal — signals "we'll figure this out when you save." After successful save, the page re-renders with the real canonical line (same typography, just replacing the `…` with the canonical token).
 
 ### Capacity input
 
@@ -250,7 +261,7 @@ The "What GitHub will say about you" card sits 32px below the form card. It is a
 
 - **Surface:** Same `.glass-card` as the form card BUT with `opacity: 0.55`, `pointer-events: none`, `filter: saturate(0.4)`.
 - **Content:** Heading + COMING SOON badge + one-line body copy. Nothing else inside. No fake skill rows, no loading skeleton, no placeholder pills — D-09 explicitly forbids fake data.
-- **COMING SOON badge:** 22px height, padding 4px 10px, `--r-pill` corners, JetBrains Mono 10px/500 uppercase letter-spacing 0.08em, background `--btn-secondary-bg`, color `--txt-muted`, border 1px `--btn-secondary-border`. Sits inline at the right of the heading.
+- **COMING SOON badge:** 22px height, padding 4px 10px, `--r-pill` corners, JetBrains Mono 12px / 500 uppercase letter-spacing 0.08em (Label role), background `--btn-secondary-bg`, color `--txt-muted`, border 1px `--btn-secondary-border`. Sits inline at the right of the heading.
 - **Cursor:** Default cursor inherited from `pointer-events: none` (no `not-allowed` — the card is informational, not an attempted interaction).
 - **Layout reservation:** Card has a fixed `min-height: 96px` so that Phase 2 lighting it up doesn't push the rest of the page around. This min-height accommodates the heading + badge + one-line body without any extra content.
 - **No focus state, no keyboard reachability.** `tabindex="-1"` on the card root.
@@ -263,7 +274,7 @@ In `src/app/teams/[id]/page.tsx` (or whichever team-page nav component renders t
 
 If a teammate visits `/teams/[id]/me?user={otherUserId}` (planner decides URL shape — this is the discretionary call from the visibility decision), the same page renders **read-only**:
 - All inputs become `disabled` with `cursor: default` and reduced contrast (no border focus glow).
-- Pills are non-removable (X button hidden).
+- Pills are non-removable (X button hidden — no `aria-label` needed in this state since the button is not in the DOM).
 - Save button hidden entirely.
 - A small JetBrains Mono caption above the heading: `VIEWING {Display Name}'S PROFILE` in `--txt-muted`.
 - When `profile_visibility = owner_only` AND viewer is not the owner AND not self → 403 server-side, no UI render.
@@ -289,11 +300,20 @@ All other interactive primitives (`Popover`, `Label`, `Tooltip`, `ScrollArea`) a
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS (voice locked to first-person Recgon-as-manager; banned strings enumerated; all 5 states have explicit copy)
-- [ ] Dimension 2 Visuals: PASS (every visual surface mapped to an existing globals.css token; no new aesthetic introduced; disabled placeholder layout-shift contract specified)
+- [ ] Dimension 1 Copywriting: PASS (voice locked to first-person Recgon-as-manager; banned strings enumerated; all 5 states have explicit copy; pill remove-button `aria-label` copy contract added)
+- [ ] Dimension 2 Visuals: PASS (every visual surface mapped to an existing globals.css token; no new aesthetic introduced; disabled placeholder layout-shift contract specified; pill X remove-button has explicit `aria-label="Remove {chip text}"` contract — fixes WCAG 2.1 SC 1.1.1 flag from revision 0)
 - [ ] Dimension 3 Color: PASS (60/30/10 split mapped to `--bg-deep` / `--glass-substrate` / `--signature`; accent reserved-for list is exhaustive and reviewable; both light + dark modes inherited via token variables, no hardcoded hex in UI code)
-- [ ] Dimension 4 Typography: PASS (3 sizes + display, 2 weights — 400 and 600; `matched as:` annotation rendering locked to JetBrains Mono 11px subscript-line below pill text with always-visible justification)
+- [ ] Dimension 4 Typography: PASS (**exactly 4 sizes — 28 / 20 / 16 / 12 — and 2 weights — 400 and 600**; `matched as:` annotation collapsed from 11px to 12px and distinguished from the uppercase Label role by weight + case + color, not size — fixes blocking violation from revision 0)
 - [ ] Dimension 5 Spacing: PASS (all values are multiples of 4; touch-target exception for pill X-button documented; existing `--r-*` tokens used for radii)
 - [ ] Dimension 6 Registry Safety: PASS (no shadcn / third-party registries; one verified npm package `cmdk@^1.1.1` only)
 
 **Approval:** pending
+
+---
+
+## Revision Log
+
+| Rev | Date | Changes |
+|-----|------|---------|
+| 0 | 2026-05-11 | Initial spec |
+| 1 | 2026-05-11 | Dimension 4 fix: collapsed `matched as canonical` pill annotation from 11px to 12px (JetBrains Mono / 400 / `var(--txt-faint)`); typography now holds at exactly 4 sizes. Dimension 2 fix: added explicit `aria-label="Remove {chip text}"` + `aria-hidden="true"` on the X icon to the pill chip remove-button contract. No other changes — D-01..D-23 mappings, color tokens, spacing, registry, copy, page layout, save-state UX, and disabled placeholder treatment all unchanged. |
