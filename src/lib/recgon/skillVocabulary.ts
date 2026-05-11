@@ -230,6 +230,43 @@ const AI_ML = [
   'vercel_ai_sdk',
 ] as const;
 
+// AI-assisted coding tools — the daily-driver of vibe-coders and
+// indie builders. Distinct from AI_ML (which is for AI/ML *engineers*).
+const AI_BUILDER_TOOLS = [
+  'claude_code',
+  'codex',
+  'cursor',
+  'windsurf',
+  'github_copilot',
+  'codeium',
+  'aider',
+  'continue_dev',
+  'lovable',
+  'bolt_new',
+  'v0',
+  'replit',
+  'stackblitz',
+  'devin',
+  'vibe_coding',
+  'ai_pair_programming',
+] as const;
+
+// No-code / low-code / automation. The other half of the modern
+// builder stack — sits next to AI tools in the same vibe-coder
+// workflow.
+const NO_CODE_TOOLS = [
+  'bubble',
+  'glide',
+  'softr',
+  'adalo',
+  'airtable',
+  'zapier',
+  'make_com',
+  'n8n',
+  'retool',
+  'notion_ai',
+] as const;
+
 const DATA_STACK = [
   'pandas',
   'numpy',
@@ -354,6 +391,8 @@ const DOMAIN_SKILLS = [
 ] as const;
 
 export const CANONICAL_MODIFIERS = [
+  ...AI_BUILDER_TOOLS,
+  ...NO_CODE_TOOLS,
   ...LANGUAGES,
   ...FRONTEND_FRAMEWORKS,
   ...BACKEND_FRAMEWORKS,
@@ -391,6 +430,8 @@ export function isCanonical(tag: string): tag is CanonicalTag {
 // 250-item list.
 export const VOCAB_GROUPS: ReadonlyArray<{ label: string; tags: readonly string[] }> = [
   { label: 'Roles', tags: CANONICAL_ROLES },
+  { label: 'AI builder tools', tags: AI_BUILDER_TOOLS },
+  { label: 'No-code & automation', tags: NO_CODE_TOOLS },
   { label: 'Languages', tags: LANGUAGES },
   { label: 'Frontend', tags: FRONTEND_FRAMEWORKS },
   { label: 'Backend', tags: BACKEND_FRAMEWORKS },
@@ -524,6 +565,34 @@ const DISPLAY_OVERRIDES: Record<string, string> = {
   webrtc: 'WebRTC',
   websockets: 'WebSockets',
   i18n: 'i18n',
+  // AI builder tools
+  claude_code: 'Claude Code',
+  codex: 'Codex',
+  cursor: 'Cursor',
+  windsurf: 'Windsurf',
+  github_copilot: 'GitHub Copilot',
+  codeium: 'Codeium',
+  aider: 'Aider',
+  continue_dev: 'Continue.dev',
+  lovable: 'Lovable',
+  bolt_new: 'Bolt.new',
+  v0: 'v0',
+  replit: 'Replit',
+  stackblitz: 'StackBlitz',
+  devin: 'Devin',
+  vibe_coding: 'Vibe Coding',
+  ai_pair_programming: 'AI Pair Programming',
+  // No-code & automation
+  bubble: 'Bubble',
+  glide: 'Glide',
+  softr: 'Softr',
+  adalo: 'Adalo',
+  airtable: 'Airtable',
+  zapier: 'Zapier',
+  make_com: 'Make',
+  n8n: 'n8n',
+  retool: 'Retool',
+  notion_ai: 'Notion AI',
   // Misc
   gamedev: 'Game Dev',
   web3: 'Web3',

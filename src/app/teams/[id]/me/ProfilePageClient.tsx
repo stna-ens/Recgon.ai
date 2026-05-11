@@ -125,7 +125,7 @@ export default function ProfilePageClient({
   return (
     <>
       <div className="profile-page">
-        <div className="profile-page__main">
+        <main className="profile-page__main">
           <ProfileFormFields
             canonicalVocab={canonicalVocab}
             skills={skills}
@@ -137,10 +137,10 @@ export default function ProfilePageClient({
             capacity={capacity}
             setCapacity={setCapacity}
           />
-        </div>
+        </main>
 
-        <aside className="profile-page__side">
-          <div className="profile-page__side-sticky">
+        <aside className="profile-page__rail" aria-label="profile preview">
+          <div className="profile-page__rail-stick">
             <ProfilePreview
               user={user}
               teamName={teamName}
@@ -188,34 +188,42 @@ export default function ProfilePageClient({
       <style>{`
         .profile-page {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 320px;
-          gap: 48px;
+          grid-template-columns: minmax(0, 1fr) 268px;
+          gap: 36px;
           align-items: start;
           padding-bottom: 96px;
+        }
+        @media (max-width: 1100px) {
+          .profile-page { grid-template-columns: minmax(0, 1fr) 232px; gap: 28px; }
         }
         @media (max-width: 880px) {
           .profile-page {
             grid-template-columns: 1fr;
-            gap: 24px;
+            gap: 22px;
+          }
+        }
+        .profile-page__rail {
+          min-width: 0;
+          animation: profile-rail-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation-delay: 80ms;
+        }
+        @keyframes profile-rail-in {
+          from { opacity: 0; transform: translateX(12px); }
+          to   { opacity: 1; transform: none; }
+        }
+        .profile-page__rail-stick {
+          position: sticky;
+          top: 96px;
+          padding: 4px;
+        }
+        @media (max-width: 880px) {
+          .profile-page__rail-stick {
+            position: static;
+            padding: 0;
           }
         }
         .profile-page__main {
           min-width: 0;
-        }
-        .profile-page__side {
-          min-width: 0;
-        }
-        .profile-page__side-sticky {
-          position: sticky;
-          top: 96px;
-        }
-        @media (max-width: 880px) {
-          .profile-page__side {
-            order: -1;
-          }
-          .profile-page__side-sticky {
-            position: static;
-          }
         }
 
         .profile-savebar {

@@ -1,9 +1,8 @@
 'use client';
 
 // Phase 1 (UAT redesign). Live read-only "how Recgon sees you" card.
-// Receives the same in-progress state as the form and renders a
-// CV-style preview that updates as the user types. The right column
-// only — no inputs, no Supabase, no fetch.
+// Sits in the right column. The container makes it sticky so the
+// preview follows the user as they scroll the form.
 
 import { humanizeTag } from '@/lib/recgon/skillVocabulary';
 
@@ -22,8 +21,6 @@ interface Props {
   capacity: number | null;
 }
 
-// Convert a pill entry to its display label (humanized canonical if
-// matched, humanized raw otherwise).
 function pillLabel(entry: PillEntry): string {
   if (entry.canonical.length > 0 && entry.canonical[0] !== entry.raw) {
     return humanizeTag(entry.canonical[0]);
@@ -31,9 +28,6 @@ function pillLabel(entry: PillEntry): string {
   return humanizeTag(entry.raw);
 }
 
-// A rough hint of the task kinds the dispatcher would consider this
-// teammate for, based on declared roles. Pure heuristic for preview only —
-// the actual matching lives in match.ts.
 function suggestTaskKinds(skills: PillEntry[]): string[] {
   const tags = new Set(skills.flatMap((s) => [s.raw, ...s.canonical]));
   const hints: string[] = [];
@@ -62,11 +56,8 @@ export default function ProfilePreview({
   const initials = (user.nickname || user.email || '?').slice(0, 2).toUpperCase();
   const totalDeclarations = skills.length + strengths.length + interests.length;
   const taskHints = suggestTaskKinds(skills);
-
   const capacityPct =
-    capacity === null
-      ? 0
-      : Math.min(100, Math.max(0, (capacity / CAPACITY_FULL) * 100));
+    capacity === null ? 0 : Math.min(100, Math.max(0, (capacity / CAPACITY_FULL) * 100));
 
   return (
     <div className="profile-preview">
@@ -297,7 +288,9 @@ function PreviewSection({ label, count, children }: PreviewSectionProps) {
     <div className="profile-preview-section">
       <div className="profile-preview-section__head">
         <span className="profile-preview-section__label">{label}</span>
-        {typeof count === 'number' && <span className="profile-preview-section__count">{count}</span>}
+        {typeof count === 'number' && (
+          <span className="profile-preview-section__count">{count}</span>
+        )}
       </div>
       {children}
       <style>{`
