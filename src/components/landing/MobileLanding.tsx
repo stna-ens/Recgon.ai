@@ -531,7 +531,11 @@ export default function MobileLanding() {
         .mlnd-header {
           position: relative;
           z-index: 3;
-          padding: 18px 18px 0;
+          /* Top padding honors iOS dynamic island / notch via the
+             safe-area inset. The aurora + dot field underneath extend
+             into that area (inset:-10% on .mlnd-hero-aurora), so the
+             dynamic island region paints aurora, not a flat black bar. */
+          padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px 0;
           display: flex;
           align-items: center;
           justify-content: space-between;

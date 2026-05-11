@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import AppShell from '@/components/AppShell';
@@ -44,6 +44,15 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+};
+
+// viewport-fit=cover lets iOS Safari paint the page under the dynamic
+// island / notch. Combined with env(safe-area-inset-*) padding on the
+// mobile hero, this removes the flat black bar at the top.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

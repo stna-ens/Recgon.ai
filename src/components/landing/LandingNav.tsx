@@ -37,7 +37,7 @@ export default function LandingNav() {
           </div>
 
           <div className="lnd-nav-right">
-            <button
+          <button
               type="button"
               className="lnd-theme"
               onClick={() => setTheme(current === 'dark' ? 'light' : 'dark')}
@@ -61,28 +61,8 @@ export default function LandingNav() {
       </header>
 
       <style>{`
-        .lnd-nav {
-          position: fixed;
-          top: 14px; left: 16px; right: 16px;
-          z-index: 200;
-          background: var(--nav-glass-substrate);
-          backdrop-filter: blur(48px) saturate(180%);
-          -webkit-backdrop-filter: blur(48px) saturate(180%);
-          border-radius: 999px;
-          box-shadow: var(--shadow-float), var(--edge-highlight), var(--edge-shadow);
-          isolation: isolate;
-          transform: translate3d(0,0,0);
-        }
-        .lnd-nav-inner {
-          height: 60px;
-          padding: 0 18px 0 22px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 24px;
-        }
-        .lnd-nav-left { display: flex; align-items: center; gap: 22px; min-width: 0; }
-        .lnd-nav-right { display: flex; align-items: center; gap: 10px; }
+        /* Positioning + glass-pill styles live in globals.css for
+           reliable HMR. Only the inner-content styling is here. */
         .lnd-rule { width: 1px; height: 18px; background: var(--rule, rgba(255,255,255,0.10)); }
 
         .lnd-brand {
@@ -167,9 +147,6 @@ export default function LandingNav() {
           .lnd-links { display: none; }
           .lnd-rule { display: none; }
           .lnd-login { display: none; }
-        }
-        @media (max-width: 480px) {
-          .lnd-nav-inner { padding: 0 14px; gap: 10px; }
         }
       `}</style>
     </>

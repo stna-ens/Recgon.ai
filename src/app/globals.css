@@ -2593,6 +2593,51 @@ select:focus-visible,
 
 /* === Phase-2 polish primitives === */
 
+/* === Landing nav — split-pill layout ============================
+   Pulled out of styled-jsx for reliable HMR. Two glass pills float at
+   the top corners; the outer .lnd-nav is just a positioning rail with
+   no background. Width-constrained via left/right insets on the rail,
+   the right pill physically cannot overflow because its right edge is
+   the rail's right edge (viewport - 16px). */
+.lnd-nav {
+  position: fixed !important;
+  top: calc(env(safe-area-inset-top, 0px) + 14px) !important;
+  left: 16px !important;
+  right: 16px !important;
+  z-index: 200 !important;
+  pointer-events: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.lnd-nav-inner {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 60px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 24px !important;
+}
+.lnd-nav-left,
+.lnd-nav-right {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  background: var(--nav-glass-substrate);
+  backdrop-filter: blur(48px) saturate(180%);
+  -webkit-backdrop-filter: blur(48px) saturate(180%);
+  border-radius: 999px;
+  box-shadow: var(--shadow-float), var(--edge-highlight), var(--edge-shadow);
+  isolation: isolate;
+  flex-shrink: 0;
+}
+.lnd-nav-left { gap: 18px; min-width: 0; padding: 8px 18px 8px 16px; }
+.lnd-nav-right { gap: 10px; padding: 8px 8px 8px 14px; }
+
 /* Smooth theme switch — colors crossfade instead of snapping. */
 html {
   transition:
