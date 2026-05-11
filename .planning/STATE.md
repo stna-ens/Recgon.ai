@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-05-10T23:43:33.060Z"
-last_activity: 2026-05-11 — Roadmap created; all 43 v1 requirements mapped to phases.
+status: planned
+stopped_at: Phase 1 planning complete — ready to execute
+last_updated: "2026-05-11T13:50:00.000Z"
+last_activity: 2026-05-11 — Phase 1 plans committed (4 waves); plan-check PASS-WITH-FIXES, blockers B-01 + B-02 + warning W-04 resolved.
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 Phase: 1 of 6 (Profile Foundation)
 Plan: 0 of 4 in current phase
-Status: Ready to plan
-Last activity: 2026-05-11 — Roadmap created; all 43 v1 requirements mapped to phases.
+Status: Ready to execute (`/gsd-execute-phase 1`)
+Last activity: 2026-05-11 — Phase 1 plans committed (4 waves: foundation → merge+UI → dispatcher wiring); plan-check PASS-WITH-FIXES; blockers B-01 (nav-link retargeted to TeamSwitcher) and B-02 (dispatcher rebind enumerated by line) resolved; W-04 UI-SPEC acceptance greps added.
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -63,6 +63,8 @@ Recent decisions affecting current work:
 - Canonical build order: A→B→C→D→E from SUMMARY.md (single-dev, sequential; FEATURES.md parallelization rejected).
 - Phase 3 (LLM Judgment) and Phase 5 (Live Code Infrastructure) flagged for `/gsd-research-phase`.
 - All v3 work is additive — no schema mutation on `agent_teammates`; `profileMerge` is the read-path.
+- D-10 nav-link surface = `TeamSwitcher.tsx` dropdown (the planning artifacts originally assumed a non-existent `src/app/teams/[id]/page.tsx`).
+- Phase 1 dispatcher rebind: `dispatchSingleTask` receives `mergedTeammates`; `backfillLegacySchedules` keeps raw `teammates` (scheduling ≠ assignment math).
 
 ### Pending Todos
 
@@ -89,6 +91,7 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-10T23:43:33.050Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-profile-foundation/01-CONTEXT.md
+Last session: 2026-05-11T13:50:00.000Z
+Stopped at: Phase 1 planning complete — ready to execute
+Resume file: .planning/phases/01-profile-foundation/01-01-PLAN.md
+Resume command: `/gsd-execute-phase 1` (executes plans 01-01 through 01-04 in wave order)
