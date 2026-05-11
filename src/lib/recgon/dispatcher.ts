@@ -15,6 +15,8 @@ import { mintTasksFromBrain } from './taskMint';
 import { rankMatches, type MatchResult } from './match';
 import { planTaskSchedule, scheduleTimelinessScore, type SchedulePlan } from './scheduler';
 import { tagSingleTaskWithSkills } from './skillTagger';
+import { listProfiles } from './profileStorage';
+import { profileMerge } from './profileMerge';
 import {
   listTeammatesWithStats,
   listTasks,
@@ -30,7 +32,23 @@ import {
   getTeammate,
   updateTaskRequiredSkills,
 } from './storage';
-import type { AgentTask, AssignmentLogEntry, BrainSnapshot, TaskStatus, WorkingHours } from './types';
+import type { AgentTask, AssignmentLogEntry, BrainSnapshot, TaskStatus, TeammateProfile, WorkingHours } from './types';
+
+// PROFILE-04: thread self-declared profiles through profileMerge before rankMatches.
+// Phase 1: inferred is always null. Phase 2 will widen this signature.
+function applyProfileMerge<T extends { userId: string | null; skills: string[]; capacityHours: number; fitProfile: import('./types').FitProfile }>(
+  teammates: T[],
+  profiles: TeammateProfile[],
+): Array<T & { interests?: string[] }> {
+  const byUserId = new Map(profiles.map((p) => [p.userId, p]));
+  return teammates.map((t) => {
+    const profile = t.userId ? (byUserId.get(t.userId) ?? null) : null;
+    // profileMerge returns Teammate & { interests: string[] }; we cast back to
+    // preserve any extra TeammateWithStats fields (stars/ratingCount/etc) that
+    // the merge call passed through via spread.
+    return profileMerge(t as any, profile, null, t.fitProfile) as unknown as T & { interests?: string[] };
+  });
+}
 
 const ACTIVE_NON_TERMINAL_STATUSES: TaskStatus[] = [
   'assigned',
@@ -115,17 +133,27 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
   const backlog = await listUnassignedTasks(teamId);
   const teammates = await listTeammatesWithStats(teamId);
 
+  // PROFILE-04: load self-declared profiles once per dispatch and thread each
+  // teammate through profileMerge before scoring. The merged shape is a
+  // superset of TeammateWithStats (adds optional `interests`), so passing it
+  // into dispatchSingleTask does not widen the signature.
+  const profiles = await listProfiles(teamId);
+  const mergedTeammates = applyProfileMerge(teammates, profiles);
+
   // Catch up tasks assigned before the calendar-aware migration (or whose
   // schedule was wiped some other way): they have an owner but no
   // scheduled_date, so they show up as "unscheduled" in the calendar even
   // though work is in flight. Reschedule on the assignee's calendar.
+  // NOTE: schedule backfill operates on calendars, not assignment math — it
+  // must continue to read the raw `teammates` shape (no merged interests / no
+  // overridden capacity), otherwise scheduling on existing assignments regresses.
   const backfilled = await backfillLegacySchedules(teamId, teammates);
 
   let assigned = 0;
   let noFit = 0;
 
   for (const task of backlog) {
-    const result = await dispatchSingleTask(teamId, task, teammates);
+    const result = await dispatchSingleTask(teamId, task, mergedTeammates);
     if (result === 'assigned') assigned++;
     else if (result === 'no_fit') noFit++;
   }
@@ -393,5 +421,9 @@ export async function dispatchTask(
   const task = await getTask(taskId);
   if (!task || task.status !== 'unassigned') return 'skip';
   const teammates = await listTeammatesWithStats(teamId);
-  return dispatchSingleTask(teamId, task, teammates, options.excludeTeammateIds ?? []);
+  // PROFILE-04: same merge as runDispatch so the manual single-task path
+  // (user-created tasks, decliner re-dispatch) matches the cron behavior.
+  const profiles = await listProfiles(teamId);
+  const mergedTeammates = applyProfileMerge(teammates, profiles);
+  return dispatchSingleTask(teamId, task, mergedTeammates, options.excludeTeammateIds ?? []);
 }
