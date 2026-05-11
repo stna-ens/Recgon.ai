@@ -150,7 +150,15 @@ export default function TopNavV2() {
       <style>{`
         .v2-topnav {
           position: fixed;
-          top: 14px; left: 16px; right: 16px;
+          top: 14px;
+          /* Mock: centered floating pill with a max-width cap (1400px)
+             so on wide displays the bar floats with margin on both sides
+             instead of stretching edge-to-edge. Brings the marketing-
+             page floating-pill aesthetic into the product without
+             splitting the dense content into two groups. */
+          left: 50%;
+          width: calc(100% - 32px);
+          max-width: 1400px;
           z-index: 200;
           /* v1 liquid-glass treatment: heavy blur + saturate, semi-transparent
              substrate, layered float/edge shadows. Floats off the top edge
@@ -161,7 +169,7 @@ export default function TopNavV2() {
           border-radius: 999px;
           box-shadow: var(--shadow-float), var(--edge-highlight), var(--edge-shadow);
           isolation: isolate;
-          transform: translate3d(0,0,0);
+          transform: translateX(-50%) translate3d(0,0,0);
           backface-visibility: hidden;
         }
         .v2-topnav-inner {
