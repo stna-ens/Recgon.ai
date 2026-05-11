@@ -9,11 +9,15 @@ import BlurText from '../BlurText';
 
 const Aurora = dynamic(() => import('../Aurora'), { ssr: false });
 
-// Aurora colorStops are tuned per theme. Dark: deep wine → signature pink →
-// deep wine (matches v1). Light: pale wabi-gray → saturated signature pink →
-// pale wabi-gray (Apple-light feel).
+// Aurora colorStops are tuned per theme.
+// Dark: deep wine → signature pink → deep wine (over-compositing on black bg).
+// Light: pure white → signature pink → pure white. The light-mode canvas
+// uses `mix-blend-mode: multiply`, so white edges multiply with the white
+// page bg (= no change, edges vanish) and the pink center darkens white
+// into a saturated pink wash. This avoids the muddy gray smears that the
+// shader produces under normal over-compositing on a light bg.
 const AURORA_DARK: [string, string, string] = ['#1a0a10', '#f0b8d0', '#1a0a10'];
-const AURORA_LIGHT: [string, string, string] = ['#f5f5f7', '#c2357a', '#f5f5f7'];
+const AURORA_LIGHT: [string, string, string] = ['#ffffff', '#c2357a', '#ffffff'];
 
 export default function FooterCta() {
   const { theme, resolvedTheme } = useTheme();
@@ -26,18 +30,14 @@ export default function FooterCta() {
   return (
     <>
       <section className={`lnd-cta-v1 ${isLight ? 'is-light' : ''}`}>
-        {isLight ? (
-          <div className="lnd-cta-glow-light" aria-hidden="true" />
-        ) : (
-          <div className="lnd-cta-aurora" aria-hidden="true">
-            <Aurora
-              colorStops={stops}
-              amplitude={1.0}
-              blend={0.4}
-              speed={0.5}
-            />
-          </div>
-        )}
+        <div className="lnd-cta-aurora" aria-hidden="true">
+          <Aurora
+            colorStops={stops}
+            amplitude={isLight ? 0.85 : 1.0}
+            blend={isLight ? 0.55 : 0.4}
+            speed={isLight ? 0.4 : 0.5}
+          />
+        </div>
         <div className="lnd-cta-v1-inner">
           <h2 className="lnd-cta-v1-title">
             <BlurText
@@ -84,18 +84,15 @@ export default function FooterCta() {
           z-index: 0;
           pointer-events: none;
         }
-        /* Light-mode replacement for Aurora — a soft, static pink wash on
-           Apple-wabi gray. Subtle is intentional: this section should feel
-           like the rest of the light page, not a dramatic dark hero. */
-        .lnd-cta-glow-light {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          pointer-events: none;
-          background:
-            radial-gradient(ellipse 55% 70% at 50% 50%, rgba(var(--signature-rgb), 0.22) 0%, transparent 65%),
-            radial-gradient(ellipse 90% 60% at 50% 100%, rgba(var(--signature-rgb), 0.10) 0%, transparent 70%);
+        /* Light mode: switch the canvas to multiply blend so the shader's
+           pink ramp tints the white page bg (instead of overlaying dark
+           muddy pink onto it). With white-edge stops, the ribbon ends
+           become invisible (white × white = white) and only the pink
+           center darkens the bg into a clean pink wash. */
+        .lnd-cta-v1.is-light .lnd-cta-aurora canvas {
+          mix-blend-mode: multiply;
         }
+        .lnd-cta-v1.is-light .lnd-cta-aurora { opacity: 0.9; }
         /* Dark mode: vignette toward near-black so the title pops. */
         .lnd-cta-v1::after {
           content: '';
@@ -105,10 +102,17 @@ export default function FooterCta() {
           background: radial-gradient(ellipse at center, transparent 0%, rgba(5,5,5,0.35) 70%, rgba(5,5,5,0.65) 100%);
           pointer-events: none;
         }
-        /* Light mode: paler vignette toward the Apple-wabi background so the
-           Aurora's pink doesn't blow out and the page bg blends in at the edges. */
+        /* Light mode: with multiply blend + white-edge stops the canvas
+           already self-feathers to bg. Just a soft top/bottom seam so the
+           section transitions into the page without a hard edge. */
         .lnd-cta-v1.is-light::after {
-          background: radial-gradient(ellipse at center, transparent 0%, rgba(245,245,247,0.45) 70%, rgba(245,245,247,0.85) 100%);
+          background: linear-gradient(
+            to bottom,
+            rgba(245,245,247,0.55) 0%,
+            transparent 14%,
+            transparent 86%,
+            rgba(245,245,247,0.7) 100%
+          );
         }
         .lnd-cta-v1-inner {
           position: relative;

@@ -18,6 +18,13 @@ uniform float uAmplitude;
 uniform vec3 uColorStops[3];
 uniform vec2 uResolution;
 uniform float uBlend;
+// 0.0 = dark-mode (default): aurora color is dimmed by intensity, so the
+// ribbon shape comes from both color brightness and alpha. Designed for
+// dark bgs where dim-pink-on-black looks like a ribbon.
+// 1.0 = light-mode: aurora color is rampColor directly (no intensity
+// dim), and the ribbon shape comes purely from the alpha mask. Designed
+// for light bgs where dim color would paint as visible gray smudges.
+uniform float uLightMode;
 
 out vec4 fragColor;
 
@@ -103,7 +110,12 @@ void main() {
   float midPoint = 0.20;
   float auroraAlpha = smoothstep(midPoint - uBlend * 0.5, midPoint + uBlend * 0.5, intensity);
 
-  vec3 auroraColor = intensity * rampColor;
+  // Dark mode: dim the ramp by intensity (original behavior, looks correct
+  // on dark bgs because the dim color reads as a ribbon over black).
+  // Light mode: use rampColor as-is — shape comes from alpha alone, so
+  // white stops paint white (invisible on white bg) and pink stops paint
+  // pink (clean tinted ribbon).
+  vec3 auroraColor = mix(intensity * rampColor, rampColor, uLightMode);
 
   fragColor = vec4(auroraColor * auroraAlpha, auroraAlpha);
 }
@@ -115,6 +127,10 @@ interface AuroraProps {
   blend?: number;
   speed?: number;
   time?: number;
+  // When true, the shader skips the intensity * rampColor dimming step and
+  // uses rampColor directly. Use this on light backgrounds — see uLightMode
+  // comment in the fragment shader for the full rationale.
+  lightMode?: boolean;
 }
 
 export default function Aurora({
@@ -122,9 +138,10 @@ export default function Aurora({
   amplitude = 1.0,
   blend = 0.5,
   speed = 1.0,
+  lightMode = false,
 }: AuroraProps) {
-  const propsRef = useRef<AuroraProps>({ colorStops, amplitude, blend, speed });
-  propsRef.current = { colorStops, amplitude, blend, speed };
+  const propsRef = useRef<AuroraProps>({ colorStops, amplitude, blend, speed, lightMode });
+  propsRef.current = { colorStops, amplitude, blend, speed, lightMode };
 
   const ctnDom = useRef<HTMLDivElement>(null);
 
@@ -183,6 +200,7 @@ export default function Aurora({
         uColorStops: { value: colorStopsArray },
         uResolution: { value: [ctn.offsetWidth, ctn.offsetHeight] },
         uBlend: { value: blend },
+        uLightMode: { value: lightMode ? 1.0 : 0.0 },
       },
     });
 
