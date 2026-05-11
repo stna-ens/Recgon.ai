@@ -1,10 +1,11 @@
 ---
 phase: 2
 slug: github-skill-inference
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-05-12
+reviewed_at: 2026-05-12T00:00:00Z
 ---
 
 # Phase 2 — UI Design Contract
