@@ -48,7 +48,11 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
   3. The dispatcher uses a three-source merged profile (self=0.5 / inferred=0.3 / EMA=0.2 by default) with rejected inferences excluded; a teammate who rejects "Python" never sees a Python task minted off the inferred-Python signal alone.
   4. A teammate who stopped writing React 6+ months ago sees their React EMA fade over subsequent dispatch runs (verifiable: `fitLearning.ts` applies `exp(-Δt/τ)` with τ≈90 days and the resulting weight is observably lower for old skills than recent ones).
   5. Any commit message or PR body passed into LLM calls in this phase is wrapped in `<user_content>...</user_content>` delimiters with a system instruction treating content as untrusted.
-**Plans:** 4 plans hint — (1) `teammate_inferred_skills` migration + consent column on `teammate_profiles`, (2) `githubSkills.ts` lib + `github_skill_inference` worker using `@octokit/rest` + `@octokit/graphql`, (3) profile-UI "What GitHub says" section with confirm/reject toggles, (4) `profileMerge` 3-source blend + `fitLearning.ts` time-decay + `<user_content>` wrapping helper.
+**Plans:** 4 plans
+- [ ] `02-01-PLAN.md` — `teammate_inferred_skills` migration (additive), `inferredSkillsStorage.ts` service-role CRUD, shared `types.ts` (`InferredSkill`, `InferredSkillMap`), 7 Wave-0 vitest RED scaffolds + Octokit/LLM mock seams. [BLOCKING] `supabase db push`.
+- [ ] `02-02-PLAN.md` — `wrapUntrusted` helper (QUAL-02), `@octokit/rest`+throttling install, `githubSkills.ts` mine service (cheap/standard/deep), `github_skill_inference` worker + `JobKind` extension, `applyTimeDecay` (τ=90d), prompts + Zod schema, weekly cron route + `vercel.json` update.
+- [ ] `02-03-PLAN.md` — 5 API routes (GET list / PATCH skill / POST scan / consent POST+DELETE / mark-reviewed) + GitHub callback extension for skill-mining state cookie, 3 new components (`InferredFromGitHub`, `GithubConsentSection`, `ReviewBanner`), wire into `ProfilePageClient`/`ProfileForm`/`ProfilePreview`/`page.tsx`, optimistic reject + 6s undo + Stop-mining confirm dialog.
+- [ ] `02-04-PLAN.md` — widen `profileMerge` to consume `InferredSkillMap` with 3-source blend (0.5/0.3/0.2), apply read-time decay to inferred + EMA, dispatcher loads `listActiveInferredSkillsForTeam` once per `runDispatch`, integration regression test: rejected-Python teammate never gets Python task off inferred signal alone.
 **Research recommended:** skip — standard patterns (Octokit + existing job-queue conventions).
 
 ### Phase 3: LLM Judgment Overlay

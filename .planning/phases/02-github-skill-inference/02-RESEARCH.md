@@ -597,20 +597,18 @@ After callback success (existing `handleConnect`), patch `teammate_profiles.gith
 | A3 | `commit.author` field reliably reflects squash-merged original authorship via GitHub's `author` query param | Pattern 2 + Pitfall 2 | MEDIUM — GitHub's docs are clear that `?author=` filters the **author** field, but squash settings vary per repo. Worker should defensively also compare `commit.author.login === teammate.githubUsername` |
 | A4 | Mocking `@octokit/rest` at the module boundary is sufficient for worker tests | Validation Architecture | LOW — same shape as `chatViaChain` mocking in Plan 01-03 tests |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Cron path: separate route or piggyback on `/api/cron/llm-jobs`?**
-   - What we know: the existing drain handles all `JobKind` workers uniformly. Adding `github_skill_inference` to `WORKERS` makes the existing drain pick it up automatically — no new route needed.
-   - What's unclear: whether the planner wants a SEPARATE weekly cron to **enqueue** scans (one job per consented teammate per week), with the drain running every minute as today.
-   - Recommendation: TWO cron paths. `/api/cron/github-skill-inference` (weekly: `0 6 * * 0`) ENQUEUES jobs only — iterates consented teammates, calls `enqueueJob`. The existing `/api/cron/llm-jobs` (every minute) DRAINS them. Clean separation; no concurrency issues.
+   - **RESOLVED:** TWO cron paths. `/api/cron/github-skill-inference` (weekly: `0 6 * * 0`) ENQUEUES jobs only — iterates consented teammates, calls `enqueueJob`. The existing `/api/cron/llm-jobs` (every minute) DRAINS them. Clean separation; no concurrency issues.
+   - What we know: the existing drain handles all `JobKind` workers uniformly. Adding `github_skill_inference` to `WORKERS` makes the existing drain pick it up automatically — no new route needed for draining.
 
 2. **Banner unread state — per-row vs per-scan?**
+   - **RESOLVED:** Bulk-update on banner dismiss. Explicit "Mark all reviewed" CTA (not implicit-on-scroll) for predictability — sets `user_reviewed_at = now()` for all rows for that teammate.
    - What we know: D-26 wants "5 new inferred skills — review".
-   - What's unclear: if a user dismisses the banner without rejecting/confirming, do we mark all rows as `user_reviewed_at = now()`?
-   - Recommendation: Yes — bulk-update on banner dismiss. A separate "Mark all reviewed" CTA or implicit-on-section-scroll-into-view (IntersectionObserver) both work; recommend the explicit CTA for predictability.
 
 3. **`teams.inference_depth` UI surface — settings page or fold into team setup?**
-   - Recommendation per CONTEXT.md: planner picks. Suggest folding into the migration only (column with default 'standard'); ship the team-owner toggle UI deferred to a small follow-up.
+   - **RESOLVED:** Fold into the migration only (column with default `'standard'`); ship the team-owner toggle UI deferred to a small follow-up phase. Phase 2 plans do not add a UI surface for this column.
 
 ## Metadata
 
