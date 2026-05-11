@@ -50,7 +50,7 @@ export default function FooterCta() {
             />
           </h2>
           <p className="lnd-cta-v1-sub">
-            Join the small teams who use Recgon to understand their product, focus their work, and ship faster.
+            Join to the teams who use Recgon to understand their product, focus their work, and ship faster.
           </p>
           <div className="lnd-cta-v1-row">
             <Link href="/register" className="lnd-cta-v1-primary">Get started</Link>
@@ -85,11 +85,10 @@ export default function FooterCta() {
           z-index: 0;
           pointer-events: none;
         }
-        /* Light mode: Aurora runs with `lightMode` so it outputs full
-           rampColor (no intensity dimming). With blush→pink→blush stops
-           on a white bg, the ribbon reads as a clean pink wash. A small
-           opacity damp keeps the ribbon ambient rather than competing
-           with the CTA copy. */
+        /* Light mode: Aurora runs with the lightMode flag so it outputs
+           full rampColor (no intensity dimming). With blush-pink-blush
+           stops on a white bg the ribbon reads as a clean pink wash.
+           Small opacity damp keeps the ribbon ambient. */
         .lnd-cta-v1.is-light .lnd-cta-aurora { opacity: 0.85; }
         /* Dark mode: vignette toward near-black so the title pops. */
         .lnd-cta-v1::after {
@@ -129,12 +128,32 @@ export default function FooterCta() {
           line-height: 1.1;
           color: var(--txt-pure);
         }
+        /* Light mode: difference-blend the title against the aurora.
+           color:#fff + mix-blend-mode:difference means:
+             - over white bg → renders black (max contrast)
+             - over pink aurora → renders complementary cyan/green (still
+               max contrast against pink)
+           So the title stays high-contrast wherever the ribbon falls,
+           without any JS hit-testing. */
+        .lnd-cta-v1.is-light .lnd-cta-v1-title {
+          color: #fff;
+          mix-blend-mode: difference;
+        }
         .lnd-cta-v1-sub {
           margin: 0 auto 40px;
           font-size: 1.05rem;
           line-height: 1.6;
           color: var(--txt-muted);
           max-width: 480px;
+        }
+        /* Light mode: same difference-blend trick as the title, but with
+           opacity 0.7 so on the white sections it lands as a comfortable
+           mid-gray instead of full black. Stays readable wherever the
+           aurora crosses it. */
+        .lnd-cta-v1.is-light .lnd-cta-v1-sub {
+          color: #fff;
+          opacity: 0.7;
+          mix-blend-mode: difference;
         }
         .lnd-cta-v1-row {
           display: inline-flex;
