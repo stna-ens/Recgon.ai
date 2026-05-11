@@ -15,7 +15,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { Command } from 'cmdk';
 import * as Popover from '@radix-ui/react-popover';
 import type { TeammateProfile } from '@/lib/recgon/types';
-import { humanizeTag } from '@/lib/recgon/skillVocabulary';
+import { humanizeTag, VOCAB_GROUPS } from '@/lib/recgon/skillVocabulary';
 
 type FieldKey = 'skills' | 'strengths' | 'interests';
 
@@ -336,15 +336,25 @@ function FieldSection({
   onAdd,
   onRemove,
 }: FieldSectionProps) {
-  const matches = useMemo(
-    () =>
-      query.trim() === ''
-        ? canonicalVocab.slice(0, 8)
-        : canonicalVocab
-            .filter((v) => v.toLowerCase().includes(query.toLowerCase()))
-            .slice(0, 8),
-    [canonicalVocab, query],
+  // Group matches by VOCAB_GROUPS so the dropdown shows e.g. "Roles" /
+  // "Languages" / "Frontend" sections instead of a flat list. When the user
+  // is browsing (empty query), show a curated cross-section across all groups.
+  // When typing, filter each group and only render groups with hits.
+  const groupedMatches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return VOCAB_GROUPS.map((g) => {
+      const tags = q === ''
+        ? g.tags.slice(0, 6)
+        : g.tags.filter((v) => v.toLowerCase().includes(q) || humanizeTag(v).toLowerCase().includes(q));
+      return { label: g.label, tags };
+    }).filter((g) => g.tags.length > 0);
+  }, [query]);
+
+  const totalMatches = useMemo(
+    () => groupedMatches.reduce((sum, g) => sum + g.tags.length, 0),
+    [groupedMatches],
   );
+
   const isCustom =
     query.trim() !== '' &&
     !canonicalVocab.some((v) => v.toLowerCase() === query.trim().toLowerCase());
@@ -512,7 +522,7 @@ function FieldSection({
             onCloseAutoFocus={(e) => e.preventDefault()}
             style={{
               width: 'var(--radix-popover-trigger-width)',
-              maxHeight: '240px',
+              maxHeight: '360px',
               overflowY: 'auto',
               background: 'var(--glass-substrate)',
               border: '1px solid var(--btn-secondary-border)',
@@ -525,17 +535,19 @@ function FieldSection({
             }}
           >
             <Command shouldFilter={false}>
-              <Command.List>
-                {matches.length > 0 && (
+              <Command.List style={{ maxHeight: 'unset' }}>
+                {groupedMatches.map((group) => (
                   <Command.Group
-                    heading="CANONICAL"
+                    key={group.label}
+                    heading={group.label.toUpperCase()}
                     style={{
                       fontFamily: 'var(--font-mono), "JetBrains Mono", monospace',
-                      fontSize: '12px',
+                      fontSize: '11px',
+                      letterSpacing: '0.04em',
                       color: 'var(--txt-faint)',
                     }}
                   >
-                    {matches.map((tag) => (
+                    {group.tags.map((tag) => (
                       <Command.Item
                         key={tag}
                         value={tag}
@@ -547,7 +559,7 @@ function FieldSection({
                         style={{
                           padding: '8px 10px',
                           fontFamily: 'var(--font-inter), Inter, sans-serif',
-                          fontSize: '16px',
+                          fontSize: '15px',
                           color: 'var(--txt-pure)',
                           cursor: 'pointer',
                           borderRadius: 'var(--r-sm)',
@@ -557,7 +569,7 @@ function FieldSection({
                       </Command.Item>
                     ))}
                   </Command.Group>
-                )}
+                ))}
                 {isCustom && (
                   <Command.Group
                     heading="OTHERS"
