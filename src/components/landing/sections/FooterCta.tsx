@@ -82,7 +82,11 @@ export default function FooterCta() {
         .lnd-cta-aurora {
           position: absolute;
           inset: 0;
-          z-index: 0;
+          /* z-index:-1 contained by the section's isolation: isolate.
+             Sits behind in-flow content, so text inside .lnd-cta-v1-inner
+             (which is NOT its own stacking context) can mix-blend with
+             the aurora via the section's stacking context. */
+          z-index: -1;
           pointer-events: none;
         }
         /* Light mode: Aurora runs with the lightMode flag so it outputs
@@ -90,12 +94,14 @@ export default function FooterCta() {
            stops on a white bg the ribbon reads as a clean pink wash.
            Small opacity damp keeps the ribbon ambient. */
         .lnd-cta-v1.is-light .lnd-cta-aurora { opacity: 0.85; }
-        /* Dark mode: vignette toward near-black so the title pops. */
+        /* Dark mode: vignette toward near-black so the title pops.
+           z-index:-1 keeps it below the in-flow text content but above
+           the aurora canvas (later DOM position wins among same-z). */
         .lnd-cta-v1::after {
           content: '';
           position: absolute;
           inset: 0;
-          z-index: 1;
+          z-index: -1;
           background: radial-gradient(ellipse at center, transparent 0%, rgba(5,5,5,0.35) 70%, rgba(5,5,5,0.65) 100%);
           pointer-events: none;
         }
@@ -113,7 +119,11 @@ export default function FooterCta() {
         }
         .lnd-cta-v1-inner {
           position: relative;
-          z-index: 2;
+          /* DO NOT add z-index here — z-index on positioned elements
+             creates a new stacking context, which would isolate the
+             title/subtitle from the aurora and break mix-blend-mode.
+             The inner already sits above the aurora because aurora is
+             explicitly z:-1 inside the section's isolated context. */
           text-align: center;
           padding: 140px 32px;
           max-width: 720px;
@@ -146,13 +156,14 @@ export default function FooterCta() {
           color: var(--txt-muted);
           max-width: 480px;
         }
-        /* Light mode: same difference-blend trick as the title, but with
-           opacity 0.7 so on the white sections it lands as a comfortable
-           mid-gray instead of full black. Stays readable wherever the
-           aurora crosses it. */
+        /* Light mode: difference-blend with a soft gray instead of pure
+           white — gives a comfortable mid-gray on the white sections and
+           a readable muted complement on the pink. Note: do NOT add
+           opacity here. opacity < 1 creates a new stacking context which
+           cuts mix-blend-mode off from the aurora behind, making the
+           blend silently fail and the text render as plain gray/white. */
         .lnd-cta-v1.is-light .lnd-cta-v1-sub {
-          color: #fff;
-          opacity: 0.7;
+          color: #b0b0b0;
           mix-blend-mode: difference;
         }
         .lnd-cta-v1-row {
