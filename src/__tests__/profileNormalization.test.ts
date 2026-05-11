@@ -47,11 +47,11 @@ describe('normalizeProfileTerms', () => {
   });
 
   it('drops hallucinated non-canonical tags via post-hoc CANONICAL_SET filter', async () => {
-    // 'nodejs' is NOT in the canonical vocab — must be filtered out.
+    // 'not_a_real_skill_xyz' is NOT in the canonical vocab — must be filtered out.
     // 'backend' IS canonical — must be kept.
     mocked.mockResolvedValueOnce(
       JSON.stringify({
-        skills: [{ raw: 'pg', canonical: ['backend', 'nodejs'] }],
+        skills: [{ raw: 'pg', canonical: ['backend', 'not_a_real_skill_xyz'] }],
         strengths: [],
         interests: [],
       }),

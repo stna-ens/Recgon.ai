@@ -15,6 +15,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { Command } from 'cmdk';
 import * as Popover from '@radix-ui/react-popover';
 import type { TeammateProfile } from '@/lib/recgon/types';
+import { humanizeTag } from '@/lib/recgon/skillVocabulary';
 
 type FieldKey = 'skills' | 'strengths' | 'interests';
 
@@ -411,7 +412,7 @@ function FieldSection({
                   color: 'var(--txt-pure)',
                 }}
               >
-                <span>{entry.raw}</span>
+                <span>{humanizeTag(entry.raw)}</span>
                 <button
                   type="button"
                   aria-label={`Remove ${entry.raw}`}
@@ -454,7 +455,7 @@ function FieldSection({
                   lineHeight: 1.4,
                 }}
               >
-                matched as {entry.canonical.length > 0 ? entry.canonical.join(', ') : '—'}
+                matched as {entry.canonical.length > 0 ? entry.canonical.map(humanizeTag).join(', ') : '—'}
               </span>
             </div>
           ))}
@@ -552,7 +553,7 @@ function FieldSection({
                           borderRadius: 'var(--r-sm)',
                         }}
                       >
-                        {tag}
+                        {humanizeTag(tag)}
                       </Command.Item>
                     ))}
                   </Command.Group>
