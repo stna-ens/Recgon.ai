@@ -170,6 +170,7 @@ ProductAnalysis also includes:
 | `/api/teams/[id]/invitations` | GET | Session | List pending |
 | `/api/teams/[id]/invitations/[invId]` | DELETE | Session | Revoke |
 | `/api/teams/invite/accept` | POST | Session | Accept invite via token |
+| `/api/teams/[id]/profile` | POST/GET | Session + verifyTeamAccess | POST: save logged-in user's own profile (Phase 1 / PROFILE-03). GET: read any teammate's profile in the team — gated server-side by `teams.profile_visibility` (self/owner always allowed; `team_visible` allows all members; `owner_only` returns 403 for non-owner non-self). LLM normalize call bounded by `timeoutMs: 8000` to stay under Vercel's 10s budget. |
 
 ### Recgon Admin (teammates / tasks / dispatcher)
 | Route | Method | Auth | Notes |
