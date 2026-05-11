@@ -10,14 +10,14 @@ import BlurText from '../BlurText';
 const Aurora = dynamic(() => import('../Aurora'), { ssr: false });
 
 // Aurora colorStops are tuned per theme.
-// Dark: deep wine → signature pink → deep wine (over-compositing on black bg).
-// Light: pure white → signature pink → pure white. The light-mode canvas
-// uses `mix-blend-mode: multiply`, so white edges multiply with the white
-// page bg (= no change, edges vanish) and the pink center darkens white
-// into a saturated pink wash. This avoids the muddy gray smears that the
-// shader produces under normal over-compositing on a light bg.
+// Dark: deep wine → signature pink → deep wine. The shader dims color by
+// intensity, so dim-pink-over-black reads as a ribbon.
+// Light: pale blush → signature pink → pale blush. Aurora runs with
+// `lightMode` so color is NOT dimmed — the ribbon shape comes from the
+// alpha mask alone. Blush edges fade to transparent at the ribbon ends,
+// and the pink core sits cleanly on the white bg.
 const AURORA_DARK: [string, string, string] = ['#1a0a10', '#f0b8d0', '#1a0a10'];
-const AURORA_LIGHT: [string, string, string] = ['#ffffff', '#c2357a', '#ffffff'];
+const AURORA_LIGHT: [string, string, string] = ['#fde4ee', '#c2357a', '#fde4ee'];
 
 export default function FooterCta() {
   const { theme, resolvedTheme } = useTheme();
@@ -34,8 +34,9 @@ export default function FooterCta() {
           <Aurora
             colorStops={stops}
             amplitude={isLight ? 0.85 : 1.0}
-            blend={isLight ? 0.55 : 0.4}
+            blend={isLight ? 0.45 : 0.4}
             speed={isLight ? 0.4 : 0.5}
+            lightMode={isLight}
           />
         </div>
         <div className="lnd-cta-v1-inner">
@@ -84,15 +85,12 @@ export default function FooterCta() {
           z-index: 0;
           pointer-events: none;
         }
-        /* Light mode: switch the canvas to multiply blend so the shader's
-           pink ramp tints the white page bg (instead of overlaying dark
-           muddy pink onto it). With white-edge stops, the ribbon ends
-           become invisible (white × white = white) and only the pink
-           center darkens the bg into a clean pink wash. */
-        .lnd-cta-v1.is-light .lnd-cta-aurora canvas {
-          mix-blend-mode: multiply;
-        }
-        .lnd-cta-v1.is-light .lnd-cta-aurora { opacity: 0.9; }
+        /* Light mode: Aurora runs with `lightMode` so it outputs full
+           rampColor (no intensity dimming). With blush→pink→blush stops
+           on a white bg, the ribbon reads as a clean pink wash. A small
+           opacity damp keeps the ribbon ambient rather than competing
+           with the CTA copy. */
+        .lnd-cta-v1.is-light .lnd-cta-aurora { opacity: 0.85; }
         /* Dark mode: vignette toward near-black so the title pops. */
         .lnd-cta-v1::after {
           content: '';
