@@ -22,6 +22,11 @@ export type ChatOptions = {
   // Pass 'text/plain' for short prose answers (e.g. commit summaries)
   // where JSON mode causes the model to return string fragments.
   responseMimeType?: 'application/json' | 'text/plain';
+  // Per-call timeout override (ms). When set, replaces the default
+  // REQUEST_TIMEOUT_MS for this single call — used by interactive routes
+  // (e.g. profile save) that must complete inside Vercel's 10s function
+  // budget. Plan 01-03 / Pitfall 8.
+  timeoutMs?: number;
 };
 
 export type LLMProvider = {
@@ -68,7 +73,7 @@ export const geminiProvider: LLMProvider = {
                   responseMimeType: options?.responseMimeType ?? 'application/json',
                 },
               }),
-              REQUEST_TIMEOUT_MS,
+              options?.timeoutMs ?? REQUEST_TIMEOUT_MS,
             ),
           3,
           `gemini/${modelName}`,
@@ -145,7 +150,7 @@ export const claudeProvider: LLMProvider = {
                   { role: 'assistant', content: '{' },
                 ],
               }),
-              REQUEST_TIMEOUT_MS,
+              options?.timeoutMs ?? REQUEST_TIMEOUT_MS,
             ),
           3,
           `claude/${modelName}`,

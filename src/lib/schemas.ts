@@ -266,6 +266,42 @@ export const TaskSkillTagsResponseSchema = z.object({
 
 export type TaskSkillTagsResponse = z.infer<typeof TaskSkillTagsResponseSchema>;
 
+// ── Teammate profile skill normalization (Phase 1 / Plan 01-03) ─────────────
+//
+// Output schema for the `chatViaChain` call in `normalizeProfile.ts`. Each
+// bucket (skills / strengths / interests) contains entries pairing the
+// user's typed raw text with 0–6 canonical tags (post-hoc filtered to
+// 0–3 after `CANONICAL_SET` membership check).
+//
+// Length + count caps are prompt-injection / cost guards (threat T-03-03):
+// 80 chars per raw entry, 30 entries per skills bucket, 15 per
+// strengths/interests bucket — keeps the per-save LLM payload bounded.
+
+export const SkillNormalizationEntrySchema = z.object({
+  raw: z.string().min(1).max(80),
+  canonical: z.array(z.string().min(1).max(40)).max(6),
+});
+
+export const SkillNormalizationResultSchema = z.object({
+  skills: z.array(SkillNormalizationEntrySchema).max(30),
+  strengths: z.array(SkillNormalizationEntrySchema).max(15),
+  interests: z.array(SkillNormalizationEntrySchema).max(15),
+});
+
+export type SkillNormalizationResult = z.infer<typeof SkillNormalizationResultSchema>;
+
+// Body schema for `POST /api/teams/[id]/profile`. The teammate's typed raw
+// text per bucket plus an optional weekly capacity (null = unset, blank ≠
+// zero per D-06).
+export const ProfileSaveBodySchema = z.object({
+  skillsRaw: z.array(z.string().min(1).max(80)).max(30),
+  strengthsRaw: z.array(z.string().min(1).max(80)).max(15),
+  interestsRaw: z.array(z.string().min(1).max(80)).max(15),
+  weeklyCapacityHours: z.union([z.number().min(0).max(168), z.null()]),
+});
+
+export type ProfileSaveBody = z.infer<typeof ProfileSaveBodySchema>;
+
 // ── Shared parse helper ───────────────────────────────────────────────────────
 
 /**
