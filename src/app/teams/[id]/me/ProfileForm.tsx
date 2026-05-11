@@ -1,32 +1,37 @@
 'use client';
 
-// Phase 1 / Plan 01-03. The teammate self-profile form.
+// Phase 1 / Plan 01-03, redesigned 2026-05-12.
 //
-// 'use client' component — never imports `@/lib/supabase`. All DB work
-// happens server-side via fetch to `/api/teams/[id]/profile` (POST).
+// Controlled form fields — state lifted to ProfilePageClient so the
+// live preview on the right column reads the same source of truth.
+// No save button here; that lives in the sticky savebar in
+// ProfilePageClient.
+//
+// 'use client' component — never imports `@/lib/supabase`.
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState } from 'react';
 import { Command } from 'cmdk';
 import * as Popover from '@radix-ui/react-popover';
-import type { TeammateProfile } from '@/lib/recgon/types';
 import { humanizeTag, VOCAB_GROUPS } from '@/lib/recgon/skillVocabulary';
 
 type FieldKey = 'skills' | 'strengths' | 'interests';
 
-type PillEntry = {
+export type PillEntry = {
   raw: string;
   canonical: string[];
 };
 
 interface Props {
-  teamId: string;
-  initialProfile: TeammateProfile | null;
   canonicalVocab: string[];
+  skills: PillEntry[];
+  setSkills: (v: PillEntry[]) => void;
+  strengths: PillEntry[];
+  setStrengths: (v: PillEntry[]) => void;
+  interests: PillEntry[];
+  setInterests: (v: PillEntry[]) => void;
+  capacity: number | null;
+  setCapacity: (v: number | null) => void;
 }
-
-type SaveOutcome =
-  | { kind: 'success'; degraded: boolean }
-  | { kind: 'error'; message: string };
 
 const FIELD_LABEL: Record<FieldKey, string> = {
   skills: 'Skills',
@@ -34,8 +39,6 @@ const FIELD_LABEL: Record<FieldKey, string> = {
   interests: 'Interests',
 };
 
-// Plain why-this-matters copy. Drop the "type and pick" mechanics —
-// the input + placeholder show that already.
 const FIELD_HELPER: Record<FieldKey, string> = {
   skills: 'Languages, frameworks, areas of expertise.',
   strengths: "What you're known for. Counts the same as skills when I match tasks.",
@@ -48,32 +51,46 @@ const FIELD_PLACEHOLDER: Record<FieldKey, string> = {
   interests: 'Type to add — e.g. design systems, AI agents',
 };
 
-function zipEntries(raw: string[], canonical: string[]): PillEntry[] {
-  // Profile rows store raw + canonical as separate flat arrays. On initial
-  // load we can only show a canonical mapping for entries whose raw text
-  // happens to be in the canonical array; the form refreshes per-entry
-  // mappings after the next save.
-  return raw.map((r) => ({ raw: r, canonical: canonical.includes(r) ? [r] : [] }));
-}
+const FIELD_ICON: Record<FieldKey, React.ReactNode> = {
+  skills: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </svg>
+  ),
+  strengths: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  ),
+  interests: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </svg>
+  ),
+};
 
-export default function ProfileForm({ teamId, initialProfile, canonicalVocab }: Props) {
-  const [skills, setSkills] = useState<PillEntry[]>(() =>
-    zipEntries(initialProfile?.skillsRaw ?? [], initialProfile?.skillsCanonical ?? []),
-  );
-  const [strengths, setStrengths] = useState<PillEntry[]>(() =>
-    zipEntries(initialProfile?.strengthsRaw ?? [], initialProfile?.strengthsCanonical ?? []),
-  );
-  const [interests, setInterests] = useState<PillEntry[]>(() =>
-    zipEntries(initialProfile?.interestsRaw ?? [], initialProfile?.interestsCanonical ?? []),
-  );
-  const [weeklyCapacityHours, setWeeklyCapacityHours] = useState<number | null>(
-    initialProfile?.weeklyCapacityHours ?? null,
-  );
+const CAPACITY_ICON = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
 
+export default function ProfileFormFields({
+  canonicalVocab,
+  skills,
+  setSkills,
+  strengths,
+  setStrengths,
+  interests,
+  setInterests,
+  capacity,
+  setCapacity,
+}: Props) {
   const [activeField, setActiveField] = useState<FieldKey | null>(null);
   const [query, setQuery] = useState('');
-  const [outcome, setOutcome] = useState<SaveOutcome | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   const fieldState: Record<FieldKey, [PillEntry[], (v: PillEntry[]) => void]> = {
     skills: [skills, setSkills],
@@ -92,54 +109,8 @@ export default function ProfileForm({ teamId, initialProfile, canonicalVocab }: 
     setter(items.filter((p) => p.raw !== raw));
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setOutcome(null);
-    startTransition(async () => {
-      try {
-        const res = await fetch(`/api/teams/${teamId}/profile`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            skillsRaw: skills.map((p) => p.raw),
-            strengthsRaw: strengths.map((p) => p.raw),
-            interestsRaw: interests.map((p) => p.raw),
-            weeklyCapacityHours,
-          }),
-        });
-        if (!res.ok) {
-          if (res.status >= 400 && res.status < 500) {
-            const json = (await res.json().catch(() => ({}))) as { error?: string };
-            setOutcome({
-              kind: 'error',
-              message: json.error ?? 'Add at least one skill before saving.',
-            });
-          } else {
-            setOutcome({ kind: 'error', message: "Couldn't save just now. Try again." });
-          }
-          return;
-        }
-        const json = (await res.json()) as {
-          ok: boolean;
-          normalization: {
-            skills: PillEntry[];
-            strengths: PillEntry[];
-            interests: PillEntry[];
-            degraded: boolean;
-          };
-        };
-        setSkills(json.normalization.skills);
-        setStrengths(json.normalization.strengths);
-        setInterests(json.normalization.interests);
-        setOutcome({ kind: 'success', degraded: json.normalization.degraded });
-      } catch {
-        setOutcome({ kind: 'error', message: "Couldn't save just now. Try again." });
-      }
-    });
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="profile-form">
+    <div className="profile-fields">
       {(Object.keys(FIELD_LABEL) as FieldKey[]).map((field) => {
         const [items] = fieldState[field];
         return (
@@ -161,11 +132,16 @@ export default function ProfileForm({ teamId, initialProfile, canonicalVocab }: 
         );
       })}
 
-      <div className="profile-field">
-        <label className="recgon-label profile-label" htmlFor="weeklyCapacityHours">
-          Weekly capacity
-        </label>
-        <p className="profile-helper">How many hours you have for new work in a typical week.</p>
+      <div className="profile-section">
+        <div className="profile-section__head">
+          <span className="profile-section__icon">{CAPACITY_ICON}</span>
+          <label className="profile-section__label" htmlFor="weeklyCapacityHours">
+            Weekly capacity
+          </label>
+        </div>
+        <p className="profile-section__helper">
+          How many hours you have for new work in a typical week.
+        </p>
         <div className="profile-capacity">
           <input
             id="weeklyCapacityHours"
@@ -174,10 +150,10 @@ export default function ProfileForm({ teamId, initialProfile, canonicalVocab }: 
             min={0}
             max={168}
             step={1}
-            value={weeklyCapacityHours ?? ''}
+            value={capacity ?? ''}
             onChange={(e) => {
               const v = e.target.value;
-              setWeeklyCapacityHours(v === '' ? null : Number(v));
+              setCapacity(v === '' ? null : Number(v));
             }}
             className="profile-input profile-input--narrow"
           />
@@ -185,43 +161,69 @@ export default function ProfileForm({ teamId, initialProfile, canonicalVocab }: 
         </div>
       </div>
 
-      <div className="profile-actions">
-        {outcome && (
-          <div
-            role="status"
-            className={`profile-outcome profile-outcome--${outcome.kind === 'success' ? 'ok' : 'err'}`}
-          >
-            {outcome.kind === 'success'
-              ? outcome.degraded
-                ? "Saved your raw text. I'll match it next time the LLM is reachable."
-                : 'Profile saved. Recgon will use this on the next run.'
-              : outcome.message}
-          </div>
-        )}
-        <button type="submit" disabled={isPending} className="profile-save">
-          {isPending ? 'Saving…' : 'Save profile'}
-        </button>
-      </div>
-
       <style>{`
-        .profile-form { display: flex; flex-direction: column; gap: 28px; }
-        .profile-field { display: flex; flex-direction: column; gap: 8px; }
-        .profile-label {
-          font-family: var(--font-mono), 'JetBrains Mono', monospace;
-          font-size: 11px;
-          font-weight: 500;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
+        .profile-fields { display: flex; flex-direction: column; gap: 36px; }
+        .profile-section { display: flex; flex-direction: column; gap: 10px; }
+        .profile-section__head {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .profile-section__icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          border-radius: 6px;
+          background: rgba(var(--signature-rgb), 0.10);
+          color: var(--signature);
+        }
+        .profile-section__label {
+          font-family: var(--font-inter), Inter, sans-serif;
+          font-size: 17px;
+          font-weight: 600;
+          line-height: 1.2;
           color: var(--txt-pure);
           margin: 0;
         }
-        .profile-helper {
+        .profile-section__helper {
           font-family: var(--font-inter), Inter, sans-serif;
-          font-size: 13px;
-          line-height: 1.45;
+          font-size: 13.5px;
+          line-height: 1.5;
           color: var(--txt-muted);
           margin: 0;
         }
+        .profile-input {
+          width: 100%;
+          padding: 11px 14px;
+          font-family: var(--font-inter), Inter, sans-serif;
+          font-size: 14.5px;
+          color: var(--txt-pure);
+          background: var(--btn-secondary-bg);
+          border: 1px solid var(--btn-secondary-border);
+          border-radius: var(--r-sm);
+          outline: none;
+          transition: border-color 120ms ease, box-shadow 120ms ease;
+        }
+        .profile-input:focus {
+          border-color: rgba(var(--signature-rgb), 0.5);
+          box-shadow: 0 0 0 3px rgba(var(--signature-rgb), 0.12);
+        }
+        .profile-input::placeholder { color: var(--txt-faint); }
+        .profile-input--narrow { width: 96px; }
+        .profile-capacity {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .profile-capacity-suffix {
+          font-family: var(--font-mono), 'JetBrains Mono', monospace;
+          font-size: 12px;
+          color: var(--txt-muted);
+          letter-spacing: 0.04em;
+        }
+
         .profile-pills {
           display: flex;
           flex-wrap: wrap;
@@ -238,8 +240,13 @@ export default function ProfileForm({ teamId, initialProfile, canonicalVocab }: 
           color: var(--txt-pure);
           background: var(--btn-secondary-bg);
           border: 1px solid var(--btn-secondary-border);
-          border-radius: var(--r-pill, 999px);
+          border-radius: 999px;
           transition: border-color 120ms ease;
+          animation: profile-pill-in 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        @keyframes profile-pill-in {
+          from { opacity: 0; transform: translateY(2px) scale(0.98); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .profile-pill:hover { border-color: rgba(var(--signature-rgb), 0.35); }
         .profile-pill-canonical {
@@ -265,80 +272,8 @@ export default function ProfileForm({ teamId, initialProfile, canonicalVocab }: 
           background: rgba(var(--signature-rgb), 0.12);
           color: var(--txt-pure);
         }
-        .profile-input {
-          width: 100%;
-          padding: 11px 14px;
-          font-family: var(--font-inter), Inter, sans-serif;
-          font-size: 14.5px;
-          color: var(--txt-pure);
-          background: var(--btn-secondary-bg);
-          border: 1px solid var(--btn-secondary-border);
-          border-radius: var(--r-sm);
-          outline: none;
-          transition: border-color 120ms ease, box-shadow 120ms ease;
-        }
-        .profile-input:focus {
-          border-color: rgba(var(--signature-rgb), 0.5);
-          box-shadow: 0 0 0 3px rgba(var(--signature-rgb), 0.12);
-        }
-        .profile-input--narrow { width: 96px; }
-        .profile-input::placeholder { color: var(--txt-faint); }
-        .profile-capacity {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .profile-capacity-suffix {
-          font-family: var(--font-mono), 'JetBrains Mono', monospace;
-          font-size: 12px;
-          color: var(--txt-muted);
-          letter-spacing: 0.04em;
-        }
-        .profile-actions {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          padding-top: 20px;
-          margin-top: 8px;
-          border-top: 1px solid var(--btn-secondary-border);
-        }
-        .profile-outcome {
-          flex: 1;
-          font-family: var(--font-inter), Inter, sans-serif;
-          font-size: 13.5px;
-          line-height: 1.45;
-          padding: 8px 12px;
-          border-left: 3px solid transparent;
-        }
-        .profile-outcome--ok {
-          color: var(--txt-muted);
-          border-left-color: var(--signature);
-        }
-        .profile-outcome--err {
-          color: var(--danger, #f87171);
-          border-left-color: var(--danger, #f87171);
-        }
-        .profile-save {
-          padding: 10px 22px;
-          font-family: var(--font-inter), Inter, sans-serif;
-          font-size: 14px;
-          font-weight: 600;
-          color: white;
-          background: var(--signature);
-          border: none;
-          border-radius: var(--r-sm);
-          cursor: pointer;
-          transition: opacity 120ms ease, transform 120ms ease;
-        }
-        .profile-save:hover:not(:disabled) { opacity: 0.92; }
-        .profile-save:active:not(:disabled) { transform: translateY(1px); }
-        .profile-save:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
       `}</style>
-    </form>
+    </div>
   );
 }
 
@@ -365,9 +300,6 @@ function FieldSection({
   onAdd,
   onRemove,
 }: FieldSectionProps) {
-  // Group matches by VOCAB_GROUPS so the dropdown shows "Roles" / "Languages"
-  // / "Frontend" sections instead of a flat list. Empty query → curated
-  // cross-section. Typing → filtered per group, empty groups dropped.
   const groupedMatches = useMemo(() => {
     const q = query.trim().toLowerCase();
     return VOCAB_GROUPS.map((g) => {
@@ -385,11 +317,17 @@ function FieldSection({
     !canonicalVocab.some((v) => v.toLowerCase() === query.trim().toLowerCase());
 
   return (
-    <div className="profile-field">
-      <label className="recgon-label profile-label" htmlFor={`${field}-input`}>
-        {FIELD_LABEL[field]}
-      </label>
-      <p className="profile-helper">{FIELD_HELPER[field]}</p>
+    <div className="profile-section">
+      <div className="profile-section__head">
+        <span className="profile-section__icon">{FIELD_ICON[field]}</span>
+        <label className="profile-section__label" htmlFor={`${field}-input`}>
+          {FIELD_LABEL[field]}
+        </label>
+        {entries.length > 0 && (
+          <span className="profile-section__count">{entries.length}</span>
+        )}
+      </div>
+      <p className="profile-section__helper">{FIELD_HELPER[field]}</p>
 
       <Popover.Root open={isOpen} onOpenChange={onOpenChange}>
         <Popover.Anchor asChild>
@@ -548,6 +486,19 @@ function FieldSection({
           })}
         </div>
       )}
+
+      <style>{`
+        .profile-section__count {
+          padding: 1px 7px;
+          background: rgba(var(--signature-rgb), 0.10);
+          color: var(--signature);
+          border-radius: 999px;
+          font-family: var(--font-mono), 'JetBrains Mono', monospace;
+          font-size: 10.5px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+        }
+      `}</style>
     </div>
   );
 }

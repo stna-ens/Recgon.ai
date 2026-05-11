@@ -1,15 +1,14 @@
-// Phase 1 / Plan 01-03. The teammate self-profile page.
-//
-// Server component: gates on auth + verifyTeamAccess, then loads the user's
-// own profile and hands it to the client form. No Supabase imports leak to
-// the browser bundle — all DB access stays here or in the API route.
+// Phase 1 / Plan 01-03, redesigned 2026-05-12. RSC entry for the
+// teammate self-profile page. Auth-gates, loads profile + team, then
+// hands off to ProfilePageClient (the two-column wrapper that holds
+// the lifted form state).
 
 import { auth } from '@/auth';
 import { redirect, notFound } from 'next/navigation';
-import { verifyTeamAccess } from '@/lib/teamStorage';
+import { verifyTeamAccess, getTeam } from '@/lib/teamStorage';
 import { getProfile } from '@/lib/recgon/profileStorage';
 import { CANONICAL_VOCAB } from '@/lib/recgon/skillVocabulary';
-import ProfileForm from './ProfileForm';
+import ProfilePageClient from './ProfilePageClient';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,124 +29,86 @@ export default async function MyProfilePage({
     notFound();
   }
 
-  const profile = await getProfile(teamId, session.user.id);
+  const [profile, team] = await Promise.all([
+    getProfile(teamId, session.user.id),
+    getTeam(teamId),
+  ]);
+
+  const user = {
+    nickname: session.user.nickname ?? null,
+    email: session.user.email ?? null,
+    avatarUrl: (session.user as { avatarUrl?: string }).avatarUrl ?? null,
+  };
 
   return (
-    <div
-      style={{
-        maxWidth: '680px',
-        margin: '0 auto',
-        padding: '48px 24px 64px',
-      }}
-    >
-      <h1
-        style={{
-          fontFamily: 'var(--font-inter), Inter, sans-serif',
-          fontSize: '28px',
-          fontWeight: 600,
-          lineHeight: 1.2,
-          color: 'var(--txt-pure)',
-          marginBottom: '8px',
-        }}
-      >
-        Your profile
-      </h1>
-      <div
-        aria-hidden="true"
-        style={{
-          width: '64px',
-          height: '1px',
-          background: 'rgba(var(--signature-rgb), 0.4)',
-          marginBottom: '12px',
-        }}
-      />
-      <p
-        style={{
-          fontFamily: 'var(--font-inter), Inter, sans-serif',
-          fontSize: '16px',
-          fontWeight: 400,
-          lineHeight: 1.5,
-          color: 'var(--txt-muted)',
-          marginBottom: '48px',
-        }}
-      >
-        What you tell me here is what I&apos;ll use to assign you tasks.
-      </p>
-
-      <div className="glass-card" style={{ padding: '32px', borderRadius: 'var(--r-md)' }}>
-        <ProfileForm
-          teamId={teamId}
-          initialProfile={profile}
-          canonicalVocab={[...CANONICAL_VOCAB]}
-        />
-      </div>
-
-      <section
-        className="glass-card"
-        tabIndex={-1}
-        aria-disabled="true"
-        style={{
-          marginTop: '32px',
-          padding: '24px 32px',
-          borderRadius: 'var(--r-md)',
-          minHeight: '96px',
-          opacity: 0.55,
-          pointerEvents: 'none',
-          filter: 'saturate(0.4)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '8px',
-          }}
-        >
-          <h2
-            style={{
-              fontFamily: 'var(--font-inter), Inter, sans-serif',
-              fontSize: '20px',
-              fontWeight: 600,
-              lineHeight: 1.3,
-              color: 'var(--txt-pure)',
-              margin: 0,
-            }}
-          >
-            What GitHub will say about you
-          </h2>
-          <span
-            className="recgon-label"
-            style={{
-              fontFamily: 'var(--font-mono), "JetBrains Mono", monospace',
-              fontSize: '12px',
-              fontWeight: 500,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              padding: '4px 10px',
-              borderRadius: 'var(--r-pill)',
-              background: 'var(--btn-secondary-bg)',
-              color: 'var(--txt-muted)',
-              border: '1px solid var(--btn-secondary-border)',
-            }}
-          >
-            COMING SOON
-          </span>
-        </div>
-        <p
-          style={{
-            fontFamily: 'var(--font-inter), Inter, sans-serif',
-            fontSize: '16px',
-            fontWeight: 400,
-            lineHeight: 1.5,
-            color: 'var(--txt-muted)',
-            margin: 0,
-          }}
-        >
-          Once you connect a repo, I&apos;ll look at what you actually ship and add it here.
-          You&apos;ll get to confirm or reject each one.
+    <div className="profile-shell">
+      <header className="profile-shell__head">
+        <div className="profile-shell__eyebrow">YOUR PROFILE</div>
+        <h1 className="profile-shell__title">Tell me what you do</h1>
+        <div aria-hidden="true" className="profile-shell__rule" />
+        <p className="profile-shell__lede">
+          What you put here is what I&apos;ll use to pick which task lands on your desk. The
+          preview on the right updates as you go.
         </p>
-      </section>
+      </header>
+
+      <ProfilePageClient
+        teamId={teamId}
+        initialProfile={profile}
+        canonicalVocab={[...CANONICAL_VOCAB]}
+        user={user}
+        teamName={team?.name ?? 'your team'}
+      />
+
+      <style>{`
+        .profile-shell {
+          max-width: 1080px;
+          margin: 0 auto;
+          padding: 56px 32px 0;
+        }
+        @media (max-width: 720px) {
+          .profile-shell { padding: 32px 20px 0; }
+        }
+        .profile-shell__head {
+          margin-bottom: 40px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .profile-shell__eyebrow {
+          font-family: var(--font-mono), 'JetBrains Mono', monospace;
+          font-size: 10.5px;
+          font-weight: 500;
+          letter-spacing: 0.14em;
+          color: var(--txt-faint);
+        }
+        .profile-shell__title {
+          font-family: var(--font-inter), Inter, sans-serif;
+          font-size: 30px;
+          font-weight: 600;
+          line-height: 1.15;
+          color: var(--txt-pure);
+          margin: 0;
+        }
+        .profile-shell__rule {
+          width: 56px;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            var(--signature) 0%,
+            rgba(var(--signature-rgb), 0) 100%
+          );
+          margin-top: 4px;
+        }
+        .profile-shell__lede {
+          font-family: var(--font-inter), Inter, sans-serif;
+          font-size: 15px;
+          line-height: 1.55;
+          color: var(--txt-muted);
+          margin: 6px 0 0;
+          max-width: 56ch;
+        }
+      `}</style>
     </div>
   );
 }
