@@ -86,6 +86,13 @@ export default function AvatarMenu() {
           </div>
 
           <div className="v2-menu-section">
+            <Link href="/teams/me" className="v2-menu-item" role="menuitem" onClick={() => setOpen(false)}>
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              My profile
+            </Link>
             <Link href="/settings" className="v2-menu-item" role="menuitem" onClick={() => setOpen(false)}>
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <circle cx="12" cy="12" r="3" />

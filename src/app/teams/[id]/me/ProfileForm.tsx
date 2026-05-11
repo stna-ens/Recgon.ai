@@ -462,13 +462,32 @@ function FieldSection({
       )}
 
       <Popover.Root open={isOpen} onOpenChange={onOpenChange}>
-        <Popover.Trigger asChild>
+        <Popover.Anchor asChild>
           <input
             id={`${field}-input`}
             type="text"
-            value={isOpen ? query : ''}
-            onChange={(e) => onQueryChange(e.target.value)}
+            value={query}
+            onChange={(e) => {
+              onQueryChange(e.target.value);
+              if (!isOpen) onOpenChange(true);
+            }}
             onFocus={() => onOpenChange(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && query.trim() !== '') {
+                e.preventDefault();
+                const match = canonicalVocab.find(
+                  (v) => v.toLowerCase() === query.trim().toLowerCase(),
+                );
+                onAdd(
+                  match
+                    ? { raw: match, canonical: [match] }
+                    : { raw: query.trim(), canonical: [] },
+                );
+                onQueryChange('');
+              } else if (e.key === 'Escape') {
+                onOpenChange(false);
+              }
+            }}
             placeholder={FIELD_PLACEHOLDER[field]}
             autoComplete="off"
             style={{
@@ -483,11 +502,13 @@ function FieldSection({
               outline: 'none',
             }}
           />
-        </Popover.Trigger>
+        </Popover.Anchor>
         <Popover.Portal>
           <Popover.Content
             align="start"
             sideOffset={6}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => e.preventDefault()}
             style={{
               width: 'var(--radix-popover-trigger-width)',
               maxHeight: '240px',
