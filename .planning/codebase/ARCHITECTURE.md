@@ -194,6 +194,12 @@
 - Examples: `src/lib/recgon/types.ts`
 - Pattern: snapshot pattern — `readUnifiedBrain` returns a versioned `BrainSnapshot` that `mintTasksFromBrain` turns into rows
 
+**TeammateProfile / InferredSkill (additive over `Teammate`):**
+- Purpose: Phase 1 self-declared profile + Phase 2 GitHub-inferred skills, folded into `Teammate` by `profileMerge`
+- Examples: `TeammateProfile`, `InferredSkill`, `InferredSkillMap`, `InferredSkillSource`, `UpsertInferredSkillInput` in `src/lib/recgon/types.ts`
+- Tables: `teammate_profiles` (Phase 1) + `teammate_inferred_skills` (Phase 2, `teammates(id)` FK, unique `(teammate_id, canonical_tag)`); Phase 2 also adds `teammate_profiles.github_mining_consent_at` / `last_scan_at` and `teams.inference_depth` (cheap/standard/deep)
+- Pattern: read-time blend in `profileMerge(teammate, profile, inferred, ema)` — never persisted decayed; rejected rows excluded; canonical-tag filter via `skillVocabulary.ts`
+
 **ToolDefinition:**
 - Purpose: typed Gemini function-calling tools
 - Examples: `src/lib/tools/types.ts`, registry in `src/lib/tools/registry.ts`
@@ -201,8 +207,8 @@
 
 **Storage modules:**
 - Purpose: domain-typed CRUD over Supabase
-- Examples: `src/lib/storage.ts`, `src/lib/teamStorage.ts`, `src/lib/recgon/storage.ts`, `src/lib/chatStorage.ts`, `src/lib/analyticsStorage.ts`, `src/lib/integrationStorage.ts`
-- Pattern: per-domain module exporting plain async functions, scoped by `teamId`
+- Examples: `src/lib/storage.ts`, `src/lib/teamStorage.ts`, `src/lib/recgon/storage.ts`, `src/lib/recgon/profileStorage.ts`, `src/lib/recgon/inferredSkillsStorage.ts`, `src/lib/chatStorage.ts`, `src/lib/analyticsStorage.ts`, `src/lib/integrationStorage.ts`
+- Pattern: per-domain module exporting plain async functions, scoped by `teamId`; service-role only — UI never imports these modules
 
 ## Entry Points
 

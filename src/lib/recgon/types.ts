@@ -73,6 +73,49 @@ export interface TeammateProfile {
   updatedAt: string;
 }
 
+// Phase 2 / SKILL-03: GitHub-inferred skill source enum. Matches the SQL
+// CHECK constraint on `teammate_inferred_skills.source` in
+// supabase/migrations/20260513_inferred_skills.sql.
+export type InferredSkillSource =
+  | 'linguist'
+  | 'extension'
+  | 'llm_commit'
+  | 'llm_import';
+
+// Phase 2 / SKILL-03: one inferred-skill row, camelCase view of the
+// `teammate_inferred_skills` table. Date columns stay as ISO strings on the
+// camelCase side (matches profileMerge expectations and avoids `Date`
+// serialization across server/client boundaries).
+export interface InferredSkill {
+  id: string;
+  teammateId: string;
+  teamId: string;
+  canonicalTag: string;
+  score: number;
+  source: InferredSkillSource;
+  lastSeenAt: string;
+  confirmedAt: string | null;
+  rejectedAt: string | null;
+  userReviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Phase 2 / SKILL-04: keyed by canonical_tag (lowercase). Consumed by
+// `profileMerge` in Plan 02-04 for the 3-source blend.
+export type InferredSkillMap = Map<string, InferredSkill>;
+
+// Phase 2 / SKILL-03 worker-side write contract. The worker computes
+// `score`, `source`, and `lastSeenAt`; the DB defaults the lifecycle fields.
+export interface UpsertInferredSkillInput {
+  teammateId: string;
+  teamId: string;
+  canonicalTag: string;
+  score: number;
+  source: InferredSkillSource;
+  lastSeenAt: string;
+}
+
 export type TeammateWithStats = Teammate & {
   stars: number;
   ratingCount: number;
