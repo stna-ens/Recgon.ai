@@ -94,3 +94,28 @@ export function skillWeight(profile: FitProfile | null | undefined, skills: stri
 }
 
 export const __testing = { ALPHA, ROLLING_WINDOW_DAYS, PRUNE_DAYS };
+
+// ── Phase 2 / SKILL-06 — time-decay primitive ────────────────────────────────
+//
+// Read-time exponential decay on inferred-skill scores. NEVER persisted —
+// `profileMerge` (Plan 02-04) applies this when blending the 3-source view
+// so a stale tag automatically loses weight without a write back to the DB.
+// τ = 90 days: a skill last touched 90d ago decays to ~37% of its original
+// score; at 180d ~13%. RESEARCH Pattern 5 rationale.
+//
+// `now` is injectable so tests can pin a fixed clock (no internal Date.now()
+// calls — RESEARCH Validation §Landmines).
+
+export const DECAY_TAU_DAYS = 90;
+
+export function applyTimeDecay(
+  score: number,
+  lastSeenAt: string | Date,
+  now: Date = new Date(),
+  tauDays: number = DECAY_TAU_DAYS,
+): number {
+  const last = typeof lastSeenAt === 'string' ? new Date(lastSeenAt) : lastSeenAt;
+  const deltaDays = (now.getTime() - last.getTime()) / 86_400_000;
+  if (deltaDays <= 0) return score;
+  return score * Math.exp(-deltaDays / tauDays);
+}

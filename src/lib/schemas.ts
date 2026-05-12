@@ -290,6 +290,25 @@ export const SkillNormalizationResultSchema = z.object({
 
 export type SkillNormalizationResult = z.infer<typeof SkillNormalizationResultSchema>;
 
+// Phase 2 (SKILL-02 / QUAL-02). Output schema for the github_skill_inference
+// LLM call. Length + count caps are prompt-injection / cost guards (T-02-10
+// analog of T-03-03): max 10 skills total, canonical tag ≤ 40 chars,
+// confidence 0..1, evidence is a 1-indexed commit reference (max 40 commits
+// shown per call). The CANONICAL_SET post-hoc filter in
+// `src/lib/recgon/githubSkills.ts` provides defense-in-depth (mirrors
+// `normalizeProfile.ts:48-76`).
+export const GithubInferredSkillSchema = z.object({
+  canonical: z.string().min(1).max(40),
+  confidence: z.number().min(0).max(1),
+  evidence: z.number().int().min(1).max(40),
+});
+
+export const GithubSkillInferenceResultSchema = z.object({
+  skills: z.array(GithubInferredSkillSchema).max(10),
+});
+
+export type GithubSkillInferenceResult = z.infer<typeof GithubSkillInferenceResultSchema>;
+
 // Body schema for `POST /api/teams/[id]/profile`. The teammate's typed raw
 // text per bucket plus an optional weekly capacity (null = unset, blank ≠
 // zero per D-06).
