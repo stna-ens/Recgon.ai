@@ -186,6 +186,36 @@ None - no external service configuration in Plan 02-01 itself. The Supabase migr
 
 **Blocker:** Task 4 (`supabase db push`) must complete before Plan 02-02 worker writes can land row data.
 
+## Migration Push Verification
+
+Applied 2026-05-12 via Supabase SQL Editor (operator: eneskis); verified via `mcp__supabase__execute_sql` against project `hrgyrtgpgvsgvxmozcax` (Recgon, eu-west-1, pg17.6.1.084).
+
+| Check | Expected | Actual |
+|---|---|---|
+| `teammate_inferred_skills` column count | 12 | 12 |
+| `teammate_profiles` new cols (`github_mining_consent_at`, `last_scan_at`) | 2 | 2 |
+| `teams.inference_depth` column | 1 | 1 |
+| `teammate_inferred_skills` indexes (`uq_tis_teammate_tag`, `idx_tis_teammate_active`, `idx_tis_teammate_rejected`) | 3 | 3 |
+
+Verification query:
+```sql
+select
+  (select count(*) from information_schema.columns
+     where table_schema='public' and table_name='teammate_inferred_skills') as tis_col_count,
+  (select count(*) from information_schema.columns
+     where table_schema='public' and table_name='teammate_profiles'
+       and column_name in ('github_mining_consent_at','last_scan_at')) as profiles_new_cols,
+  (select count(*) from information_schema.columns
+     where table_schema='public' and table_name='teams'
+       and column_name='inference_depth') as teams_new_col,
+  (select count(*) from pg_indexes
+     where schemaname='public' and tablename='teammate_inferred_skills'
+       and indexname in ('uq_tis_teammate_tag','idx_tis_teammate_active','idx_tis_teammate_rejected')) as tis_indexes;
+-- → {"tis_col_count":12,"profiles_new_cols":2,"teams_new_col":1,"tis_indexes":3}
+```
+
+All four checks match expected values. Migration is live on production DB; Plan 02-02 worker writes are now unblocked.
+
 ## Self-Check: PASSED
 
 - [x] `supabase/migrations/20260513_inferred_skills.sql` — FOUND
@@ -195,9 +225,9 @@ None - no external service configuration in Plan 02-01 itself. The Supabase migr
 - [x] Commit `933e41f` (Task 1) — FOUND in `git log`
 - [x] Commit `34eb7a9` (Task 2) — FOUND in `git log`
 - [x] Commit `6614fec` (Task 3) — FOUND in `git log`
-- [ ] Task 4 (`supabase db push`) — PENDING operator action
+- [x] Task 4 (`supabase db push`) — APPLIED & VERIFIED (2026-05-12)
 
 ---
 *Phase: 02-github-skill-inference*
 *Plan: 01*
-*Completed: 2026-05-12 (Tasks 1–3); Task 4 pending operator)*
+*Completed: 2026-05-12 (Tasks 1–4)*
