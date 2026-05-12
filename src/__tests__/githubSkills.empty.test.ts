@@ -31,10 +31,11 @@ vi.mock('@/lib/recgon/profileStorage', () => ({
 }));
 
 // Stub Octokit so the worker doesn't make real HTTP. The default behavior:
-// listCommits returns no commits, listLanguages returns empty stats, and the
+// listCommits returns no commits, listLanguages returns empty stats, the
 // authenticated-user probe returns a public email (so the empty-window test
-// doesn't conflate "no commits" with "private email"; the email-privacy probe
-// is exercised in its own test).
+// doesn't conflate "no commits" with "private email"), and the verified-emails
+// list contains one public email. The full attribution-probe path is
+// exercised by its own dedicated test.
 vi.mock('@octokit/rest', () => ({
   Octokit: {
     plugin: () => class MockOctokit {
@@ -46,6 +47,11 @@ vi.mock('@octokit/rest', () => ({
         users: {
           getAuthenticated: vi.fn(async () => ({
             data: { login: 'alice', email: 'alice@example.com', name: 'Alice' },
+          })),
+          listEmailsForAuthenticatedUser: vi.fn(async () => ({
+            data: [
+              { email: 'alice@example.com', primary: true, verified: true, visibility: 'public' },
+            ],
           })),
         },
       };

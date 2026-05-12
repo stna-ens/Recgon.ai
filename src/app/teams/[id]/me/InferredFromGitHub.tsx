@@ -31,6 +31,12 @@ export type ScanDiagnostics = {
   llmDroppedTags: number;
   githubEmailPrivate: boolean | null;
   githubLogin: string | null;
+  githubVerifiedEmails: string[] | null;
+  recentCommitSample:
+    | Array<{ authorLogin: string | null; authorEmail: string | null; sha: string }>
+    | null;
+  sampleCommitsByVerifiedEmail: number;
+  sampleCommitsAttributedToUser: number;
   skippedReason:
     | 'no_consent'
     | 'no_token'
@@ -137,11 +143,11 @@ function InferredPill({
   );
 }
 
-// Diagnostic-aware empty state. Picks one of five real-world causes
-// for "no pills" and explains it in plain English with an action button
-// when there's something the user can do. Locked to the right-rail's narrow
-// width — copy stays short, primary action is one line, tone is first-person
-// (matches the rest of the consent + scan messaging).
+// Diagnostic-aware empty state. Picks the most specific real-world cause
+// the probe could pin down, with actionable copy and a deep link when there
+// is one. Right-rail width is narrow (~268px), so copy stays tight; the
+// signature-pink tone is reserved for cards where the user can actually fix
+// the problem themselves.
 function EmptyState({
   diagnostics,
   githubUsername,
@@ -157,10 +163,16 @@ function EmptyState({
   if (!diagnostics) {
     return (
       <p className="inferred-section__empty">
-        I haven&apos;t scanned your commits yet. Click <span className="inferred-section__inline-key">Re-scan</span> to start.
+        I haven&apos;t scanned your commits yet. Click{' '}
+        <span className="inferred-section__inline-key">Re-scan</span> to start.
       </p>
     );
   }
+
+  const tryAgain = onRescan
+    ? { label: 'Try again', onClick: onRescan, disabled: isRateLimited }
+    : undefined;
+  const who = githubUsername ?? diagnostics.githubLogin ?? 'your account';
 
   // No GitHub repos connected to this team yet.
   if (diagnostics.skippedReason === 'no_team_repos') {
@@ -184,122 +196,188 @@ function EmptyState({
     );
   }
 
-  // The big one: 0 commits found AND email is private. We're confident this is
-  // the cause — surface the fix prominently with a direct deep-link.
-  if (diagnostics.commitsFound === 0 && diagnostics.githubEmailPrivate === true) {
+  // Commits exist but we couldn't pull skills out. (Not strictly empty —
+  // happens when LLM dropped everything as non-canonical, the rejected-tag
+  // filter ate it all, etc.)
+  if (diagnostics.commitsFound > 0) {
     return (
       <EmptyCard
-        tone="warn"
-        title="Your GitHub email is private"
+        tone="info"
+        title="Couldn't infer skills"
         body={
           <>
-            GitHub hides your commits from us when{' '}
+            I read{' '}
             <span className="inferred-section__inline-key">
-              Keep my email addresses private
+              {diagnostics.commitsFound}
             </span>{' '}
-            is on. Turn it off and I&apos;ll find your skills.
+            {diagnostics.commitsFound === 1 ? 'commit' : 'commits'} but couldn&apos;t
+            tie them to a clear skill. Descriptive commit messages help —{' '}
+            &ldquo;feat: add Stripe checkout&rdquo; tells me more than &ldquo;fixes&rdquo;.
           </>
         }
-        primary={{
-          label: 'Open email settings',
-          href: 'https://github.com/settings/emails',
-        }}
-        secondary={
-          onRescan
-            ? {
-                label: 'Try again',
-                onClick: onRescan,
-                disabled: isRateLimited,
-              }
-            : undefined
-        }
+        secondary={tryAgain}
       />
     );
   }
 
-  // 0 commits found and email is confirmed PUBLIC → most likely a different
-  // attribution issue (commit email not on the GitHub account, or no commits).
-  if (diagnostics.commitsFound === 0 && diagnostics.githubEmailPrivate === false) {
-    const who = githubUsername ?? diagnostics.githubLogin ?? 'this GitHub account';
+  // ── From here, commitsFound === 0. Pick the most informative branch. ────
+
+  // The probe couldn't fetch a sample of commits without the author filter
+  // either — likely a token-scope issue (private repos + token without
+  // `repo` scope), or all listed repos 404'd. Either way: the GitHub
+  // connection isn't fully wired.
+  if (diagnostics.recentCommitSample === null) {
+    return (
+      <EmptyCard
+        tone="warn"
+        title="I can't read your repos"
+        body={
+          <>
+            GitHub didn&apos;t let me list commits in any of this team&apos;s repos.
+            If they&apos;re private, your GitHub connection might be missing the
+            access we need. Disconnect and reconnect to grant full access.
+          </>
+        }
+        secondary={tryAgain}
+      />
+    );
+  }
+
+  // We pulled a sample but it was empty — no commits in the last 6 months in
+  // those repos. Honest "really, no recent activity" state.
+  if (diagnostics.recentCommitSample.length === 0) {
     return (
       <EmptyCard
         tone="info"
-        title="No commits by you in the last 6 months"
+        title="No recent commits"
         body={
           <>
             I checked{' '}
             <span className="inferred-section__inline-key">
               {diagnostics.reposScanned}
             </span>{' '}
-            {diagnostics.reposScanned === 1 ? 'repo' : 'repos'} but saw no commits
-            attributed to <span className="inferred-section__inline-key">{who}</span>.
-            If you&apos;ve committed under a different account, switch and reconnect.
+            {diagnostics.reposScanned === 1 ? 'repo' : 'repos'} but saw no
+            commits in the last 6 months. Push something and I&apos;ll re-check.
           </>
         }
-        secondary={
-          onRescan
-            ? {
-                label: 'Try again',
-                onClick: onRescan,
-                disabled: isRateLimited,
-              }
-            : undefined
-        }
+        secondary={tryAgain}
       />
     );
   }
 
-  // 0 commits found, email status unknown (probe didn't run or failed).
-  // Generic but honest fallback.
-  if (diagnostics.commitsFound === 0) {
+  // Sample HAS commits. Now the interesting branches:
+
+  // The API attributed some commits to the user's login. Author filter
+  // returned nothing while a sample without the filter did — very odd.
+  // Most likely time-window mismatch or an Octokit pagination quirk. Just
+  // ask the user to retry.
+  if (diagnostics.sampleCommitsAttributedToUser > 0) {
     return (
       <EmptyCard
         tone="info"
-        title="No commits to read"
-        body={
-          <>
-            I didn&apos;t find any commits by you in the last 6 months across{' '}
-            this team&apos;s repos. Push something and I&apos;ll re-check.
-          </>
-        }
-        secondary={
-          onRescan
-            ? {
-                label: 'Try again',
-                onClick: onRescan,
-                disabled: isRateLimited,
-              }
-            : undefined
-        }
+        title="Almost there — try again"
+        body="GitHub showed me your recent commits, but the filtered query came back empty. This sometimes happens right after a fresh connection. Hit Try again in a minute."
+        secondary={tryAgain}
       />
     );
   }
 
-  // Commits found but the signal extractors couldn't pull skills out.
+  // Sample has commits, but none use the user's verified GitHub emails →
+  // their git config almost certainly uses an email that isn't on their
+  // GitHub account. Show the most recent commit email and the verified ones
+  // so the user can fix it.
+  if (
+    diagnostics.sampleCommitsByVerifiedEmail === 0 &&
+    diagnostics.recentCommitSample.length > 0
+  ) {
+    const sampleEmail = diagnostics.recentCommitSample[0]?.authorEmail ?? null;
+    const verified = diagnostics.githubVerifiedEmails ?? [];
+    return (
+      <EmptyCard
+        tone="warn"
+        title="Your commits don't match your GitHub account"
+        body={
+          <>
+            {sampleEmail ? (
+              <>
+                Your last commit was authored by{' '}
+                <span className="inferred-section__inline-key">{sampleEmail}</span>
+                . That email isn&apos;t on{' '}
+                <span className="inferred-section__inline-key">{who}</span>, so GitHub
+                doesn&apos;t link it to you.
+              </>
+            ) : (
+              <>
+                I saw recent commits, but none of them are tied to{' '}
+                <span className="inferred-section__inline-key">{who}</span>.
+              </>
+            )}
+            {verified.length > 0 && (
+              <>
+                {' '}Add it to your GitHub emails, or set{' '}
+                <span className="inferred-section__inline-key">git config user.email</span>{' '}
+                to one of:{' '}
+                <span className="inferred-section__inline-key">{verified.join(', ')}</span>.
+              </>
+            )}
+          </>
+        }
+        primary={{
+          label: 'Open email settings',
+          href: 'https://github.com/settings/emails',
+        }}
+        secondary={tryAgain}
+      />
+    );
+  }
+
+  // The commit email IS one of the user's verified emails but `author.login`
+  // isn't being set → this is the "Keep my email addresses private" toggle
+  // breaking commit attribution. Show the privacy fix.
+  if (diagnostics.sampleCommitsByVerifiedEmail > 0) {
+    return (
+      <EmptyCard
+        tone="warn"
+        title="Your GitHub email is private"
+        body={
+          <>
+            Your commits use one of your verified GitHub emails, but{' '}
+            <span className="inferred-section__inline-key">
+              Keep my email addresses private
+            </span>{' '}
+            is on — so GitHub stops attributing them to{' '}
+            <span className="inferred-section__inline-key">{who}</span>. Turn it
+            off and I&apos;ll find your skills.
+          </>
+        }
+        primary={{
+          label: 'Open email settings',
+          href: 'https://github.com/settings/emails',
+        }}
+        secondary={tryAgain}
+      />
+    );
+  }
+
+  // Genuine fallback — should be rare since the branches above cover most
+  // cases.
   return (
     <EmptyCard
       tone="info"
-      title="Couldn't infer skills"
+      title="No commits to read"
       body={
         <>
-          I read{' '}
+          I checked{' '}
           <span className="inferred-section__inline-key">
-            {diagnostics.commitsFound}
+            {diagnostics.reposScanned}
           </span>{' '}
-          {diagnostics.commitsFound === 1 ? 'commit' : 'commits'} but couldn&apos;t
-          tie them to a clear skill. Descriptive commit messages help —{' '}
-          &ldquo;feat: add Stripe checkout&rdquo; tells me more than &ldquo;fixes&rdquo;.
+          {diagnostics.reposScanned === 1 ? 'repo' : 'repos'} but didn&apos;t see
+          any commits attributed to{' '}
+          <span className="inferred-section__inline-key">{who}</span>. Push something
+          and I&apos;ll re-check.
         </>
       }
-      secondary={
-        onRescan
-          ? {
-              label: 'Try again',
-              onClick: onRescan,
-              disabled: isRateLimited,
-            }
-          : undefined
-      }
+      secondary={tryAgain}
     />
   );
 }

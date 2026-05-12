@@ -167,7 +167,12 @@ type OctokitLike = {
       listLanguages: (params: { owner: string; repo: string }) => Promise<{ data: Record<string, number> }>;
     };
     users: {
-      getAuthenticated: () => Promise<{ data: { login: string; email: string | null; name: string | null } }>;
+      // We type these loosely — the real Octokit `users.*` signatures are
+      // auto-generated and don't always assign onto a hand-rolled interface.
+      // The probe uses both methods inside `try/catch` and narrows the data
+      // shape via runtime field reads.
+      getAuthenticated: (params?: Record<string, unknown>) => Promise<{ data: unknown }>;
+      listEmailsForAuthenticatedUser: (params?: Record<string, unknown>) => Promise<{ data: unknown }>;
     };
   };
 };
@@ -554,14 +559,20 @@ export type RunScanInput = {
 
 // Phase 2 — diagnostics surface for the empty-scan UX. Populated whenever the
 // scan actually runs (not on the early-exit skipped paths). The UI uses this
-// to replace the useless "I didn't find any new skills" empty state with an
-// actionable explanation (e.g. "Your GitHub email is private — here's how to
-// fix it"). All fields are best-effort: the probe is allowed to fail silently
-// and the UI degrades to a generic empty state.
+// to replace the useless "I didn't find any new skills" empty state with a
+// concrete, actionable explanation. All fields are best-effort: each probe is
+// allowed to fail silently and the UI degrades gracefully when a field is
+// `null`. The shape lets the UI distinguish:
+//   - email-privacy issue       → primary-email visibility === 'private'
+//   - email mismatch / wrong git config → recent commits have unattributed
+//     authors AND their email isn't in the verified-emails list
+//   - token-scope issue          → recent-commit sample was unreachable
+//   - genuinely no activity      → recent-commit sample IS reachable but
+//     there really are no recent commits in this repo
 export type ScanDiagnostics = {
   /** Number of team-connected repos we attempted to scan. */
   reposScanned: number;
-  /** Total commits collected across all repos for this author. */
+  /** Total commits collected across all repos for this author (filtered). */
   commitsFound: number;
   /** Number of skills emitted by signal extractors BEFORE rejected-filter. */
   signalsEmitted: number;
@@ -569,14 +580,47 @@ export type ScanDiagnostics = {
   llmDroppedTags: number;
   /**
    * GitHub email-privacy state. `null` = probe didn't run (scan found commits
-   * so no need) or the API call failed; `true` = user has "Keep my email
-   * addresses private" turned on; `false` = email is visible to the API. When
-   * `true` AND `commitsFound === 0`, that's the most common cause and the UI
-   * surfaces the fix.
+   * so no need) or the API call failed; `true` = the user's primary GitHub
+   * email is marked private (the toggle that breaks `?author=login` commit
+   * attribution); `false` = email is visible to the API.
    */
   githubEmailPrivate: boolean | null;
   /** The user's GitHub login the API attributed back — handy for UI copy. */
   githubLogin: string | null;
+  /**
+   * Verified emails on the user's GitHub account (noreply addresses
+   * stripped). Used by the UI to tell the user which `git config user.email`
+   * values would let GitHub attribute their commits. `null` = couldn't read.
+   */
+  githubVerifiedEmails: string[] | null;
+  /**
+   * Recent-commit sample from one connected repo, pulled WITHOUT the
+   * `?author=` filter. Used to disambiguate "no commits exist" from "commits
+   * exist but aren't attributed to this user". Each item carries the author's
+   * GitHub login (may be null if attribution failed) and the commit email.
+   * Empty array = repo had no commits in the window; `null` = sample failed
+   * (probably scope or 404).
+   */
+  recentCommitSample:
+    | Array<{
+        authorLogin: string | null;
+        authorEmail: string | null;
+        sha: string;
+      }>
+    | null;
+  /**
+   * From the recent-commit sample: how many of those commits' emails match
+   * one of the user's verified GitHub emails. > 0 with no attributed
+   * `authorLogin` means a likely email-privacy / wrong-git-config issue.
+   */
+  sampleCommitsByVerifiedEmail: number;
+  /**
+   * From the recent-commit sample: how many commits the API already
+   * attributed to the user's login. > 0 here means attribution IS working
+   * for some commits — the empty-scan result is then either time-window or
+   * an Octokit author-filter quirk, not a scope/privacy issue.
+   */
+  sampleCommitsAttributedToUser: number;
 };
 
 export type RunScanResult =
@@ -593,29 +637,139 @@ export type RunScanResult =
       diagnostics: ScanDiagnostics;
     };
 
-// Probe the authenticated user's email-privacy setting. Used only when the
-// commit scan returned zero rows — the most common cause is "Keep my email
-// addresses private" on https://github.com/settings/emails, because GitHub
-// then refuses to attribute commits to the user via the `?author=<login>`
-// filter we rely on. Best-effort: any API failure returns `{ private: null }`
-// and the UI falls back to a generic empty state.
-async function probeEmailPrivacy(octokit: OctokitLike): Promise<{
+// Empty-scan attribution probe. Pulls three independent signals so the UI can
+// give the user a concrete cause when commit mining returned zero rows:
+//
+//   1. `/user`           → GitHub login + publicly-visible email
+//   2. `/user/emails`    → verified email list + primary visibility
+//   3. recent commits    → one repo's last few commits WITHOUT the author
+//                          filter, so we can see whether real commits exist
+//                          and how they're attributed
+//
+// Each call is independent and swallow-its-own-error. Even if the user's
+// token is missing the `user:email` scope, the commit sample may still work
+// and vice-versa. The UI uses whichever fields landed.
+async function probeAttribution(args: {
+  octokit: OctokitLike;
+  repos: Array<{ owner: string; repo: string }>;
+  sinceIso: string;
+}): Promise<{
   emailPrivate: boolean | null;
   login: string | null;
+  verifiedEmails: string[] | null;
+  recentCommitSample:
+    | Array<{ authorLogin: string | null; authorEmail: string | null; sha: string }>
+    | null;
 }> {
+  let login: string | null = null;
+  let publicEmail: string | null = null;
+  let verifiedEmails: string[] | null = null;
+  let primaryEmailPrivate: boolean | null = null;
+  let recentCommitSample:
+    | Array<{ authorLogin: string | null; authorEmail: string | null; sha: string }>
+    | null = null;
+
+  // 1. /user — login + public-profile email. Works with no scope at all.
   try {
-    const me = await octokit.rest.users.getAuthenticated();
-    const email = me.data.email;
-    return {
-      emailPrivate: email === null,
-      login: me.data.login ?? null,
-    };
+    const me = await args.octokit.rest.users.getAuthenticated();
+    const data = me.data as {
+      login?: string | null;
+      email?: string | null;
+    } | null;
+    login = data?.login ?? null;
+    publicEmail = data?.email ?? null;
   } catch (err) {
-    logger.warn('probeEmailPrivacy failed', {
+    logger.warn('probeAttribution /user failed', {
       err: err instanceof Error ? err.message : String(err),
     });
-    return { emailPrivate: null, login: null };
   }
+
+  // 2. /user/emails — verified emails + the primary's `visibility` flag,
+  // which is the authoritative source for "are my email addresses private".
+  // Requires `user:email` scope; the consent flow requests it so this should
+  // succeed unless the token is stale from a pre-scope-bump OAuth round-trip.
+  try {
+    const emails = await args.octokit.rest.users.listEmailsForAuthenticatedUser();
+    const rows = (emails.data as
+      | Array<{
+          email: string;
+          primary: boolean;
+          verified: boolean;
+          visibility: 'public' | 'private' | null;
+        }>
+      | null) ?? [];
+    const list: string[] = [];
+    for (const row of rows) {
+      if (row.primary) {
+        primaryEmailPrivate = row.visibility === 'private' || row.visibility === null;
+      }
+      if (row.verified && row.email && !row.email.includes('@users.noreply.github.com')) {
+        list.push(row.email);
+      }
+    }
+    verifiedEmails = list;
+  } catch (err) {
+    logger.warn('probeAttribution /user/emails failed', {
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  // 3. Recent commit sample from one repo WITHOUT the author filter. Lets
+  // us see whether commits exist and how they're attributed (login + email).
+  // Best-effort: tries up to 2 repos before giving up.
+  for (const repo of args.repos.slice(0, 2)) {
+    try {
+      const res = await args.octokit.rest.repos.listCommits({
+        owner: repo.owner,
+        repo: repo.repo,
+        since: args.sinceIso,
+        per_page: 10,
+      });
+      const rows = (res.data as unknown[]) ?? [];
+      const out: Array<{
+        authorLogin: string | null;
+        authorEmail: string | null;
+        sha: string;
+      }> = [];
+      for (const c of rows) {
+        const ci = c as {
+          sha?: string;
+          author?: { login?: string } | null;
+          commit?: { author?: { email?: string } | null };
+        };
+        out.push({
+          authorLogin: ci.author?.login ?? null,
+          authorEmail: ci.commit?.author?.email ?? null,
+          sha: (ci.sha ?? '').slice(0, 7),
+        });
+      }
+      recentCommitSample = out;
+      break; // one good sample is enough.
+    } catch (err) {
+      logger.warn('probeAttribution sample listCommits failed', {
+        owner: repo.owner,
+        repo: repo.repo,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // Compose the email-privacy signal. The /user/emails answer is the
+  // authoritative one; fall back to the /user email-is-null heuristic only
+  // when /user/emails wasn't reachable.
+  const emailPrivate =
+    primaryEmailPrivate !== null
+      ? primaryEmailPrivate
+      : publicEmail !== null
+        ? false
+        : null;
+
+  return {
+    emailPrivate,
+    login,
+    verifiedEmails,
+    recentCommitSample,
+  };
 }
 
 export async function runScan(input: RunScanInput): Promise<RunScanResult> {
@@ -646,6 +800,10 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
         llmDroppedTags: 0,
         githubEmailPrivate: null,
         githubLogin: null,
+        githubVerifiedEmails: null,
+        recentCommitSample: null,
+        sampleCommitsByVerifiedEmail: 0,
+        sampleCommitsAttributedToUser: 0,
       },
     };
   }
@@ -721,15 +879,44 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
   // SKILL-06: always update `last_scan_at`, even on empty (banner suppression).
   await touchLastScan(input.teamId, input.teammateId, now);
 
-  // When the scan found zero commits, run the email-privacy probe so the UI
-  // can surface the actionable cause. We only burn the extra API call on the
+  // When the scan found zero commits, run the full attribution probe so the
+  // UI can surface a concrete cause. We only burn the extra API calls on the
   // empty path — if commits came through, attribution is clearly working.
-  let probe: { emailPrivate: boolean | null; login: string | null } = {
+  let probe: {
+    emailPrivate: boolean | null;
+    login: string | null;
+    verifiedEmails: string[] | null;
+    recentCommitSample:
+      | Array<{ authorLogin: string | null; authorEmail: string | null; sha: string }>
+      | null;
+  } = {
     emailPrivate: null,
     login: null,
+    verifiedEmails: null,
+    recentCommitSample: null,
   };
   if (commits.length === 0) {
-    probe = await probeEmailPrivacy(octokit);
+    const sinceIso = new Date(now.getTime() - SIX_MONTHS_MS).toISOString();
+    probe = await probeAttribution({ octokit, repos, sinceIso });
+  }
+
+  // Cross-reference the recent-commit sample with the user's verified email
+  // list so the UI can confidently say "your commits use email X — add it to
+  // your GitHub account" vs "your repos are genuinely empty".
+  let sampleByVerified = 0;
+  let sampleAttributed = 0;
+  if (probe.recentCommitSample) {
+    const verifiedSet = new Set(
+      (probe.verifiedEmails ?? []).map((e) => e.toLowerCase()),
+    );
+    for (const c of probe.recentCommitSample) {
+      if (c.authorLogin && input.author && c.authorLogin.toLowerCase() === input.author.toLowerCase()) {
+        sampleAttributed += 1;
+      }
+      if (c.authorEmail && verifiedSet.has(c.authorEmail.toLowerCase())) {
+        sampleByVerified += 1;
+      }
+    }
   }
 
   const diagnostics: ScanDiagnostics = {
@@ -739,6 +926,10 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
     llmDroppedTags,
     githubEmailPrivate: probe.emailPrivate,
     githubLogin: probe.login,
+    githubVerifiedEmails: probe.verifiedEmails,
+    recentCommitSample: probe.recentCommitSample,
+    sampleCommitsByVerifiedEmail: sampleByVerified,
+    sampleCommitsAttributedToUser: sampleAttributed,
   };
 
   return {

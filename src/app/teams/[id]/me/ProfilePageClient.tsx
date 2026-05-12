@@ -252,6 +252,10 @@ export default function ProfilePageClient({
                 llmDroppedTags: 0,
                 githubEmailPrivate: null,
                 githubLogin: null,
+                githubVerifiedEmails: null,
+                recentCommitSample: null,
+                sampleCommitsByVerifiedEmail: 0,
+                sampleCommitsAttributedToUser: 0,
                 skippedReason,
               }
             : null,
