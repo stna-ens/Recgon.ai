@@ -20,11 +20,11 @@ Each requirement maps to one of the canonical phases A → E from `.planning/res
 
 ### Skill Inference (Phase B — GitHub signal)
 
-- [ ] **SKILL-01**: A teammate can grant explicit consent to GitHub commit-history mining from their profile page. Consent is required before any mining runs; consent timestamp is stored.
+- [x] **SKILL-01**: A teammate can grant explicit consent to GitHub commit-history mining from their profile page. Consent is required before any mining runs; consent timestamp is stored.
 - [ ] **SKILL-02**: A new `github_skill_inference` job kind mines a teammate's commits in the team's connected repos only (never personal repos), within a rolling 6-month window.
-- [ ] **SKILL-03**: Inferred skills (language stats, file-path patterns, PR review patterns) are stored in a new `teammate_inferred_skills` table, separate from self-declared profile.
+- [x] **SKILL-03**: Inferred skills (language stats, file-path patterns, PR review patterns) are stored in a new `teammate_inferred_skills` table, separate from self-declared profile.
 - [ ] **SKILL-04**: The `profileMerge` function blends three sources (self-declared 0.5 / GitHub-inferred 0.3 / EMA history 0.2 — initial weights, tunable) without overwriting any source.
-- [ ] **SKILL-05**: A teammate can see "what GitHub says about you" in the profile UI and confirm or reject each inferred skill. Rejected skills are excluded from `profileMerge`.
+- [x] **SKILL-05**: A teammate can see "what GitHub says about you" in the profile UI and confirm or reject each inferred skill. Rejected skills are excluded from `profileMerge`.
 - [ ] **SKILL-06**: Skill EMA in `fitLearning.ts` adds a time-decay factor (`exp(-Δt/τ)` with τ≈90 days) so historical skill weight fades when a teammate moves stacks.
 
 ### Smarter Assignment (Phase C — LLM judgment overlay)
@@ -126,11 +126,11 @@ Filled by the roadmapper. Each requirement maps to exactly one phase.
 | PROFILE-04 | Phase 1 | Complete |
 | PROFILE-05 | Phase 1 | Complete |
 | PROFILE-06 | Phase 1 | Complete |
-| SKILL-01 | Phase 2 | Pending |
+| SKILL-01 | Phase 2 | Complete |
 | SKILL-02 | Phase 2 | Pending |
-| SKILL-03 | Phase 2 | Pending |
+| SKILL-03 | Phase 2 | Complete |
 | SKILL-04 | Phase 2 | Pending |
-| SKILL-05 | Phase 2 | Pending |
+| SKILL-05 | Phase 2 | Complete |
 | SKILL-06 | Phase 2 | Pending |
 | JUDGE-01 | Phase 3 | Pending |
 | JUDGE-02 | Phase 3 | Pending |
