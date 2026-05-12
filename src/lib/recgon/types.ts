@@ -71,6 +71,13 @@ export interface TeammateProfile {
   weeklyCapacityHours: number | null;
   createdAt: string;
   updatedAt: string;
+  // Phase 2 / Plan 02-03. Both columns are on `teammate_profiles`. They land
+  // here so `getProfile` is the single source of truth for the worker's
+  // consent + cooldown gates — previously the worker mis-read these fields
+  // as undefined off the mapper output, which caused `no_consent` early
+  // exit on every scan.
+  githubMiningConsentAt: string | null;
+  lastScanAt: string | null;
 }
 
 // Phase 2 / SKILL-03: GitHub-inferred skill source enum. Matches the SQL

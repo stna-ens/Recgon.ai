@@ -24,6 +24,11 @@ type TeammateProfileRow = {
   normalization_pending: boolean | null;
   created_at: string;
   updated_at: string;
+  // Phase 2 columns. These were added by the inferred-skills migration but
+  // were missed by the original mapper, which caused `runGithubSkillInference`
+  // to read `consentAt` as undefined → `no_consent` early-exit on every scan.
+  github_mining_consent_at: string | null;
+  last_scan_at: string | null;
 };
 
 export function mapTeammateProfile(row: TeammateProfileRow): TeammateProfile {
@@ -43,6 +48,8 @@ export function mapTeammateProfile(row: TeammateProfileRow): TeammateProfile {
         : Number(row.weekly_capacity_hours),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    githubMiningConsentAt: row.github_mining_consent_at ?? null,
+    lastScanAt: row.last_scan_at ?? null,
   };
 }
 

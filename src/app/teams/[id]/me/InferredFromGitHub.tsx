@@ -215,6 +215,41 @@ function EmptyState({
     );
   }
 
+  // Consent timestamp missing on the teammate_profiles row. UI should never
+  // reach this in normal flow (consent flag is set on every successful OAuth
+  // round-trip), but if it does, the fix is the same: reconnect.
+  if (diagnostics.skippedReason === 'no_consent') {
+    return (
+      <EmptyCard
+        tone="warn"
+        title="GitHub mining isn't on"
+        body="I don't have permission to look at your commits. Reconnect to grant it."
+        primaryAction={
+          onReconnect
+            ? { label: 'Reconnect GitHub', onClick: onReconnect }
+            : undefined
+        }
+      />
+    );
+  }
+
+  // Author missing — the user row has no GitHub username for us to filter by.
+  // Same fix as no_token: a fresh OAuth round-trip rewrites both.
+  if (diagnostics.skippedReason === 'no_author') {
+    return (
+      <EmptyCard
+        tone="warn"
+        title="I don't know your GitHub username"
+        body="The connection saved your account but not your username. Reconnect to fill it in."
+        primaryAction={
+          onReconnect
+            ? { label: 'Reconnect GitHub', onClick: onReconnect }
+            : undefined
+        }
+      />
+    );
+  }
+
   // Commits exist but we couldn't pull skills out. (Not strictly empty —
   // happens when LLM dropped everything as non-canonical, the rejected-tag
   // filter ate it all, etc.)

@@ -154,8 +154,7 @@ export async function runGithubSkillInference(job: LLMJob): Promise<WorkerResult
   // Gate 1 (D-22): consent. Check teammate_profiles.github_mining_consent_at.
   // Consent revoked between enqueue and run → exit clean.
   const profile = await getProfile(payload.teamId, payload.userId).catch(() => null);
-  const consentAt = (profile as { githubMiningConsentAt?: string | null } | null)?.githubMiningConsentAt
-    ?? null;
+  const consentAt = profile?.githubMiningConsentAt ?? null;
   if (!consentAt) {
     return { skipped: true, reason: 'no_consent' };
   }

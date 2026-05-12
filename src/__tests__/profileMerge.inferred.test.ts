@@ -64,6 +64,8 @@ function makeProfile(overrides: Partial<TeammateProfile> = {}): TeammateProfile 
     weeklyCapacityHours: null,
     createdAt: '2026-05-12',
     updatedAt: '2026-05-12',
+    githubMiningConsentAt: null,
+    lastScanAt: null,
     ...overrides,
   };
 }
