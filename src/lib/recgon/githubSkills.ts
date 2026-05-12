@@ -716,8 +716,11 @@ async function probeAttribution(args: {
 
   // 3. Recent commit sample from one repo WITHOUT the author filter. Lets
   // us see whether commits exist and how they're attributed (login + email).
-  // Best-effort: tries up to 2 repos before giving up.
-  for (const repo of args.repos.slice(0, 2)) {
+  // Best-effort: tries every team-connected repo (capped at 5 to bound the
+  // empty-scan API budget) and stops at the first successful sample. This
+  // means a single failed repo (e.g. another teammate's private repo that
+  // this user can't see) won't poison the diagnostic for the others.
+  for (const repo of args.repos.slice(0, 5)) {
     try {
       const res = await args.octokit.rest.repos.listCommits({
         owner: repo.owner,

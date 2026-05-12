@@ -447,6 +447,7 @@ export default function ProfilePageClient({
                   rescanRateLimitedUntil={rescanRateLimitedUntil}
                   diagnostics={scanDiagnostics}
                   githubUsername={githubUsername}
+                  onReconnect={handleConnect}
                 />
               }
             />

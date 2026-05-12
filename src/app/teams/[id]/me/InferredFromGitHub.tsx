@@ -58,6 +58,13 @@ interface Props {
   diagnostics?: ScanDiagnostics | null;
   /** GitHub username for personalised diagnostic copy. */
   githubUsername?: string | null;
+  /**
+   * Re-run the GitHub OAuth round-trip with the elevated skill-mining scope.
+   * Used by diagnostic cards that diagnose a missing-access situation
+   * ("I can't read your repos") so the user can fix it without scrolling to
+   * find the disconnect button.
+   */
+  onReconnect?: () => void;
 }
 
 // SOURCE -> chip text. Locked by UI-SPEC §Right-rail "INFERRED FROM GITHUB"
@@ -153,11 +160,13 @@ function EmptyState({
   githubUsername,
   isRateLimited,
   onRescan,
+  onReconnect,
 }: {
   diagnostics: ScanDiagnostics | null | undefined;
   githubUsername: string | null | undefined;
   isRateLimited: boolean;
   onRescan?: () => void;
+  onReconnect?: () => void;
 }) {
   // No diagnostics yet → first-load fallback. Matches the previous behaviour.
   if (!diagnostics) {
@@ -191,7 +200,12 @@ function EmptyState({
       <EmptyCard
         tone="warn"
         title="GitHub connection lost"
-        body="I'm consented to mine, but I don't have a valid GitHub token for your account. Disconnect and reconnect to fix this."
+        body="I'm consented to mine, but I don't have a valid GitHub token for your account. Reconnect to fix this."
+        primaryAction={
+          onReconnect
+            ? { label: 'Reconnect GitHub', onClick: onReconnect }
+            : undefined
+        }
       />
     );
   }
@@ -225,7 +239,7 @@ function EmptyState({
   // The probe couldn't fetch a sample of commits without the author filter
   // either — likely a token-scope issue (private repos + token without
   // `repo` scope), or all listed repos 404'd. Either way: the GitHub
-  // connection isn't fully wired.
+  // connection isn't fully wired. Surface a one-click reconnect.
   if (diagnostics.recentCommitSample === null) {
     return (
       <EmptyCard
@@ -235,8 +249,13 @@ function EmptyState({
           <>
             GitHub didn&apos;t let me list commits in any of this team&apos;s repos.
             If they&apos;re private, your GitHub connection might be missing the
-            access we need. Disconnect and reconnect to grant full access.
+            access we need. Reconnect to grant full access.
           </>
+        }
+        primaryAction={
+          onReconnect
+            ? { label: 'Reconnect GitHub', onClick: onReconnect }
+            : undefined
         }
         secondary={tryAgain}
       />
@@ -387,17 +406,24 @@ function EmptyState({
 // affordance of "actionable" vs "informational":
 //   - `warn`  = signature-pink chrome (something for the user to do)
 //   - `info`  = muted chrome             (nothing urgent, just context)
+//
+// Two action slots:
+//   - `primary`        — external link (opens in new tab, shows arrow glyph)
+//   - `primaryAction`  — in-app button (triggers a callback, no new tab)
+// Mutually-exclusive in practice but typed independently so callers can pick.
 function EmptyCard({
   tone,
   title,
   body,
   primary,
+  primaryAction,
   secondary,
 }: {
   tone: 'warn' | 'info';
   title: string;
   body: React.ReactNode;
   primary?: { label: string; href: string };
+  primaryAction?: { label: string; onClick: () => void; disabled?: boolean };
   secondary?: { label: string; onClick: () => void; disabled?: boolean };
 }) {
   return (
@@ -407,7 +433,7 @@ function EmptyCard({
         <span className="empty-card__title">{title}</span>
       </div>
       <p className="empty-card__body">{body}</p>
-      {(primary || secondary) && (
+      {(primary || primaryAction || secondary) && (
         <div className="empty-card__actions">
           {primary && (
             <a
@@ -419,6 +445,16 @@ function EmptyCard({
               <span>{primary.label}</span>
               <ExternalLink size={12} aria-hidden="true" />
             </a>
+          )}
+          {primaryAction && (
+            <button
+              type="button"
+              className="empty-card__primary"
+              onClick={primaryAction.onClick}
+              disabled={primaryAction.disabled}
+            >
+              <span>{primaryAction.label}</span>
+            </button>
           )}
           {secondary && (
             <button
@@ -446,6 +482,7 @@ export function InferredFromGitHub({
   rescanRateLimitedUntil = null,
   diagnostics = null,
   githubUsername = null,
+  onReconnect,
 }: Props) {
   // SKILL-05 optimistic-reject set. Cleared when the parent pushes new props
   // (server truth lands → `item.rejectedAt` set → no need to keep the optimistic
@@ -539,6 +576,7 @@ export function InferredFromGitHub({
             githubUsername={githubUsername}
             isRateLimited={isRateLimited}
             onRescan={onRescan}
+            onReconnect={onReconnect}
           />
         ) : (
           <div className="inferred-pills">
