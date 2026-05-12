@@ -1,14 +1,15 @@
 // Phase 2 / Plan 02-03 / SKILL-01.
 //
 // POST /api/teams/[id]/inferred-skills/scan
-//   On-demand enqueue of a `github_skill_inference` job for the requesting
-//   teammate.
+//   On-demand scan: runs the GitHub-skill-inference worker INLINE and returns
+//   the result. Originally this enqueued a job into `llm_jobs` for the cron
+//   to drain, but on Vercel Hobby the queue drain runs daily — so a "Re-scan"
+//   click sat for up to 24h before producing pills. The auto weekly cron
+//   (Sunday 06:00 UTC) still uses the queue; only the manual button is inline.
 //
-// GATES:
+// GATES (unchanged from queue-based design):
 //   - 412 { error: 'consent required' }  when githubMiningConsentAt is null.
-//   - 429 { error: 'rate_limited', retryAfterMin } when lastScanAt < 1h ago
-//     (T-02-18). Drained by the per-minute /api/cron/llm-jobs route, so
-//     on-demand vs scheduled scans cannot interleave to bypass the cap.
+//   - 429 { error: 'rate_limited', retryAfterMin } when lastScanAt < 1h ago.
 //
 // AUTHORIZATION (Phase 1 convention):
 //   session + verifyTeamAccess (404 not 403 on team mismatch).
@@ -20,11 +21,13 @@ import {
   getTeammateByTeamUser,
   getMiningStatus,
 } from '@/lib/recgon/inferredSkillsStorage';
-import { enqueueJob } from '@/lib/llm/jobQueue';
+import { runGithubSkillInference } from '@/lib/llm/workers';
+import type { LLMJob } from '@/lib/llm/jobQueue';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -65,23 +68,45 @@ export async function POST(
 
     const teammate = await getTeammateByTeamUser(teamId, session.user.id);
     if (!teammate) {
-      // No teammate row → can't scan. Treat as 404 (defensive: caller's UI
-      // shouldn't expose Re-scan when not even a teammate).
       return NextResponse.json({ error: 'team not found' }, { status: 404 });
     }
 
-    const job = await enqueueJob({
-      teamId,
-      userId: session.user.id,
+    // Inline worker run. Build a synthetic LLMJob — the worker only reads
+    // `payload` and `team_id` from the job, the rest is bookkeeping for the
+    // queue-driven path. Result is returned to the client so the UI can
+    // refresh immediately without polling.
+    const now = new Date().toISOString();
+    const syntheticJob: LLMJob = {
+      id: `inline-${crypto.randomUUID()}`,
+      team_id: teamId,
+      user_id: session.user.id,
       kind: 'github_skill_inference',
       payload: {
         teammateId: teammate.id,
         teamId,
         userId: session.user.id,
       },
+      status: 'running',
+      result: null,
+      error: null,
+      attempts: 1,
+      max_attempts: 1,
+      next_retry_at: now,
+      locked_at: now,
+      locked_by: 'inline-scan',
+      created_at: now,
+      updated_at: now,
+    };
+
+    const result = await runGithubSkillInference(syntheticJob);
+
+    logger.info('inferred-skills inline scan complete', {
+      teamId,
+      userId: session.user.id,
+      result,
     });
 
-    return NextResponse.json({ ok: true, jobId: job.id });
+    return NextResponse.json({ ok: true, result });
   } catch (error) {
     logger.error('inferred-skills scan failed', {
       teamId,
@@ -89,7 +114,7 @@ export async function POST(
       error: error instanceof Error ? error.message : String(error),
     });
     return NextResponse.json(
-      { error: 'failed to enqueue scan' },
+      { error: 'scan failed', detail: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     );
   }

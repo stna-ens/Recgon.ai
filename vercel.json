@@ -34,6 +34,9 @@
     },
     "src/app/api/cron/github-skill-inference/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/teams/[id]/inferred-skills/scan/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
