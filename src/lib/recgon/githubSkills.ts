@@ -858,27 +858,30 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
 
   const repos = await resolveTeamConnectedRepos(input.teamId);
   if (repos.length === 0) {
+    const noRepoDiagnostics: ScanDiagnostics = {
+      reposScanned: 0,
+      commitsFound: 0,
+      signalsEmitted: 0,
+      llmDroppedTags: 0,
+      githubEmailPrivate: null,
+      githubLogin: null,
+      githubVerifiedEmails: null,
+      recentCommitSample: null,
+      sampleCommitsByVerifiedEmail: 0,
+      sampleCommitsAttributedToUser: 0,
+      tokenScopes: null,
+      tokenStatus: null,
+      repoProbeResults: null,
+    };
     // SKILL-06: still mark the scan timestamp so the banner-suppression flow
-    // doesn't surface "new inferred skills" with zero rows.
-    await touchLastScan(input.teamId, input.teammateId, now);
+    // doesn't surface "new inferred skills" with zero rows. Also persist the
+    // (empty) diagnostics so the UI keeps showing "No GitHub repos to scan"
+    // after page reloads.
+    await touchLastScan(input.teamId, input.teammateId, now, noRepoDiagnostics);
     return {
       skipped: true,
       reason: 'no_team_repos',
-      diagnostics: {
-        reposScanned: 0,
-        commitsFound: 0,
-        signalsEmitted: 0,
-        llmDroppedTags: 0,
-        githubEmailPrivate: null,
-        githubLogin: null,
-        githubVerifiedEmails: null,
-        recentCommitSample: null,
-        sampleCommitsByVerifiedEmail: 0,
-        sampleCommitsAttributedToUser: 0,
-        tokenScopes: null,
-        tokenStatus: null,
-        repoProbeResults: null,
-      },
+      diagnostics: noRepoDiagnostics,
     };
   }
 
@@ -950,9 +953,6 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
     }
   }
 
-  // SKILL-06: always update `last_scan_at`, even on empty (banner suppression).
-  await touchLastScan(input.teamId, input.teammateId, now);
-
   // When the scan found zero commits, run the full attribution probe so the
   // UI can surface a concrete cause. We only burn the extra API calls on the
   // empty path — if commits came through, attribution is clearly working.
@@ -1017,6 +1017,11 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
     repoProbeResults: probe.repoProbeResults,
   };
 
+  // SKILL-06: always update `last_scan_at`, even on empty (banner suppression).
+  // Also persists the diagnostics blob so the UI can re-render the empty
+  // state after a page reload + so backend debugging can inspect outcomes.
+  await touchLastScan(input.teamId, input.teammateId, now, diagnostics);
+
   return {
     skipped: false,
     written,
@@ -1028,12 +1033,21 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-async function touchLastScan(teamId: string, teammateId: string, now: Date): Promise<void> {
+async function touchLastScan(
+  teamId: string,
+  teammateId: string,
+  now: Date,
+  diagnostics?: ScanDiagnostics,
+): Promise<void> {
   // The teammate_profiles row is keyed on (team_id, user_id). The teammate
   // row itself sits in `teammates` (Plan 02-01 deviation: the canonical table
   // is `teammates`, not `agent_teammates`). We resolve the underlying user
   // and then update the profile. This is a fire-and-forget best-effort;
   // failures are logged but not fatal.
+  //
+  // `diagnostics` (optional) is written to `last_scan_diagnostics` so the UI
+  // can render the empty-state explanation after a page reload, and so
+  // backend debugging can read the latest outcome without log scraping.
   try {
     const tm = await supabase
       .from('teammates')
@@ -1045,9 +1059,15 @@ async function touchLastScan(teamId: string, teammateId: string, now: Date): Pro
       logger.warn('touchLastScan: teammate row not found', { teamId, teammateId });
       return;
     }
+    const update: Record<string, unknown> = {
+      last_scan_at: now.toISOString(),
+    };
+    if (diagnostics) {
+      update.last_scan_diagnostics = diagnostics;
+    }
     const { error } = await supabase
       .from('teammate_profiles')
-      .update({ last_scan_at: now.toISOString() })
+      .update(update)
       .eq('team_id', teamId)
       .eq('user_id', userId);
     if (error) {
