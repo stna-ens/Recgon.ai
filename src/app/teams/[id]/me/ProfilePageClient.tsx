@@ -12,7 +12,6 @@ import ProfileFormFields, { type PillEntry } from './ProfileForm';
 import ProfilePreview from './ProfilePreview';
 import InferredFromGitHub, { type ScanDiagnostics } from './InferredFromGitHub';
 import GithubConsentSection from './GithubConsentSection';
-import ReviewBanner from './ReviewBanner';
 import { useToast } from '@/components/Toast';
 
 interface Props {
@@ -110,14 +109,6 @@ export default function ProfilePageClient({
   );
   const undoUsedRef = useRef<Set<string>>(new Set());
 
-  const unreviewedCount = useMemo(
-    () =>
-      inferredSkills.filter(
-        (s) => !s.userReviewedAt && !s.rejectedAt,
-      ).length,
-    [inferredSkills],
-  );
-
   // On return from the OAuth round-trip, surface a toast and clean the URL.
   useEffect(() => {
     const flag = searchParams.get('github_skill_mining');
@@ -144,7 +135,7 @@ export default function ProfilePageClient({
     if (existing) clearTimeout(existing);
     undoUsedRef.current.delete(skillId);
 
-    addToast("Dropped. I won't suggest it again.", 'info');
+    addToast("Dropped. Won't suggest it again.", 'info');
 
     const timer = setTimeout(async () => {
       undoTimersRef.current.delete(skillId);
@@ -171,6 +162,31 @@ export default function ProfilePageClient({
       }
     }, 6000);
     undoTimersRef.current.set(skillId, timer);
+  }
+
+  // Keep an inferred skill — immediate PATCH `{reviewed: true}`, no undo
+  // window. The optimistic flip is owned by InferredFromGitHub; this PATCH
+  // commits the decision to `teammate_profiles.user_reviewed_at`.
+  async function handleKeep(skillId: string) {
+    addToast('Kept. Counts when I match tasks.', 'success');
+    try {
+      const res = await fetch(
+        `/api/teams/${teamId}/inferred-skills/${skillId}`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ reviewed: true }),
+        },
+      );
+      if (!res.ok) throw new Error('patch failed');
+      const json = (await res.json()) as { inferredSkill: InferredSkill };
+      setInferredSkills((prev) =>
+        prev.map((s) => (s.id === skillId ? json.inferredSkill : s)),
+      );
+    } catch {
+      addToast("Couldn't update. Try again in a moment.", 'error');
+    }
   }
 
   async function handleUndoReject(skillId: string) {
@@ -317,34 +333,6 @@ export default function ProfilePageClient({
     }
   }
 
-  async function handleDismissBanner() {
-    // Optimistic UI: mark every currently-unreviewed row as reviewed.
-    const nowIso = new Date().toISOString();
-    setInferredSkills((prev) =>
-      prev.map((s) =>
-        s.userReviewedAt || s.rejectedAt ? s : { ...s, userReviewedAt: nowIso },
-      ),
-    );
-    try {
-      const res = await fetch(
-        `/api/teams/${teamId}/inferred-skills/mark-reviewed`,
-        { method: 'PATCH', credentials: 'include' },
-      );
-      if (!res.ok) {
-        addToast("Couldn't dismiss banner. Try again.", 'error');
-      }
-    } catch {
-      addToast("Couldn't dismiss banner. Try again.", 'error');
-    }
-  }
-
-  function handleReviewBannerClick() {
-    if (typeof document === 'undefined') return;
-    document
-      .getElementById('inferred-from-github-section')
-      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
   const isDirty = useMemo(
     () =>
       !entriesEqual(skills, initial.skills) ||
@@ -403,11 +391,6 @@ export default function ProfilePageClient({
     <>
       <div className="profile-page">
         <main className="profile-page__main">
-          <ReviewBanner
-            count={unreviewedCount}
-            onReview={handleReviewBannerClick}
-            onDismiss={handleDismissBanner}
-          />
           <ProfileFormFields
             canonicalVocab={canonicalVocab}
             skills={skills}
@@ -418,6 +401,24 @@ export default function ProfilePageClient({
             setInterests={setInterests}
             capacity={capacity}
             setCapacity={setCapacity}
+            inferredSection={
+              consentedAt !== null ? (
+                <InferredFromGitHub
+                  items={inferredSkills}
+                  lastScanAt={lastScanAt}
+                  consented={consentedAt !== null}
+                  isScanning={isScanning}
+                  onReject={handleReject}
+                  onUndoReject={handleUndoReject}
+                  onKeep={handleKeep}
+                  onRescan={handleRescan}
+                  rescanRateLimitedUntil={rescanRateLimitedUntil}
+                  diagnostics={scanDiagnostics}
+                  githubUsername={githubUsername}
+                  onReconnect={handleConnect}
+                />
+              ) : undefined
+            }
             consentSection={
               <GithubConsentSection
                 githubUsername={githubUsername}
@@ -438,21 +439,9 @@ export default function ProfilePageClient({
               strengths={strengths}
               interests={interests}
               capacity={capacity}
-              inferredSection={
-                <InferredFromGitHub
-                  items={inferredSkills}
-                  lastScanAt={lastScanAt}
-                  consented={consentedAt !== null}
-                  isScanning={isScanning}
-                  onReject={handleReject}
-                  onUndoReject={handleUndoReject}
-                  onRescan={handleRescan}
-                  rescanRateLimitedUntil={rescanRateLimitedUntil}
-                  diagnostics={scanDiagnostics}
-                  githubUsername={githubUsername}
-                  onReconnect={handleConnect}
-                />
-              }
+              keptInferredSkills={inferredSkills.filter(
+                (s) => s.userReviewedAt !== null && s.rejectedAt === null,
+              )}
             />
           </div>
         </aside>

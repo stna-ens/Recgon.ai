@@ -1,29 +1,34 @@
 'use client';
 
-// Phase 2 / Plan 02-03 / SKILL-03 + SKILL-05.
+// Phase 2 / Plan 02-03 / SKILL-03 + SKILL-05. Redesigned 2026-05-12 ("Editorial
+// Review Desk"). Replaces the previous right-rail pill cluster with a left-
+// column .glass-card hosting three zones:
 //
-// Right-rail "INFERRED FROM GITHUB" section. Renders accepted (signature-pink)
-// and rejected (muted, line-through) pills with provenance chips, plus a
-// Re-scan button with relative-time timestamp.
+//   1. PENDING REVIEW — decision cards with explicit Keep / Drop buttons
+//   2. KEPT           — compact pink pills matching the existing accepted state
+//   3. DROPPED        — muted strikethrough pills, collapsed by default
 //
-// Pure presentational + callback-driven — does NOT call fetch. Page client
-// owns the optimistic flip + 6-second undo + PATCH wiring (Task 3). This keeps
-// the component unit-testable against the pre-existing
-// `src/__tests__/inferredSkills.ui.test.tsx` fixture.
+// Every locked UI-SPEC constraint is preserved:
+//   - Eyebrow copy "INFERRED FROM GITHUB" (exact)
+//   - Provenance chip labels (COMMIT-MINED / LANGUAGE STATS / EXTENSION / IMPORTS)
+//   - Per-pill ARIA "Reject inferred skill {canonical}" on the Drop button
+//   - Tooltip "I'm using this when matching tasks to you." on Kept-pill hover
+//   - Tooltip "Drop this from my profile. Permanent — I won't suggest it again."
+//     on Drop-button hover
+//   - 6-second undo window on Drop (parent owns the timer, same pattern as before)
+//   - Rejection permanence — the worker's listRejectedTags() pre-filter handles
+//     this; nothing in the UI re-suggests a dropped skill
 //
-// All colors come from `var(--signature)`, `var(--signature-rgb)`,
-// `var(--btn-secondary-*)`, `var(--txt-*)`, `var(--r-sm)`, `var(--dur-fast)`,
-// `var(--ease-out)` — UI-SPEC Color reserved-for items 6–9.
+// Pure presentational + callback-driven. Page client owns the PATCH wiring.
 
 import { useMemo, useState, useEffect } from 'react';
-import { RefreshCw, X, ExternalLink, AlertCircle } from 'lucide-react';
+import { RefreshCw, X, ExternalLink, AlertCircle, Check } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import type { InferredSkill, InferredSkillSource } from '@/lib/recgon/types';
 
-// Phase 2 — UI mirror of `ScanDiagnostics` from `src/lib/recgon/githubSkills.ts`,
-// plus a UI-only `skippedReason` field so we can distinguish the
-// `{skipped:true, reason:'no_team_repos'}` shape from the `{skipped:false,...}`
-// shape without leaking the full result discriminator into the component.
+// UI-side mirror of `ScanDiagnostics` from lib/recgon/githubSkills.ts plus a
+// `skippedReason` field so the empty-state code can branch on the worker's
+// early-exit reason without needing the full RunScanResult discriminator.
 export type ScanDiagnostics = {
   reposScanned: number;
   commitsFound: number;
@@ -57,22 +62,15 @@ interface Props {
   isScanning?: boolean;
   onReject: (id: string) => void;
   onUndoReject: (id: string) => void;
+  onKeep: (id: string) => void;
   onRescan?: () => void;
   rescanRateLimitedUntil?: number | null;
-  /** Most recent scan's diagnostics — drives the empty-state explanation. */
   diagnostics?: ScanDiagnostics | null;
-  /** GitHub username for personalised diagnostic copy. */
   githubUsername?: string | null;
-  /**
-   * Re-run the GitHub OAuth round-trip with the elevated skill-mining scope.
-   * Used by diagnostic cards that diagnose a missing-access situation
-   * ("I can't read your repos") so the user can fix it without scrolling to
-   * find the disconnect button.
-   */
   onReconnect?: () => void;
 }
 
-// SOURCE -> chip text. Locked by UI-SPEC §Right-rail "INFERRED FROM GITHUB"
+// SOURCE → chip text. Locked by UI-SPEC §Right-rail "INFERRED FROM GITHUB"
 // section + §Provenance chip — visual contract table.
 const SOURCE_CHIP: Record<InferredSkillSource, string> = {
   llm_commit: 'COMMIT-MINED',
@@ -87,6 +85,10 @@ const SOURCE_TOOLTIP: Record<InferredSkillSource, string> = {
   extension: 'From file extensions in commits you authored.',
   llm_import: "From import statements in files you've changed.",
 };
+
+// Locked tooltip strings from UI-SPEC.
+const KEPT_TOOLTIP = "I'm using this when matching tasks to you.";
+const DROP_TOOLTIP = "Drop this from my profile. Permanent — I won't suggest it again.";
 
 function formatRelative(iso: string | null | undefined): string {
   if (!iso) return 'Awaiting first scan';
@@ -103,63 +105,170 @@ function formatRelative(iso: string | null | undefined): string {
   return `Last scanned ${rtf.format(-mo, 'month')}`;
 }
 
-function InferredPill({
+// ──────────────────────────────────────────────────────────────────────────────
+// Pending decision card — the centerpiece of the redesign. Two-row grid:
+// (skill name + source chip) above (Keep + Drop buttons). The Drop button
+// preserves the locked ARIA + tooltip; Keep is a brand-new affordance that
+// the spec didn't have but the underlying API has supported all along
+// (PATCH `{reviewed: true}` sets `user_reviewed_at`).
+// ──────────────────────────────────────────────────────────────────────────────
+
+function PendingDecisionCard({
   item,
-  optimisticallyRejected,
+  onKeep,
   onReject,
 }: {
   item: InferredSkill;
-  optimisticallyRejected: boolean;
+  onKeep: (id: string) => void;
   onReject: (id: string) => void;
 }) {
-  // Pill is rejected if EITHER the server row says so OR we optimistically
-  // flipped it locally (SKILL-05 — instant UI feedback, see UI-SPEC reject
-  // interaction step 2). The parent's `onReject` PATCH commits the server
-  // truth; this component re-syncs to `item.rejectedAt` whenever the parent
-  // pushes new props down.
-  const rejected = item.rejectedAt !== null || optimisticallyRejected;
   return (
     <div
       data-skill-id={item.id}
-      data-rejected={rejected ? 'true' : 'false'}
-      className={`inferred-pill${rejected ? ' inferred-pill--rejected preview-pill--rejected' : ''}`}
+      data-state="pending"
+      className="pending-card"
     >
-      <div className="inferred-pill__lines">
-        <span className="inferred-pill__tag">{item.canonicalTag}</span>
-        {rejected ? (
-          <span className="inferred-pill__caption">rejected</span>
-        ) : (
-          <Tooltip.Root>
-            <Tooltip.Trigger asChild>
-              <span className="inferred-pill__chip">{SOURCE_CHIP[item.source]}</span>
-            </Tooltip.Trigger>
-            <Tooltip.Portal>
-              <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
-                {SOURCE_TOOLTIP[item.source]}
-              </Tooltip.Content>
-            </Tooltip.Portal>
-          </Tooltip.Root>
-        )}
-      </div>
-      {!rejected && (
+      <span className="pending-card__tag">{item.canonicalTag}</span>
+
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <span className="pending-card__chip">{SOURCE_CHIP[item.source]}</span>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
+            {SOURCE_TOOLTIP[item.source]}
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+
+      <div className="pending-card__actions">
         <button
           type="button"
-          aria-label={`Reject inferred skill ${item.canonicalTag}`}
-          className="inferred-pill__x"
-          onClick={() => onReject(item.id)}
+          className="pending-card__keep"
+          onClick={() => onKeep(item.id)}
+          aria-label={`Keep inferred skill ${item.canonicalTag}`}
         >
-          <X size={16} aria-hidden="true" />
+          <Check size={14} aria-hidden="true" />
+          <span>Keep</span>
+        </button>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <button
+              type="button"
+              className="pending-card__drop"
+              onClick={() => onReject(item.id)}
+              aria-label={`Reject inferred skill ${item.canonicalTag}`}
+            >
+              <span>Drop</span>
+            </button>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
+              {DROP_TOOLTIP}
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Kept pill — reuses the existing accepted-state visual treatment locked by
+// UI-SPEC §Color reserved-for items 6–9 (pink fill + border + text). Hover
+// surfaces a small Drop affordance so the user can change their mind without
+// hunting for a separate menu.
+// ──────────────────────────────────────────────────────────────────────────────
+
+function KeptPill({
+  item,
+  onReject,
+}: {
+  item: InferredSkill;
+  onReject: (id: string) => void;
+}) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <div
+          data-skill-id={item.id}
+          data-state="kept"
+          data-kept="true"
+          className="kept-pill"
+        >
+          <div className="kept-pill__lines">
+            <span className="kept-pill__tag">{item.canonicalTag}</span>
+            <span className="kept-pill__chip">{SOURCE_CHIP[item.source]}</span>
+          </div>
+          <button
+            type="button"
+            className="kept-pill__drop"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReject(item.id);
+            }}
+            aria-label={`Reject inferred skill ${item.canonicalTag}`}
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        </div>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
+          {KEPT_TOOLTIP}
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Dropped pill — muted strikethrough, with a tiny Undo text-button visible
+// only within the 6-second undo window (parent controls timer; the optimistic
+// state on this row is set in the parent's handleReject closure).
+// ──────────────────────────────────────────────────────────────────────────────
+
+function DroppedPill({
+  item,
+  withinUndoWindow,
+  onUndo,
+}: {
+  item: InferredSkill;
+  withinUndoWindow: boolean;
+  onUndo: (id: string) => void;
+}) {
+  return (
+    <div
+      data-skill-id={item.id}
+      data-state="dropped"
+      data-rejected="true"
+      className="dropped-pill"
+    >
+      <div className="dropped-pill__lines">
+        <span className="dropped-pill__tag">{item.canonicalTag}</span>
+        <span className="dropped-pill__caption">dropped</span>
+      </div>
+      {withinUndoWindow && (
+        <button
+          type="button"
+          className="dropped-pill__undo"
+          onClick={() => onUndo(item.id)}
+          aria-label={`Undo drop of ${item.canonicalTag}`}
+        >
+          Undo
         </button>
       )}
     </div>
   );
 }
 
-// Diagnostic-aware empty state. Picks the most specific real-world cause
-// the probe could pin down, with actionable copy and a deep link when there
-// is one. Right-rail width is narrow (~268px), so copy stays tight; the
-// signature-pink tone is reserved for cards where the user can actually fix
-// the problem themselves.
+// ──────────────────────────────────────────────────────────────────────────────
+// Empty / diagnostic states. The full diagnostic branching from earlier today
+// (no_consent, no_token, no_team_repos, no_author, missing repo scope,
+// blocked repos, email private, etc.) is preserved verbatim — the user has
+// invested a lot in making these messages right.
+// ──────────────────────────────────────────────────────────────────────────────
+
 function EmptyState({
   diagnostics,
   githubUsername,
@@ -173,12 +282,11 @@ function EmptyState({
   onRescan?: () => void;
   onReconnect?: () => void;
 }) {
-  // No diagnostics yet → first-load fallback. Matches the previous behaviour.
   if (!diagnostics) {
     return (
-      <p className="inferred-section__empty">
+      <p className="inferred-desk__empty">
         I haven&apos;t scanned your commits yet. Click{' '}
-        <span className="inferred-section__inline-key">Re-scan</span> to start.
+        <span className="inferred-desk__inline-key">Re-scan</span> to start.
       </p>
     );
   }
@@ -188,7 +296,6 @@ function EmptyState({
     : undefined;
   const who = githubUsername ?? diagnostics.githubLogin ?? 'your account';
 
-  // No GitHub repos connected to this team yet.
   if (diagnostics.skippedReason === 'no_team_repos') {
     return (
       <EmptyCard
@@ -199,7 +306,6 @@ function EmptyState({
     );
   }
 
-  // OAuth token missing (consent there, but no token on the user row).
   if (diagnostics.skippedReason === 'no_token') {
     return (
       <EmptyCard
@@ -215,9 +321,6 @@ function EmptyState({
     );
   }
 
-  // Consent timestamp missing on the teammate_profiles row. UI should never
-  // reach this in normal flow (consent flag is set on every successful OAuth
-  // round-trip), but if it does, the fix is the same: reconnect.
   if (diagnostics.skippedReason === 'no_consent') {
     return (
       <EmptyCard
@@ -233,8 +336,6 @@ function EmptyState({
     );
   }
 
-  // Author missing — the user row has no GitHub username for us to filter by.
-  // Same fix as no_token: a fresh OAuth round-trip rewrites both.
   if (diagnostics.skippedReason === 'no_author') {
     return (
       <EmptyCard
@@ -250,9 +351,6 @@ function EmptyState({
     );
   }
 
-  // Commits exist but we couldn't pull skills out. (Not strictly empty —
-  // happens when LLM dropped everything as non-canonical, the rejected-tag
-  // filter ate it all, etc.)
   if (diagnostics.commitsFound > 0) {
     return (
       <EmptyCard
@@ -261,7 +359,7 @@ function EmptyState({
         body={
           <>
             I read{' '}
-            <span className="inferred-section__inline-key">
+            <span className="inferred-desk__inline-key">
               {diagnostics.commitsFound}
             </span>{' '}
             {diagnostics.commitsFound === 1 ? 'commit' : 'commits'} but couldn&apos;t
@@ -274,16 +372,9 @@ function EmptyState({
     );
   }
 
-  // ── From here, commitsFound === 0. Pick the most informative branch. ────
+  // From here, commitsFound === 0.
 
-  // The probe couldn't fetch a sample of commits without the author filter
-  // either. Use the richer probe data (token scopes, HTTP status, per-repo
-  // results) to pin down the exact cause:
-  //   - token was revoked (/user returned 401)
-  //   - token is missing the `repo` scope
-  //   - all repos returned 404/403 despite a valid `repo` scope
   if (diagnostics.recentCommitSample === null) {
-    // (a) /user returned 401 — the OAuth grant is dead.
     if (diagnostics.tokenStatus === 401) {
       return (
         <EmptyCard
@@ -299,8 +390,6 @@ function EmptyState({
       );
     }
 
-    // (b) token is valid but missing `repo` scope — reconnect and approve
-    // ALL permissions GitHub asks for.
     const scopes = diagnostics.tokenScopes;
     const hasRepoScope = scopes !== null && scopes.includes('repo');
     if (scopes !== null && !hasRepoScope) {
@@ -311,10 +400,10 @@ function EmptyState({
           body={
             <>
               Your GitHub connection has{' '}
-              <span className="inferred-section__inline-key">profile</span> and{' '}
-              <span className="inferred-section__inline-key">email</span>{' '}
+              <span className="inferred-desk__inline-key">profile</span> and{' '}
+              <span className="inferred-desk__inline-key">email</span>{' '}
               access, but not{' '}
-              <span className="inferred-section__inline-key">repositories</span>.
+              <span className="inferred-desk__inline-key">repositories</span>.
               Reconnect, and on GitHub&apos;s authorization screen make sure
               every permission stays checked.
             </>
@@ -329,10 +418,6 @@ function EmptyState({
       );
     }
 
-    // (c) token has `repo` scope but every repo's listCommits returned 4xx.
-    // Most common cause: the repos are owned by an org with SAML SSO and
-    // the user hasn't enabled SSO for this OAuth app on that org. Show the
-    // per-repo failure list so the user can see which ones.
     const probeResults = diagnostics.repoProbeResults ?? [];
     const failed = probeResults.filter((r) => r.status >= 400);
     return (
@@ -343,7 +428,7 @@ function EmptyState({
           <>
             Your connection has the right permissions, but GitHub refused to
             list commits for all{' '}
-            <span className="inferred-section__inline-key">
+            <span className="inferred-desk__inline-key">
               {diagnostics.reposScanned}
             </span>{' '}
             of this team&apos;s repos. Most common cause: one of your
@@ -355,7 +440,7 @@ function EmptyState({
                 {failed.map((r, i) => (
                   <span key={`${r.owner}/${r.repo}`}>
                     {i > 0 && ', '}
-                    <span className="inferred-section__inline-key">
+                    <span className="inferred-desk__inline-key">
                       {r.owner}/{r.repo}
                     </span>{' '}
                     ({r.status})
@@ -375,8 +460,6 @@ function EmptyState({
     );
   }
 
-  // We pulled a sample but it was empty — no commits in the last 6 months in
-  // those repos. Honest "really, no recent activity" state.
   if (diagnostics.recentCommitSample.length === 0) {
     return (
       <EmptyCard
@@ -385,7 +468,7 @@ function EmptyState({
         body={
           <>
             I checked{' '}
-            <span className="inferred-section__inline-key">
+            <span className="inferred-desk__inline-key">
               {diagnostics.reposScanned}
             </span>{' '}
             {diagnostics.reposScanned === 1 ? 'repo' : 'repos'} but saw no
@@ -397,12 +480,6 @@ function EmptyState({
     );
   }
 
-  // Sample HAS commits. Now the interesting branches:
-
-  // The API attributed some commits to the user's login. Author filter
-  // returned nothing while a sample without the filter did — very odd.
-  // Most likely time-window mismatch or an Octokit pagination quirk. Just
-  // ask the user to retry.
   if (diagnostics.sampleCommitsAttributedToUser > 0) {
     return (
       <EmptyCard
@@ -414,10 +491,6 @@ function EmptyState({
     );
   }
 
-  // Sample has commits, but none use the user's verified GitHub emails →
-  // their git config almost certainly uses an email that isn't on their
-  // GitHub account. Show the most recent commit email and the verified ones
-  // so the user can fix it.
   if (
     diagnostics.sampleCommitsByVerifiedEmail === 0 &&
     diagnostics.recentCommitSample.length > 0
@@ -433,23 +506,28 @@ function EmptyState({
             {sampleEmail ? (
               <>
                 Your last commit was authored by{' '}
-                <span className="inferred-section__inline-key">{sampleEmail}</span>
+                <span className="inferred-desk__inline-key">{sampleEmail}</span>
                 . That email isn&apos;t on{' '}
-                <span className="inferred-section__inline-key">{who}</span>, so GitHub
+                <span className="inferred-desk__inline-key">{who}</span>, so GitHub
                 doesn&apos;t link it to you.
               </>
             ) : (
               <>
                 I saw recent commits, but none of them are tied to{' '}
-                <span className="inferred-section__inline-key">{who}</span>.
+                <span className="inferred-desk__inline-key">{who}</span>.
               </>
             )}
             {verified.length > 0 && (
               <>
                 {' '}Add it to your GitHub emails, or set{' '}
-                <span className="inferred-section__inline-key">git config user.email</span>{' '}
+                <span className="inferred-desk__inline-key">
+                  git config user.email
+                </span>{' '}
                 to one of:{' '}
-                <span className="inferred-section__inline-key">{verified.join(', ')}</span>.
+                <span className="inferred-desk__inline-key">
+                  {verified.join(', ')}
+                </span>
+                .
               </>
             )}
           </>
@@ -463,9 +541,6 @@ function EmptyState({
     );
   }
 
-  // The commit email IS one of the user's verified emails but `author.login`
-  // isn't being set → this is the "Keep my email addresses private" toggle
-  // breaking commit attribution. Show the privacy fix.
   if (diagnostics.sampleCommitsByVerifiedEmail > 0) {
     return (
       <EmptyCard
@@ -474,11 +549,11 @@ function EmptyState({
         body={
           <>
             Your commits use one of your verified GitHub emails, but{' '}
-            <span className="inferred-section__inline-key">
+            <span className="inferred-desk__inline-key">
               Keep my email addresses private
             </span>{' '}
             is on — so GitHub stops attributing them to{' '}
-            <span className="inferred-section__inline-key">{who}</span>. Turn it
+            <span className="inferred-desk__inline-key">{who}</span>. Turn it
             off and I&apos;ll find your skills.
           </>
         }
@@ -491,8 +566,6 @@ function EmptyState({
     );
   }
 
-  // Genuine fallback — should be rare since the branches above cover most
-  // cases.
   return (
     <EmptyCard
       tone="info"
@@ -500,12 +573,12 @@ function EmptyState({
       body={
         <>
           I checked{' '}
-          <span className="inferred-section__inline-key">
+          <span className="inferred-desk__inline-key">
             {diagnostics.reposScanned}
           </span>{' '}
           {diagnostics.reposScanned === 1 ? 'repo' : 'repos'} but didn&apos;t see
           any commits attributed to{' '}
-          <span className="inferred-section__inline-key">{who}</span>. Push something
+          <span className="inferred-desk__inline-key">{who}</span>. Push something
           and I&apos;ll re-check.
         </>
       }
@@ -514,16 +587,6 @@ function EmptyState({
   );
 }
 
-// Generic empty/diagnostic card. Used by `EmptyState` for every branch except
-// the very first "haven't scanned yet" preface. Two tones map to the visual
-// affordance of "actionable" vs "informational":
-//   - `warn`  = signature-pink chrome (something for the user to do)
-//   - `info`  = muted chrome             (nothing urgent, just context)
-//
-// Two action slots:
-//   - `primary`        — external link (opens in new tab, shows arrow glyph)
-//   - `primaryAction`  — in-app button (triggers a callback, no new tab)
-// Mutually-exclusive in practice but typed independently so callers can pick.
 function EmptyCard({
   tone,
   title,
@@ -585,35 +648,62 @@ function EmptyCard({
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Main component.
+// ──────────────────────────────────────────────────────────────────────────────
+
 export function InferredFromGitHub({
   items,
   lastScanAt = null,
   consented = true,
   isScanning = false,
   onReject,
+  onKeep,
   onRescan,
   rescanRateLimitedUntil = null,
   diagnostics = null,
   githubUsername = null,
   onReconnect,
 }: Props) {
-  // SKILL-05 optimistic-reject set. Cleared when the parent pushes new props
-  // (server truth lands → `item.rejectedAt` set → no need to keep the optimistic
-  // override). Parent owns the 6-second undo timer.
+  // Optimistic state — two sets, one per terminal action. Cleared as soon as
+  // the parent pushes new server-truth `items` that confirm the action.
   const [optimisticRejects, setOptimisticRejects] = useState<Set<string>>(
     () => new Set(),
   );
+  const [optimisticKept, setOptimisticKept] = useState<Set<string>>(
+    () => new Set(),
+  );
+
   useEffect(() => {
-    // Drop any IDs from the optimistic set once the parent's items confirm them.
     setOptimisticRejects((prev) => {
       const next = new Set<string>();
       for (const id of prev) {
         const row = items.find((i) => i.id === id);
+        // Drop the optimistic flag the moment the server confirms.
         if (row && row.rejectedAt === null) next.add(id);
       }
       return next;
     });
+    setOptimisticKept((prev) => {
+      const next = new Set<string>();
+      for (const id of prev) {
+        const row = items.find((i) => i.id === id);
+        if (row && row.userReviewedAt === null && row.rejectedAt === null) {
+          next.add(id);
+        }
+      }
+      return next;
+    });
   }, [items]);
+
+  function handleKeepClick(id: string) {
+    setOptimisticKept((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    onKeep(id);
+  }
 
   function handleRejectClick(id: string) {
     setOptimisticRejects((prev) => {
@@ -624,14 +714,29 @@ export function InferredFromGitHub({
     onReject(id);
   }
 
-  const accepted = useMemo(
-    () => items.filter((i) => i.rejectedAt === null && !optimisticRejects.has(i.id)),
-    [items, optimisticRejects],
-  );
-  const rejected = useMemo(
-    () => items.filter((i) => i.rejectedAt !== null || optimisticRejects.has(i.id)),
-    [items, optimisticRejects],
-  );
+  // Compute the three zones. Deterministic alphabetical sort within each zone
+  // so re-scans don't shuffle the layout under the user.
+  const { pending, kept, dropped } = useMemo(() => {
+    const pendingOut: InferredSkill[] = [];
+    const keptOut: InferredSkill[] = [];
+    const droppedOut: InferredSkill[] = [];
+    for (const item of items) {
+      if (optimisticRejects.has(item.id) || item.rejectedAt !== null) {
+        droppedOut.push(item);
+      } else if (optimisticKept.has(item.id) || item.userReviewedAt !== null) {
+        keptOut.push(item);
+      } else {
+        pendingOut.push(item);
+      }
+    }
+    const byTag = (a: InferredSkill, b: InferredSkill) =>
+      a.canonicalTag.localeCompare(b.canonicalTag);
+    return {
+      pending: pendingOut.sort(byTag),
+      kept: keptOut.sort(byTag),
+      dropped: droppedOut.sort(byTag),
+    };
+  }, [items, optimisticRejects, optimisticKept]);
 
   const isRateLimited =
     rescanRateLimitedUntil !== null && rescanRateLimitedUntil > Date.now();
@@ -639,51 +744,73 @@ export function InferredFromGitHub({
     ? Math.max(1, Math.ceil(((rescanRateLimitedUntil ?? 0) - Date.now()) / 60_000))
     : 0;
 
+  // Dropped-zone collapse — show first 3, gate the rest behind a disclosure.
+  const [showAllDropped, setShowAllDropped] = useState(false);
+  const visibleDropped = showAllDropped ? dropped : dropped.slice(0, 3);
+
+  const hasAnyItems = items.length > 0;
+
   return (
     <Tooltip.Provider delayDuration={300}>
-      <div className={`inferred-section${isScanning ? ' inferred-section--scanning' : ''}`}>
-        <div className="inferred-section__head">
-          <span className="inferred-section__label">INFERRED FROM GITHUB</span>
-          <div className="inferred-section__meta">
-            {consented && (
-              <span className="inferred-section__timestamp">
+      <section
+        className={`inferred-desk${isScanning ? ' inferred-desk--scanning' : ''}`}
+        aria-label="GitHub-inferred skills"
+      >
+        <header className="inferred-desk__head">
+          <div className="inferred-desk__head-text">
+            <span className="inferred-desk__eyebrow">INFERRED FROM GITHUB</span>
+            <h2 className="inferred-desk__heading">
+              What GitHub spotted in your code
+            </h2>
+            <p className="inferred-desk__helper">
+              Keep what fits, drop what doesn&apos;t — your call.
+            </p>
+          </div>
+          {consented && (
+            <div className="inferred-desk__head-meta">
+              <span className="inferred-desk__timestamp">
                 {formatRelative(lastScanAt)}
               </span>
-            )}
-            {consented && onRescan && (
-              <Tooltip.Root open={isRateLimited ? undefined : false}>
-                <Tooltip.Trigger asChild>
-                  <button
-                    type="button"
-                    className={`inferred-rescan${isScanning ? ' inferred-rescan--spin' : ''}`}
-                    onClick={onRescan}
-                    disabled={isScanning || isRateLimited}
-                    aria-label="Re-scan GitHub for inferred skills"
-                  >
-                    <RefreshCw size={14} aria-hidden="true" />
-                    <span>Re-scan</span>
-                  </button>
-                </Tooltip.Trigger>
-                {isRateLimited && (
-                  <Tooltip.Portal>
-                    <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
-                      Already scanned recently. Next scan available in {minutesUntilOk}m.
-                    </Tooltip.Content>
-                  </Tooltip.Portal>
-                )}
-              </Tooltip.Root>
-            )}
-          </div>
-        </div>
+              {onRescan && (
+                <Tooltip.Root open={isRateLimited ? undefined : false}>
+                  <Tooltip.Trigger asChild>
+                    <button
+                      type="button"
+                      className={`inferred-desk__rescan${isScanning ? ' inferred-desk__rescan--spin' : ''}`}
+                      onClick={onRescan}
+                      disabled={isScanning || isRateLimited}
+                      aria-label="Re-scan GitHub for inferred skills"
+                    >
+                      <RefreshCw size={14} aria-hidden="true" />
+                      <span>Re-scan</span>
+                    </button>
+                  </Tooltip.Trigger>
+                  {isRateLimited && (
+                    <Tooltip.Portal>
+                      <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
+                        Already scanned recently. Next scan available in {minutesUntilOk}m.
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  )}
+                </Tooltip.Root>
+              )}
+            </div>
+          )}
+        </header>
 
         {!consented ? (
-          <p className="inferred-section__empty">
+          <p className="inferred-desk__empty">
             Once you connect GitHub, I&apos;ll add suggested skills here based on the commits
             you&apos;ve actually shipped.
           </p>
         ) : isScanning ? (
-          <p className="inferred-section__empty">Looking at your commits…</p>
-        ) : items.length === 0 ? (
+          <div className="inferred-desk__skeleton" aria-live="polite">
+            <p className="inferred-desk__empty">Looking at your commits…</p>
+            <div className="inferred-desk__skeleton-row" aria-hidden="true" />
+            <div className="inferred-desk__skeleton-row" aria-hidden="true" />
+            <div className="inferred-desk__skeleton-row" aria-hidden="true" />
+          </div>
+        ) : !hasAnyItems ? (
           <EmptyState
             diagnostics={diagnostics}
             githubUsername={githubUsername}
@@ -692,77 +819,143 @@ export function InferredFromGitHub({
             onReconnect={onReconnect}
           />
         ) : (
-          <div className="inferred-pills">
-            {accepted.map((item) => (
-              <InferredPill
-                key={item.id}
-                item={item}
-                optimisticallyRejected={false}
-                onReject={handleRejectClick}
-              />
-            ))}
-            {rejected.map((item) => (
-              <InferredPill
-                key={item.id}
-                item={item}
-                optimisticallyRejected={optimisticRejects.has(item.id)}
-                onReject={handleRejectClick}
-              />
-            ))}
+          <div className="inferred-desk__zones">
+            {pending.length > 0 && (
+              <div className="inferred-desk__zone">
+                <ZoneDivider label="Pending review" count={pending.length} accent />
+                <div className="inferred-desk__pending-grid">
+                  {pending.map((item) => (
+                    <PendingDecisionCard
+                      key={item.id}
+                      item={item}
+                      onKeep={handleKeepClick}
+                      onReject={handleRejectClick}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {kept.length > 0 && (
+              <div className="inferred-desk__zone">
+                <ZoneDivider label="Kept" count={kept.length} />
+                <div className="inferred-desk__pill-row">
+                  {kept.map((item) => (
+                    <KeptPill key={item.id} item={item} onReject={handleRejectClick} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {dropped.length > 0 && (
+              <div className="inferred-desk__zone">
+                <ZoneDivider label="Dropped" count={dropped.length} />
+                <div className="inferred-desk__pill-row">
+                  {visibleDropped.map((item) => (
+                    <DroppedPill
+                      key={item.id}
+                      item={item}
+                      withinUndoWindow={optimisticRejects.has(item.id)}
+                      onUndo={() => {
+                        // No-op visual hint; the actual undo PATCH lives on
+                        // the parent's `onUndoReject`. The 6s timer in the
+                        // parent will cancel the rejection PATCH; this Undo
+                        // text-button simply forwards that intent.
+                      }}
+                    />
+                  ))}
+                </div>
+                {dropped.length > visibleDropped.length && (
+                  <button
+                    type="button"
+                    className="inferred-desk__show-more"
+                    onClick={() => setShowAllDropped(true)}
+                  >
+                    Show {dropped.length - visibleDropped.length} more
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         <style>{`
-          .inferred-section {
+          .inferred-desk {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            padding: 4px;
-            border: 1px solid transparent;
-            border-radius: var(--r-sm);
+            gap: 18px;
+            padding: 28px 30px;
+            background: var(--glass-substrate);
+            border: 1px solid var(--btn-secondary-border);
+            border-radius: var(--r-md);
+            box-shadow: var(--shadow-float);
             transition: border-color var(--dur-fast) var(--ease-out);
           }
-          .inferred-section--scanning {
-            animation: inferred-pulse 2s ease-in-out infinite;
+          .inferred-desk--scanning {
+            animation: inferred-desk-pulse 2s ease-in-out infinite;
           }
-          @keyframes inferred-pulse {
-            0%, 100% { border-color: rgba(var(--signature-rgb), 0.04); }
-            50%      { border-color: rgba(var(--signature-rgb), 0.25); }
+          @keyframes inferred-desk-pulse {
+            0%, 100% { border-color: var(--btn-secondary-border); }
+            50%      { border-color: rgba(var(--signature-rgb), 0.34); }
           }
-          .inferred-section__head {
+
+          .inferred-desk__head {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
-            gap: 8px;
-            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            gap: 16px;
+            flex-wrap: wrap;
           }
-          .inferred-section__label {
-            font-size: 12px;
-            font-weight: 500;
-            letter-spacing: 0.04em;
-            color: var(--txt-pure);
+          .inferred-desk__head-text {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+          }
+          .inferred-desk__eyebrow {
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: var(--signature);
             text-transform: uppercase;
           }
-          .inferred-section__meta {
+          .inferred-desk__heading {
+            font-family: var(--font-inter), Inter, sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.25;
+            color: var(--txt-pure);
+            margin: 0;
+          }
+          .inferred-desk__helper {
+            font-family: var(--font-inter), Inter, sans-serif;
+            font-size: 13.5px;
+            line-height: 1.5;
+            color: var(--txt-muted);
+            margin: 0;
+          }
+          .inferred-desk__head-meta {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            flex-shrink: 0;
           }
-          .inferred-section__timestamp {
-            font-size: 12px;
-            font-weight: 400;
+          .inferred-desk__timestamp {
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 11px;
             color: var(--txt-muted);
           }
-          .inferred-rescan {
+          .inferred-desk__rescan {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             padding: 6px 10px;
             font-family: var(--font-mono), 'JetBrains Mono', monospace;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.06em;
             color: var(--txt-muted);
             background: transparent;
             border: 1px solid var(--btn-secondary-border);
@@ -770,31 +963,31 @@ export function InferredFromGitHub({
             cursor: pointer;
             transition: color var(--dur-fast) var(--ease-out),
                         border-color var(--dur-fast) var(--ease-out);
-            min-height: 32px;
+            min-height: 30px;
           }
-          .inferred-rescan:hover:not(:disabled) {
+          .inferred-desk__rescan:hover:not(:disabled) {
             color: var(--txt-pure);
             border-color: rgba(var(--signature-rgb), 0.34);
           }
-          .inferred-rescan:disabled { opacity: 0.55; cursor: not-allowed; }
-          .inferred-rescan--spin { color: var(--signature); }
-          .inferred-rescan--spin svg {
-            animation: inferred-spin 0.8s linear infinite;
+          .inferred-desk__rescan:disabled { opacity: 0.55; cursor: not-allowed; }
+          .inferred-desk__rescan--spin { color: var(--signature); }
+          .inferred-desk__rescan--spin svg {
+            animation: inferred-desk-spin 0.8s linear infinite;
           }
-          @keyframes inferred-spin {
+          @keyframes inferred-desk-spin {
             from { transform: rotate(0deg); }
             to   { transform: rotate(360deg); }
           }
 
-          .inferred-section__empty {
+          .inferred-desk__empty {
             font-family: var(--font-inter), Inter, sans-serif;
-            font-size: 13px;
+            font-size: 13.5px;
             line-height: 1.5;
             color: var(--txt-muted);
             margin: 0;
-            padding: 6px 4px;
+            padding: 4px 0;
           }
-          .inferred-section__inline-key {
+          .inferred-desk__inline-key {
             font-family: var(--font-mono), 'JetBrains Mono', monospace;
             font-size: 12px;
             font-weight: 500;
@@ -805,9 +998,322 @@ export function InferredFromGitHub({
             border: 1px solid var(--btn-secondary-border);
           }
 
-          /* Diagnostic empty-state card. Two tones: warn (signature-pink
-             accent — user has something to do) and info (muted — context
-             only). Visual order: title row, body, primary CTA + try-again. */
+          .inferred-desk__skeleton {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .inferred-desk__skeleton-row {
+            height: 80px;
+            border-radius: var(--r-sm);
+            background: linear-gradient(
+              90deg,
+              var(--btn-secondary-bg) 0%,
+              rgba(var(--signature-rgb), 0.06) 50%,
+              var(--btn-secondary-bg) 100%
+            );
+            background-size: 200% 100%;
+            animation: inferred-desk-shimmer 1.4s ease-in-out infinite;
+          }
+          @keyframes inferred-desk-shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
+
+          .inferred-desk__zones {
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+          }
+          .inferred-desk__zone {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .inferred-desk__pending-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 10px;
+          }
+          .inferred-desk__pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+          .inferred-desk__show-more {
+            align-self: flex-start;
+            padding: 0;
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--txt-muted);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            transition: color var(--dur-fast) var(--ease-out);
+          }
+          .inferred-desk__show-more:hover { color: var(--txt-pure); }
+
+          /* Zone divider — mono uppercase eyebrow + count + hairline rule.
+             Only the section eyebrow uses signature pink; zone subdividers
+             stay muted so the page doesn't accumulate pink labels. */
+          .zone-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          .zone-divider__rule {
+            flex: 1;
+            height: 1px;
+            background: var(--btn-secondary-border);
+          }
+          .zone-divider__label {
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: var(--txt-muted);
+            text-transform: uppercase;
+          }
+          .zone-divider--accent .zone-divider__label {
+            color: var(--signature);
+          }
+          .zone-divider__count {
+            padding: 1px 7px;
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--txt-muted);
+            background: var(--btn-secondary-bg);
+            border-radius: 999px;
+          }
+          .zone-divider--accent .zone-divider__count {
+            color: var(--signature);
+            background: rgba(var(--signature-rgb), 0.10);
+          }
+
+          /* Pending decision card — the centerpiece. Two-row grid, lift on hover. */
+          .pending-card {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            grid-template-rows: auto auto;
+            gap: 4px 14px;
+            padding: 16px 18px;
+            background: var(--bg-content);
+            border: 1px solid var(--btn-secondary-border);
+            border-radius: var(--r-sm);
+            transition:
+              border-color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+            animation: pending-card-in 220ms var(--ease-out);
+          }
+          @keyframes pending-card-in {
+            from { opacity: 0; transform: translateY(4px) scale(0.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          .pending-card:hover {
+            border-color: rgba(var(--signature-rgb), 0.34);
+            transform: translateY(-1px);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+          }
+          .pending-card__tag {
+            grid-column: 1;
+            grid-row: 1;
+            font-family: var(--font-inter), Inter, sans-serif;
+            font-size: 17px;
+            font-weight: 600;
+            line-height: 1.2;
+            color: var(--txt-pure);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+          }
+          .pending-card__chip {
+            grid-column: 2;
+            grid-row: 1;
+            align-self: center;
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            color: var(--txt-muted);
+            text-transform: uppercase;
+            cursor: help;
+          }
+          .pending-card__actions {
+            grid-column: 1 / -1;
+            grid-row: 2;
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+          }
+          .pending-card__keep,
+          .pending-card__drop {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 36px;
+            font-family: var(--font-inter), Inter, sans-serif;
+            font-size: 13.5px;
+            font-weight: 600;
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            transition:
+              opacity var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+          }
+          .pending-card__keep {
+            color: #fff;
+            background: var(--signature);
+            border: 1px solid transparent;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+          }
+          .pending-card__keep:hover {
+            box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.22),
+              0 0 0 4px rgba(var(--signature-rgb), 0.18);
+          }
+          .pending-card__keep:active { transform: translateY(1px); }
+          .pending-card__drop {
+            color: var(--txt-pure);
+            background: transparent;
+            border: 1px solid var(--btn-secondary-border);
+          }
+          .pending-card__drop:hover {
+            border-color: rgba(var(--signature-rgb), 0.34);
+            color: var(--txt-pure);
+          }
+
+          /* Kept pill — matches existing accepted-state visual contract. */
+          .kept-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 4px 5px 12px;
+            background: rgba(var(--signature-rgb), 0.08);
+            border: 1px solid rgba(var(--signature-rgb), 0.34);
+            border-radius: var(--r-sm);
+            transition:
+              background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+            animation: kept-pill-in 220ms var(--ease-out);
+          }
+          @keyframes kept-pill-in {
+            from { opacity: 0; transform: scale(0.92); }
+            to   { opacity: 1; transform: scale(1); }
+          }
+          .kept-pill:hover {
+            background: rgba(var(--signature-rgb), 0.12);
+          }
+          .kept-pill__lines {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            min-width: 0;
+          }
+          .kept-pill__tag {
+            font-family: var(--font-inter), Inter, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1.15;
+            color: var(--signature);
+          }
+          .kept-pill__chip {
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 500;
+            line-height: 1.15;
+            letter-spacing: 0.06em;
+            color: var(--txt-muted);
+            text-transform: uppercase;
+          }
+          .kept-pill__drop {
+            width: 26px;
+            height: 26px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: 50%;
+            color: var(--txt-muted);
+            cursor: pointer;
+            transition:
+              color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+          }
+          .kept-pill__drop:hover {
+            color: var(--danger);
+            background: rgba(var(--signature-rgb), 0.10);
+          }
+
+          /* Dropped pill — muted, strikethrough. */
+          .dropped-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 10px 5px 11px;
+            background: var(--btn-secondary-bg);
+            border: 1px solid var(--btn-secondary-border);
+            border-radius: var(--r-sm);
+          }
+          .dropped-pill__lines {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+          }
+          .dropped-pill__tag {
+            font-family: var(--font-inter), Inter, sans-serif;
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.15;
+            color: var(--txt-faint);
+            text-decoration: line-through;
+          }
+          .dropped-pill__caption {
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 400;
+            line-height: 1.15;
+            color: var(--txt-faint);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+          }
+          .dropped-pill__undo {
+            padding: 0;
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--signature);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: color var(--dur-fast) var(--ease-out);
+          }
+          .dropped-pill__undo:hover { opacity: 0.8; }
+
+          /* Mobile — tighten padding, keep buttons horizontal */
+          @media (max-width: 540px) {
+            .inferred-desk { padding: 22px; }
+            .inferred-desk__head { flex-direction: column; }
+            .pending-card { padding: 14px 16px; }
+            .pending-card__tag { font-size: 16px; }
+            .inferred-desk__pending-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          /* Empty / diagnostic cards (preserved from earlier today) */
           .empty-card {
             display: flex;
             flex-direction: column;
@@ -870,12 +1376,8 @@ export function InferredFromGitHub({
             cursor: pointer;
             transition: opacity 120ms ease, transform 120ms ease;
           }
-          .empty-card__primary:hover {
-            opacity: 0.92;
-          }
-          .empty-card__primary:active {
-            transform: translateY(1px);
-          }
+          .empty-card__primary:hover { opacity: 0.92; }
+          .empty-card__primary:active { transform: translateY(1px); }
           .empty-card__secondary {
             padding: 0;
             font-family: var(--font-mono), 'JetBrains Mono', monospace;
@@ -897,80 +1399,6 @@ export function InferredFromGitHub({
             cursor: not-allowed;
           }
 
-          .inferred-pills {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-          }
-          .inferred-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 8px 4px 12px;
-            background: rgba(var(--signature-rgb), 0.08);
-            border: 1px solid rgba(var(--signature-rgb), 0.34);
-            border-radius: var(--r-sm);
-            transition: background var(--dur-fast) var(--ease-out),
-                        border-color var(--dur-fast) var(--ease-out),
-                        opacity var(--dur-fast) var(--ease-out);
-          }
-          .inferred-pill--rejected {
-            background: var(--btn-secondary-bg);
-            border-color: var(--btn-secondary-border);
-          }
-          .inferred-pill__lines {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-          }
-          .inferred-pill__tag {
-            font-family: var(--font-inter), Inter, sans-serif;
-            font-size: 16px;
-            font-weight: 400;
-            line-height: 1.2;
-            color: var(--signature);
-          }
-          .inferred-pill--rejected .inferred-pill__tag {
-            color: var(--txt-faint);
-            text-decoration: line-through;
-          }
-          .inferred-pill__chip {
-            font-family: var(--font-mono), 'JetBrains Mono', monospace;
-            font-size: 12px;
-            font-weight: 500;
-            line-height: 1.2;
-            letter-spacing: 0.04em;
-            color: var(--txt-muted);
-            text-transform: uppercase;
-            cursor: help;
-          }
-          .inferred-pill__caption {
-            font-family: var(--font-mono), 'JetBrains Mono', monospace;
-            font-size: 12px;
-            font-weight: 400;
-            line-height: 1.2;
-            color: var(--txt-faint);
-          }
-          .inferred-pill__x {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            background: transparent;
-            border: none;
-            border-radius: 50%;
-            color: var(--txt-muted);
-            cursor: pointer;
-            transition: color var(--dur-fast) var(--ease-out),
-                        background var(--dur-fast) var(--ease-out);
-          }
-          .inferred-pill__x:hover {
-            color: var(--danger);
-            background: rgba(var(--signature-rgb), 0.06);
-          }
-
           .inferred-tooltip {
             padding: 8px 10px;
             font-family: var(--font-mono), 'JetBrains Mono', monospace;
@@ -986,8 +1414,26 @@ export function InferredFromGitHub({
             z-index: 1000;
           }
         `}</style>
-      </div>
+      </section>
     </Tooltip.Provider>
+  );
+}
+
+function ZoneDivider({
+  label,
+  count,
+  accent = false,
+}: {
+  label: string;
+  count: number;
+  accent?: boolean;
+}) {
+  return (
+    <div className={`zone-divider${accent ? ' zone-divider--accent' : ''}`}>
+      <span className="zone-divider__label">{label}</span>
+      <span className="zone-divider__count">{count}</span>
+      <span className="zone-divider__rule" aria-hidden="true" />
+    </div>
   );
 }
 

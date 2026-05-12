@@ -35,6 +35,10 @@ interface Props {
   // rendered 24px below the rest of the form. ProfilePageClient owns the
   // consent state + OAuth wiring.
   consentSection?: React.ReactNode;
+  // Phase 2 redesign 2026-05-12: GitHub-inferred-skills editorial review desk,
+  // rendered ABOVE the Skills field (first form section). ProfilePageClient
+  // owns the inferred-skill state + PATCH wiring.
+  inferredSection?: React.ReactNode;
 }
 
 const FIELD_LABEL: Record<FieldKey, string> = {
@@ -93,6 +97,7 @@ export default function ProfileFormFields({
   capacity,
   setCapacity,
   consentSection,
+  inferredSection,
 }: Props) {
   const [activeField, setActiveField] = useState<FieldKey | null>(null);
   const [query, setQuery] = useState('');
@@ -116,6 +121,7 @@ export default function ProfileFormFields({
 
   return (
     <div className="profile-fields">
+      {inferredSection}
       {(Object.keys(FIELD_LABEL) as FieldKey[]).map((field) => {
         const [items] = fieldState[field];
         return (

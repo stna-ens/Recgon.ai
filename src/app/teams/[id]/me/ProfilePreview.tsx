@@ -4,7 +4,9 @@
 // Sits in the right column. The container makes it sticky so the
 // preview follows the user as they scroll the form.
 
+import { useMemo } from 'react';
 import { humanizeTag } from '@/lib/recgon/skillVocabulary';
+import type { InferredSkill } from '@/lib/recgon/types';
 
 type PillEntry = { raw: string; canonical: string[] };
 
@@ -19,10 +21,11 @@ interface Props {
   strengths: PillEntry[];
   interests: PillEntry[];
   capacity: number | null;
-  // Phase 2 / Plan 02-03 / SKILL-03 / D-26: right-rail "INFERRED FROM GITHUB"
-  // section. Rendered 24px below "Likely matched to". Wrapped with id so the
-  // ReviewBanner's smooth-scroll target works.
-  inferredSection?: React.ReactNode;
+  // Phase 2 redesign 2026-05-12: kept (user_reviewed_at IS NOT NULL AND
+  // rejected_at IS NULL) GitHub-inferred skills, merged into the Skills
+  // preview as plain pills (no provenance hint — provenance belongs in the
+  // editorial review section on the left, not in the read-only preview).
+  keptInferredSkills?: InferredSkill[];
 }
 
 function pillLabel(entry: PillEntry): string {
@@ -56,11 +59,27 @@ export default function ProfilePreview({
   strengths,
   interests,
   capacity,
-  inferredSection,
+  keptInferredSkills = [],
 }: Props) {
   const initials = (user.nickname || user.email || '?').slice(0, 2).toUpperCase();
-  const totalDeclarations = skills.length + strengths.length + interests.length;
-  const taskHints = suggestTaskKinds(skills);
+  // Merge self-declared skills with kept-inferred skills. De-dupe by raw value
+  // (case-insensitive) so a skill the user has both manually added AND kept
+  // from GitHub doesn't render twice. Self-declared wins on collision (it
+  // carries the canonical mapping the user picked).
+  const mergedSkills = useMemo(() => {
+    const seen = new Set(skills.map((s) => s.raw.toLowerCase()));
+    const out: PillEntry[] = [...skills];
+    for (const inf of keptInferredSkills) {
+      const key = inf.canonicalTag.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ raw: inf.canonicalTag, canonical: [inf.canonicalTag] });
+    }
+    return out;
+  }, [skills, keptInferredSkills]);
+  const totalDeclarations =
+    mergedSkills.length + strengths.length + interests.length;
+  const taskHints = suggestTaskKinds(mergedSkills);
   const capacityPct =
     capacity === null ? 0 : Math.min(100, Math.max(0, (capacity / CAPACITY_FULL) * 100));
 
@@ -93,9 +112,9 @@ export default function ProfilePreview({
           </div>
         ) : (
           <>
-            {skills.length > 0 && (
-              <PreviewSection label="Skills" count={skills.length}>
-                <PillList items={skills} variant="primary" />
+            {mergedSkills.length > 0 && (
+              <PreviewSection label="Skills" count={mergedSkills.length}>
+                <PillList items={mergedSkills} variant="primary" />
               </PreviewSection>
             )}
             {strengths.length > 0 && (
@@ -137,15 +156,6 @@ export default function ProfilePreview({
               </PreviewSection>
             )}
           </>
-        )}
-
-        {inferredSection && (
-          <div
-            id="inferred-from-github-section"
-            className="profile-preview__inferred"
-          >
-            {inferredSection}
-          </div>
         )}
       </div>
 
@@ -285,11 +295,6 @@ export default function ProfilePreview({
           width: 6px;
           height: 1px;
           background: var(--signature);
-        }
-        .profile-preview__inferred {
-          margin-top: 24px;
-          padding-top: 24px;
-          border-top: 1px solid var(--btn-secondary-border);
         }
       `}</style>
     </div>

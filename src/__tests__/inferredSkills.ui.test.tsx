@@ -1,25 +1,19 @@
 // Phase 2 / SKILL-03 / SKILL-05 — Inferred-skills UI: per-pill confirm/reject.
 //
-// RED state (Plan 02-01): `<InferredFromGitHub />` component does not exist
-// yet. Plan 02-03 creates `src/app/teams/[id]/me/InferredFromGitHub.tsx` and
-// wires it into ProfilePreview's right rail.
-//
-// Spec (PLAN.md task 1 behavior):
-//   - render <InferredFromGitHub items={[acceptedFixture, rejectedFixture]}
-//     onReject onUndoReject />
-//   - reject-button click fires `onReject(id)` AND optimistically flips the
-//     pill to rejected DOM state.
+// Redesigned 2026-05-12 ("Editorial Review Desk"). The component now renders
+// three zones — PENDING decision cards with Keep + Drop buttons, KEPT pink
+// pills, and DROPPED muted pills. Locked ARIA copy is preserved so the
+// existing "Reject inferred skill X" assertion still finds the Drop button.
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import React from 'react';
 
-// Module-under-test — Plan 02-03 will create this.
 import { InferredFromGitHub } from '@/app/teams/[id]/me/InferredFromGitHub';
 
 import type { InferredSkill } from '@/lib/recgon/types';
 
-const accepted: InferredSkill = {
+const pending: InferredSkill = {
   id: 'inf-1',
   teammateId: 'tm-1',
   teamId: 'team-1',
@@ -34,39 +28,90 @@ const accepted: InferredSkill = {
   updatedAt: '2026-05-01T00:00:00.000Z',
 };
 
-const rejected: InferredSkill = {
-  ...accepted,
+const droppedFixture: InferredSkill = {
+  ...pending,
   id: 'inf-2',
   canonicalTag: 'design',
   rejectedAt: '2026-05-02T00:00:00.000Z',
 };
 
+const keptFixture: InferredSkill = {
+  ...pending,
+  id: 'inf-3',
+  canonicalTag: 'react',
+  userReviewedAt: '2026-05-02T00:00:00.000Z',
+};
+
 describe('<InferredFromGitHub /> (SKILL-03 / SKILL-05)', () => {
-  it('fires onReject(id) when a reject-button is clicked and optimistically flips pill state', () => {
+  it('fires onReject(id) when a Drop button is clicked and optimistically flips state to dropped', () => {
     const onReject = vi.fn();
     const onUndoReject = vi.fn();
+    const onKeep = vi.fn();
 
     const { getByLabelText, container } = render(
       <InferredFromGitHub
-        items={[accepted, rejected]}
+        items={[pending, droppedFixture]}
         onReject={onReject}
         onUndoReject={onUndoReject}
+        onKeep={onKeep}
       />,
     );
 
-    // Aria label pattern from PATTERNS.md §ProfileForm.tsx "Reject inferred skill X".
+    // Locked ARIA: "Reject inferred skill {canonical}" — preserved on Drop.
     const btn = getByLabelText(/reject inferred skill frontend/i);
     fireEvent.click(btn);
 
     expect(onReject).toHaveBeenCalledWith('inf-1');
 
-    // Optimistic flip: the pill DOM should now reflect rejected styling.
-    // Plan 02-03 must set a class or data-attribute we can target here.
-    const frontendPill = container.querySelector('[data-skill-id="inf-1"]');
-    expect(frontendPill).toBeTruthy();
-    expect(
-      frontendPill?.getAttribute('data-rejected') === 'true' ||
-        frontendPill?.classList.contains('preview-pill--rejected'),
-    ).toBe(true);
+    // Optimistic flip: the row moves from Pending → Dropped zone and the
+    // new DroppedPill carries data-rejected="true" for test continuity.
+    const flipped = container.querySelector('[data-skill-id="inf-1"]');
+    expect(flipped).toBeTruthy();
+    expect(flipped?.getAttribute('data-rejected')).toBe('true');
+  });
+
+  it('fires onKeep(id) when a Keep button is clicked and optimistically flips state to kept', () => {
+    const onReject = vi.fn();
+    const onUndoReject = vi.fn();
+    const onKeep = vi.fn();
+
+    const { getByLabelText, container } = render(
+      <InferredFromGitHub
+        items={[pending]}
+        onReject={onReject}
+        onUndoReject={onUndoReject}
+        onKeep={onKeep}
+      />,
+    );
+
+    const keepBtn = getByLabelText(/keep inferred skill frontend/i);
+    fireEvent.click(keepBtn);
+
+    expect(onKeep).toHaveBeenCalledWith('inf-1');
+
+    // Optimistic flip: item moves to Kept zone with data-kept="true".
+    const flipped = container.querySelector('[data-skill-id="inf-1"]');
+    expect(flipped).toBeTruthy();
+    expect(flipped?.getAttribute('data-kept')).toBe('true');
+  });
+
+  it('renders zone dividers only for non-empty zones', () => {
+    const onReject = vi.fn();
+    const onUndoReject = vi.fn();
+    const onKeep = vi.fn();
+
+    // Render with ONLY a kept item — Pending + Dropped zones must not show.
+    const { container } = render(
+      <InferredFromGitHub
+        items={[keptFixture]}
+        onReject={onReject}
+        onUndoReject={onUndoReject}
+        onKeep={onKeep}
+      />,
+    );
+
+    const labels = Array.from(container.querySelectorAll('.zone-divider__label'))
+      .map((el) => el.textContent);
+    expect(labels).toEqual(['Kept']);
   });
 });
