@@ -27,6 +27,13 @@ vi.mock('@/lib/recgon/profileStorage', () => ({
   listProfiles: vi.fn(),
 }));
 
+// Plan 02-04: dispatcher now loads inferred skills once per dispatch via
+// `listActiveInferredSkillsForTeam`. Mock returns an empty map so Phase 1
+// behavior (profileMerge sees inferred=null per teammate) is preserved.
+vi.mock('@/lib/recgon/inferredSkillsStorage', () => ({
+  listActiveInferredSkillsForTeam: vi.fn().mockResolvedValue(new Map()),
+}));
+
 vi.mock('@/lib/recgon/brain', () => ({
   readUnifiedBrain: vi.fn().mockResolvedValue({
     computedAt: '2026-05-11T00:00:00Z',

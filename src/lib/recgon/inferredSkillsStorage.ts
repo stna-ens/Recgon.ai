@@ -86,6 +86,42 @@ export async function listActiveInferredSkills(
 }
 
 /**
+ * SKILL-04 / Plan 02-04: team-scoped batch read for the dispatcher. Returns
+ * a nested map `teammateId → Map<canonicalTag, InferredSkill>` so a single
+ * SQL query covers every teammate the dispatcher will score (no N+1 — per
+ * T-02-22 mitigation).
+ *
+ * - Filters rejected rows at the SQL level (`.is('rejected_at', null)`);
+ *   `profileMerge` also double-checks per T-02-20 defense-in-depth.
+ * - Scopes by `team_id` so cross-team rows never leak (T-02-21).
+ * - Used by `runDispatch` and `dispatchTask` ONCE per invocation, replacing
+ *   Phase 1's `null` argument to `profileMerge`.
+ */
+export async function listActiveInferredSkillsForTeam(
+  teamId: string,
+): Promise<Map<string, Map<string, InferredSkill>>> {
+  const { data, error } = await supabase
+    .from('teammate_inferred_skills')
+    .select('*')
+    .eq('team_id', teamId)
+    .is('rejected_at', null);
+  if (error) {
+    throw new Error(`listActiveInferredSkillsForTeam failed: ${error.message}`);
+  }
+  const byTeammate = new Map<string, Map<string, InferredSkill>>();
+  for (const raw of data ?? []) {
+    const row = mapInferredSkill(raw as InferredSkillRow);
+    let tagMap = byTeammate.get(row.teammateId);
+    if (!tagMap) {
+      tagMap = new Map<string, InferredSkill>();
+      byTeammate.set(row.teammateId, tagMap);
+    }
+    tagMap.set(row.canonicalTag, row);
+  }
+  return byTeammate;
+}
+
+/**
  * SKILL-03: single-row read by id. Used by the PATCH endpoint's IDOR check
  * (verify the row's team_id matches the request's teamId before mutating).
  */
