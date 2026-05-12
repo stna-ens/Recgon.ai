@@ -198,6 +198,7 @@ export default function ProfilePageClient({
 
   async function handleRescan() {
     if (isScanning) return;
+    setIsScanning(true);
     try {
       const res = await fetch(`/api/teams/${teamId}/inferred-skills/scan`, {
         method: 'POST',
@@ -210,19 +211,29 @@ export default function ProfilePageClient({
         const min = json.retryAfterMin ?? 60;
         setRescanRateLimitedUntil(Date.now() + min * 60_000);
         addToast(`Already scanned recently. Try again in ${min}m.`, 'info');
+        setIsScanning(false);
         return;
       }
       if (!res.ok) {
-        addToast("Couldn't queue a scan. Try again in a moment.", 'error');
+        addToast("Couldn't run a scan. Try again in a moment.", 'error');
+        setIsScanning(false);
         return;
       }
-      setIsScanning(true);
-      addToast('Scan queued. New skills will land in a moment.', 'info');
-      // TODO(follow-up): poll the job + refetch list when status = succeeded.
-      // For now the user can refresh the page once the scan completes; the
-      // pulse animation indicates a scan is in flight.
+      // Inline scan completed. Refetch the list so new pills appear.
+      const listRes = await fetch(`/api/teams/${teamId}/inferred-skills`, {
+        credentials: 'include',
+      });
+      if (listRes.ok) {
+        const listJson = (await listRes.json()) as {
+          inferredSkills: InferredSkill[];
+        };
+        setInferredSkills(listJson.inferredSkills);
+      }
+      addToast('Scan complete.', 'success');
     } catch {
-      addToast("Couldn't queue a scan. Try again in a moment.", 'error');
+      addToast("Couldn't run a scan. Try again in a moment.", 'error');
+    } finally {
+      setIsScanning(false);
     }
   }
 
