@@ -321,6 +321,23 @@ export const ProfileSaveBodySchema = z.object({
 
 export type ProfileSaveBody = z.infer<typeof ProfileSaveBodySchema>;
 
+// Phase 2 / SKILL-05 (Plan 02-03). Body schema for the per-row inferred-skill
+// PATCH endpoint. At least one of {rejected, reviewed} must be present so the
+// route always has a deterministic mutation to perform. `rejected: true` sets
+// `rejected_at = now()`; `rejected: false` clears it (6-second undo window).
+// `reviewed: true` sets `user_reviewed_at = now()` for the single row.
+export const InferredSkillPatchBodySchema = z
+  .object({
+    rejected: z.boolean().optional(),
+    reviewed: z.boolean().optional(),
+  })
+  .refine(
+    (v) => v.rejected !== undefined || v.reviewed !== undefined,
+    { message: 'must include at least one of {rejected, reviewed}' },
+  );
+
+export type InferredSkillPatchBody = z.infer<typeof InferredSkillPatchBodySchema>;
+
 // ── Shared parse helper ───────────────────────────────────────────────────────
 
 /**

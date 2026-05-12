@@ -259,3 +259,121 @@ export async function getTeammateUserId(
   if (!data) return null;
   return (data as { user_id: string | null }).user_id ?? null;
 }
+
+/**
+ * Phase 2 / Plan 02-03 helper: resolve the canonical `teammates.id` for a
+ * (teamId, userId) pair. Used by the API routes to map session.user.id back
+ * to the row whose `teammate_inferred_skills` we operate on. Returns null if
+ * the user has no `teammates` row in this team (e.g. invited but never
+ * mirrored — defensive guard).
+ */
+export async function getTeammateByTeamUser(
+  teamId: string,
+  userId: string,
+): Promise<{ id: string } | null> {
+  const { data, error } = await supabase
+    .from('teammates')
+    .select('id')
+    .eq('team_id', teamId)
+    .eq('user_id', userId)
+    .neq('status', 'retired')
+    .maybeSingle();
+  if (error) throw new Error(`getTeammateByTeamUser failed: ${error.message}`);
+  if (!data) return null;
+  return { id: (data as { id: string }).id };
+}
+
+/**
+ * Phase 2 / Plan 02-03 helper: read mining status (`github_mining_consent_at`
+ * + `last_scan_at`) from `teammate_profiles`. The `profileStorage` mapper
+ * doesn't include these columns in its typed view (they live on the same
+ * row but are owned by the mining flow, not the self-declared profile), so
+ * we read them directly here. Returns null when no profile row exists yet.
+ */
+export async function getMiningStatus(
+  teamId: string,
+  userId: string,
+): Promise<{ githubMiningConsentAt: string | null; lastScanAt: string | null } | null> {
+  const { data, error } = await supabase
+    .from('teammate_profiles')
+    .select('github_mining_consent_at, last_scan_at')
+    .eq('team_id', teamId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw new Error(`getMiningStatus failed: ${error.message}`);
+  if (!data) return null;
+  const row = data as {
+    github_mining_consent_at: string | null;
+    last_scan_at: string | null;
+  };
+  return {
+    githubMiningConsentAt: row.github_mining_consent_at,
+    lastScanAt: row.last_scan_at,
+  };
+}
+
+/**
+ * Phase 2 / Plan 02-03 / SKILL-05: mark a single inferred-skill row as
+ * reviewed (`user_reviewed_at = now()`). Used by the per-row PATCH endpoint
+ * when the caller passes `{ reviewed: true }`. Bulk-banner-dismiss flows
+ * through `markBannerReviewed` instead.
+ */
+export async function markInferredSkillReviewed(id: string): Promise<InferredSkill> {
+  const { data, error } = await supabase
+    .from('teammate_inferred_skills')
+    .update({ user_reviewed_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error || !data) {
+    throw new Error(`markInferredSkillReviewed failed: ${error?.message}`);
+  }
+  return mapInferredSkill(data as InferredSkillRow);
+}
+
+/**
+ * Phase 2 / Plan 02-03 / SKILL-01: unset `teammate_profiles.github_mining_consent_at`
+ * for (teamId, userId). Used by `DELETE /inferred-skills/consent` (Stop mining).
+ * Does NOT touch teammate_inferred_skills rows — accepted/rejected pills survive
+ * per D-22.
+ */
+export async function clearMiningConsent(teamId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('teammate_profiles')
+    .update({ github_mining_consent_at: null })
+    .eq('team_id', teamId)
+    .eq('user_id', userId);
+  if (error) throw new Error(`clearMiningConsent failed: ${error.message}`);
+}
+
+/**
+ * Phase 2 / Plan 02-03 / SKILL-01: set `teammate_profiles.github_mining_consent_at = now()`
+ * for (teamId, userId). Called by the OAuth callback when the
+ * `github_skill_mining_state` cookie flow completes successfully. Upserts the
+ * profile row if it doesn't yet exist — a teammate can grant consent before
+ * they've ever opened the profile form.
+ */
+export async function setMiningConsent(teamId: string, userId: string): Promise<void> {
+  const now = new Date().toISOString();
+  // Try update first; if no row was affected, insert.
+  const { data, error } = await supabase
+    .from('teammate_profiles')
+    .update({ github_mining_consent_at: now })
+    .eq('team_id', teamId)
+    .eq('user_id', userId)
+    .select('id')
+    .maybeSingle();
+  if (error) throw new Error(`setMiningConsent (update) failed: ${error.message}`);
+  if (data) return;
+  // No existing row → insert a minimal one. Profile fields default to empty.
+  const ins = await supabase
+    .from('teammate_profiles')
+    .insert({
+      team_id: teamId,
+      user_id: userId,
+      github_mining_consent_at: now,
+    });
+  if (ins.error) {
+    throw new Error(`setMiningConsent (insert) failed: ${ins.error.message}`);
+  }
+}

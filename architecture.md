@@ -171,6 +171,11 @@ ProductAnalysis also includes:
 | `/api/teams/[id]/invitations/[invId]` | DELETE | Session | Revoke |
 | `/api/teams/invite/accept` | POST | Session | Accept invite via token |
 | `/api/teams/[id]/profile` | POST/GET | Session + verifyTeamAccess | POST: save logged-in user's own profile (Phase 1 / PROFILE-03). GET: read any teammate's profile in the team — gated server-side by `teams.profile_visibility` (self/owner always allowed; `team_visible` allows all members; `owner_only` returns 403 for non-owner non-self). LLM normalize call bounded by `timeoutMs: 8000` to stay under Vercel's 10s budget. |
+| `/api/teams/[id]/inferred-skills` | GET | Session + verifyTeamAccess | Phase 2 / Plan 02-03. Lists the requesting teammate's `teammate_inferred_skills` rows + `lastScanAt` + `githubMiningConsentAt`. `?userId=` optional but enforced self-only in v1 (404 on cross-user). Returns 404 (never 403) on team mismatch. |
+| `/api/teams/[id]/inferred-skills/[skillId]` | PATCH | Session + verifyTeamAccess + IDOR | Phase 2 / Plan 02-03 / SKILL-05. Body: `InferredSkillPatchBodySchema` (`{rejected?: boolean, reviewed?: boolean}`). Per-row reject / undo-reject / mark-reviewed. IDOR: row.teamId must equal `[id]` AND `getTeammateUserId(row.teammateId) === session.user.id`. 404 on team mismatch; 403 on user mismatch. |
+| `/api/teams/[id]/inferred-skills/scan` | POST | Session + verifyTeamAccess | Phase 2 / Plan 02-03 / SKILL-01. On-demand enqueue of `github_skill_inference`. Returns 412 if `githubMiningConsentAt` is null, 429 with `retryAfterMin` if `lastScanAt` < 1h ago (T-02-18), 200 `{jobId}` otherwise. |
+| `/api/teams/[id]/inferred-skills/consent` | POST/DELETE | Session + verifyTeamAccess | Phase 2 / Plan 02-03 / SKILL-01. POST builds GitHub OAuth redirect with `scope=read:user user:email repo` and sets `github_skill_mining_state` cookie (separate from `github_connect_state`, T-02-14). DELETE unsets `teammate_profiles.github_mining_consent_at` and preserves accepted/rejected rows (D-22). |
+| `/api/teams/[id]/inferred-skills/mark-reviewed` | PATCH | Session + verifyTeamAccess | Phase 2 / Plan 02-03 / SKILL-06. Bulk-clears unreviewed banner state via `markBannerReviewed(teammateId)`. Drives the review banner above the profile form. |
 
 ### Recgon Admin (teammates / tasks / dispatcher)
 | Route | Method | Auth | Notes |
@@ -239,7 +244,7 @@ ProductAnalysis also includes:
 |-------|--------|------|-------|
 | `/api/github/connect` | GET | Session | Starts OAuth with `repo` scope; sets `github_connect_state` cookie |
 | `/api/github/connect` | DELETE | Session | Revokes token via GitHub API, clears `githubAccessToken` |
-| `/api/auth/callback/github` | GET | — | **Unified callback**: if `github_connect_state` cookie present → account-linking flow; otherwise → NextAuth sign-in handler |
+| `/api/auth/callback/github` | GET | — | **Unified callback**: if `github_skill_mining_state` cookie present → Phase 2 / Plan 02-03 consent flow (persists token + sets `teammate_profiles.github_mining_consent_at`, redirects `/teams/{teamId}/me?github_skill_mining=connected\|failed`). Else if `github_connect_state` cookie present → account-linking flow. Otherwise → NextAuth sign-in handler. |
 
 ### MCP OAuth
 | Route | Notes |
