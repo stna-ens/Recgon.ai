@@ -5,10 +5,15 @@
 // - RIGHT: ProfilePreview (live read-only "how Recgon sees you")
 // State is lifted here so both panels stay in sync without a context.
 
-import { useMemo, useState, useTransition } from 'react';
-import type { TeammateProfile } from '@/lib/recgon/types';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import type { InferredSkill, TeammateProfile } from '@/lib/recgon/types';
 import ProfileFormFields, { type PillEntry } from './ProfileForm';
 import ProfilePreview from './ProfilePreview';
+import InferredFromGitHub from './InferredFromGitHub';
+import GithubConsentSection from './GithubConsentSection';
+import ReviewBanner from './ReviewBanner';
+import { useToast } from '@/components/Toast';
 
 interface Props {
   teamId: string;
@@ -20,6 +25,12 @@ interface Props {
     avatarUrl: string | null;
   };
   teamName: string;
+  // Phase 2 / Plan 02-03: server-side initial data so the UI lands hydrated
+  // (matches Phase 1 P03 SUMMARY's initial-data pattern).
+  initialInferredSkills?: InferredSkill[];
+  initialConsentedAt?: string | null;
+  initialLastScanAt?: string | null;
+  githubUsername?: string | null;
 }
 
 type SaveOutcome =
@@ -44,6 +55,10 @@ export default function ProfilePageClient({
   canonicalVocab,
   user,
   teamName,
+  initialInferredSkills = [],
+  initialConsentedAt = null,
+  initialLastScanAt = null,
+  githubUsername = null,
 }: Props) {
   const initial = useMemo(
     () => ({
@@ -67,6 +82,214 @@ export default function ProfilePageClient({
   const [capacity, setCapacity] = useState<number | null>(initial.capacity);
   const [outcome, setOutcome] = useState<SaveOutcome | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Phase 2 / Plan 02-03 state.
+  const [inferredSkills, setInferredSkills] =
+    useState<InferredSkill[]>(initialInferredSkills);
+  const [consentedAt, setConsentedAt] = useState<string | null>(initialConsentedAt);
+  const [lastScanAt, setLastScanAt] = useState<string | null>(initialLastScanAt);
+  const [isScanning, setIsScanning] = useState(false);
+  const [rescanRateLimitedUntil, setRescanRateLimitedUntil] = useState<
+    number | null
+  >(null);
+  const { addToast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // Per-skill timers for the 6-second undo window. Keyed by skillId. The
+  // optimistic state lives inside InferredFromGitHub; this page only fires
+  // the PATCH after the undo window closes (or immediately if the user
+  // declines undo by ignoring the toast).
+  const undoTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
+  const undoUsedRef = useRef<Set<string>>(new Set());
+
+  const unreviewedCount = useMemo(
+    () =>
+      inferredSkills.filter(
+        (s) => !s.userReviewedAt && !s.rejectedAt,
+      ).length,
+    [inferredSkills],
+  );
+
+  // On return from the OAuth round-trip, surface a toast and clean the URL.
+  useEffect(() => {
+    const flag = searchParams.get('github_skill_mining');
+    if (!flag) return;
+    if (flag === 'connected') {
+      setConsentedAt((prev) => prev ?? new Date().toISOString());
+      addToast(
+        "Connected. I'll start looking at your commits — first results land in a moment.",
+        'success',
+      );
+    } else if (flag === 'failed') {
+      addToast('Couldn\'t connect to GitHub. Try again in a moment.', 'error');
+    }
+    router.replace(pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleReject(skillId: string) {
+    // Optimistic update is owned by InferredFromGitHub — we only need to
+    // record the eventual PATCH after the 6-second undo window.
+    // Cancel any existing pending timer for this id (re-clicking shouldn't
+    // queue two PATCHes).
+    const existing = undoTimersRef.current.get(skillId);
+    if (existing) clearTimeout(existing);
+    undoUsedRef.current.delete(skillId);
+
+    addToast("Dropped. I won't suggest it again.", 'info');
+
+    const timer = setTimeout(async () => {
+      undoTimersRef.current.delete(skillId);
+      if (undoUsedRef.current.has(skillId)) return;
+      try {
+        const res = await fetch(
+          `/api/teams/${teamId}/inferred-skills/${skillId}`,
+          {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ rejected: true }),
+          },
+        );
+        if (!res.ok) throw new Error('patch failed');
+        const json = (await res.json()) as { inferredSkill: InferredSkill };
+        setInferredSkills((prev) =>
+          prev.map((s) => (s.id === skillId ? json.inferredSkill : s)),
+        );
+      } catch {
+        addToast("Couldn't update. Try again in a moment.", 'error');
+        // Re-syncing the optimistic state in the child is a follow-up. For
+        // now the toast tells the user to retry.
+      }
+    }, 6000);
+    undoTimersRef.current.set(skillId, timer);
+  }
+
+  async function handleUndoReject(skillId: string) {
+    undoUsedRef.current.add(skillId);
+    const t = undoTimersRef.current.get(skillId);
+    if (t) {
+      clearTimeout(t);
+      undoTimersRef.current.delete(skillId);
+    }
+    try {
+      const res = await fetch(
+        `/api/teams/${teamId}/inferred-skills/${skillId}`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ rejected: false }),
+        },
+      );
+      if (res.ok) {
+        const json = (await res.json()) as { inferredSkill: InferredSkill };
+        setInferredSkills((prev) =>
+          prev.map((s) => (s.id === skillId ? json.inferredSkill : s)),
+        );
+      }
+    } catch {
+      addToast("Couldn't update. Try again in a moment.", 'error');
+    }
+  }
+
+  async function handleRescan() {
+    if (isScanning) return;
+    try {
+      const res = await fetch(`/api/teams/${teamId}/inferred-skills/scan`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.status === 429) {
+        const json = (await res.json().catch(() => ({}))) as {
+          retryAfterMin?: number;
+        };
+        const min = json.retryAfterMin ?? 60;
+        setRescanRateLimitedUntil(Date.now() + min * 60_000);
+        addToast(`Already scanned recently. Try again in ${min}m.`, 'info');
+        return;
+      }
+      if (!res.ok) {
+        addToast("Couldn't queue a scan. Try again in a moment.", 'error');
+        return;
+      }
+      setIsScanning(true);
+      addToast('Scan queued. New skills will land in a moment.', 'info');
+      // TODO(follow-up): poll the job + refetch list when status = succeeded.
+      // For now the user can refresh the page once the scan completes; the
+      // pulse animation indicates a scan is in flight.
+    } catch {
+      addToast("Couldn't queue a scan. Try again in a moment.", 'error');
+    }
+  }
+
+  async function handleConnect() {
+    try {
+      const res = await fetch(
+        `/api/teams/${teamId}/inferred-skills/consent`,
+        { method: 'POST', credentials: 'include' },
+      );
+      if (!res.ok) {
+        addToast("Couldn't start GitHub connect. Try again.", 'error');
+        return;
+      }
+      const json = (await res.json()) as { redirectUrl: string };
+      window.location.assign(json.redirectUrl);
+    } catch {
+      addToast("Couldn't start GitHub connect. Try again.", 'error');
+    }
+  }
+
+  async function handleStopMining() {
+    try {
+      const res = await fetch(
+        `/api/teams/${teamId}/inferred-skills/consent`,
+        { method: 'DELETE', credentials: 'include' },
+      );
+      if (!res.ok) {
+        addToast("Couldn't disconnect. Try again in a moment.", 'error');
+        return;
+      }
+      setConsentedAt(null);
+      addToast("Stopped. I'll keep the skills you've accepted.", 'success');
+    } catch {
+      addToast("Couldn't disconnect. Try again in a moment.", 'error');
+    }
+  }
+
+  async function handleDismissBanner() {
+    // Optimistic UI: mark every currently-unreviewed row as reviewed.
+    const nowIso = new Date().toISOString();
+    setInferredSkills((prev) =>
+      prev.map((s) =>
+        s.userReviewedAt || s.rejectedAt ? s : { ...s, userReviewedAt: nowIso },
+      ),
+    );
+    try {
+      const res = await fetch(
+        `/api/teams/${teamId}/inferred-skills/mark-reviewed`,
+        { method: 'PATCH', credentials: 'include' },
+      );
+      if (!res.ok) {
+        addToast("Couldn't dismiss banner. Try again.", 'error');
+      }
+    } catch {
+      addToast("Couldn't dismiss banner. Try again.", 'error');
+    }
+  }
+
+  function handleReviewBannerClick() {
+    if (typeof document === 'undefined') return;
+    document
+      .getElementById('inferred-from-github-section')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  // Mark lastScanAt setter as intentionally unused for now — the polling
+  // follow-up (TODO above) will be the only writer.
+  void setLastScanAt;
 
   const isDirty = useMemo(
     () =>
@@ -126,6 +349,11 @@ export default function ProfilePageClient({
     <>
       <div className="profile-page">
         <main className="profile-page__main">
+          <ReviewBanner
+            count={unreviewedCount}
+            onReview={handleReviewBannerClick}
+            onDismiss={handleDismissBanner}
+          />
           <ProfileFormFields
             canonicalVocab={canonicalVocab}
             skills={skills}
@@ -136,6 +364,14 @@ export default function ProfilePageClient({
             setInterests={setInterests}
             capacity={capacity}
             setCapacity={setCapacity}
+            consentSection={
+              <GithubConsentSection
+                githubUsername={githubUsername}
+                consentedAt={consentedAt}
+                onConnect={handleConnect}
+                onStopMining={handleStopMining}
+              />
+            }
           />
         </main>
 
@@ -148,6 +384,18 @@ export default function ProfilePageClient({
               strengths={strengths}
               interests={interests}
               capacity={capacity}
+              inferredSection={
+                <InferredFromGitHub
+                  items={inferredSkills}
+                  lastScanAt={lastScanAt}
+                  consented={consentedAt !== null}
+                  isScanning={isScanning}
+                  onReject={handleReject}
+                  onUndoReject={handleUndoReject}
+                  onRescan={handleRescan}
+                  rescanRateLimitedUntil={rescanRateLimitedUntil}
+                />
+              }
             />
           </div>
         </aside>

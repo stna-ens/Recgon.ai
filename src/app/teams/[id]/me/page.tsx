@@ -7,6 +7,12 @@ import { auth } from '@/auth';
 import { redirect, notFound } from 'next/navigation';
 import { verifyTeamAccess, getTeam } from '@/lib/teamStorage';
 import { getProfile } from '@/lib/recgon/profileStorage';
+import {
+  listInferredSkills,
+  getTeammateByTeamUser,
+  getMiningStatus,
+} from '@/lib/recgon/inferredSkillsStorage';
+import { getUserById } from '@/lib/userStorage';
 import { CANONICAL_VOCAB } from '@/lib/recgon/skillVocabulary';
 import ProfilePageClient from './ProfilePageClient';
 
@@ -29,10 +35,20 @@ export default async function MyProfilePage({
     notFound();
   }
 
-  const [profile, team] = await Promise.all([
+  const [profile, team, teammate, mining, userRow] = await Promise.all([
     getProfile(teamId, session.user.id),
     getTeam(teamId),
+    getTeammateByTeamUser(teamId, session.user.id),
+    getMiningStatus(teamId, session.user.id),
+    getUserById(session.user.id),
   ]);
+
+  // Phase 2 / Plan 02-03: feed the right-rail "INFERRED FROM GITHUB" + consent
+  // section initial state from the server. Defensive: if no teammate row,
+  // return empty list (the API does the same on cross-team/no-teammate).
+  const inferredSkills = teammate
+    ? await listInferredSkills(teammate.id)
+    : [];
 
   const user = {
     nickname: session.user.nickname ?? null,
@@ -58,6 +74,10 @@ export default async function MyProfilePage({
         canonicalVocab={[...CANONICAL_VOCAB]}
         user={user}
         teamName={team?.name ?? 'your team'}
+        initialInferredSkills={inferredSkills}
+        initialConsentedAt={mining?.githubMiningConsentAt ?? null}
+        initialLastScanAt={mining?.lastScanAt ?? null}
+        githubUsername={userRow?.githubUsername ?? null}
       />
 
       <style>{`

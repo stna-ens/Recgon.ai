@@ -19,6 +19,10 @@ interface Props {
   strengths: PillEntry[];
   interests: PillEntry[];
   capacity: number | null;
+  // Phase 2 / Plan 02-03 / SKILL-03 / D-26: right-rail "INFERRED FROM GITHUB"
+  // section. Rendered 24px below "Likely matched to". Wrapped with id so the
+  // ReviewBanner's smooth-scroll target works.
+  inferredSection?: React.ReactNode;
 }
 
 function pillLabel(entry: PillEntry): string {
@@ -52,6 +56,7 @@ export default function ProfilePreview({
   strengths,
   interests,
   capacity,
+  inferredSection,
 }: Props) {
   const initials = (user.nickname || user.email || '?').slice(0, 2).toUpperCase();
   const totalDeclarations = skills.length + strengths.length + interests.length;
@@ -132,6 +137,15 @@ export default function ProfilePreview({
               </PreviewSection>
             )}
           </>
+        )}
+
+        {inferredSection && (
+          <div
+            id="inferred-from-github-section"
+            className="profile-preview__inferred"
+          >
+            {inferredSection}
+          </div>
         )}
       </div>
 
@@ -271,6 +285,11 @@ export default function ProfilePreview({
           width: 6px;
           height: 1px;
           background: var(--signature);
+        }
+        .profile-preview__inferred {
+          margin-top: 24px;
+          padding-top: 24px;
+          border-top: 1px solid var(--btn-secondary-border);
         }
       `}</style>
     </div>

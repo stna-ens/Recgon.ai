@@ -31,6 +31,10 @@ interface Props {
   setInterests: (v: PillEntry[]) => void;
   capacity: number | null;
   setCapacity: (v: number | null) => void;
+  // Phase 2 / Plan 02-03 / SKILL-01: optional inline consent .glass-card,
+  // rendered 24px below the rest of the form. ProfilePageClient owns the
+  // consent state + OAuth wiring.
+  consentSection?: React.ReactNode;
 }
 
 const FIELD_LABEL: Record<FieldKey, string> = {
@@ -88,6 +92,7 @@ export default function ProfileFormFields({
   setInterests,
   capacity,
   setCapacity,
+  consentSection,
 }: Props) {
   const [activeField, setActiveField] = useState<FieldKey | null>(null);
   const [query, setQuery] = useState('');
@@ -160,6 +165,8 @@ export default function ProfileFormFields({
           <span className="profile-capacity-suffix">hrs / week</span>
         </div>
       </div>
+
+      {consentSection}
 
       <style>{`
         .profile-fields { display: flex; flex-direction: column; gap: 36px; }
