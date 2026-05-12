@@ -22,6 +22,9 @@ import {
   type ProductAnalysis,
 } from '../storage';
 import { getUserById } from '../userStorage';
+import { getProfile } from '../recgon/profileStorage';
+import { runScan } from '../recgon/githubSkills';
+import { supabase } from '../supabase';
 import { logger } from '../logger';
 import { buildProjectAppContext } from '../appContext';
 import type { JobKind, LLMJob } from './jobQueue';
@@ -128,6 +131,76 @@ async function runCompetitorAnalysis(job: LLMJob): Promise<WorkerResult> {
   return { projectId: project.id, insightCount: insights.length } as WorkerResult;
 }
 
+// ── GitHub skill inference (Phase 2 / SKILL-02) ─────────────────────────────
+// Mines commits in team-connected repos and emits canonical-skill rows to
+// `teammate_inferred_skills`. Token is re-fetched at run time (never in
+// payload — same pattern as runCodebaseAnalysis). Worker returns
+// `{skipped:true, reason}` on all early-exit paths (no consent / no token /
+// no team repos) so the job doesn't enter the ~7.5h retry-backoff horizon
+// (jobQueue.ts:86-96 / PATTERNS.md §Job worker no-op success on early exit).
+
+export type GithubSkillInferencePayload = {
+  teammateId: string;
+  teamId: string;
+  userId: string; // whose GitHub token to use (fetched at run time — never in payload)
+};
+
+export async function runGithubSkillInference(job: LLMJob): Promise<WorkerResult> {
+  const payload = job.payload as GithubSkillInferencePayload;
+  if (!payload?.teammateId || !payload?.teamId || !payload?.userId) {
+    throw new Error('github_skill_inference job missing required fields');
+  }
+
+  // Gate 1 (D-22): consent. Check teammate_profiles.github_mining_consent_at.
+  // Consent revoked between enqueue and run → exit clean.
+  const profile = await getProfile(payload.teamId, payload.userId).catch(() => null);
+  const consentAt = (profile as { githubMiningConsentAt?: string | null } | null)?.githubMiningConsentAt
+    ?? null;
+  if (!consentAt) {
+    return { skipped: true, reason: 'no_consent' };
+  }
+
+  // Gate 2 (T-02-07): re-fetch GitHub token from the user row. Tokens are
+  // never stored in the job payload — they'd sit at rest in plaintext in
+  // the queue. Matches the codebase_analysis pattern at workers.ts:81-84.
+  const user = await getUserById(payload.userId).catch(() => null);
+  const token = user?.githubAccessToken;
+  if (!token) {
+    return { skipped: true, reason: 'no_token' };
+  }
+
+  // Read inference depth from teams.inference_depth (D-23). Default 'standard'
+  // if the column is somehow null. Best-effort: any error → standard.
+  let depth: 'cheap' | 'standard' | 'deep' = 'standard';
+  try {
+    const teamRow = await supabase
+      .from('teams')
+      .select('inference_depth')
+      .eq('id', payload.teamId)
+      .maybeSingle();
+    const raw = (teamRow.data as { inference_depth?: string | null } | null)?.inference_depth;
+    if (raw === 'cheap' || raw === 'standard' || raw === 'deep') depth = raw;
+  } catch (err) {
+    logger.warn('runGithubSkillInference: could not read inference_depth, defaulting to standard', {
+      teamId: payload.teamId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  const author = user?.githubUsername ?? user?.nickname ?? user?.email ?? '';
+
+  const result = await runScan({
+    teammateId: payload.teammateId,
+    teamId: payload.teamId,
+    author,
+    token,
+    consentAt,
+    depth,
+  });
+
+  return result as unknown as WorkerResult;
+}
+
 // ── Dispatch table ──────────────────────────────────────────────────────────
 
 type Worker = (job: LLMJob) => Promise<WorkerResult>;
@@ -179,6 +252,7 @@ const WORKERS: Partial<Record<JobKind, Worker>> = {
   competitor_analysis: runCompetitorAnalysis,
   task_verification: runTaskVerificationJob,
   commit_summary: runCommitSummary,
+  github_skill_inference: runGithubSkillInference,
 };
 
 export async function runJob(job: LLMJob): Promise<WorkerResult> {

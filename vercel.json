@@ -31,6 +31,9 @@
     },
     "src/app/api/cron/recgon-schedule/route.ts": {
       "maxDuration": 300
+    },
+    "src/app/api/cron/github-skill-inference/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -41,6 +44,10 @@
     {
       "path": "/api/cron/recgon-schedule",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/github-skill-inference",
+      "schedule": "0 6 * * 0"
     }
   ]
 }
