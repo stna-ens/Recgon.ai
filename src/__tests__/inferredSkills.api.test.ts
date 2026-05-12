@@ -32,6 +32,13 @@ vi.mock('@/lib/llm/jobQueue', () => ({
   enqueueJob: vi.fn(),
 }));
 
+// Plan 02 — the scan POST now runs the worker INLINE (no queue hop) since
+// Vercel Hobby crons only drain daily. We stub the worker so the route's
+// inline call resolves deterministically.
+vi.mock('@/lib/llm/workers', () => ({
+  runGithubSkillInference: vi.fn(),
+}));
+
 vi.mock('@/lib/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
@@ -45,6 +52,7 @@ import {
   rejectInferredSkill,
 } from '@/lib/recgon/inferredSkillsStorage';
 import { enqueueJob } from '@/lib/llm/jobQueue';
+import { runGithubSkillInference } from '@/lib/llm/workers';
 
 // Routes under test — imported AFTER the mocks so the route's internal imports
 // resolve to the stubs above.
@@ -57,6 +65,7 @@ const mockedEnqueueJob = enqueueJob as unknown as ReturnType<typeof vi.fn>;
 const mockedGetInferredSkill = getInferredSkill as unknown as ReturnType<typeof vi.fn>;
 const mockedGetTeammateUserId = getTeammateUserId as unknown as ReturnType<typeof vi.fn>;
 const mockedRejectInferredSkill = rejectInferredSkill as unknown as ReturnType<typeof vi.fn>;
+const mockedRunGithubSkillInference = runGithubSkillInference as unknown as ReturnType<typeof vi.fn>;
 
 function makeScanReq(): NextRequest {
   return new NextRequest(
@@ -115,29 +124,53 @@ describe('POST /api/teams/[id]/inferred-skills/scan — 412 / 429 / 200', () => 
     expect(mockedEnqueueJob).not.toHaveBeenCalled();
   });
 
-  it('Case 3: returns 200 + jobId when consent present and last_scan_at older than 1h', async () => {
+  it('Case 3: runs the worker INLINE and returns 200 + result body', async () => {
     mockedGetMining.mockResolvedValue({
       githubMiningConsentAt: '2026-05-12T00:00:00Z',
       lastScanAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     });
     mockedGetTeammate.mockResolvedValue({ id: 'tm-1' });
-    mockedEnqueueJob.mockResolvedValue({ id: 'job-xyz' });
+    mockedRunGithubSkillInference.mockResolvedValue({
+      skipped: false,
+      written: 3,
+      emitted: 4,
+      rejectedFiltered: 1,
+      diagnostics: {
+        reposScanned: 2,
+        commitsFound: 42,
+        signalsEmitted: 4,
+        llmDroppedTags: 0,
+        githubEmailPrivate: false,
+        githubLogin: 'alice',
+      },
+    });
 
     const res = await scanPOST(makeScanReq(), {
       params: Promise.resolve({ id: 'team-1' }),
     });
 
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { ok: boolean; jobId: string };
+    const json = (await res.json()) as {
+      ok: boolean;
+      result: { skipped: boolean; written: number };
+    };
     expect(json.ok).toBe(true);
-    expect(json.jobId).toBe('job-xyz');
-    expect(mockedEnqueueJob).toHaveBeenCalledTimes(1);
-    expect(mockedEnqueueJob).toHaveBeenCalledWith(
+    expect(json.result.skipped).toBe(false);
+    expect(json.result.written).toBe(3);
+
+    // Inline execution: queue is NOT touched.
+    expect(mockedEnqueueJob).not.toHaveBeenCalled();
+    expect(mockedRunGithubSkillInference).toHaveBeenCalledTimes(1);
+    expect(mockedRunGithubSkillInference).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: 'github_skill_inference',
-        teamId: 'team-1',
-        userId: 'user-1',
-        payload: expect.objectContaining({ teammateId: 'tm-1', teamId: 'team-1', userId: 'user-1' }),
+        team_id: 'team-1',
+        user_id: 'user-1',
+        payload: expect.objectContaining({
+          teammateId: 'tm-1',
+          teamId: 'team-1',
+          userId: 'user-1',
+        }),
       }),
     );
   });

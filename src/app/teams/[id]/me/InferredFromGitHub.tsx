@@ -16,9 +16,28 @@
 // `var(--ease-out)` — UI-SPEC Color reserved-for items 6–9.
 
 import { useMemo, useState, useEffect } from 'react';
-import { RefreshCw, X } from 'lucide-react';
+import { RefreshCw, X, ExternalLink, AlertCircle } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import type { InferredSkill, InferredSkillSource } from '@/lib/recgon/types';
+
+// Phase 2 — UI mirror of `ScanDiagnostics` from `src/lib/recgon/githubSkills.ts`,
+// plus a UI-only `skippedReason` field so we can distinguish the
+// `{skipped:true, reason:'no_team_repos'}` shape from the `{skipped:false,...}`
+// shape without leaking the full result discriminator into the component.
+export type ScanDiagnostics = {
+  reposScanned: number;
+  commitsFound: number;
+  signalsEmitted: number;
+  llmDroppedTags: number;
+  githubEmailPrivate: boolean | null;
+  githubLogin: string | null;
+  skippedReason:
+    | 'no_consent'
+    | 'no_token'
+    | 'no_team_repos'
+    | 'no_author'
+    | null;
+};
 
 interface Props {
   items: InferredSkill[];
@@ -29,6 +48,10 @@ interface Props {
   onUndoReject: (id: string) => void;
   onRescan?: () => void;
   rescanRateLimitedUntil?: number | null;
+  /** Most recent scan's diagnostics — drives the empty-state explanation. */
+  diagnostics?: ScanDiagnostics | null;
+  /** GitHub username for personalised diagnostic copy. */
+  githubUsername?: string | null;
 }
 
 // SOURCE -> chip text. Locked by UI-SPEC §Right-rail "INFERRED FROM GITHUB"
@@ -114,6 +137,227 @@ function InferredPill({
   );
 }
 
+// Diagnostic-aware empty state. Picks one of five real-world causes
+// for "no pills" and explains it in plain English with an action button
+// when there's something the user can do. Locked to the right-rail's narrow
+// width — copy stays short, primary action is one line, tone is first-person
+// (matches the rest of the consent + scan messaging).
+function EmptyState({
+  diagnostics,
+  githubUsername,
+  isRateLimited,
+  onRescan,
+}: {
+  diagnostics: ScanDiagnostics | null | undefined;
+  githubUsername: string | null | undefined;
+  isRateLimited: boolean;
+  onRescan?: () => void;
+}) {
+  // No diagnostics yet → first-load fallback. Matches the previous behaviour.
+  if (!diagnostics) {
+    return (
+      <p className="inferred-section__empty">
+        I haven&apos;t scanned your commits yet. Click <span className="inferred-section__inline-key">Re-scan</span> to start.
+      </p>
+    );
+  }
+
+  // No GitHub repos connected to this team yet.
+  if (diagnostics.skippedReason === 'no_team_repos') {
+    return (
+      <EmptyCard
+        tone="info"
+        title="No GitHub repos to scan"
+        body="Add a project with a GitHub URL to this team and I'll start mining commits the next time we scan."
+      />
+    );
+  }
+
+  // OAuth token missing (consent there, but no token on the user row).
+  if (diagnostics.skippedReason === 'no_token') {
+    return (
+      <EmptyCard
+        tone="warn"
+        title="GitHub connection lost"
+        body="I'm consented to mine, but I don't have a valid GitHub token for your account. Disconnect and reconnect to fix this."
+      />
+    );
+  }
+
+  // The big one: 0 commits found AND email is private. We're confident this is
+  // the cause — surface the fix prominently with a direct deep-link.
+  if (diagnostics.commitsFound === 0 && diagnostics.githubEmailPrivate === true) {
+    return (
+      <EmptyCard
+        tone="warn"
+        title="Your GitHub email is private"
+        body={
+          <>
+            GitHub hides your commits from us when{' '}
+            <span className="inferred-section__inline-key">
+              Keep my email addresses private
+            </span>{' '}
+            is on. Turn it off and I&apos;ll find your skills.
+          </>
+        }
+        primary={{
+          label: 'Open email settings',
+          href: 'https://github.com/settings/emails',
+        }}
+        secondary={
+          onRescan
+            ? {
+                label: 'Try again',
+                onClick: onRescan,
+                disabled: isRateLimited,
+              }
+            : undefined
+        }
+      />
+    );
+  }
+
+  // 0 commits found and email is confirmed PUBLIC → most likely a different
+  // attribution issue (commit email not on the GitHub account, or no commits).
+  if (diagnostics.commitsFound === 0 && diagnostics.githubEmailPrivate === false) {
+    const who = githubUsername ?? diagnostics.githubLogin ?? 'this GitHub account';
+    return (
+      <EmptyCard
+        tone="info"
+        title="No commits by you in the last 6 months"
+        body={
+          <>
+            I checked{' '}
+            <span className="inferred-section__inline-key">
+              {diagnostics.reposScanned}
+            </span>{' '}
+            {diagnostics.reposScanned === 1 ? 'repo' : 'repos'} but saw no commits
+            attributed to <span className="inferred-section__inline-key">{who}</span>.
+            If you&apos;ve committed under a different account, switch and reconnect.
+          </>
+        }
+        secondary={
+          onRescan
+            ? {
+                label: 'Try again',
+                onClick: onRescan,
+                disabled: isRateLimited,
+              }
+            : undefined
+        }
+      />
+    );
+  }
+
+  // 0 commits found, email status unknown (probe didn't run or failed).
+  // Generic but honest fallback.
+  if (diagnostics.commitsFound === 0) {
+    return (
+      <EmptyCard
+        tone="info"
+        title="No commits to read"
+        body={
+          <>
+            I didn&apos;t find any commits by you in the last 6 months across{' '}
+            this team&apos;s repos. Push something and I&apos;ll re-check.
+          </>
+        }
+        secondary={
+          onRescan
+            ? {
+                label: 'Try again',
+                onClick: onRescan,
+                disabled: isRateLimited,
+              }
+            : undefined
+        }
+      />
+    );
+  }
+
+  // Commits found but the signal extractors couldn't pull skills out.
+  return (
+    <EmptyCard
+      tone="info"
+      title="Couldn't infer skills"
+      body={
+        <>
+          I read{' '}
+          <span className="inferred-section__inline-key">
+            {diagnostics.commitsFound}
+          </span>{' '}
+          {diagnostics.commitsFound === 1 ? 'commit' : 'commits'} but couldn&apos;t
+          tie them to a clear skill. Descriptive commit messages help —{' '}
+          &ldquo;feat: add Stripe checkout&rdquo; tells me more than &ldquo;fixes&rdquo;.
+        </>
+      }
+      secondary={
+        onRescan
+          ? {
+              label: 'Try again',
+              onClick: onRescan,
+              disabled: isRateLimited,
+            }
+          : undefined
+      }
+    />
+  );
+}
+
+// Generic empty/diagnostic card. Used by `EmptyState` for every branch except
+// the very first "haven't scanned yet" preface. Two tones map to the visual
+// affordance of "actionable" vs "informational":
+//   - `warn`  = signature-pink chrome (something for the user to do)
+//   - `info`  = muted chrome             (nothing urgent, just context)
+function EmptyCard({
+  tone,
+  title,
+  body,
+  primary,
+  secondary,
+}: {
+  tone: 'warn' | 'info';
+  title: string;
+  body: React.ReactNode;
+  primary?: { label: string; href: string };
+  secondary?: { label: string; onClick: () => void; disabled?: boolean };
+}) {
+  return (
+    <div className={`empty-card empty-card--${tone}`}>
+      <div className="empty-card__title-row">
+        <AlertCircle size={14} aria-hidden="true" className="empty-card__icon" />
+        <span className="empty-card__title">{title}</span>
+      </div>
+      <p className="empty-card__body">{body}</p>
+      {(primary || secondary) && (
+        <div className="empty-card__actions">
+          {primary && (
+            <a
+              className="empty-card__primary"
+              href={primary.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>{primary.label}</span>
+              <ExternalLink size={12} aria-hidden="true" />
+            </a>
+          )}
+          {secondary && (
+            <button
+              type="button"
+              className="empty-card__secondary"
+              onClick={secondary.onClick}
+              disabled={secondary.disabled}
+            >
+              {secondary.label}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function InferredFromGitHub({
   items,
   lastScanAt = null,
@@ -122,6 +366,8 @@ export function InferredFromGitHub({
   onReject,
   onRescan,
   rescanRateLimitedUntil = null,
+  diagnostics = null,
+  githubUsername = null,
 }: Props) {
   // SKILL-05 optimistic-reject set. Cleared when the parent pushes new props
   // (server truth lands → `item.rejectedAt` set → no need to keep the optimistic
@@ -210,10 +456,12 @@ export function InferredFromGitHub({
         ) : isScanning ? (
           <p className="inferred-section__empty">Looking at your commits…</p>
         ) : items.length === 0 ? (
-          <p className="inferred-section__empty">
-            I didn&apos;t find any new skills from your commits in the last 6 months. Try
-            writing a few commits and I&apos;ll re-check.
-          </p>
+          <EmptyState
+            diagnostics={diagnostics}
+            githubUsername={githubUsername}
+            isRateLimited={isRateLimited}
+            onRescan={onRescan}
+          />
         ) : (
           <div className="inferred-pills">
             {accepted.map((item) => (
@@ -316,6 +564,108 @@ export function InferredFromGitHub({
             color: var(--txt-muted);
             margin: 0;
             padding: 6px 4px;
+          }
+          .inferred-section__inline-key {
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--txt-pure);
+            padding: 1px 5px;
+            border-radius: 4px;
+            background: var(--btn-secondary-bg);
+            border: 1px solid var(--btn-secondary-border);
+          }
+
+          /* Diagnostic empty-state card. Two tones: warn (signature-pink
+             accent — user has something to do) and info (muted — context
+             only). Visual order: title row, body, primary CTA + try-again. */
+          .empty-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 14px;
+            border-radius: var(--r-sm);
+            border: 1px solid var(--btn-secondary-border);
+            background: var(--btn-secondary-bg);
+            font-family: var(--font-inter), Inter, sans-serif;
+          }
+          .empty-card--warn {
+            border-color: rgba(var(--signature-rgb), 0.34);
+            background: rgba(var(--signature-rgb), 0.04);
+          }
+          .empty-card__title-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .empty-card__icon {
+            flex-shrink: 0;
+            color: var(--txt-muted);
+          }
+          .empty-card--warn .empty-card__icon {
+            color: var(--signature);
+          }
+          .empty-card__title {
+            font-family: var(--font-inter), Inter, sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--txt-pure);
+          }
+          .empty-card__body {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--txt-muted);
+          }
+          .empty-card__actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin-top: 2px;
+          }
+          .empty-card__primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            font-family: var(--font-inter), Inter, sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            background: var(--signature);
+            border: none;
+            border-radius: var(--r-sm);
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 120ms ease, transform 120ms ease;
+          }
+          .empty-card__primary:hover {
+            opacity: 0.92;
+          }
+          .empty-card__primary:active {
+            transform: translateY(1px);
+          }
+          .empty-card__secondary {
+            padding: 0;
+            font-family: var(--font-mono), 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--txt-muted);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: color var(--dur-fast) var(--ease-out);
+          }
+          .empty-card__secondary:hover:not(:disabled) {
+            color: var(--txt-pure);
+          }
+          .empty-card__secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
           }
 
           .inferred-pills {

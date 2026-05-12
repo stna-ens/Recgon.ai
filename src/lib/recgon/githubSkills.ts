@@ -159,12 +159,15 @@ type OctokitLike = {
     iterator: (
       method: unknown,
       params: { owner: string; repo: string; per_page?: number; author?: string; since?: string },
-    ) => AsyncIterable<{ data: Array<{ commit?: { message: string; author?: { date: string } | null }; author?: { login: string } | null; files?: Array<{ filename: string }> }> }>;
+    ) => AsyncIterable<{ data: Array<{ commit?: { message: string; author?: { date: string; name?: string; email?: string } | null }; author?: { login: string } | null; files?: Array<{ filename: string }> }> }>;
   };
   rest: {
     repos: {
       listCommits: (params: { owner: string; repo: string; author?: string; since?: string; per_page?: number }) => Promise<{ data: unknown[] }>;
       listLanguages: (params: { owner: string; repo: string }) => Promise<{ data: Record<string, number> }>;
+    };
+    users: {
+      getAuthenticated: () => Promise<{ data: { login: string; email: string | null; name: string | null } }>;
     };
   };
 };
@@ -394,9 +397,9 @@ export async function cheapSignals(args: {
 export async function standardLLMInference(args: {
   commits: MinedCommit[];
   now?: Date;
-}): Promise<Map<string, SignalEntry>> {
+}): Promise<{ signals: Map<string, SignalEntry>; dropped: number }> {
   const out = new Map<string, SignalEntry>();
-  if (args.commits.length === 0) return out;
+  if (args.commits.length === 0) return { signals: out, dropped: 0 };
   const now = args.now ?? new Date();
 
   let raw: string;
@@ -418,7 +421,7 @@ export async function standardLLMInference(args: {
     logger.warn('standardLLMInference LLM call failed', {
       err: err instanceof Error ? err.message : String(err),
     });
-    return out;
+    return { signals: out, dropped: 0 };
   }
 
   let parsed;
@@ -428,7 +431,7 @@ export async function standardLLMInference(args: {
     logger.warn('standardLLMInference schema parse failed', {
       err: err instanceof Error ? err.message : String(err),
     });
-    return out;
+    return { signals: out, dropped: 0 };
   }
 
   const dropped: string[] = [];
@@ -454,7 +457,7 @@ export async function standardLLMInference(args: {
       sample: dropped.slice(0, 5),
     });
   }
-  return out;
+  return { signals: out, dropped: dropped.length };
 }
 
 // ── deepImportInference (D-23 deep depth — v1 stub) ─────────────────────────
@@ -549,9 +552,71 @@ export type RunScanInput = {
   now?: Date;
 };
 
+// Phase 2 — diagnostics surface for the empty-scan UX. Populated whenever the
+// scan actually runs (not on the early-exit skipped paths). The UI uses this
+// to replace the useless "I didn't find any new skills" empty state with an
+// actionable explanation (e.g. "Your GitHub email is private — here's how to
+// fix it"). All fields are best-effort: the probe is allowed to fail silently
+// and the UI degrades to a generic empty state.
+export type ScanDiagnostics = {
+  /** Number of team-connected repos we attempted to scan. */
+  reposScanned: number;
+  /** Total commits collected across all repos for this author. */
+  commitsFound: number;
+  /** Number of skills emitted by signal extractors BEFORE rejected-filter. */
+  signalsEmitted: number;
+  /** Number of LLM-emitted tags that were dropped for not being canonical. */
+  llmDroppedTags: number;
+  /**
+   * GitHub email-privacy state. `null` = probe didn't run (scan found commits
+   * so no need) or the API call failed; `true` = user has "Keep my email
+   * addresses private" turned on; `false` = email is visible to the API. When
+   * `true` AND `commitsFound === 0`, that's the most common cause and the UI
+   * surfaces the fix.
+   */
+  githubEmailPrivate: boolean | null;
+  /** The user's GitHub login the API attributed back — handy for UI copy. */
+  githubLogin: string | null;
+};
+
 export type RunScanResult =
-  | { skipped: true; reason: 'no_consent' | 'no_token' | 'no_team_repos' | 'no_author' }
-  | { skipped: false; written: number; emitted: number; rejectedFiltered: number };
+  | {
+      skipped: true;
+      reason: 'no_consent' | 'no_token' | 'no_team_repos' | 'no_author';
+      diagnostics?: ScanDiagnostics;
+    }
+  | {
+      skipped: false;
+      written: number;
+      emitted: number;
+      rejectedFiltered: number;
+      diagnostics: ScanDiagnostics;
+    };
+
+// Probe the authenticated user's email-privacy setting. Used only when the
+// commit scan returned zero rows — the most common cause is "Keep my email
+// addresses private" on https://github.com/settings/emails, because GitHub
+// then refuses to attribute commits to the user via the `?author=<login>`
+// filter we rely on. Best-effort: any API failure returns `{ private: null }`
+// and the UI falls back to a generic empty state.
+async function probeEmailPrivacy(octokit: OctokitLike): Promise<{
+  emailPrivate: boolean | null;
+  login: string | null;
+}> {
+  try {
+    const me = await octokit.rest.users.getAuthenticated();
+    const email = me.data.email;
+    return {
+      emailPrivate: email === null,
+      login: me.data.login ?? null,
+    };
+  } catch (err) {
+    logger.warn('probeEmailPrivacy failed', {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return { emailPrivate: null, login: null };
+  }
+}
 
 export async function runScan(input: RunScanInput): Promise<RunScanResult> {
   const now = input.now ?? new Date();
@@ -571,7 +636,18 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
     // SKILL-06: still mark the scan timestamp so the banner-suppression flow
     // doesn't surface "new inferred skills" with zero rows.
     await touchLastScan(input.teamId, input.teammateId, now);
-    return { skipped: true, reason: 'no_team_repos' };
+    return {
+      skipped: true,
+      reason: 'no_team_repos',
+      diagnostics: {
+        reposScanned: 0,
+        commitsFound: 0,
+        signalsEmitted: 0,
+        llmDroppedTags: 0,
+        githubEmailPrivate: null,
+        githubLogin: null,
+      },
+    };
   }
 
   const octokit = input.octokit ?? createThrottledOctokit(input.token);
@@ -586,8 +662,12 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
   // Always compute cheap signals (no-cost floor).
   const merged = await cheapSignals({ octokit, repos, commits, now });
 
+  let llmEmittedTags = 0;
+  let llmDroppedTags = 0;
   if (input.depth !== 'cheap' && commits.length > 0) {
-    const llmSignals = await standardLLMInference({ commits, now });
+    const { signals: llmSignals, dropped } = await standardLLMInference({ commits, now });
+    llmEmittedTags = llmSignals.size;
+    llmDroppedTags = dropped;
     for (const [tag, entry] of llmSignals.entries()) {
       mergeSignal(merged, tag, entry);
     }
@@ -641,11 +721,32 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
   // SKILL-06: always update `last_scan_at`, even on empty (banner suppression).
   await touchLastScan(input.teamId, input.teammateId, now);
 
+  // When the scan found zero commits, run the email-privacy probe so the UI
+  // can surface the actionable cause. We only burn the extra API call on the
+  // empty path — if commits came through, attribution is clearly working.
+  let probe: { emailPrivate: boolean | null; login: string | null } = {
+    emailPrivate: null,
+    login: null,
+  };
+  if (commits.length === 0) {
+    probe = await probeEmailPrivacy(octokit);
+  }
+
+  const diagnostics: ScanDiagnostics = {
+    reposScanned: repos.length,
+    commitsFound: commits.length,
+    signalsEmitted: llmEmittedTags + merged.size,
+    llmDroppedTags,
+    githubEmailPrivate: probe.emailPrivate,
+    githubLogin: probe.login,
+  };
+
   return {
     skipped: false,
     written,
     emitted: merged.size,
     rejectedFiltered,
+    diagnostics,
   };
 }
 
@@ -653,17 +754,21 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
 
 async function touchLastScan(teamId: string, teammateId: string, now: Date): Promise<void> {
   // The teammate_profiles row is keyed on (team_id, user_id). The teammate
-  // row itself sits in `agent_teammates` — we resolve the underlying user
-  // and then update profile. This is a fire-and-forget best-effort; failures
-  // are logged but not fatal.
+  // row itself sits in `teammates` (Plan 02-01 deviation: the canonical table
+  // is `teammates`, not `agent_teammates`). We resolve the underlying user
+  // and then update the profile. This is a fire-and-forget best-effort;
+  // failures are logged but not fatal.
   try {
     const tm = await supabase
-      .from('agent_teammates')
+      .from('teammates')
       .select('user_id')
       .eq('id', teammateId)
       .maybeSingle();
     const userId = (tm.data as { user_id: string | null } | null)?.user_id ?? null;
-    if (!userId) return;
+    if (!userId) {
+      logger.warn('touchLastScan: teammate row not found', { teamId, teammateId });
+      return;
+    }
     const { error } = await supabase
       .from('teammate_profiles')
       .update({ last_scan_at: now.toISOString() })

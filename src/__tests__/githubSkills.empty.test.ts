@@ -31,7 +31,10 @@ vi.mock('@/lib/recgon/profileStorage', () => ({
 }));
 
 // Stub Octokit so the worker doesn't make real HTTP. The default behavior:
-// listCommits returns no commits, listLanguages returns empty stats.
+// listCommits returns no commits, listLanguages returns empty stats, and the
+// authenticated-user probe returns a public email (so the empty-window test
+// doesn't conflate "no commits" with "private email"; the email-privacy probe
+// is exercised in its own test).
 vi.mock('@octokit/rest', () => ({
   Octokit: {
     plugin: () => class MockOctokit {
@@ -39,6 +42,11 @@ vi.mock('@octokit/rest', () => ({
         repos: {
           listCommits: vi.fn(async () => ({ data: [] })),
           listLanguages: vi.fn(async () => ({ data: {} })),
+        },
+        users: {
+          getAuthenticated: vi.fn(async () => ({
+            data: { login: 'alice', email: 'alice@example.com', name: 'Alice' },
+          })),
         },
       };
       paginate = {
@@ -63,7 +71,9 @@ vi.mock('@/lib/supabase', () => {
   };
   const from = vi.fn((table: string) => {
     if (table === 'teams') return makeBuilder({ inference_depth: 'standard' });
-    if (table === 'agent_teammates') return makeBuilder({ user_id: 'user-1' });
+    // Plan 02-01 deviation: canonical table is `teammates`, not the legacy
+    // `agent_teammates`. `touchLastScan` now reads `teammates`.
+    if (table === 'teammates') return makeBuilder({ user_id: 'user-1' });
     return makeBuilder();
   });
   return { supabase: { from } };

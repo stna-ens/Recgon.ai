@@ -10,7 +10,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { InferredSkill, TeammateProfile } from '@/lib/recgon/types';
 import ProfileFormFields, { type PillEntry } from './ProfileForm';
 import ProfilePreview from './ProfilePreview';
-import InferredFromGitHub from './InferredFromGitHub';
+import InferredFromGitHub, { type ScanDiagnostics } from './InferredFromGitHub';
 import GithubConsentSection from './GithubConsentSection';
 import ReviewBanner from './ReviewBanner';
 import { useToast } from '@/components/Toast';
@@ -92,6 +92,11 @@ export default function ProfilePageClient({
   const [rescanRateLimitedUntil, setRescanRateLimitedUntil] = useState<
     number | null
   >(null);
+  // Diagnostics from the most recent scan. Drives the diagnostic-aware empty
+  // state in <InferredFromGitHub /> (e.g. "your GitHub email is private — fix
+  // it like this"). Cleared on a fresh consent or a successful skills load.
+  const [scanDiagnostics, setScanDiagnostics] =
+    useState<ScanDiagnostics | null>(null);
   const { addToast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -219,7 +224,41 @@ export default function ProfilePageClient({
         setIsScanning(false);
         return;
       }
-      // Inline scan completed. Refetch the list so new pills appear.
+      // Inline scan completed. Capture the diagnostics block so the right-rail
+      // empty state can explain WHY we found nothing (private email, no
+      // commits, no repos, etc.) instead of just saying "I didn't find any".
+      const scanJson = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        result?: {
+          skipped?: boolean;
+          reason?: string;
+          written?: number;
+          diagnostics?: ScanDiagnostics;
+        };
+      };
+      const diagnostics = scanJson.result?.diagnostics ?? null;
+      const skippedReason =
+        scanJson.result?.skipped && scanJson.result?.reason
+          ? (scanJson.result.reason as ScanDiagnostics['skippedReason'])
+          : null;
+      setScanDiagnostics(
+        diagnostics
+          ? { ...diagnostics, skippedReason: skippedReason ?? null }
+          : skippedReason
+            ? {
+                reposScanned: 0,
+                commitsFound: 0,
+                signalsEmitted: 0,
+                llmDroppedTags: 0,
+                githubEmailPrivate: null,
+                githubLogin: null,
+                skippedReason,
+              }
+            : null,
+      );
+      setLastScanAt(new Date().toISOString());
+
+      // Refetch the list so new pills appear.
       const listRes = await fetch(`/api/teams/${teamId}/inferred-skills`, {
         credentials: 'include',
       });
@@ -298,9 +337,6 @@ export default function ProfilePageClient({
       .getElementById('inferred-from-github-section')
       ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
-  // Mark lastScanAt setter as intentionally unused for now — the polling
-  // follow-up (TODO above) will be the only writer.
-  void setLastScanAt;
 
   const isDirty = useMemo(
     () =>
@@ -405,6 +441,8 @@ export default function ProfilePageClient({
                   onUndoReject={handleUndoReject}
                   onRescan={handleRescan}
                   rescanRateLimitedUntil={rescanRateLimitedUntil}
+                  diagnostics={scanDiagnostics}
+                  githubUsername={githubUsername}
                 />
               }
             />
