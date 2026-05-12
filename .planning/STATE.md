@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-05-11T23:39:13.975Z"
-last_activity: 2026-05-11 -- Phase 02 planning complete
+stopped_at: Plan 02-02 complete — engine ready, awaiting Plan 02-03 UI
+last_updated: "2026-05-12T13:00:00.000Z"
+last_activity: 2026-05-12
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 4
-  percent: 50
+  completed_plans: 6
+  percent: 75
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** The right task gets to the right teammate at the right time, with reasoning the teammate can trust.
-**Current focus:** Phase 01 — profile-foundation
+**Current focus:** Phase 02 — github-skill-inference
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-11 -- Phase 02 planning complete
+Phase: 02 (github-skill-inference) — EXECUTING
+Plan: 3 of 4
+Status: Plan 02-02 (engine) complete — ready for Plan 02-03 (UI surfaces)
+Last activity: 2026-05-12
 
-Progress: [██████████] 100%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -57,6 +57,8 @@ Progress: [██████████] 100%
 | Phase 01 P02 | 360 | 2 tasks | 5 files |
 | Phase 01 P03 | 900 | 3 tasks | 11 files |
 | Phase 01 P04 | 1200 | 2 tasks | 4 files |
+| Phase 02 P01 | — | 3 tasks | 7 files |
+| Phase 02 P02 | 25 | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -74,6 +76,7 @@ Recent decisions affecting current work:
 - Plan 01-02: profileMerge pure function (field-level fallback, strengths-fold, interests passthrough) + additive interest-nudge in match.ts (INTEREST_NUDGE_WEIGHT=0.03, ≤ 0.05 cap, applied AFTER weighted sum, cannot flip strict-better-skill candidate). All 20 unit tests pass; tsc clean.
 - Plan 01-03: full vertical slice — `/teams/[id]/me` RSC + cmdk-powered ProfileForm + POST/GET `/api/teams/[id]/profile` with server-side visibility enforcement (D-17..D-20, closes T-03-01 IDOR) + single `chatViaChain` normalize call (temperature: 0, taskKind: 'recgon_skill_normalize', timeoutMs: 8000 — Pitfall 8) + post-hoc CANONICAL_SET filter (defense-in-depth) + LLM-failure-safe passthrough fallback (Pitfall 7 — raw text never lost, normalization_pending=true) + My profile nav link in TeamSwitcher dropdown (D-10 single discovery surface). Added ChatOptions.timeoutMs to providers.ts (Rule 2 — required for in-call timeout safety). 146/146 tests pass; tsc + build clean.
 - [Phase ?]: Dispatcher threads profileMerge through both runDispatch and dispatchTask; schedule-backfill exempt
+- Plan 02-02: GitHub-skill-inference engine shipped. wrapUntrusted helper (QUAL-02 strip-then-truncate-then-wrap), Octokit deps + throttling plugin (retryCount<1 cap), JobKind union extended with 'github_skill_inference', runScan orchestrator in `src/lib/recgon/githubSkills.ts` (6-month window, 200/repo cap, title-only commits, standard-depth single chatViaChain with temperature=0 + post-hoc CANONICAL_SET filter), worker registered in `WORKERS`, weekly cron `/api/cron/github-skill-inference` (Sunday 06:00 UTC, D-25). 5 of 7 Wave-0 tests GREEN; 178/179 full suite passing (1 remaining failure is Plan 02-04's profileMerge RED). Operator action: `npm install` + redeploy to Vercel to register cron.
 
 ### Pending Todos
 
@@ -100,7 +103,7 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-11T23:08:59.930Z
-Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-github-skill-inference/02-UI-SPEC.md
-Resume command: `/gsd-execute-phase 1` (continues with `01-04-PLAN.md`)
+Last session: 2026-05-12T13:00:00.000Z
+Stopped at: Plan 02-02 complete — engine ready
+Resume file: .planning/phases/02-github-skill-inference/02-03-PLAN.md
+Resume command: `/gsd-execute-phase 2` (continues with `02-03-PLAN.md` — UI surfaces)
