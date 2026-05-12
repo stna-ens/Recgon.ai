@@ -563,10 +563,14 @@ export type RunScanInput = {
 // concrete, actionable explanation. All fields are best-effort: each probe is
 // allowed to fail silently and the UI degrades gracefully when a field is
 // `null`. The shape lets the UI distinguish:
-//   - email-privacy issue       → primary-email visibility === 'private'
+//   - missing `repo` scope       → `tokenScopes` is read but doesn't include
+//     `repo` (token wasn't granted access to code); fix is a reconnect with
+//     all permissions approved
+//   - revoked grant              → tokenScopes call returned 401
+//   - SSO required               → 403 on repo probes despite `repo` scope
+//   - email-privacy issue        → primary-email visibility === 'private'
 //   - email mismatch / wrong git config → recent commits have unattributed
 //     authors AND their email isn't in the verified-emails list
-//   - token-scope issue          → recent-commit sample was unreachable
 //   - genuinely no activity      → recent-commit sample IS reachable but
 //     there really are no recent commits in this repo
 export type ScanDiagnostics = {
@@ -621,6 +625,30 @@ export type ScanDiagnostics = {
    * an Octokit author-filter quirk, not a scope/privacy issue.
    */
   sampleCommitsAttributedToUser: number;
+  /**
+   * Scopes granted on the OAuth token, read from the `x-oauth-scopes` header
+   * of a /user call. `null` = couldn't read. Empty array = the call returned
+   * the header but no scopes (extremely rare). Used by the UI to surface
+   * "your connection is missing access to your code" definitively.
+   */
+  tokenScopes: string[] | null;
+  /**
+   * HTTP status of the scope-probe call. Lets the UI distinguish:
+   *   - 200          → token is valid, scopes are trustworthy
+   *   - 401          → token was revoked or is otherwise invalid → reconnect
+   *   - 403          → blocked (org SAML, abuse flag) → user must intervene
+   *   - null         → network failure / unknown
+   */
+  tokenStatus: number | null;
+  /**
+   * Per-repo result of the recent-commit sample. Order matches the order in
+   * `repos`. Each row carries the HTTP status (`200` on success, or whatever
+   * GitHub returned on failure) so the UI can call out "1 repo couldn't be
+   * read" with specificity. `null` = the probe didn't run.
+   */
+  repoProbeResults:
+    | Array<{ owner: string; repo: string; status: number }>
+    | null;
 };
 
 export type RunScanResult =
@@ -637,20 +665,21 @@ export type RunScanResult =
       diagnostics: ScanDiagnostics;
     };
 
-// Empty-scan attribution probe. Pulls three independent signals so the UI can
-// give the user a concrete cause when commit mining returned zero rows:
+// Empty-scan attribution probe. Pulls four independent signals via raw fetch
+// (so we get HTTP status codes + the OAuth-scopes header — Octokit hides
+// both):
 //
-//   1. `/user`           → GitHub login + publicly-visible email
+//   1. `/user`           → GitHub login + publicly-visible email + scopes header
 //   2. `/user/emails`    → verified email list + primary visibility
 //   3. recent commits    → one repo's last few commits WITHOUT the author
 //                          filter, so we can see whether real commits exist
 //                          and how they're attributed
+//   4. per-repo status   → HTTP status for every repo's listCommits call so
+//                          the UI can specifically say "X of Y repos failed"
 //
-// Each call is independent and swallow-its-own-error. Even if the user's
-// token is missing the `user:email` scope, the commit sample may still work
-// and vice-versa. The UI uses whichever fields landed.
+// Each call is independent and swallow-its-own-error.
 async function probeAttribution(args: {
-  octokit: OctokitLike;
+  token: string;
   repos: Array<{ owner: string; repo: string }>;
   sinceIso: string;
 }): Promise<{
@@ -660,7 +689,18 @@ async function probeAttribution(args: {
   recentCommitSample:
     | Array<{ authorLogin: string | null; authorEmail: string | null; sha: string }>
     | null;
+  tokenScopes: string[] | null;
+  tokenStatus: number | null;
+  repoProbeResults:
+    | Array<{ owner: string; repo: string; status: number }>
+    | null;
 }> {
+  const authHeaders = {
+    Authorization: `Bearer ${args.token}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+
   let login: string | null = null;
   let publicEmail: string | null = null;
   let verifiedEmails: string[] | null = null;
@@ -668,16 +708,31 @@ async function probeAttribution(args: {
   let recentCommitSample:
     | Array<{ authorLogin: string | null; authorEmail: string | null; sha: string }>
     | null = null;
+  let tokenScopes: string[] | null = null;
+  let tokenStatus: number | null = null;
 
-  // 1. /user — login + public-profile email. Works with no scope at all.
+  // 1. /user — login + public-profile email + scopes header. The header
+  // gives us the definitive list of scopes GitHub granted on this token,
+  // independent of what we asked for in the OAuth URL. If `repo` isn't
+  // there, the user's connection is missing access to their code — period.
   try {
-    const me = await args.octokit.rest.users.getAuthenticated();
-    const data = me.data as {
-      login?: string | null;
-      email?: string | null;
-    } | null;
-    login = data?.login ?? null;
-    publicEmail = data?.email ?? null;
+    const res = await fetch('https://api.github.com/user', { headers: authHeaders });
+    tokenStatus = res.status;
+    const scopesHeader = res.headers.get('x-oauth-scopes');
+    if (scopesHeader !== null) {
+      tokenScopes = scopesHeader
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    }
+    if (res.ok) {
+      const data = (await res.json()) as {
+        login?: string | null;
+        email?: string | null;
+      };
+      login = data.login ?? null;
+      publicEmail = data.email ?? null;
+    }
   } catch (err) {
     logger.warn('probeAttribution /user failed', {
       err: err instanceof Error ? err.message : String(err),
@@ -686,70 +741,80 @@ async function probeAttribution(args: {
 
   // 2. /user/emails — verified emails + the primary's `visibility` flag,
   // which is the authoritative source for "are my email addresses private".
-  // Requires `user:email` scope; the consent flow requests it so this should
-  // succeed unless the token is stale from a pre-scope-bump OAuth round-trip.
+  // Requires `user:email` scope; if the token only got `read:user` this
+  // returns 404/403.
   try {
-    const emails = await args.octokit.rest.users.listEmailsForAuthenticatedUser();
-    const rows = (emails.data as
-      | Array<{
-          email: string;
-          primary: boolean;
-          verified: boolean;
-          visibility: 'public' | 'private' | null;
-        }>
-      | null) ?? [];
-    const list: string[] = [];
-    for (const row of rows) {
-      if (row.primary) {
-        primaryEmailPrivate = row.visibility === 'private' || row.visibility === null;
+    const res = await fetch('https://api.github.com/user/emails', {
+      headers: authHeaders,
+    });
+    if (res.ok) {
+      const rows = (await res.json()) as Array<{
+        email: string;
+        primary: boolean;
+        verified: boolean;
+        visibility: 'public' | 'private' | null;
+      }>;
+      const list: string[] = [];
+      for (const row of rows) {
+        if (row.primary) {
+          primaryEmailPrivate =
+            row.visibility === 'private' || row.visibility === null;
+        }
+        if (
+          row.verified &&
+          row.email &&
+          !row.email.includes('@users.noreply.github.com')
+        ) {
+          list.push(row.email);
+        }
       }
-      if (row.verified && row.email && !row.email.includes('@users.noreply.github.com')) {
-        list.push(row.email);
-      }
+      verifiedEmails = list;
     }
-    verifiedEmails = list;
   } catch (err) {
     logger.warn('probeAttribution /user/emails failed', {
       err: err instanceof Error ? err.message : String(err),
     });
   }
 
-  // 3. Recent commit sample from one repo WITHOUT the author filter. Lets
-  // us see whether commits exist and how they're attributed (login + email).
-  // Best-effort: tries every team-connected repo (capped at 5 to bound the
-  // empty-scan API budget) and stops at the first successful sample. This
-  // means a single failed repo (e.g. another teammate's private repo that
-  // this user can't see) won't poison the diagnostic for the others.
+  // 3 + 4. Recent commit sample + per-repo HTTP status. We hit every
+  // connected repo (capped at 5) and keep the FIRST 200-OK sample; even
+  // when no sample lands we still record the status code per repo so the
+  // UI can say "all your repos returned 404" vs "1 of 3 returned 404".
+  const repoProbeResults: Array<{ owner: string; repo: string; status: number }> = [];
   for (const repo of args.repos.slice(0, 5)) {
+    const sinceQ = encodeURIComponent(args.sinceIso);
+    const url =
+      `https://api.github.com/repos/${encodeURIComponent(repo.owner)}` +
+      `/${encodeURIComponent(repo.repo)}/commits?since=${sinceQ}&per_page=10`;
+    let status = 0;
     try {
-      const res = await args.octokit.rest.repos.listCommits({
-        owner: repo.owner,
-        repo: repo.repo,
-        since: args.sinceIso,
-        per_page: 10,
-      });
-      const rows = (res.data as unknown[]) ?? [];
-      const out: Array<{
-        authorLogin: string | null;
-        authorEmail: string | null;
-        sha: string;
-      }> = [];
-      for (const c of rows) {
-        const ci = c as {
-          sha?: string;
-          author?: { login?: string } | null;
-          commit?: { author?: { email?: string } | null };
-        };
-        out.push({
-          authorLogin: ci.author?.login ?? null,
-          authorEmail: ci.commit?.author?.email ?? null,
-          sha: (ci.sha ?? '').slice(0, 7),
-        });
+      const res = await fetch(url, { headers: authHeaders });
+      status = res.status;
+      repoProbeResults.push({ owner: repo.owner, repo: repo.repo, status });
+      if (res.ok && recentCommitSample === null) {
+        const rows = (await res.json()) as unknown[];
+        const out: Array<{
+          authorLogin: string | null;
+          authorEmail: string | null;
+          sha: string;
+        }> = [];
+        for (const c of rows) {
+          const ci = c as {
+            sha?: string;
+            author?: { login?: string } | null;
+            commit?: { author?: { email?: string } | null };
+          };
+          out.push({
+            authorLogin: ci.author?.login ?? null,
+            authorEmail: ci.commit?.author?.email ?? null,
+            sha: (ci.sha ?? '').slice(0, 7),
+          });
+        }
+        recentCommitSample = out;
       }
-      recentCommitSample = out;
-      break; // one good sample is enough.
     } catch (err) {
-      logger.warn('probeAttribution sample listCommits failed', {
+      repoProbeResults.push({ owner: repo.owner, repo: repo.repo, status: 0 });
+      logger.warn('probeAttribution per-repo commits failed', {
         owner: repo.owner,
         repo: repo.repo,
         err: err instanceof Error ? err.message : String(err),
@@ -772,6 +837,9 @@ async function probeAttribution(args: {
     login,
     verifiedEmails,
     recentCommitSample,
+    tokenScopes,
+    tokenStatus,
+    repoProbeResults: repoProbeResults.length > 0 ? repoProbeResults : null,
   };
 }
 
@@ -807,6 +875,9 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
         recentCommitSample: null,
         sampleCommitsByVerifiedEmail: 0,
         sampleCommitsAttributedToUser: 0,
+        tokenScopes: null,
+        tokenStatus: null,
+        repoProbeResults: null,
       },
     };
   }
@@ -892,15 +963,23 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
     recentCommitSample:
       | Array<{ authorLogin: string | null; authorEmail: string | null; sha: string }>
       | null;
+    tokenScopes: string[] | null;
+    tokenStatus: number | null;
+    repoProbeResults:
+      | Array<{ owner: string; repo: string; status: number }>
+      | null;
   } = {
     emailPrivate: null,
     login: null,
     verifiedEmails: null,
     recentCommitSample: null,
+    tokenScopes: null,
+    tokenStatus: null,
+    repoProbeResults: null,
   };
   if (commits.length === 0) {
     const sinceIso = new Date(now.getTime() - SIX_MONTHS_MS).toISOString();
-    probe = await probeAttribution({ octokit, repos, sinceIso });
+    probe = await probeAttribution({ token: input.token, repos, sinceIso });
   }
 
   // Cross-reference the recent-commit sample with the user's verified email
@@ -933,6 +1012,9 @@ export async function runScan(input: RunScanInput): Promise<RunScanResult> {
     recentCommitSample: probe.recentCommitSample,
     sampleCommitsByVerifiedEmail: sampleByVerified,
     sampleCommitsAttributedToUser: sampleAttributed,
+    tokenScopes: probe.tokenScopes,
+    tokenStatus: probe.tokenStatus,
+    repoProbeResults: probe.repoProbeResults,
   };
 
   return {

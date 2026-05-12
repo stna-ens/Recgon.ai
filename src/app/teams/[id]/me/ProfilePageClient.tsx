@@ -256,6 +256,9 @@ export default function ProfilePageClient({
                 recentCommitSample: null,
                 sampleCommitsByVerifiedEmail: 0,
                 sampleCommitsAttributedToUser: 0,
+                tokenScopes: null,
+                tokenStatus: null,
+                repoProbeResults: null,
                 skippedReason,
               }
             : null,

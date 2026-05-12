@@ -37,6 +37,11 @@ export type ScanDiagnostics = {
     | null;
   sampleCommitsByVerifiedEmail: number;
   sampleCommitsAttributedToUser: number;
+  tokenScopes: string[] | null;
+  tokenStatus: number | null;
+  repoProbeResults:
+    | Array<{ owner: string; repo: string; status: number }>
+    | null;
   skippedReason:
     | 'no_consent'
     | 'no_token'
@@ -237,26 +242,99 @@ function EmptyState({
   // ── From here, commitsFound === 0. Pick the most informative branch. ────
 
   // The probe couldn't fetch a sample of commits without the author filter
-  // either — likely a token-scope issue (private repos + token without
-  // `repo` scope), or all listed repos 404'd. Either way: the GitHub
-  // connection isn't fully wired. Surface a one-click reconnect.
+  // either. Use the richer probe data (token scopes, HTTP status, per-repo
+  // results) to pin down the exact cause:
+  //   - token was revoked (/user returned 401)
+  //   - token is missing the `repo` scope
+  //   - all repos returned 404/403 despite a valid `repo` scope
   if (diagnostics.recentCommitSample === null) {
+    // (a) /user returned 401 — the OAuth grant is dead.
+    if (diagnostics.tokenStatus === 401) {
+      return (
+        <EmptyCard
+          tone="warn"
+          title="Your GitHub connection expired"
+          body="GitHub no longer accepts the token I have for you. Reconnect to start fresh."
+          primaryAction={
+            onReconnect
+              ? { label: 'Reconnect GitHub', onClick: onReconnect }
+              : undefined
+          }
+        />
+      );
+    }
+
+    // (b) token is valid but missing `repo` scope — reconnect and approve
+    // ALL permissions GitHub asks for.
+    const scopes = diagnostics.tokenScopes;
+    const hasRepoScope = scopes !== null && scopes.includes('repo');
+    if (scopes !== null && !hasRepoScope) {
+      return (
+        <EmptyCard
+          tone="warn"
+          title="GitHub didn't grant access to your code"
+          body={
+            <>
+              Your GitHub connection has{' '}
+              <span className="inferred-section__inline-key">profile</span> and{' '}
+              <span className="inferred-section__inline-key">email</span>{' '}
+              access, but not{' '}
+              <span className="inferred-section__inline-key">repositories</span>.
+              Reconnect, and on GitHub&apos;s authorization screen make sure
+              every permission stays checked.
+            </>
+          }
+          primaryAction={
+            onReconnect
+              ? { label: 'Reconnect GitHub', onClick: onReconnect }
+              : undefined
+          }
+          secondary={tryAgain}
+        />
+      );
+    }
+
+    // (c) token has `repo` scope but every repo's listCommits returned 4xx.
+    // Most common cause: the repos are owned by an org with SAML SSO and
+    // the user hasn't enabled SSO for this OAuth app on that org. Show the
+    // per-repo failure list so the user can see which ones.
+    const probeResults = diagnostics.repoProbeResults ?? [];
+    const failed = probeResults.filter((r) => r.status >= 400);
     return (
       <EmptyCard
         tone="warn"
-        title="I can't read your repos"
+        title="GitHub blocked every repo"
         body={
           <>
-            GitHub didn&apos;t let me list commits in any of this team&apos;s repos.
-            If they&apos;re private, your GitHub connection might be missing the
-            access we need. Reconnect to grant full access.
+            Your connection has the right permissions, but GitHub refused to
+            list commits for all{' '}
+            <span className="inferred-section__inline-key">
+              {diagnostics.reposScanned}
+            </span>{' '}
+            of this team&apos;s repos. Most common cause: one of your
+            organizations on GitHub uses single sign-on and hasn&apos;t enabled
+            third-party access for this app.
+            {failed.length > 0 && (
+              <>
+                {' '}I tried{' '}
+                {failed.map((r, i) => (
+                  <span key={`${r.owner}/${r.repo}`}>
+                    {i > 0 && ', '}
+                    <span className="inferred-section__inline-key">
+                      {r.owner}/{r.repo}
+                    </span>{' '}
+                    ({r.status})
+                  </span>
+                ))}
+                .
+              </>
+            )}
           </>
         }
-        primaryAction={
-          onReconnect
-            ? { label: 'Reconnect GitHub', onClick: onReconnect }
-            : undefined
-        }
+        primary={{
+          label: 'Open authorized OAuth apps',
+          href: 'https://github.com/settings/applications',
+        }}
         secondary={tryAgain}
       />
     );
