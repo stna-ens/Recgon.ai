@@ -59,11 +59,23 @@ vi.mock('@/lib/supabase', () => ({
   },
 }));
 
+// CR-03 — tests need to swap Resend behavior between "ok", "returns
+// error", and "throws". A module-level flag lets us steer the next send
+// without re-mocking.
+type ResendMode = 'ok' | 'returns_error' | 'throws';
+let resendMode: ResendMode = 'ok';
+
 vi.mock('resend', () => ({
   Resend: class {
     emails = {
       send: vi.fn(async ({ to, subject }: { to: string; subject: string }) => {
         resendSendCalls.push({ to, subject });
+        if (resendMode === 'throws') {
+          throw new Error('simulated Resend network error');
+        }
+        if (resendMode === 'returns_error') {
+          return { error: { name: 'API_ERROR', message: 'simulated Resend API error' } };
+        }
         return { error: null };
       }),
     };
@@ -141,6 +153,7 @@ describe('judgmentBudget — daily safety cap (JUDGE-10)', () => {
   beforeEach(() => {
     fakeTable.clear();
     resendSendCalls = [];
+    resendMode = 'ok';
     vi.useRealTimers();
     delete process.env.DEV_OPS_ALERT_EMAIL;
   });
@@ -253,6 +266,70 @@ describe('judgmentBudget — daily safety cap (JUDGE-10)', () => {
       expect(resendSendCalls.length).toBe(1);
       expect(resendSendCalls[0].to).toBe('ops@example.com');
       expect(resendSendCalls[0].subject).toContain('team-a');
+
+      delete process.env.RESEND_API_KEY;
+    });
+
+    // ── CR-03 regression suite ──────────────────────────────────────────
+
+    it('CR-03: when DEV_OPS_ALERT_EMAIL is set but RESEND_API_KEY is missing, leaves flag FALSE so a later run can retry', async () => {
+      const date = currentUsageDate();
+      seedRow('team-a', date, 50, /*alertSent*/ false);
+      process.env.DEV_OPS_ALERT_EMAIL = 'ops@example.com';
+      delete process.env.RESEND_API_KEY;
+
+      await alertCapExceededOnce('team-a', date);
+
+      // Flag must NOT be flipped — no email ever went out.
+      expect(fakeTable.get(key('team-a', date))?.cap_alert_sent).toBe(false);
+      expect(resendSendCalls.length).toBe(0);
+
+      // Simulate the operator setting the secret and the next cron tick
+      // re-triggering the alert. This time the send succeeds and the
+      // flag flips.
+      process.env.RESEND_API_KEY = 'test-resend-key';
+      resendMode = 'ok';
+      await alertCapExceededOnce('team-a', date);
+      expect(fakeTable.get(key('team-a', date))?.cap_alert_sent).toBe(true);
+      expect(resendSendCalls.length).toBe(1);
+
+      delete process.env.RESEND_API_KEY;
+    });
+
+    it('CR-03: when Resend send throws, leaves flag FALSE for retry', async () => {
+      const date = currentUsageDate();
+      seedRow('team-a', date, 50, /*alertSent*/ false);
+      process.env.DEV_OPS_ALERT_EMAIL = 'ops@example.com';
+      process.env.RESEND_API_KEY = 'test-resend-key';
+      resendMode = 'throws';
+
+      await alertCapExceededOnce('team-a', date);
+
+      // We attempted ONE send (so the call is counted), but it threw and
+      // the flag stays FALSE.
+      expect(resendSendCalls.length).toBe(1);
+      expect(fakeTable.get(key('team-a', date))?.cap_alert_sent).toBe(false);
+
+      // Retry path — provider recovers, flag flips on the next call.
+      resendMode = 'ok';
+      await alertCapExceededOnce('team-a', date);
+      expect(resendSendCalls.length).toBe(2);
+      expect(fakeTable.get(key('team-a', date))?.cap_alert_sent).toBe(true);
+
+      delete process.env.RESEND_API_KEY;
+    });
+
+    it('CR-03: when Resend returns { error }, leaves flag FALSE for retry', async () => {
+      const date = currentUsageDate();
+      seedRow('team-a', date, 50, /*alertSent*/ false);
+      process.env.DEV_OPS_ALERT_EMAIL = 'ops@example.com';
+      process.env.RESEND_API_KEY = 'test-resend-key';
+      resendMode = 'returns_error';
+
+      await alertCapExceededOnce('team-a', date);
+
+      expect(resendSendCalls.length).toBe(1);
+      expect(fakeTable.get(key('team-a', date))?.cap_alert_sent).toBe(false);
 
       delete process.env.RESEND_API_KEY;
     });

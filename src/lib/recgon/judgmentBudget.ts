@@ -106,16 +106,30 @@ export async function checkAndIncrement(teamId: string): Promise<CheckAndIncreme
 
 /**
  * Send the cap-exhausted dev-ops alert AT MOST ONCE per `(teamId, usageDate)`.
- * Sets `cap_alert_sent=true` after the first call; subsequent calls for the
- * same key are no-ops (read → branch → return).
+ * The flag is flipped only after a confirmed-good send (or after the
+ * documented log-only branch when no email address is configured). On any
+ * Resend hiccup the flag stays FALSE so a later cron tick can retry.
  *
- * The Resend send is best-effort; failure is logged but does not throw.
- * `DEV_OPS_ALERT_EMAIL` env governs whether the email actually fires — when
- * unset, we still flip the flag so the no-op semantics on repeat calls work
- * correctly (idempotency comes from the FLAG, not the email).
+ * Semantics:
+ *   - Flag already set → no-op (idempotency check, fastest path)
+ *   - No DEV_OPS_ALERT_EMAIL configured → log-only is the documented
+ *     fallback; flip the flag (we acknowledged the cap hit; no email was
+ *     ever expected)
+ *   - Email configured but RESEND_API_KEY missing → leave flag FALSE so a
+ *     later run after the secret is set can retry (CR-03 fix)
+ *   - Resend send throws / returns error → leave flag FALSE for retry
+ *   - Resend send succeeds → flip the flag
  *
  * T-03-02-02: body contains only the team UUID and date — no per-team data
  * beyond what's needed to debug the cap-hit event.
+ *
+ * CR-03 fix: the previous version flipped the flag BEFORE the send, which
+ * meant a missing RESEND_API_KEY or any network/account error permanently
+ * silenced future alerts for that (team, day). The cap-hit alert is the
+ * exact runaway signal the rail is designed to surface, so silently
+ * dropping it defeats the safety story. Tolerate the "double-send on
+ * retry" hazard (Resend's own deliverability handles dupes) in exchange
+ * for not-dropping-the-alert.
  */
 export async function alertCapExceededOnce(
   teamId: string,
@@ -128,40 +142,29 @@ export async function alertCapExceededOnce(
     return;
   }
 
-  // Flip the flag in the DB. We do this BEFORE the email send so the next
-  // call short-circuits at the read-the-flag step even if the email errors.
-  const { error: updateErr } = await (supabase
-    .from('team_llm_usage')
-    .update({ cap_alert_sent: true })
-    .eq('team_id', teamId)
-    .eq('usage_date', usageDate) as unknown as Promise<{ error: unknown }>);
-
-  if (updateErr) {
-    logger.warn('judgmentBudget alert flag update failed; skipping email', {
-      teamId,
-      usageDate,
-      err: stringifyErr(updateErr),
-    });
-    return;
-  }
-
   logger.warn('llm_judgment_cap_exceeded', { teamId, usageDate });
 
-  // Optionally send the dev-ops email. Single env var, single recipient.
+  // No-address fallback (D-30): log-only is the documented path. We flip
+  // the flag here because no email was ever expected — there's no retry
+  // semantic to preserve.
   const to = process.env.DEV_OPS_ALERT_EMAIL;
   if (!to) {
-    // No address configured — log-only is the documented fallback (D-30).
-    return;
-  }
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    logger.warn('judgmentBudget: DEV_OPS_ALERT_EMAIL set but RESEND_API_KEY missing', {
-      teamId,
-      usageDate,
-    });
+    await flipAlertFlag(teamId, usageDate);
     return;
   }
 
+  // Email IS configured but the secret is missing. Leave the flag FALSE
+  // so a later run (after the secret is set in env) can retry.
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    logger.warn(
+      'judgmentBudget: DEV_OPS_ALERT_EMAIL set but RESEND_API_KEY missing — NOT flipping flag (will retry)',
+      { teamId, usageDate },
+    );
+    return;
+  }
+
+  // Attempt the send. Any failure leaves the flag FALSE for retry.
   try {
     const resend = new Resend(apiKey);
     const { error } = await resend.emails.send({
@@ -178,17 +181,43 @@ export async function alertCapExceededOnce(
       `,
     });
     if (error) {
-      logger.warn('judgmentBudget Resend returned error', {
+      logger.warn('judgmentBudget Resend returned error — NOT flipping flag (will retry)', {
         teamId,
         usageDate,
         err: stringifyErr(error),
       });
+      return;
     }
   } catch (err) {
-    logger.warn('judgmentBudget Resend send threw', {
+    logger.warn('judgmentBudget Resend send threw — NOT flipping flag (will retry)', {
       teamId,
       usageDate,
       err: stringifyErr(err),
+    });
+    return;
+  }
+
+  // Email confirmed sent. NOW flip the flag.
+  await flipAlertFlag(teamId, usageDate);
+}
+
+/**
+ * Set `cap_alert_sent=true` for the (teamId, usageDate) row. Logged-only on
+ * DB write failure — we'd rather risk a duplicate send than crash the
+ * cron cycle.
+ */
+async function flipAlertFlag(teamId: string, usageDate: string): Promise<void> {
+  const { error: updateErr } = await (supabase
+    .from('team_llm_usage')
+    .update({ cap_alert_sent: true })
+    .eq('team_id', teamId)
+    .eq('usage_date', usageDate) as unknown as Promise<{ error: unknown }>);
+
+  if (updateErr) {
+    logger.warn('judgmentBudget alert flag update failed (post-send)', {
+      teamId,
+      usageDate,
+      err: stringifyErr(updateErr),
     });
   }
 }
