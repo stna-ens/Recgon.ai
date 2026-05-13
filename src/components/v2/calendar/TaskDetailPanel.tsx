@@ -274,6 +274,9 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
             <h3 className="cal-panel-title">{cleanText(task.title)}</h3>
             {task.description && <p className="cal-panel-desc">{cleanText(task.description)}</p>}
 
+            {/* Phase 3 Plan 03 — assignee-only "Why you" line (CR-01 fix). */}
+            <WhyYouBlock sentence={task.whyYouSentence} />
+
             {task.scheduledDate && (
               <section className="cal-panel-section">
                 <span className="cal-panel-section-eyebrow">SCHEDULED</span>
