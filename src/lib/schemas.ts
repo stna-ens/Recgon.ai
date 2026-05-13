@@ -338,6 +338,44 @@ export const InferredSkillPatchBodySchema = z
 
 export type InferredSkillPatchBody = z.infer<typeof InferredSkillPatchBodySchema>;
 
+// ── Phase 3 — LLM judgment overlay (Plan 01) ─────────────────────────────────
+//
+// Schema for the close-call tiebreaker prompt response. Paired with the
+// `JUDGE_ASSIGNMENT_BATCH_SYSTEM` prompt in `prompts.ts` and consumed by
+// `runJudgment` in `lib/recgon/judge.ts`. Any schema failure → caller does
+// math-only fallback (JUDGE-05). Post-hoc content validation (substring
+// checks against the candidate payload) is in `judge.ts` because Zod can't
+// see the candidate data.
+
+export const REASON_CODES = [
+  'recent_track_record',
+  'interest_match',
+  'skill_depth',
+  'task_kind_familiarity',
+  'capacity_headroom',
+] as const;
+
+export const JudgePickSchema = z.object({
+  task_id: z.string().min(1),
+  chosen_candidate_id: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  reason_code: z.enum(REASON_CODES),
+  reason_sentence: z
+    .string()
+    .min(1)
+    .max(150) // char ceiling — defense in depth alongside the word check
+    .refine((s) => s.trim().split(/\s+/).length <= 25, {
+      message: 'reason_sentence exceeds 25 words',
+    }),
+  confidence: z.enum(['low', 'medium', 'high']),
+});
+
+export const JudgeResultSchema = z.object({
+  picks: z.array(JudgePickSchema).min(1).max(10),
+});
+
+export type JudgePick = z.infer<typeof JudgePickSchema>;
+export type JudgeResult = z.infer<typeof JudgeResultSchema>;
+
 // ── Shared parse helper ───────────────────────────────────────────────────────
 
 /**

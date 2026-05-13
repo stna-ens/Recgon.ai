@@ -298,3 +298,55 @@ export type RecgonState = {
   lastDispatchAt: string | null;
   assignmentLog: AssignmentLogEntry[];
 };
+
+// ── Phase 3 — LLM judgment overlay (Plan 01) ─────────────────────────────────
+//
+// Pure-function input shape for `runJudgment` in `lib/recgon/judge.ts`.
+// The caller (Plan 02 dispatcher integration) is responsible for keeping the
+// anon_id → user_id mapping; the judge never sees real names or user IDs.
+
+import type { MatchResult } from './match';
+import type { JudgePick } from '../schemas';
+
+export type JudgeCandidateInput = {
+  // No real user_id at this layer — judge sees only anon_id 1/2/3.
+  score: number;                           // total fit, 0–1
+  breakdown: {
+    skill_match: number;
+    fit_for_task_kind: number;
+    calendar_availability: number;
+    workload_headroom: number;
+  };
+  confirmedSkills: string[];               // canonical vocab only
+  interests: string[];                     // canonical vocab only
+  recentTasks: Array<{
+    kind: string;
+    skills: string[];
+    avgRating?: number;
+  }>;
+};
+
+export type JudgeTaskInput = {
+  taskId: string;
+  title: string;                           // safe — Recgon-minted, not user-typed freeform
+  kind: string;
+  requiredSkills: string[];
+  estimatedHours: number;
+  candidates: JudgeCandidateInput[];       // length 2 or 3 only
+};
+
+// Written to `agent_tasks.assignment_reasoning` JSONB by Plan 03. Plan 01
+// defines the shape so the judge module + dispatcher integration agree on it.
+export type AssignmentReasoning =
+  | { kind: 'math_only'; mathScore: number; mathBreakdown: MatchResult['breakdown'] }
+  | {
+      kind: 'llm_tiebreaker';
+      mathScore: number;
+      mathBreakdown: MatchResult['breakdown'];
+      judge: JudgePick;
+    };
+
+// Re-export the schema-derived JudgePick/JudgeResult so consumers can import
+// everything from one place. Callers that want the Zod schema itself import
+// from `lib/schemas`.
+export type { JudgePick, JudgeResult } from '../schemas';

@@ -1021,3 +1021,132 @@ ${fmt}
 
 Respond with JSON: { "skills": [{ "canonical": string, "confidence": number, "evidence": number }] }. evidence = 1-indexed commit reference. No tags outside the canonical vocab in the system prompt.`;
 }
+
+// ── Phase 3 — LLM judgment overlay (Plan 01) ─────────────────────────────────
+//
+// JUDGE_ASSIGNMENT_BATCH — close-call tiebreaker prompt. Reviews 1–10
+// pre-anonymized tasks (each with the math top-3 candidates) and returns one
+// pick per task with reason_code + sentence. Strict no-names rule per
+// JUDGE-03 + QUAL-01. Schema enforced by `JudgeResultSchema` in
+// `schemas.ts`; post-hoc content validator lives in `src/lib/recgon/judge.ts`.
+
+export const JUDGE_ASSIGNMENT_BATCH_SYSTEM = `You are Recgon, the AI Product Manager. You decide which teammate gets which task.
+
+You are reviewing close-call assignments where the math-based fit scores are within 0.15 of each other. The math has narrowed each task to its top-3 candidates. Your job: pick the single best candidate per task and explain in one short sentence WHY, citing real signals from the payload.
+
+Rules (strict — violations cause a math-only fallback):
+- Refer to candidates ONLY as candidate_1, candidate_2, candidate_3. The payload has NO names. Do not invent any. Do not use pronouns (he/she/they). Do not use profanity.
+- Pick exactly one of {1, 2, 3} per task.
+- Pick a reason_code from this exact list: recent_track_record | interest_match | skill_depth | task_kind_familiarity | capacity_headroom.
+- The reason_sentence must reference a concrete fact from the chosen candidate's payload (a skill they have, a task they completed, a band value, an interest). NEVER invent skills, ratings, or task counts not in the payload.
+- reason_sentence ≤ 25 words. Plain second-person voice: "your", "you". Do NOT say "the AI", "the algorithm", "I picked", "candidate_2 has".
+- confidence: high = one candidate is clearly stronger on the chosen signal; medium = leaning but defensible; low = essentially a coin flip, picking on the smallest margin.
+
+Output ONE JSON object, no markdown, no prose:
+{
+  "picks": [
+    { "task_id": "...", "chosen_candidate_id": 1, "reason_code": "...", "reason_sentence": "...", "confidence": "high" }
+  ]
+}
+
+Exactly one pick per task_id in the input. Do not skip tasks. Do not add tasks.`;
+
+// SECURITY (T-03-01-01): JudgeTaskInput fields land in this prompt body
+// unwrapped. They are SAFE because:
+//   - `title` is minted by Recgon's brain, never user-typed freeform.
+//   - `requiredSkills`, `confirmedSkills`, `interests` come from the canonical
+//     vocab (Phase 2 D-23) — small allow-listed token set.
+//   - `recentTasks` carries kinds + skills + ratings, NOT user-typed titles.
+// If a future phase allows user-typed titles in `JudgeTaskInput.title` or
+// adds user-typed task titles to `recentTasks`, wrap those fields in
+// <user_content>...</user_content> per QUAL-02.
+function bandLabel(n: number): 'low' | 'medium' | 'high' {
+  if (n >= 0.7) return 'high';
+  if (n >= 0.45) return 'medium';
+  return 'low';
+}
+
+// Minimal XML escape for the few characters that would break our pseudo-XML
+// task_block wrapping. `title` is the only field plausibly carrying these.
+function escapeXmlForJudge(s: string): string {
+  return s.replace(/[<>&]/g, (c) => {
+    if (c === '<') return '&lt;';
+    if (c === '>') return '&gt;';
+    return '&amp;';
+  });
+}
+
+// Re-exported for unit tests that need to verify the user prompt body
+// without coupling to the JudgeTaskInput type import path.
+export { bandLabel as judgeBand, escapeXmlForJudge };
+
+export type JudgeBatchCandidateBlock = {
+  score: number;
+  breakdown: {
+    skill_match: number;
+    fit_for_task_kind: number;
+    calendar_availability: number;
+    workload_headroom: number;
+  };
+  confirmedSkills: string[];
+  interests: string[];
+  recentTasks: Array<{ kind: string; skills: string[]; avgRating?: number }>;
+};
+
+export type JudgeBatchTaskBlock = {
+  taskId: string;
+  title: string;
+  kind: string;
+  requiredSkills: string[];
+  estimatedHours: number;
+  candidates: JudgeBatchCandidateBlock[];
+};
+
+export function buildJudgeBatchUserPrompt(tasks: JudgeBatchTaskBlock[]): string {
+  const blocks = tasks
+    .map((t, i) => {
+      const candidateBlocks = t.candidates
+        .map((c, ci) => {
+          const recentLines =
+            c.recentTasks.length === 0
+              ? 'none'
+              : c.recentTasks
+                  .map(
+                    (r) =>
+                      `      - ${r.kind} (skills: ${r.skills.join(', ')}) finished, avg_rating ${
+                        r.avgRating !== undefined ? r.avgRating.toFixed(1) : 'unrated'
+                      }`,
+                  )
+                  .join('\n');
+          return `  <candidate id="${ci + 1}">
+    <fit_score>${c.score.toFixed(2)}</fit_score>
+    <breakdown>
+      skill_match: ${c.breakdown.skill_match.toFixed(2)} (${bandLabel(c.breakdown.skill_match)})
+      fit_for_task_kind: ${c.breakdown.fit_for_task_kind.toFixed(2)} (${bandLabel(c.breakdown.fit_for_task_kind)})
+      calendar_availability: ${c.breakdown.calendar_availability.toFixed(2)} (${bandLabel(c.breakdown.calendar_availability)})
+      workload_headroom: ${c.breakdown.workload_headroom.toFixed(2)} (${bandLabel(c.breakdown.workload_headroom)})
+    </breakdown>
+    <confirmed_skills>${c.confirmedSkills.join(', ') || 'none'}</confirmed_skills>
+    <interests>${c.interests.join(', ') || 'none'}</interests>
+    <recent_tasks_14d>
+${recentLines}
+    </recent_tasks_14d>
+  </candidate>`;
+        })
+        .join('\n');
+
+      return `<task_block index="${i}">
+  <task_id>${t.taskId}</task_id>
+  <task_title>${escapeXmlForJudge(t.title)}</task_title>
+  <task_kind>${t.kind}</task_kind>
+  <required_skills>${t.requiredSkills.join(', ')}</required_skills>
+  <estimated_hours>${t.estimatedHours}</estimated_hours>
+
+${candidateBlocks}
+</task_block>`;
+    })
+    .join('\n');
+
+  return `Pick one candidate per task from the math top-3 below. Return JSON only.
+${blocks}`;
+}
