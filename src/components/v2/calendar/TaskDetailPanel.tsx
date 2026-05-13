@@ -27,8 +27,30 @@ function fmtRequestedDay(task: AgentTask): string | null {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+// Phase 3 / Plan 03 — the API may decorate `AgentTask` with a pre-rendered
+// `whyYouSentence` string for the assignee + team owner. The raw
+// `assignmentReasoning` JSONB NEVER reaches the client (privacy boundary
+// T-03-03-03 enforced server-side in /api/recgon/tasks/[id]).
+type TaskWithWhyYou = AgentTask & { whyYouSentence?: string };
+
+// Sub-component: renders the "WHY YOU" section ONLY when whyYouSentence is
+// a non-empty string. No placeholder / empty header when the field is absent
+// — keeps the panel clean for tasks without a reasoning envelope (legacy)
+// and for viewers who aren't the assignee or owner (privacy filter).
+function WhyYouBlock({ sentence }: { sentence?: string }) {
+  if (!sentence || typeof sentence !== 'string' || sentence.trim().length === 0) {
+    return null;
+  }
+  return (
+    <section className="cal-panel-section">
+      <span className="cal-panel-section-eyebrow">WHY YOU</span>
+      <p className="cal-panel-section-note">{sentence}</p>
+    </section>
+  );
+}
+
 type Props = {
-  task: AgentTask | null;
+  task: TaskWithWhyYou | null;
   isOpen: boolean;
   // The teammate id that maps to the signed-in user in the current team.
   // null when the viewer has no teammate row (shouldn't happen in normal use)
