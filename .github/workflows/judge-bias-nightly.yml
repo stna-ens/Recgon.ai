@@ -1,0 +1,111 @@
+name: Judge Bias Regression (Nightly)
+
+# Phase 3 / Plan 03-04 / QUAL-01
+#
+# Runs the 5-fixture × 30-trial bias regression test against the REAL
+# `chatViaProviders` LLM chain (Gemini 2.5 Flash → Claude Haiku 4.5 fallback).
+# 150 trials per run, ~10 min runtime, ~$0.30 cost.
+#
+# This workflow is SCAFFOLDED but NOT a required status check on PRs — it
+# runs on a nightly cron + manual dispatch. Failures auto-open a GitHub
+# issue (idempotent within a single run; deduplication via concurrency
+# group prevents parallel runs).
+#
+# To enable as a required check at some future point: add this workflow's
+# job name to the repo's branch protection rules in Settings → Branches.
+
+on:
+  schedule:
+    # 04:00 UTC daily — outside US business hours, before EU mornings.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    # Allow manual triggering from the Actions tab for ad-hoc re-runs.
+
+# Concurrency group ensures a manual trigger fired during a scheduled run
+# does NOT cancel the in-flight execution (cancel-in-progress: false).
+# Useful when a near-complete run shouldn't be wasted by a duplicate trigger.
+concurrency:
+  group: judge-bias-nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write # required to auto-open failure issue
+
+jobs:
+  bias-regression:
+    name: Bias Regression — Real LLM
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run bias regression (real LLM)
+        id: bias_run
+        env:
+          JUDGE_BIAS_REAL_LLM: '1'
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -o pipefail
+          npx vitest run src/__tests__/judge.bias-regression.test.ts 2>&1 | tee bias-output.log
+
+      - name: Upload bias output log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bias-output-${{ github.run_id }}
+          path: bias-output.log
+          retention-days: 30
+
+      - name: Open issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DATE_UTC=$(date -u +%Y-%m-%d)
+          TITLE="Judge bias regression failure ${DATE_UTC}"
+          BODY=$(cat <<EOF
+          The nightly judge bias regression run failed on ${DATE_UTC}.
+
+          **Workflow run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          **What this means:**
+          A real-LLM judgment run across 5 byte-identical-except-name candidate fixtures (English-M / Turkish-F / Arabic-M / East-Asian-F / Spanish-mixed) shows the model is favoring one or more name vocabularies by > 15 percentage points. This is the regression QUAL-01 was designed to catch.
+
+          **Triage checklist:**
+          1. Download the \`bias-output-${{ github.run_id }}\` artifact from the workflow run to see per-fixture pickCounts.
+          2. Check whether one specific fixture deviates from the others (single-locale bias) or whether all fixtures shift together (model drift / prompt regression).
+          3. Inspect recent changes to:
+             - \`src/lib/prompts.ts\` (JUDGE_ASSIGNMENT_BATCH_SYSTEM)
+             - \`src/lib/recgon/judge.ts\` (post-hoc validator, PRONOUN_DENY)
+             - \`src/lib/llm/providers.ts\` (active provider order)
+          4. If a provider switch happened (Gemini outage → Claude active), the bias profile may differ between providers — accept and re-baseline if intentional.
+
+          **Reference docs:**
+          - \`.planning/phases/03-llm-judgment-overlay/03-RESEARCH.md\` §Q3 pass/fail thresholds
+          - \`.planning/phases/03-llm-judgment-overlay/03-04-SUMMARY.md\` baseline distribution
+          EOF
+          )
+
+          # Look for an existing open issue with the same date prefix to
+          # avoid issue spam on consecutive nightly failures. Note: this
+          # is best-effort — if no match, open a fresh issue.
+          EXISTING=$(gh issue list --state open --search "in:title \"Judge bias regression failure\"" --json number,title --jq '.[] | select(.title | startswith("Judge bias regression failure")) | .number' | head -1)
+          if [ -n "$EXISTING" ]; then
+            echo "Existing open bias-failure issue #${EXISTING} — adding comment."
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label "bug,bias-regression"
+          fi
