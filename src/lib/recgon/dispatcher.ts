@@ -575,13 +575,19 @@ async function dispatchSingleTaskWithReasoning(
   rawTask: AgentTask,
   ranked: MatchResult[],
   pick: JudgePick | null,
-  reasoning: AssignmentReasoning,
+  reasoningIn: AssignmentReasoning,
   teammates: Awaited<ReturnType<typeof listTeammatesWithStats>>,
   excludeIds: string[] = [],
 ): Promise<'assigned' | 'no_fit' | 'skip'> {
   // Phase 3 / Plan 03 — `reasoning` is LIVE: assignScheduledTask passes it
   // to assignTask, which persists it to agent_tasks.assignment_reasoning.
   // notifyTeammateAssigned also receives it for the "Why you" email line.
+  //
+  // WR-06 fix — reasoning may be overwritten below if the judge pick is
+  // excluded (then the actual assignment is math fallback, so the
+  // persisted/rendered reasoning must reflect that, not the discarded
+  // tiebreaker).
+  let reasoning: AssignmentReasoning = reasoningIn;
 
   // Retag legacy tasks (minted before LLM tagging) so they get scored on
   // role-aware skills instead of the generic placeholder tags. The Pass 1
@@ -606,6 +612,21 @@ async function dispatchSingleTaskWithReasoning(
         taskId: task.id,
         teammateId: candidate.teammate.id,
       });
+      // WR-06 — rebuild reasoning as math_only. The persisted reasoning
+      // and the "Why you" line must reflect what actually happened (math
+      // fallback), not the discarded tiebreaker. Re-derive from the
+      // ranked top-1 since that's what the fallback path will land on.
+      reasoning = {
+        kind: 'math_only',
+        mathScore: ranked[0]?.score ?? 0,
+        mathBreakdown: ranked[0]?.breakdown ?? {
+          skillOverlap: 0,
+          fitForKind: 0,
+          availabilityNow: 0,
+          loadHeadroom: 0,
+          interestNudge: 0,
+        },
+      };
     }
   }
 
