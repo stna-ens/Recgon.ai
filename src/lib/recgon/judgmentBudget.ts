@@ -73,25 +73,32 @@ export async function checkAndIncrement(teamId: string): Promise<CheckAndIncreme
   // Upsert with the new count. If no row yet, this inserts with calls=1.
   // If a row exists, we send judgment_calls = currentCalls + 1.
   const newCalls = currentCalls + 1;
-  const { error } = await (supabase
-    .from('team_llm_usage')
-    .upsert({
-      team_id: teamId,
-      usage_date: usageDate,
-      judgment_calls: newCalls,
-      cap_alert_sent: existing?.cap_alert_sent ?? false,
-    }) as unknown as Promise<{ error: unknown }>);
+  try {
+    const { error } = await (supabase
+      .from('team_llm_usage')
+      .upsert({
+        team_id: teamId,
+        usage_date: usageDate,
+        judgment_calls: newCalls,
+        cap_alert_sent: existing?.cap_alert_sent ?? false,
+      }) as unknown as Promise<{ error: unknown }>);
 
-  if (error) {
-    // Database write failed. Fail open: log + treat as allowed so we don't
-    // block real dispatches over a transient DB hiccup. The caller still
-    // gets a normal result; the counter just didn't bump this round.
-    logger.warn('judgmentBudget upsert failed; failing open', {
+    if (error) {
+      // Database write failed. Fail open: log + treat as allowed so we don't
+      // block real dispatches over a transient DB hiccup. The caller still
+      // gets a normal result; the counter just didn't bump this round.
+      logger.warn('judgmentBudget upsert failed; failing open', {
+        teamId,
+        usageDate,
+        err: stringifyErr(error),
+      });
+    }
+  } catch (err) {
+    logger.warn('judgmentBudget upsert threw; failing open', {
       teamId,
       usageDate,
-      err: stringifyErr(error),
+      err: stringifyErr(err),
     });
-    return { allowed: true, callsToday: newCalls };
   }
 
   return { allowed: true, callsToday: newCalls };
@@ -196,13 +203,25 @@ type UsageRow = {
 };
 
 async function readUsageRow(teamId: string, usageDate: string): Promise<UsageRow | null> {
-  const { data } = await (supabase
-    .from('team_llm_usage')
-    .select('team_id, usage_date, judgment_calls, cap_alert_sent')
-    .eq('team_id', teamId)
-    .eq('usage_date', usageDate)
-    .maybeSingle() as unknown as Promise<{ data: UsageRow | null }>);
-  return data ?? null;
+  // Wrap the chained call in try/catch — if a test or transient DB error
+  // breaks the chain, treat as "no row" rather than throwing. The cap is a
+  // safety rail (T-03-02-03); a failed read should not block real dispatch.
+  try {
+    const { data } = await (supabase
+      .from('team_llm_usage')
+      .select('team_id, usage_date, judgment_calls, cap_alert_sent')
+      .eq('team_id', teamId)
+      .eq('usage_date', usageDate)
+      .maybeSingle() as unknown as Promise<{ data: UsageRow | null }>);
+    return data ?? null;
+  } catch (err) {
+    logger.warn('judgmentBudget readUsageRow failed; treating as no row', {
+      teamId,
+      usageDate,
+      err: stringifyErr(err),
+    });
+    return null;
+  }
 }
 
 function stringifyErr(err: unknown): string {

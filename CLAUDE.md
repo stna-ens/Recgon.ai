@@ -19,6 +19,7 @@ Optional:
 - Deployment base URL (for emails + OAuth callbacks): `NEXT_PUBLIC_BASE_URL`
 - Logging: `LOG_LEVEL` (`debug` | `info` | `warn` | `error`; default `info`)
 - Quota bypass (comma-separated emails exempt from analysis quota): `QUOTA_EXEMPT_EMAILS`
+- Recgon dev-ops alert (Phase 3 / Plan 03-02 — receives one email per team per UTC day when the LLM judgment cap is hit): `DEV_OPS_ALERT_EMAIL`
 - MCP server auth (stdio server only): `RECGON_MCP_TOKEN`
 
 ## Stack

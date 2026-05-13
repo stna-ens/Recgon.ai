@@ -36,6 +36,24 @@ import type { JudgeCandidateInput, JudgeTaskInput } from './types';
 // override via opts.
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+/**
+ * Close-call detection threshold for the dispatcher's 3-pass restructure.
+ *
+ * When `ranked[0].score - ranked[1].score < CLOSE_CALL_THRESHOLD`, the
+ * dispatcher invokes the judge; otherwise it assigns math top-1 directly.
+ *
+ * Locked at 0.20 per RESEARCH Q1 sub-note and CONTEXT D-30 (v3 priority is
+ * quality > cost — see memory `project_quality_over_cost_v3`). This
+ * supersedes the 0.15 value in ROADMAP §Phase 3 and JUDGE-01:
+ *   - 0.15 was cost-driven (catch fewer LLM calls; ~50% of tasks).
+ *   - 0.20 catches more meaningful tiebreakers (~70% of tasks) at
+ *     ~$0.001/dispatch — well under any reasonable budget at the cap.
+ *
+ * Beyond 0.20 the math signal is genuinely weak and the LLM is guessing
+ * as much as reasoning — research recommended stopping here.
+ */
+export const CLOSE_CALL_THRESHOLD = 0.20;
+
 // Deny-list of pronouns the LLM is told NOT to use. Whole-word match,
 // case-insensitive. Used both for the judge response and as defense-in-depth
 // when copy is rendered for the "Why you" line.

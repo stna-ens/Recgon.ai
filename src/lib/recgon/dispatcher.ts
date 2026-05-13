@@ -9,6 +9,7 @@
 
 import { logger } from '../logger';
 import { supabase } from '../supabase';
+import { chatViaProviders } from '../llm/providers';
 import { notifyTeammateAssigned } from '../notifications';
 import { readUnifiedBrain } from './brain';
 import { mintTasksFromBrain } from './taskMint';
@@ -18,6 +19,18 @@ import { tagSingleTaskWithSkills } from './skillTagger';
 import { listProfiles } from './profileStorage';
 import { listActiveInferredSkillsForTeam } from './inferredSkillsStorage';
 import { profileMerge } from './profileMerge';
+import {
+  runJudgment,
+  computeJudgeCacheKey,
+  CLOSE_CALL_THRESHOLD,
+  JudgeError,
+  type JudgeChatAdapter,
+} from './judge';
+import {
+  checkAndIncrement,
+  alertCapExceededOnce,
+  currentUsageDate,
+} from './judgmentBudget';
 import {
   listTeammatesWithStats,
   listTasks,
@@ -33,7 +46,18 @@ import {
   getTeammate,
   updateTaskRequiredSkills,
 } from './storage';
-import type { AgentTask, AssignmentLogEntry, BrainSnapshot, InferredSkill, TaskStatus, TeammateProfile, WorkingHours } from './types';
+import type {
+  AgentTask,
+  AssignmentLogEntry,
+  AssignmentReasoning,
+  BrainSnapshot,
+  InferredSkill,
+  JudgePick,
+  JudgeTaskInput,
+  TaskStatus,
+  TeammateProfile,
+  WorkingHours,
+} from './types';
 
 // PROFILE-04 (Phase 1) + SKILL-04 (Phase 2 / Plan 02-04): thread self-declared
 // profiles AND GitHub-inferred skills through profileMerge before rankMatches.
@@ -162,11 +186,52 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
   // overridden capacity), otherwise scheduling on existing assignments regresses.
   const backfilled = await backfillLegacySchedules(teamId, teammates);
 
+  // ── PASS 1: rank-all → identify close-call subset ──────────────────────
+  // Per RESEARCH Q4 / CONTEXT D-30: walk the whole backlog once, scoring
+  // every teammate per task. `RankEntry.isCloseCall` is true when the math
+  // gap between top-1 and top-2 is < CLOSE_CALL_THRESHOLD (0.20). Tasks
+  // with a clear winner skip the judge entirely (JUDGE-02).
+  const ranked = new Map<string, RankEntry>();
+  for (const task of backlog) {
+    const fresh = await ensureFreshSkills(task);
+    const r = rankMatches(mergedTeammates, {
+      kind: fresh.kind,
+      requiredSkills: fresh.requiredSkills,
+      estimatedHours: fresh.estimatedHours,
+      priority: fresh.priority,
+    });
+    const isCloseCall =
+      r.length >= 2 && r[0].score - r[1].score < CLOSE_CALL_THRESHOLD;
+    ranked.set(fresh.id, { task: fresh, ranked: r, isCloseCall });
+  }
+
+  // ── PASS 2: one batched judge call for all close-calls ─────────────────
+  // Cache lifecycle: created here, dies with this function. No module-level
+  // state (would leak across cron runs and re-bill cached tasks).
+  const cache = new Map<string, JudgePick>();
+  const closeCalls = [...ranked.values()].filter(
+    (e) => e.isCloseCall && e.ranked.length >= 2,
+  );
+  const judgeMap = await applyJudgmentIfClose(closeCalls, {
+    teamId,
+    cache,
+    chat: chatViaProviders,
+  });
+
+  // ── PASS 3: assign each task per judge pick OR math top-1 ──────────────
   let assigned = 0;
   let noFit = 0;
-
-  for (const task of backlog) {
-    const result = await dispatchSingleTask(teamId, task, mergedTeammates);
+  for (const [taskId, entry] of ranked) {
+    const pick = judgeMap.get(taskId) ?? null;
+    const reasoning = buildAssignmentReasoning(entry, pick);
+    const result = await dispatchSingleTaskWithReasoning(
+      teamId,
+      entry.task,
+      entry.ranked,
+      pick,
+      reasoning,
+      mergedTeammates,
+    );
     if (result === 'assigned') assigned++;
     else if (result === 'no_fit') noFit++;
   }
@@ -178,6 +243,8 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
     assigned,
     noFit,
     backfilled,
+    closeCalls: closeCalls.length,
+    judgePicks: judgeMap.size,
   });
 
   return {
@@ -188,6 +255,282 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
     noFit,
     backfilled,
   };
+}
+
+// ── Pass 2 helper: batched LLM judge call with cache + cap ─────────────────
+
+type RankEntry = {
+  task: AgentTask;
+  ranked: MatchResult[];
+  isCloseCall: boolean;
+};
+
+type JudgeCtx = {
+  teamId: string;
+  cache: Map<string, JudgePick>;
+  chat: JudgeChatAdapter;
+};
+
+/**
+ * Pass 2 of the 3-pass dispatch shape (RESEARCH Q4). Builds judge inputs
+ * for every close-call task, batches recent-task lookups (no N+1), checks
+ * the daily safety cap, and invokes `runJudgment` ONCE for the whole batch.
+ *
+ * Returns a Map<taskId, JudgePick> — empty when no close-calls, cap hit,
+ * or the LLM throws. Caller falls back to math top-1 for any unmapped task.
+ */
+async function applyJudgmentIfClose(
+  closeCalls: RankEntry[],
+  ctx: JudgeCtx,
+): Promise<Map<string, JudgePick>> {
+  const out = new Map<string, JudgePick>();
+  if (closeCalls.length === 0) return out;
+
+  // Cap check FIRST — if exhausted, alert (idempotent) and silent fallback.
+  const capDecision = await checkAndIncrement(ctx.teamId);
+  if (!capDecision.allowed) {
+    logger.info('judge_skipped_cap', {
+      teamId: ctx.teamId,
+      callsToday: capDecision.callsToday,
+    });
+    await alertCapExceededOnce(ctx.teamId, currentUsageDate());
+    return out;
+  }
+
+  // Build the batched judge inputs. Each entry slices the math top-3 (or
+  // top-2 when only 2 candidates clear MIN_FIT_SCORE per CONTEXT open-Q).
+  // SECURITY: candidate skill tags are canonical-vocab only (Phase 2 D-23);
+  // task.title is Recgon-minted (T-03-02-06), not user-typed.
+  const judgeInputs: JudgeTaskInput[] = [];
+  const taskIdByInput = new Map<string, RankEntry>();
+  const cachedPicks: JudgePick[] = [];
+
+  // Batched recent-tasks query — single SELECT for ALL close-call candidates,
+  // grouped client-side. T-02-22 precedent (no N+1 per candidate).
+  const candidateUserIds = new Set<string>();
+  for (const entry of closeCalls) {
+    for (const m of entry.ranked.slice(0, 3)) {
+      const uid = (m.teammate as { userId?: string | null }).userId;
+      if (uid) candidateUserIds.add(uid);
+    }
+  }
+  const recentByUser = await loadRecentTasksForCandidates(
+    ctx.teamId,
+    [...candidateUserIds],
+  );
+
+  for (const entry of closeCalls) {
+    const topN = entry.ranked.slice(0, 3); // max 3 by CONTEXT JUDGE-01
+    const input = buildJudgeTaskInput(entry.task, topN, recentByUser);
+
+    // Cache check: skip the LLM for tuples we've already judged. The cache
+    // lives only for this dispatch run, but `dispatchTask` (manual single-
+    // task path) also flows through this helper, so the cache is meaningful
+    // even at N=1 if the function is invoked twice with the same tuple.
+    const cacheKey = computeJudgeCacheKey(
+      entry.task.id,
+      topN.map((m) => (m.teammate as { userId?: string | null }).userId ?? m.teammate.id),
+      hashScores(topN),
+    );
+    const cached = ctx.cache.get(cacheKey);
+    if (cached) {
+      cachedPicks.push(cached);
+      continue;
+    }
+    judgeInputs.push(input);
+    taskIdByInput.set(entry.task.id, entry);
+  }
+
+  // Apply cached picks immediately.
+  for (const c of cachedPicks) out.set(c.task_id, c);
+
+  if (judgeInputs.length === 0) {
+    // All close-calls were cache hits — nothing to call the LLM for.
+    logger.info('judge_batch_invoked', {
+      teamId: ctx.teamId,
+      closeCallCount: closeCalls.length,
+      cacheHits: cachedPicks.length,
+      llmCalls: 0,
+    });
+    return out;
+  }
+
+  try {
+    const result = await runJudgment(judgeInputs, {
+      chat: ctx.chat,
+      timeoutMs: 10_000,
+    });
+
+    // Extra hardening: validate picks cover EXACTLY the requested task_ids.
+    // runJudgment already enforces this, but Pass 3's index math assumes it
+    // so we re-assert at the dispatcher boundary.
+    const expectedIds = new Set(judgeInputs.map((t) => t.taskId));
+    for (const pick of result.picks) {
+      if (!expectedIds.has(pick.task_id)) {
+        throw new JudgeError(
+          `judge returned pick for unknown task_id '${pick.task_id}'`,
+        );
+      }
+    }
+
+    for (const pick of result.picks) {
+      out.set(pick.task_id, pick);
+      // Populate the cache for future re-runs of the same tuple.
+      const entry = taskIdByInput.get(pick.task_id);
+      if (entry) {
+        const topN = entry.ranked.slice(0, 3);
+        const cacheKey = computeJudgeCacheKey(
+          entry.task.id,
+          topN.map((m) => (m.teammate as { userId?: string | null }).userId ?? m.teammate.id),
+          hashScores(topN),
+        );
+        ctx.cache.set(cacheKey, pick);
+      }
+    }
+
+    logger.info('judge_batch_invoked', {
+      teamId: ctx.teamId,
+      closeCallCount: closeCalls.length,
+      cacheHits: cachedPicks.length,
+      llmCalls: 1,
+    });
+  } catch (err) {
+    // JudgeError or any throw → math fallback for everyone in this batch.
+    // Cached picks (if any) still apply.
+    logger.warn('judge_batch_failed', {
+      teamId: ctx.teamId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    // out keeps whatever cache hits we already populated; new picks dropped.
+  }
+
+  return out;
+}
+
+/**
+ * Build a judge input for one task from its math top-N and the per-user
+ * recent-tasks payload. The anon_id mapping is implicit by array index:
+ * ranked[0] → candidate_1, ranked[1] → candidate_2, ranked[2] → candidate_3.
+ * No names, no user_ids leave this function — that's the privacy boundary.
+ */
+function buildJudgeTaskInput(
+  task: AgentTask,
+  topN: MatchResult[],
+  recentByUser: Map<string, Array<{ kind: string; skills: string[]; avgRating?: number }>>,
+): JudgeTaskInput {
+  return {
+    taskId: task.id,
+    title: task.title,
+    kind: task.kind,
+    requiredSkills: task.requiredSkills,
+    estimatedHours: task.estimatedHours,
+    candidates: topN.map((m) => {
+      const uid = (m.teammate as { userId?: string | null }).userId ?? m.teammate.id;
+      const interests = ((m.teammate as { interests?: string[] }).interests) ?? [];
+      return {
+        score: m.score,
+        breakdown: {
+          skill_match: m.breakdown.skillOverlap,
+          fit_for_task_kind: m.breakdown.fitForKind,
+          calendar_availability: m.breakdown.availabilityNow,
+          workload_headroom: m.breakdown.loadHeadroom,
+        },
+        confirmedSkills: m.teammate.skills ?? [],
+        interests,
+        recentTasks: recentByUser.get(uid) ?? [],
+      };
+    }),
+  };
+}
+
+/**
+ * Stable digest of the math scores so the cache key shifts whenever the
+ * ranking math changes. Lightweight (no crypto import) — the goal is
+ * "different inputs → different keys", not security.
+ */
+function hashScores(matches: MatchResult[]): string {
+  return matches
+    .map((m) => `${m.score.toFixed(4)}|${m.breakdown.skillOverlap.toFixed(4)}`)
+    .join(',');
+}
+
+/**
+ * Batched read of recent completed tasks for the close-call candidates.
+ * Single SELECT keyed by `team_id` + `assigned_to IN (...)` + 14-day window.
+ * Groups by `user_id` in memory; returns lightweight shape the judge prompt
+ * consumes (kind + required_skills + completed rating proxy).
+ *
+ * If the read errors, we return an empty map and the judge sees zero recent
+ * tasks for each candidate — that's a graceful fallback, not a hard error.
+ */
+async function loadRecentTasksForCandidates(
+  teamId: string,
+  userIds: string[],
+): Promise<Map<string, Array<{ kind: string; skills: string[]; avgRating?: number }>>> {
+  const out = new Map<string, Array<{ kind: string; skills: string[]; avgRating?: number }>>();
+  if (userIds.length === 0) return out;
+
+  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const { data, error } = await (supabase
+      .from('agent_tasks')
+      .select('assigned_to, kind, required_skills, completed_at')
+      .eq('team_id', teamId)
+      .in('assigned_to', userIds)
+      .gte('completed_at', since)
+      .eq('status', 'completed') as unknown as Promise<{
+      data: Array<{
+        assigned_to: string | null;
+        kind: string;
+        required_skills: string[] | null;
+        completed_at: string | null;
+      }> | null;
+      error: unknown;
+    }>);
+
+    if (error || !data) return out;
+
+    for (const row of data) {
+      const uid = row.assigned_to;
+      if (!uid) continue;
+      const arr = out.get(uid) ?? [];
+      arr.push({
+        kind: row.kind,
+        skills: row.required_skills ?? [],
+      });
+      out.set(uid, arr);
+    }
+  } catch (err) {
+    logger.warn('loadRecentTasksForCandidates failed', {
+      teamId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Build the AssignmentReasoning envelope that gets passed to the storage
+ * layer (Plan 03 will wire it to the DB write). For now the storage layer
+ * silently drops the reasoning — it's threaded so the contract is in place.
+ */
+function buildAssignmentReasoning(
+  entry: RankEntry,
+  pick: JudgePick | null,
+): AssignmentReasoning {
+  const mathScore = entry.ranked[0]?.score ?? 0;
+  const mathBreakdown = entry.ranked[0]?.breakdown ?? {
+    skillOverlap: 0,
+    fitForKind: 0,
+    availabilityNow: 0,
+    loadHeadroom: 0,
+    interestNudge: 0,
+  };
+  if (pick) {
+    return { kind: 'llm_tiebreaker', mathScore, mathBreakdown, judge: pick };
+  }
+  return { kind: 'math_only', mathScore, mathBreakdown };
 }
 
 async function backfillLegacySchedules(
@@ -213,26 +556,87 @@ async function backfillLegacySchedules(
   return count;
 }
 
-async function dispatchSingleTask(
+/**
+ * Pass 3 assignment helper. Takes the pre-ranked candidates, an optional
+ * judge pick, and the AssignmentReasoning envelope. When `pick` is present
+ * the chosen candidate is `ranked[pick.chosen_candidate_id - 1]`; otherwise
+ * we use the math top-1.
+ *
+ * QUAL-03 defense-in-depth: validates `pick.chosen_candidate_id - 1 <
+ * ranked.length` before honoring the override. Schema literal `1|2|3` is
+ * the first line; this second-level check catches the edge case where the
+ * batch had only 2 candidates and the LLM picked 3 anyway.
+ *
+ * Plan 03 will wire `reasoning` to the storage write — for now the
+ * dispatcher computes it and passes it through; assignTask ignores it.
+ */
+async function dispatchSingleTaskWithReasoning(
   teamId: string,
   rawTask: AgentTask,
+  ranked: MatchResult[],
+  pick: JudgePick | null,
+  reasoning: AssignmentReasoning,
   teammates: Awaited<ReturnType<typeof listTeammatesWithStats>>,
   excludeIds: string[] = [],
 ): Promise<'assigned' | 'no_fit' | 'skip'> {
+  // Reasoning is computed but not yet persisted — Plan 03 wires it up.
+  // Reference it so TypeScript doesn't flag the param as unused (defense
+  // against later refactors silently dropping the threading).
+  void reasoning;
+
   // Retag legacy tasks (minted before LLM tagging) so they get scored on
-  // role-aware skills instead of the generic placeholder tags.
+  // role-aware skills instead of the generic placeholder tags. The Pass 1
+  // ranking already saw the fresh skills, but `ensureFreshSkills` is
+  // idempotent — running it again is a cheap noop if the skills haven't
+  // changed since Pass 1.
   const task = await ensureFreshSkills(rawTask);
   const excluded = new Set(excludeIds);
-  // First pass: respect exclusions (e.g. the teammate who just declined).
-  const candidatePool = teammates.filter((t) => !excluded.has(t.id));
-  let best = await pickBestScheduledMatch(task, candidatePool);
+
+  // Honor the judge override if present and valid (QUAL-03 second-level
+  // check). Falls back to math top-1 if the index is out of range.
+  let chosenMatch: MatchResult | null = null;
+  if (pick && pick.chosen_candidate_id - 1 < ranked.length) {
+    const idx = pick.chosen_candidate_id - 1;
+    const candidate = ranked[idx];
+    // Skip if the chosen candidate was excluded by the caller (e.g. recent
+    // decliner). Falls through to the next-ranked path below.
+    if (!excluded.has(candidate.teammate.id)) {
+      chosenMatch = candidate;
+    } else {
+      logger.warn('judge pick excluded by caller; falling back to math top-1', {
+        taskId: task.id,
+        teammateId: candidate.teammate.id,
+      });
+    }
+  }
+
+  // If the judge pick is absent / invalid / excluded, fall back to math
+  // top-1 using the already-computed `ranked` list from Pass 1. This avoids
+  // re-running rankMatches in Pass 3 (and avoids a fresh per-task DB read
+  // for the schedule lookup when the ranking is already cached).
+  let best: ScheduledMatch | null = null;
+  if (chosenMatch) {
+    const plan = await buildSchedulePlan(task, chosenMatch.teammate);
+    if (plan) {
+      const combinedScore =
+        chosenMatch.score * 0.72 + scheduleTimelinessScore(plan) * 0.28;
+      best = { match: chosenMatch, plan, combinedScore };
+    }
+  }
+
+  // Math top-1 fallback walks the pre-ranked list (already filtered by
+  // MIN_FIT_SCORE in rankMatches) and picks the first candidate with a
+  // valid schedule plan. Excluded teammates skipped on this pass.
+  if (!best) {
+    best = await pickScheduledFromRanked(task, ranked, excluded);
+  }
 
   // Second pass: if no compatible candidate, retry without exclusions before
   // we fall through to the owner. This catches the case where the only
   // possible assignee was the decliner — better the owner sees it than
   // the task get bounced right back to them.
   if (!best && excluded.size > 0) {
-    best = await pickBestScheduledMatch(task, teammates);
+    best = await pickScheduledFromRanked(task, ranked, new Set());
   }
 
   // Final fallback: assign to the team owner so they can decide. We do this
@@ -342,13 +746,27 @@ async function pickBestScheduledMatch(
     estimatedHours: task.estimatedHours,
     priority: task.priority,
   });
+  return pickScheduledFromRanked(task, ranked, new Set());
+}
+
+/**
+ * Same schedule-aware best-match logic, but starts from an already-ranked
+ * list (Pass 1 output). Lets Pass 3 use the Pass 1 ranking directly without
+ * re-invoking rankMatches — critical for the integration test (which sets
+ * a fixed mockReturnValueOnce queue) and for runtime efficiency.
+ */
+async function pickScheduledFromRanked(
+  task: AgentTask,
+  ranked: MatchResult[],
+  excluded: Set<string>,
+): Promise<ScheduledMatch | null> {
   const schedulable: ScheduledMatch[] = [];
   for (const match of ranked) {
+    if (excluded.has(match.teammate.id)) continue;
     const plan = await buildSchedulePlan(task, match.teammate);
     if (!plan) continue;
     const combinedScore =
-      match.score * 0.72 +
-      scheduleTimelinessScore(plan) * 0.28;
+      match.score * 0.72 + scheduleTimelinessScore(plan) * 0.28;
     schedulable.push({ match, plan, combinedScore });
   }
   schedulable.sort((a, b) => {
@@ -424,20 +842,59 @@ async function logNoFit(teamId: string, task: AgentTask, reason: string): Promis
   });
 }
 
-// Used by tests and by the manual /recgon/dispatch route. Re-exports the same
-// path for explicit single-task dispatch (e.g. on user-created task insert).
+// Used by tests and by the manual /recgon/dispatch route. Collapses to a
+// degenerate N=1 case of `runDispatch`'s 3-pass flow — same `runJudgment`
+// path, same cap check, same `dispatchSingleTaskWithReasoning` — so QUAL-03
+// behaviour is identical on the cron and the manual path.
 export async function dispatchTask(
   teamId: string,
   taskId: string,
   options: { excludeTeammateIds?: string[] } = {},
 ): Promise<'assigned' | 'no_fit' | 'skip'> {
-  const task = await getTask(taskId);
-  if (!task || task.status !== 'unassigned') return 'skip';
+  const rawTask = await getTask(taskId);
+  if (!rawTask || rawTask.status !== 'unassigned') return 'skip';
+
   const teammates = await listTeammatesWithStats(teamId);
   // PROFILE-04 + SKILL-04: same merge as runDispatch so the manual single-task
   // path (user-created tasks, decliner re-dispatch) matches the cron behavior.
   const profiles = await listProfiles(teamId);
   const inferredByTeammate = await listActiveInferredSkillsForTeam(teamId);
   const mergedTeammates = applyProfileMerge(teammates, profiles, inferredByTeammate);
-  return dispatchSingleTask(teamId, task, mergedTeammates, options.excludeTeammateIds ?? []);
+  const excludeIds = options.excludeTeammateIds ?? [];
+  const excluded = new Set(excludeIds);
+  const candidatePool = mergedTeammates.filter((t) => !excluded.has(t.id));
+
+  // ── Pass 1 (N=1): rank this single task ─────────────────────────────────
+  const fresh = await ensureFreshSkills(rawTask);
+  const r = rankMatches(candidatePool, {
+    kind: fresh.kind,
+    requiredSkills: fresh.requiredSkills,
+    estimatedHours: fresh.estimatedHours,
+    priority: fresh.priority,
+  });
+  const isCloseCall = r.length >= 2 && r[0].score - r[1].score < CLOSE_CALL_THRESHOLD;
+  const entry: RankEntry = { task: fresh, ranked: r, isCloseCall };
+
+  // ── Pass 2 (N=1): same judge helper, same cache, same cap ───────────────
+  // Cache is per-call; for the manual path the cache holds at most 1 entry
+  // and is dropped on return — that's fine, the production payoff is in
+  // `runDispatch`'s cross-task amortization.
+  const cache = new Map<string, JudgePick>();
+  const judgeMap = await applyJudgmentIfClose(
+    isCloseCall ? [entry] : [],
+    { teamId, cache, chat: chatViaProviders },
+  );
+  const pick = judgeMap.get(fresh.id) ?? null;
+  const reasoning = buildAssignmentReasoning(entry, pick);
+
+  // ── Pass 3 (N=1): assign with the chosen match + reasoning envelope ─────
+  return dispatchSingleTaskWithReasoning(
+    teamId,
+    fresh,
+    r,
+    pick,
+    reasoning,
+    mergedTeammates,
+    excludeIds,
+  );
 }
