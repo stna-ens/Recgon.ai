@@ -35,8 +35,8 @@ Each requirement maps to one of the canonical phases A → E from `.planning/res
 - [ ] **JUDGE-04**: The LLM judgment call returns a structured `{chosen_index, tiebreaker_factor, confidence}` schema — no freeform reasoning string that can hallucinate.
 - [ ] **JUDGE-05**: If the LLM provider chain fails, errors out, or returns an invalid response, the dispatcher falls back to the pure-math top-1 candidate without breaking the assignment flow.
 - [ ] **JUDGE-06**: All tiebreaker decisions in a single dispatch run are batched into ONE LLM call (8 close-call tasks → 1 call, not 8).
-- [ ] **JUDGE-07**: Each assignment writes a structured `assignment_reasoning` JSONB column on `agent_tasks` containing math score breakdown AND (when used) the LLM tiebreaker factor.
-- [ ] **JUDGE-08**: The task detail UI surfaces a human-readable "why this person" line built from the math + LLM reasoning — never a black box.
+- [x] **JUDGE-07**: Each assignment writes a structured `assignment_reasoning` JSONB column on `agent_tasks` containing math score breakdown AND (when used) the LLM tiebreaker factor.
+- [x] **JUDGE-08**: The task detail UI surfaces a human-readable "why this person" line built from the math + LLM reasoning — never a black box.
 - [ ] **JUDGE-09**: Assignment is cached by `(taskId, candidateIds-sorted, mathScoresHash)` so cron retries on the same task do not flip the assignee.
 - [ ] **JUDGE-10**: A per-team daily LLM budget cap (configurable) forces math-only fallback once exceeded for that day.
 
@@ -138,8 +138,8 @@ Filled by the roadmapper. Each requirement maps to exactly one phase.
 | JUDGE-04 | Phase 3 | Pending |
 | JUDGE-05 | Phase 3 | Pending |
 | JUDGE-06 | Phase 3 | Pending |
-| JUDGE-07 | Phase 3 | Pending |
-| JUDGE-08 | Phase 3 | Pending |
+| JUDGE-07 | Phase 3 | Complete |
+| JUDGE-08 | Phase 3 | Complete |
 | JUDGE-09 | Phase 3 | Pending |
 | JUDGE-10 | Phase 3 | Pending |
 | FRAME-01 | Phase 4 | Pending |
