@@ -300,6 +300,95 @@ describe('runJudgment — anonymization snapshot', () => {
   });
 });
 
+describe('runJudgment — validator edge cases (Plan 04 Task 2)', () => {
+  it('throws on empty reason_sentence (Zod schema .min(1) catches via JudgeError envelope)', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'recent_track_record',
+            reason_sentence: '',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+
+  it('throws on a unicode/non-English pronoun (deny-list catches elle/il/sie/er)', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    // "elle" is French/Spanish "she" — must be caught by the extended
+    // pronoun deny-list. We frame it inside an otherwise valid sentence
+    // so the test isolates the pronoun check (not length / cite checks).
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'recent_track_record',
+            reason_sentence: 'elle finished similar typescript tasks recently.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+
+  it('throws on capitalized cross-candidate reference (Candidate_2 caught case-insensitively)', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    // The CROSS_CANDIDATE_REF regex uses /i; this locks the case-insensitive
+    // behavior so a future regression that drops `/i` is caught here.
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'skill_depth',
+            reason_sentence: 'Candidate_2 has solid typescript depth this week.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+
+  it('throws when numeric-word count exceeds recentTasks length ("five" > 2)', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    // Candidate 1 has exactly 2 recent tasks. The reason claims "five" tasks
+    // which is 5 > 2 — must be caught by the numeric-word recognizer.
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'recent_track_record',
+            reason_sentence: 'you finished five typescript tasks recently.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+});
+
 describe('computeJudgeCacheKey', () => {
   it('is deterministic for identical inputs', () => {
     const k1 = computeJudgeCacheKey('tsk-1', ['a', 'b', 'c'], 'hash-xyz');

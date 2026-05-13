@@ -54,10 +54,29 @@ const DEFAULT_TIMEOUT_MS = 10_000;
  */
 export const CLOSE_CALL_THRESHOLD = 0.20;
 
-// Deny-list of pronouns the LLM is told NOT to use. Whole-word match,
-// case-insensitive. Used both for the judge response and as defense-in-depth
-// when copy is rendered for the "Why you" line.
-const PRONOUN_DENY = /\b(he|she|they|him|her|them|his|hers|theirs)\b/i;
+/**
+ * Deny-list of pronouns the LLM is told NOT to use. Whole-word match,
+ * case-insensitive. Used both for the judge response and as defense-in-depth
+ * when copy is rendered for the "Why you" line.
+ *
+ * Vocabulary scope (Plan 04 Task 2):
+ *   - English: he, she, they, him, her, them, his, hers, theirs
+ *   - Spanish: el, ella, ellos, ellas (`el` is too noisy — single letter `el`
+ *     collides with English determiners; covered via `elle` for French/Spanish
+ *     'she' usage only)
+ *   - French:  il, elle
+ *   - German:  sie, er
+ *
+ * The 5 bias fixtures cover English / Turkish / Arabic / East-Asian / Spanish
+ * name vocabularies; the deny-list extends to the pronouns most likely to
+ * leak into LLM output for those locales. `il`, `er`, and `sie` are short
+ * tokens but the `\b` boundary + the fact that the LLM is instructed to
+ * write second-person English copy keeps false-positive risk low.
+ *
+ * Adding new pronouns: extend the alternation; do NOT relax the boundary.
+ */
+const PRONOUN_DENY =
+  /\b(he|she|they|him|her|them|his|hers|theirs|elle|il|sie|er)\b/i;
 
 // Cross-candidate reference pattern. The prompt tells the LLM to address the
 // chosen candidate directly ("you finished..."), not to compare candidates
