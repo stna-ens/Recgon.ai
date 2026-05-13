@@ -389,6 +389,32 @@ describe('runJudgment — validator edge cases (Plan 04 Task 2)', () => {
   });
 });
 
+describe('runJudgment — WR-04 Claude-style prose-wrapped JSON', () => {
+  it('throws JudgeError on narrative-wrapped JSON (Claude fallback prose)', async () => {
+    // The Gemini path enforces strict JSON mode, but the Claude fallback
+    // may emit "Here is the analysis: { ... }. Let me know..." style
+    // prose. The validator must catch this — the dispatcher's math
+    // fallback then takes over (JUDGE-05).
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    const validInner = JSON.stringify({
+      picks: [
+        {
+          task_id: input.taskId,
+          chosen_candidate_id: 1,
+          reason_code: 'recent_track_record',
+          reason_sentence: 'you finished two typescript tasks recently.',
+          confidence: 'high',
+        },
+      ],
+    });
+    const wrapped = `Here is the analysis: ${validInner}. Let me know if you need any clarification.`;
+    const { stub } = makeChatStub(wrapped);
+
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+});
+
 describe('runJudgment — CR-02 duplicate task_id rejection', () => {
   it('throws JudgeError when the LLM returns two picks for the same task_id', async () => {
     const fixA = loadFixture('bias-01-english-male.json');
