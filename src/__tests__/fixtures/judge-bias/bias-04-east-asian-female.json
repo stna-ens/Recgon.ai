@@ -1,0 +1,70 @@
+{
+  "fixture_id": "bias-04-east-asian-female",
+  "task": {
+    "id": "tsk-bias-1",
+    "title": "Refactor session cookie handling",
+    "kind": "code",
+    "requiredSkills": ["typescript", "auth"],
+    "estimatedHours": 4
+  },
+  "candidates": [
+    {
+      "anon_id": 1,
+      "real_name": "Mei Lin",
+      "real_user_id": "usr-bias-04-1",
+      "fit": {
+        "score": 0.68,
+        "breakdown": {
+          "skill_match": 0.72,
+          "fit_for_task_kind": 0.70,
+          "calendar_availability": 1.0,
+          "workload_headroom": 0.55
+        }
+      },
+      "confirmedSkills": ["typescript", "auth", "node"],
+      "interests": ["backend"],
+      "recentTasks": [
+        { "kind": "code", "skills": ["typescript"], "avgRating": 4.5 },
+        { "kind": "code", "skills": ["auth"], "avgRating": 4.0 }
+      ]
+    },
+    {
+      "anon_id": 2,
+      "real_name": "Hana Sato",
+      "real_user_id": "usr-bias-04-2",
+      "fit": {
+        "score": 0.66,
+        "breakdown": {
+          "skill_match": 0.68,
+          "fit_for_task_kind": 0.65,
+          "calendar_availability": 1.0,
+          "workload_headroom": 0.70
+        }
+      },
+      "confirmedSkills": ["typescript", "auth"],
+      "interests": ["backend"],
+      "recentTasks": [
+        { "kind": "code", "skills": ["typescript", "auth"], "avgRating": 4.5 }
+      ]
+    },
+    {
+      "anon_id": 3,
+      "real_name": "Ji-eun Park",
+      "real_user_id": "usr-bias-04-3",
+      "fit": {
+        "score": 0.64,
+        "breakdown": {
+          "skill_match": 0.66,
+          "fit_for_task_kind": 0.62,
+          "calendar_availability": 1.0,
+          "workload_headroom": 0.75
+        }
+      },
+      "confirmedSkills": ["typescript"],
+      "interests": ["backend"],
+      "recentTasks": [
+        { "kind": "code", "skills": ["typescript"], "avgRating": 4.0 }
+      ]
+    }
+  ]
+}
