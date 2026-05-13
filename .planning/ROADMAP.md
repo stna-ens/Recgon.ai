@@ -69,6 +69,8 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
 **Plans:** 4 plans hint — (1) `judge.ts` + `JudgeResultSchema` + batched `JUDGE_ASSIGNMENT_*` prompts, (2) dispatcher integration with try/catch math fallback + cache + daily budget cap, (3) `assignment_reasoning` JSONB column + "why this person" UI line, (4) bias regression CI test + post-hoc `chosen_id` validation.
 **Research recommended:** yes — `/gsd-research-phase` should prototype the batch judgment prompt design and bias-test fixture set before plan-check (flagged in SUMMARY.md Open Questions).
 
+> **Threshold-lock addendum (Plan 03-04, 2026-05-14):** The close-call gap threshold ships at **`CLOSE_CALL_THRESHOLD = 0.20`** in `src/lib/recgon/judge.ts`, superseding the **0.15** value in the goal sentence above and in JUDGE-01. Rationale: RESEARCH Q1 sub-note + CONTEXT D-30 quality-over-cost (Recgon v3 priority is quality > cost; the wider threshold catches ~70% of dispatched tasks at ~$0.001/dispatch, well under the daily safety cap of 50 calls/team/day). The original line is left intact for historical context; the planner-locked value is what production runs.
+
 ### Phase 4: Personalized Task Framing
 **Goal:** When a task is assigned, a queued `task_reframe` job generates a personalized description for the assignee — why this fits them, where to start, how it ties to recent project state — stored alongside the original brain description and invalidated on reassignment, with tone bounded by the prompt registry.
 **Mode:** mvp

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 03-03 complete; ready for 03-04 bias regression test + nightly CI
-last_updated: "2026-05-14T01:00:00.000Z"
-last_activity: 2026-05-14 -- Plan 03-03 complete (assignment_reasoning JSONB column + whyYou renderer + privacy-filtered route + TaskDetailPanel WhyYouBlock)
+stopped_at: Plan 03-04 code complete; awaiting user real-LLM bias baseline (Task 4 checkpoint)
+last_updated: "2026-05-14T01:15:00.000Z"
+last_activity: 2026-05-14 -- Plan 03-04 complete (bias regression CI + nightly real-LLM workflow + validator edge cases + Phase 3 roll-up); Phase 3 ship-readiness pending user Task 4 real-LLM run
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
-  percent: 92
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 03 (llm-judgment-overlay) — EXECUTING
-Plan: 4 of 4
-Status: Executing Phase 03 (Plans 01 + 02 + 03 complete; reasoning column live; Why you UI shipped)
-Last activity: 2026-05-14 -- Plan 03-03 complete (assignment_reasoning JSONB column + whyYou renderer + privacy-filtered route + TaskDetailPanel WhyYouBlock)
+Phase: 03 (llm-judgment-overlay) — CODE COMPLETE; awaiting user Task 4 baseline
+Plan: 4 of 4 (DONE)
+Status: Phase 03 all 4 plans complete; pending user real-LLM bias regression one-off run + Plan 03-03 Task 5 manual UAT before phase formally ships
+Last activity: 2026-05-14 -- Plan 03-04 complete (bias regression test stubbed+real-LLM, nightly CI workflow, validator edge cases, Phase 3 roll-up, ROADMAP threshold-lock addendum)
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [█████████░] 92%
 | Phase 03 P01 | 8 | 2 tasks | 11 files |
 | Phase 03 P02 | 35 | 4 tasks | 8 files |
 | Phase 03 P03 | 45 | 4 tasks | 10 files |
+| Phase 03 P04 | 12 | 5 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,7 @@ Recent decisions affecting current work:
 - Plan 03-01: pure `runJudgment` module in `src/lib/recgon/judge.ts` (366 lines, 0 direct LLM SDK imports — adapter injected via `opts.chat`). Throws single `JudgeError` for ALL failures so Plan 02 dispatcher catches one thing for math fallback (JUDGE-05). Post-hoc validator: pronoun deny-list (he|she|they|him|her|them|his|hers|theirs), cross-candidate ref reject (candidate_N), per-reason_code substring checks (skill_depth/recent_track_record/interest_match). `computeJudgeCacheKey(taskId, candidateUserIds[], mathScoresHash)` sorts ids in-key for order-independence (JUDGE-09). `JUDGE_ASSIGNMENT_BATCH_SYSTEM` + `buildJudgeBatchUserPrompt` in prompts.ts; `REASON_CODES` + `JudgePickSchema` + `JudgeResultSchema` (chosen_candidate_id literal 1|2|3, reason_sentence ≤25-word refine, picks.max(10)) in schemas.ts. 5 byte-identical-except-name bias fixtures (English-M / Turkish-F / Arabic-M / East-Asian-F / Spanish-mixed) committed for Plan 04 to consume. 13/13 unit tests GREEN; full suite 204 passed; tsc clean.
 - Plan 03-02: Dispatcher wired to judge via 3-pass restructure (rank-all → batch-judge → assign+notify). CLOSE_CALL_THRESHOLD locked at 0.20 (RESEARCH Q1 sub-note; supersedes JUDGE-01 0.15 per CONTEXT D-30 quality > cost). Single `applyJudgmentIfClose` helper shared between runDispatch + dispatchTask (one source of truth — N=1 collapses to degenerate batch). In-process Map<cacheKey, JudgePick> cache lives per dispatch (no module-level state). `judgmentBudget.ts` per-team daily cap (DAILY_JUDGMENT_CALL_CAP=50, T-03-02-01) with idempotent dev-ops alert email AT-MOST-ONCE per (team, day) via cap_alert_sent flag (T-03-02-02). Fails-open on DB errors (T-03-02-03 accepted concurrency margin). `team_llm_usage` migration committed (additive, FK→teams.id text) — user applies before live cron picks up cap. AssignmentReasoning envelope computed + threaded through dispatchSingleTaskWithReasoning but void`d; Plan 03-03 wires it to storage. 217/217 tests pass (no regressions), tsc clean.
 - [Phase ?]: Plan 03-03: assignment_reasoning JSONB column on agent_tasks (additive, default null, kind-discriminator partial index). renderWhyYou single-source renderer (5 LLM reason_codes + math-only template + defense-in-depth fallback for malformed llm_tiebreaker payloads). Server-side privacy filter at GET /api/recgon/tasks/[id]: assignee + owner see whyYouSentence pre-rendered; raw JSONB NEVER returned. assignTask Zod-validates reasoning at storage boundary; invalid -> log warn + write null (fail-open). Email body + TaskDetailPanel WhyYouBlock both consume renderWhyYou output. JUDGE-07 + JUDGE-08 complete. User must apply BOTH Plan 02 + Plan 03 migrations to live DB; Task 5 manual UAT pending.
+- Plan 03-04: bias regression test (5 fixtures × 30 trials = 150 calls) in `src/__tests__/judge.bias-regression.test.ts` — two modes: stubbed (default; round-robin pick cycling guarantees 10/10/10 per fixture; verifies wiring) and real-LLM (`JUDGE_BIAS_REAL_LLM=1`; uses chatViaProviders; nightly only, ~$0.30/run, ~10 min). Three assertions: end-to-end anonymization (zero real names in any of 150 prompt bodies), top-pick-rate band ≤15pp across fixtures, no fixture >50% top-rate (real-LLM noise floor). PRONOUN_DENY extended with elle/il/sie/er (French/Spanish/German) — covers bias-fixture vocab scope; JSDoc warns against relaxing \\b boundary. 4 new validator edge-case tests added (empty sentence / unicode pronoun / capitalized Candidate_2 / numeric-word over-count). Nightly GitHub Actions workflow `.github/workflows/judge-bias-nightly.yml` (cron 0 4 * * * UTC + workflow_dispatch + concurrency:cancel-in-progress:false + secrets-only API keys + issue-on-failure with comment-dedup) — NOT a required PR check. CLAUDE.md documents JUDGE_BIAS_REAL_LLM env var. ROADMAP Phase 3 threshold-lock addendum: CLOSE_CALL_THRESHOLD=0.20 (planner-locked) supersedes 0.15 (cost-driven origin preserved). All 12 requirements (JUDGE-01..10 + QUAL-01 + QUAL-03) traced to delivering tasks. All 5 ROADMAP success criteria met. Phase 3 code-complete; pending user Task 4 real-LLM run for baseline + Plan 03 Task 5 manual UAT before formal ship. Initial stub used hash-mod-3 → drifted 16.7pp in stubbed mode (sample-size noise at N=30); replaced with round-robin → 0pp by construction.
 
 ### Pending Todos
 
@@ -114,8 +116,11 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-13T22:00:10.776Z
-Stopped at: Plan 03-02 complete; ready for 03-03 assignment_reasoning column + whyYou renderer
+Last session: 2026-05-14T01:15:00.000Z
+Stopped at: Plan 03-04 code-complete; awaiting user real-LLM bias regression baseline (Task 4 checkpoint) + Plan 03 Task 5 manual UAT before Phase 3 formally ships
 Resume file: None
-Resume command: `/gsd-execute-phase 3` (continues with `03-03-PLAN.md` — assignment_reasoning JSONB column + whyYou.ts renderer + email/UI surfacing)
-User action pending: apply `supabase/migrations/20260514_team_llm_usage.sql` to live DB (Plan 03-02 cap counter starts working after this).
+Resume command: After Task 4 baseline + UAT approval, `/gsd-execute-phase 4` to begin Phase 4 (personalized task framing)
+User action pending:
+  1. Run `JUDGE_BIAS_REAL_LLM=1 npx vitest run src/__tests__/judge.bias-regression.test.ts` once (~$0.30, ~10 min); record per-fixture pickCounts in `03-04-SUMMARY.md` Real-LLM Bias Baseline section; type "approved".
+  2. Plan 03-03 Task 5 manual UAT — open one assignment task as assignee, owner, and other-teammate to verify "Why you" privacy filter renders correctly across 3 viewer roles.
+  Both Phase 2 + Phase 3 Supabase migrations are already applied to the live project (verified upstream).
