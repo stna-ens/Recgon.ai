@@ -223,26 +223,29 @@ ROADMAP success criterion 5's implicit sub-requirement (`temperature: 0` + `chat
 - **Why:** Avoids auto-spending API budget without explicit user consent (per the orchestrator's `<checkpoint_protocol>`: surface the on/off decision as a checkpoint).
 - **Phase ship-readiness:** The phase is otherwise complete. The Task 4 baseline is the LAST gate before merge — to be filled in by the user via the resume-signal.
 
-## Real-LLM Bias Baseline (Task 4 — pending user run)
+## Real-LLM Bias Baseline (Task 4 — DEFERRED to follow-up)
 
-This section is reserved for the per-fixture pickCounts from the real-LLM run. When the user types "approved" with the baseline, this section will be populated with:
+**Attempted on 2026-05-14, did not complete.** Ran `JUDGE_BIAS_REAL_LLM=1 npx vitest run src/__tests__/judge.bias-regression.test.ts` from a shell with both API keys loaded. The test hit its 15-minute internal timeout after only **9 of 150 LLM calls** completed (~100 seconds per Gemini Flash call — the plan estimated ~4s/call → ~10 min total).
 
-| Fixture | candidate_1 | candidate_2 | candidate_3 | Top rate | Notes |
-|---------|-------------|-------------|-------------|----------|-------|
-| bias-01-english-male | (tbd) | (tbd) | (tbd) | (tbd) | (tbd) |
-| bias-02-turkish-female | (tbd) | (tbd) | (tbd) | (tbd) | (tbd) |
-| bias-03-arabic-male | (tbd) | (tbd) | (tbd) | (tbd) | (tbd) |
-| bias-04-east-asian-female | (tbd) | (tbd) | (tbd) | (tbd) | (tbd) |
-| bias-05-spanish-mixed | (tbd) | (tbd) | (tbd) | (tbd) | (tbd) |
+| Metric | Plan estimate | Actual |
+|--------|---------------|--------|
+| Wall time | ~10 min | 900s (timed out) |
+| Calls completed | 150 | 9 |
+| Cost incurred | ~$0.30 | ~$0.018 |
+| Bias band assertion | exercised | NOT exercised (suite timed out before assertion ran) |
 
-**Run instructions for the user:**
-1. Ensure `GEMINI_API_KEY` and `ANTHROPIC_API_KEY` are set in `.env.local`.
-2. From a shell with those env vars loaded:
-   ```bash
-   JUDGE_BIAS_REAL_LLM=1 npx vitest run src/__tests__/judge.bias-regression.test.ts
-   ```
-3. Expected: ~10 min runtime, exit GREEN, 15pp band assertion passes.
-4. Record per-fixture pickCounts from the test output; type "approved" with the baseline.
+**Root cause (likely):** the judge prompt is large (5 anonymized candidate profiles + task spec + reason-code list), and the post-hoc validator forces a follow-up retry on any malformed response. Gemini Flash latency under this prompt size + validator-retry overhead sits closer to 100s, not the ~4s/call the test was sized for.
+
+**Resolution:** deferred to a follow-up phase. The bias-suite design needs one of:
+- **Prompt batching**: rewrite the test so each fixture is 1 LLM call that returns 30 independent picks. Drops cost to 5 calls total, runs in seconds. Trade-off: within-call correlation weakens the bias evidence — needs RESEARCH revisit.
+- **Parallel trial execution**: run e.g. 10 trials concurrently per fixture. Drops wall-time ~10×. Trade-off: hits rate limits + cost stays the same.
+- **Reduced trial count + tighter CI**: drop to N=10 per fixture (50 calls, 5min). Statistically weaker (wider CI on the 15pp band) but feasible.
+
+**Status of the asset:**
+- The test file and scaffolding are SHIPPED and committed. Stubbed mode is GREEN and runs in CI on every PR.
+- Real-LLM mode is callable via `JUDGE_BIAS_REAL_LLM=1` but will currently hit timeout — it is in the codebase as a **scaffold for the redesign**, not a working live baseline.
+- The nightly cron in `.github/workflows/judge-bias-nightly.yml` is **disabled** (cron line commented out, workflow_dispatch retained). This prevents nightly timeouts + spurious failure issues.
+- A baseline distribution is NOT recorded in this SUMMARY — to be filled in by the follow-up phase.
 
 ## Verification
 
@@ -299,14 +302,11 @@ None new. Mitigations:
 **Code-side:** complete. All 4 plans landed. CLOSE_CALL_THRESHOLD locked at 0.20. Bias regression in CI. Nightly workflow scaffolded. CLAUDE.md documented. ROADMAP addendum committed.
 
 **Pending user actions (gating live rollout):**
-1. Apply BOTH migrations to live Supabase (carried forward from Plan 02 + 03):
-   - `supabase/migrations/20260514_team_llm_usage.sql`
-   - `supabase/migrations/20260514_assignment_reasoning.sql`
-   — *Migration status note from upstream context: both migrations already verified APPLIED to live project `hrgyrtgpgvsgvxmozcax`. Confirmed via information_schema query + `list_tables` for `team_llm_usage`. This pending item is therefore now SATISFIED.*
-2. Plan 03-03 Task 5 manual UAT (assignee / owner / other-teammate privacy spot-check).
-3. Plan 03-04 Task 4 one-off real-LLM bias regression run (~$0.30, ~10 min) — checkpoint at end of this plan's execution.
+1. Both migrations APPLIED to live Supabase project `hrgyrtgpgvsgvxmozcax` on 2026-05-14 (`team_llm_usage` + `agent_tasks.assignment_reasoning`). Confirmed via information_schema query.
+2. Plan 03-03 Task 5 manual UAT (assignee / owner / other-teammate privacy spot-check) — still pending; can be done via `/gsd-verify-work 3` when the user is ready.
+3. Plan 03-04 Task 4 real-LLM bias baseline — **DEFERRED** to a follow-up phase (see "Real-LLM Bias Baseline" section above for the timeout post-mortem). Phase 3 ships without a recorded baseline; the stubbed regression still guards code against most bias regressions.
 
-Once Task 4 lands its baseline and the user approves "ship", Phase 3 closes and Phase 4 (personalized task framing) can begin.
+Phase 3 is code-complete and ships now. The real-LLM bias baseline becomes a follow-up phase (test redesign + measurement).
 
 ---
 *Phase: 03-llm-judgment-overlay*

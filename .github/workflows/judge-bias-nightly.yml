@@ -15,11 +15,19 @@ name: Judge Bias Regression (Nightly)
 # job name to the repo's branch protection rules in Settings → Branches.
 
 on:
-  schedule:
-    # 04:00 UTC daily — outside US business hours, before EU mornings.
-    - cron: '0 4 * * *'
+  # Cron schedule DISABLED until the 150-trial suite is redesigned to fit
+  # within reasonable CI wall-time. The first real-LLM run on 2026-05-14
+  # measured ~100s per Gemini Flash call (validator + chain overhead);
+  # 150 sequential calls would need ~4 hours, well beyond the 20-min job
+  # timeout. Re-enable after the test batches the prompt (1 call per
+  # fixture for N picks) or runs trials in parallel batches.
+  # Tracked in BACKLOG / project memory.
+  #
+  # schedule:
+  #   - cron: '0 4 * * *'  # 04:00 UTC daily
   workflow_dispatch:
-    # Allow manual triggering from the Actions tab for ad-hoc re-runs.
+    # Manual on-demand trigger from the Actions tab. Operator should be
+    # aware: a full run currently exceeds the 20-min job timeout.
 
 # Concurrency group ensures a manual trigger fired during a scheduled run
 # does NOT cancel the in-flight execution (cancel-in-progress: false).
