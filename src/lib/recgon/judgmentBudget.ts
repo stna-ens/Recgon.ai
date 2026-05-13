@@ -8,11 +8,20 @@
 // it returns `allowed:false`, the dispatcher fires `alertCapExceededOnce` and
 // silently falls back to math-only assignment.
 //
-// Concurrency note (T-03-02-03, accepted): two cron runs racing the boundary
-// could both pass the cap check and both increment, briefly exceeding 50.
-// Acceptable — cap is a SAFETY rail, not a hard quota. Cron is 1/minute, the
-// race window is small, and the rollback path here keeps the post-failure
-// counter ≤ cap on any non-racing rejection. Per RESEARCH Q4 note 2.
+// Concurrency note (T-03-02-03, accepted; WR-03 honest restatement):
+// `checkAndIncrement` is read-then-upsert, not atomic. Under N concurrent
+// racers at the cap boundary the counter can be UNDERCOUNTED by up to
+// N-1 (e.g. two ticks both read 49, both write 50; two real calls
+// happened but the table records one increment). Conversely at the
+// boundary the cap may be EXCEEDED by up to N-1 (both ticks read 50,
+// both refuse; correct refusal, but mathematically the cap is loose by
+// the concurrency factor). Acceptable per RESEARCH Q4 note 2: cap is a
+// SAFETY rail, not a hard quota; cron is 1/minute and typical N=1, so
+// this is functionally zero. A future fix would replace the read-then-
+// upsert with an atomic Postgres `INSERT ... ON CONFLICT ... DO UPDATE
+// SET judgment_calls = team_llm_usage.judgment_calls + 1 RETURNING
+// judgment_calls` — eliminates the race at the cost of a more involved
+// migration.
 
 import { Resend } from 'resend';
 import { logger } from '../logger';
