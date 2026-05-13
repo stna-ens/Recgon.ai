@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 03-01 complete; ready for 03-02 dispatcher integration
-last_updated: "2026-05-14T00:30:00.000Z"
-last_activity: 2026-05-14 -- Plan 03-01 complete (runJudgment pure module + 13 GREEN tests)
+stopped_at: Plan 03-02 complete; ready for 03-03 assignment_reasoning column + whyYou renderer
+last_updated: "2026-05-14T00:48:00.000Z"
+last_activity: 2026-05-14 -- Plan 03-02 complete (dispatcher 3-pass + judgmentBudget + team_llm_usage migration)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 12
-  completed_plans: 9
-  percent: 75
+  completed_plans: 10
+  percent: 83
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 ## Current Position
 
 Phase: 03 (llm-judgment-overlay) — EXECUTING
-Plan: 2 of 4
-Status: Executing Phase 03 (Plan 01 complete; runJudgment pure module shipped)
-Last activity: 2026-05-14 -- Plan 03-01 complete (judge.ts + JudgeResultSchema + 5 bias fixtures)
+Plan: 3 of 4
+Status: Executing Phase 03 (Plans 01 + 02 complete; dispatcher 3-pass wired; cap counter live)
+Last activity: 2026-05-14 -- Plan 03-02 complete (dispatcher 3-pass + judgmentBudget + team_llm_usage migration)
 
-Progress: [█████████░] 75%
+Progress: [████████▓░] 83%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [█████████░] 75%
 | Phase 02 P03 | 16 | 3 tasks | 15 files |
 | Phase 02 P04 | 720 | - tasks | - files |
 | Phase 03 P01 | 8 | 2 tasks | 11 files |
+| Phase 03 P02 | 35 | 4 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [02-03] Set vitest environment: 'jsdom' globally; vitest 4 deprecated environmentMatchGlobs
 - [Phase ?]: Plan 02-04: 3-source blend (0.5 self / 0.3 inferred / 0.2 ema) + BLEND_THRESHOLD=0.05 + read-time decay (tau=90d) on both inferred AND ema. Dispatcher loads inferred skills via team-scoped batch query (T-02-22 no N+1). Defense-in-depth rejected filter at SQL AND in-merge.
 - Plan 03-01: pure `runJudgment` module in `src/lib/recgon/judge.ts` (366 lines, 0 direct LLM SDK imports — adapter injected via `opts.chat`). Throws single `JudgeError` for ALL failures so Plan 02 dispatcher catches one thing for math fallback (JUDGE-05). Post-hoc validator: pronoun deny-list (he|she|they|him|her|them|his|hers|theirs), cross-candidate ref reject (candidate_N), per-reason_code substring checks (skill_depth/recent_track_record/interest_match). `computeJudgeCacheKey(taskId, candidateUserIds[], mathScoresHash)` sorts ids in-key for order-independence (JUDGE-09). `JUDGE_ASSIGNMENT_BATCH_SYSTEM` + `buildJudgeBatchUserPrompt` in prompts.ts; `REASON_CODES` + `JudgePickSchema` + `JudgeResultSchema` (chosen_candidate_id literal 1|2|3, reason_sentence ≤25-word refine, picks.max(10)) in schemas.ts. 5 byte-identical-except-name bias fixtures (English-M / Turkish-F / Arabic-M / East-Asian-F / Spanish-mixed) committed for Plan 04 to consume. 13/13 unit tests GREEN; full suite 204 passed; tsc clean.
+- Plan 03-02: Dispatcher wired to judge via 3-pass restructure (rank-all → batch-judge → assign+notify). CLOSE_CALL_THRESHOLD locked at 0.20 (RESEARCH Q1 sub-note; supersedes JUDGE-01 0.15 per CONTEXT D-30 quality > cost). Single `applyJudgmentIfClose` helper shared between runDispatch + dispatchTask (one source of truth — N=1 collapses to degenerate batch). In-process Map<cacheKey, JudgePick> cache lives per dispatch (no module-level state). `judgmentBudget.ts` per-team daily cap (DAILY_JUDGMENT_CALL_CAP=50, T-03-02-01) with idempotent dev-ops alert email AT-MOST-ONCE per (team, day) via cap_alert_sent flag (T-03-02-02). Fails-open on DB errors (T-03-02-03 accepted concurrency margin). `team_llm_usage` migration committed (additive, FK→teams.id text) — user applies before live cron picks up cap. AssignmentReasoning envelope computed + threaded through dispatchSingleTaskWithReasoning but void`d; Plan 03-03 wires it to storage. 217/217 tests pass (no regressions), tsc clean.
 
 ### Pending Todos
 
@@ -110,7 +112,8 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-14T00:30:00.000Z
-Stopped at: Plan 03-01 complete; ready for 03-02 dispatcher integration
-Resume file: .planning/phases/03-llm-judgment-overlay/03-02-PLAN.md
-Resume command: `/gsd-execute-phase 3` (continues with `03-02-PLAN.md` — dispatcher integration + cache + budget cap)
+Last session: 2026-05-14T00:48:00.000Z
+Stopped at: Plan 03-02 complete; ready for 03-03 assignment_reasoning column + whyYou renderer
+Resume file: .planning/phases/03-llm-judgment-overlay/03-03-PLAN.md
+Resume command: `/gsd-execute-phase 3` (continues with `03-03-PLAN.md` — assignment_reasoning JSONB column + whyYou.ts renderer + email/UI surfacing)
+User action pending: apply `supabase/migrations/20260514_team_llm_usage.sql` to live DB (Plan 03-02 cap counter starts working after this).

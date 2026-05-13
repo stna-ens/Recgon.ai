@@ -119,7 +119,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Profile Foundation | 0/4 | Not started | - |
 | 2. GitHub Skill Inference | 0/4 | Not started | - |
-| 3. LLM Judgment Overlay | 1/4 | In progress | - |
+| 3. LLM Judgment Overlay | 2/4 | In progress | - |
 | 4. Personalized Task Framing | 0/3 | Not started | - |
 | 5. Live Code Infrastructure | 0/4 | Not started | - |
 | 6. Brain Integration & Cost Guards | 0/4 | Not started | - |
