@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 3 planned (4 plans, plan-checker PASS-WITH-CONCERNS, fixes applied)
-last_updated: "2026-05-13T21:19:03.894Z"
-last_activity: 2026-05-12 -- Phase 02 marked complete
+status: executing
+stopped_at: Plan 03-01 complete; ready for 03-02 dispatcher integration
+last_updated: "2026-05-14T00:30:00.000Z"
+last_activity: 2026-05-14 -- Plan 03-01 complete (runJudgment pure module + 13 GREEN tests)
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 12
-  completed_plans: 8
-  percent: 67
+  completed_plans: 9
+  percent: 75
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** The right task gets to the right teammate at the right time, with reasoning the teammate can trust.
-**Current focus:** Phase 02 — github-skill-inference
+**Current focus:** Phase 03 — llm-judgment-overlay
 
 ## Current Position
 
-Phase: 02 — COMPLETE
-Plan: 4 of 4
-Status: Phase 02 complete
-Last activity: 2026-05-12 -- Phase 02 marked complete
+Phase: 03 (llm-judgment-overlay) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 03 (Plan 01 complete; runJudgment pure module shipped)
+Last activity: 2026-05-14 -- Plan 03-01 complete (judge.ts + JudgeResultSchema + 5 bias fixtures)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 75%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [██████████] 100%
 | Phase 02 P02 | 25 | 3 tasks | 13 files |
 | Phase 02 P03 | 16 | 3 tasks | 15 files |
 | Phase 02 P04 | 720 | - tasks | - files |
+| Phase 03 P01 | 8 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [02-03] Used inline GithubMark SVG instead of lucide-react Github (lucide dropped brand glyphs in newer versions)
 - [Phase ?]: [02-03] Set vitest environment: 'jsdom' globally; vitest 4 deprecated environmentMatchGlobs
 - [Phase ?]: Plan 02-04: 3-source blend (0.5 self / 0.3 inferred / 0.2 ema) + BLEND_THRESHOLD=0.05 + read-time decay (tau=90d) on both inferred AND ema. Dispatcher loads inferred skills via team-scoped batch query (T-02-22 no N+1). Defense-in-depth rejected filter at SQL AND in-merge.
+- Plan 03-01: pure `runJudgment` module in `src/lib/recgon/judge.ts` (366 lines, 0 direct LLM SDK imports — adapter injected via `opts.chat`). Throws single `JudgeError` for ALL failures so Plan 02 dispatcher catches one thing for math fallback (JUDGE-05). Post-hoc validator: pronoun deny-list (he|she|they|him|her|them|his|hers|theirs), cross-candidate ref reject (candidate_N), per-reason_code substring checks (skill_depth/recent_track_record/interest_match). `computeJudgeCacheKey(taskId, candidateUserIds[], mathScoresHash)` sorts ids in-key for order-independence (JUDGE-09). `JUDGE_ASSIGNMENT_BATCH_SYSTEM` + `buildJudgeBatchUserPrompt` in prompts.ts; `REASON_CODES` + `JudgePickSchema` + `JudgeResultSchema` (chosen_candidate_id literal 1|2|3, reason_sentence ≤25-word refine, picks.max(10)) in schemas.ts. 5 byte-identical-except-name bias fixtures (English-M / Turkish-F / Arabic-M / East-Asian-F / Spanish-mixed) committed for Plan 04 to consume. 13/13 unit tests GREEN; full suite 204 passed; tsc clean.
 
 ### Pending Todos
 
@@ -108,7 +110,7 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-13T21:19:03.886Z
-Stopped at: Phase 3 planned (4 plans, plan-checker PASS-WITH-CONCERNS, fixes applied)
-Resume file: .planning/phases/03-llm-judgment-overlay/03-01-PLAN.md
-Resume command: `/gsd-execute-phase 2` (continues with `02-03-PLAN.md` — UI surfaces)
+Last session: 2026-05-14T00:30:00.000Z
+Stopped at: Plan 03-01 complete; ready for 03-02 dispatcher integration
+Resume file: .planning/phases/03-llm-judgment-overlay/03-02-PLAN.md
+Resume command: `/gsd-execute-phase 3` (continues with `03-02-PLAN.md` — dispatcher integration + cache + budget cap)
