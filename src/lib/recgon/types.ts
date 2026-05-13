@@ -249,6 +249,12 @@ export type AgentTask = {
   rescheduleRequestedBy: string | null;
   rescheduleRequestNote: string | null;
   rescheduleRequestedDate: string | null; // YYYY-MM-DD
+  // Phase 3 / Plan 03 — JSONB envelope used by the "Why you" UI/email line.
+  // Optional + nullable: null on pre-Phase-3 rows + legacy manual
+  // reassignments; undefined on test fixtures or stubs that don't supply
+  // it. API routes strip this before returning to clients (privacy boundary
+  // T-03-03-03) — only the rendered `whyYouSentence` string is exposed.
+  assignmentReasoning?: AssignmentReasoning | null;
 };
 
 export type TaskRating = {

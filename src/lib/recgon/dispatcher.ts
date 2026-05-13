@@ -579,10 +579,9 @@ async function dispatchSingleTaskWithReasoning(
   teammates: Awaited<ReturnType<typeof listTeammatesWithStats>>,
   excludeIds: string[] = [],
 ): Promise<'assigned' | 'no_fit' | 'skip'> {
-  // Reasoning is computed but not yet persisted — Plan 03 wires it up.
-  // Reference it so TypeScript doesn't flag the param as unused (defense
-  // against later refactors silently dropping the threading).
-  void reasoning;
+  // Phase 3 / Plan 03 — `reasoning` is LIVE: assignScheduledTask passes it
+  // to assignTask, which persists it to agent_tasks.assignment_reasoning.
+  // notifyTeammateAssigned also receives it for the "Why you" email line.
 
   // Retag legacy tasks (minted before LLM tagging) so they get scored on
   // role-aware skills instead of the generic placeholder tags. The Pass 1
@@ -652,7 +651,7 @@ async function dispatchSingleTaskWithReasoning(
         await logNoFit(teamId, task, 'no_calendar_capacity');
         return 'no_fit';
       }
-      await assignScheduledTask(task, ownerTeammate.id, 'recgon', ownerPlan);
+      await assignScheduledTask(task, ownerTeammate.id, 'recgon', ownerPlan, reasoning);
       await logEvent({
         teamId,
         teammateId: ownerTeammate.id,
@@ -671,7 +670,12 @@ async function dispatchSingleTaskWithReasoning(
         getTeammate(ownerTeammate.id),
       ]);
       if (full) {
-        notifyTeammateAssigned({ teammate: full, task: withPlan(task, ownerPlan), teamName }).catch((err) => {
+        notifyTeammateAssigned({
+          teammate: full,
+          task: withPlan(task, ownerPlan),
+          teamName,
+          reasoning,
+        }).catch((err) => {
           logger.warn('notify owner-fallback failed', {
             taskId: task.id,
             err: err instanceof Error ? err.message : String(err),
@@ -694,7 +698,7 @@ async function dispatchSingleTaskWithReasoning(
     return 'no_fit';
   }
 
-  await assignScheduledTask(task, best.match.teammate.id, 'recgon', best.plan);
+  await assignScheduledTask(task, best.match.teammate.id, 'recgon', best.plan, reasoning);
   await logEvent({
     teamId,
     teammateId: best.match.teammate.id,
@@ -715,7 +719,12 @@ async function dispatchSingleTaskWithReasoning(
     getTeammate(best.match.teammate.id),
   ]);
   if (full) {
-    notifyTeammateAssigned({ teammate: full, task: withPlan(task, best.plan), teamName }).catch((err) => {
+    notifyTeammateAssigned({
+      teammate: full,
+      task: withPlan(task, best.plan),
+      teamName,
+      reasoning,
+    }).catch((err) => {
       logger.warn('notify teammate failed', {
         taskId: task.id,
         err: err instanceof Error ? err.message : String(err),
@@ -807,12 +816,20 @@ async function assignScheduledTask(
   teammateId: string,
   assignedBy: 'recgon' | string,
   plan: SchedulePlan,
+  reasoning?: AssignmentReasoning,
 ): Promise<void> {
-  await assignTask(task.id, teammateId, assignedBy, null, {
-    scheduledDate: plan.scheduledDate,
-    deadline: plan.deadline,
-    scheduleNote: plan.scheduleNote,
-  });
+  await assignTask(
+    task.id,
+    teammateId,
+    assignedBy,
+    null,
+    {
+      scheduledDate: plan.scheduledDate,
+      deadline: plan.deadline,
+      scheduleNote: plan.scheduleNote,
+    },
+    reasoning,
+  );
 }
 
 function withPlan(task: AgentTask, plan: SchedulePlan): AgentTask {

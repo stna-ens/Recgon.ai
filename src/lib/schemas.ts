@@ -376,6 +376,40 @@ export const JudgeResultSchema = z.object({
 export type JudgePick = z.infer<typeof JudgePickSchema>;
 export type JudgeResult = z.infer<typeof JudgeResultSchema>;
 
+// ── Phase 3 — LLM judgment overlay (Plan 03) ─────────────────────────────────
+//
+// Validation shape for the JSONB written to `agent_tasks.assignment_reasoning`.
+// Branched on the `kind` discriminator: math-only OR llm-tiebreaker. The
+// `llm_tiebreaker` branch references `JudgePickSchema` so any change to the
+// judge response shape automatically flows through. Storage validates with
+// this schema BEFORE writing the column — on parse failure we log + write
+// `null` (do NOT fail the assignment; the "Why you" line is auditing copy,
+// not the source-of-truth assignment).
+
+const MathBreakdownSchema = z.object({
+  skillOverlap: z.number(),
+  fitForKind: z.number(),
+  availabilityNow: z.number(),
+  loadHeadroom: z.number(),
+  interestNudge: z.number().optional().nullable(),
+});
+
+export const AssignmentReasoningSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('math_only'),
+    mathScore: z.number(),
+    mathBreakdown: MathBreakdownSchema,
+  }),
+  z.object({
+    kind: z.literal('llm_tiebreaker'),
+    mathScore: z.number(),
+    mathBreakdown: MathBreakdownSchema,
+    judge: JudgePickSchema,
+  }),
+]);
+
+export type AssignmentReasoningPayload = z.infer<typeof AssignmentReasoningSchema>;
+
 // ── Shared parse helper ───────────────────────────────────────────────────────
 
 /**

@@ -5,6 +5,8 @@
 
 import { supabase } from '../supabase';
 import { stripMd } from '../strings';
+import { logger } from '../logger';
+import { AssignmentReasoningSchema } from '../schemas';
 import type {
   Teammate,
   TeammateWithStats,
@@ -18,6 +20,7 @@ import type {
   TaskRating,
   RecgonState,
   AssignmentLogEntry,
+  AssignmentReasoning,
   BrainSnapshot,
   ProofPayload,
   VerificationStatus,
@@ -97,6 +100,10 @@ type TaskRow = {
   reschedule_requested_by: string | null;
   reschedule_request_note: string | null;
   reschedule_requested_date: string | null;
+  // Phase 3 / Plan 03 — populated by assignTask after a dispatch decision.
+  // null on pre-Phase-3 rows and on legacy manual reassignments that don't
+  // pass reasoning. Shape validated by AssignmentReasoningSchema.
+  assignment_reasoning: AssignmentReasoning | null;
 };
 
 function mapTask(row: TaskRow): AgentTask {
@@ -135,6 +142,10 @@ function mapTask(row: TaskRow): AgentTask {
     rescheduleRequestedBy: row.reschedule_requested_by ?? null,
     rescheduleRequestNote: row.reschedule_request_note ?? null,
     rescheduleRequestedDate: row.reschedule_requested_date ?? null,
+    // Phase 3 / Plan 03 — JSONB envelope; null on pre-Phase-3 rows.
+    // API routes NEVER return this raw blob to clients (privacy boundary,
+    // T-03-03-03) — they convert to whyYouSentence via renderWhyYou first.
+    assignmentReasoning: row.assignment_reasoning ?? null,
   };
 }
 
@@ -526,6 +537,7 @@ export async function assignTask(
     deadline?: string | null;
     scheduleNote?: string | null;
   },
+  reasoning?: AssignmentReasoning,
 ): Promise<void> {
   const update: Record<string, unknown> = {
     assigned_to: teammateId,
@@ -538,6 +550,22 @@ export async function assignTask(
   if (schedule?.scheduledUntilDate !== undefined) update.scheduled_until_date = schedule.scheduledUntilDate;
   if (schedule?.deadline !== undefined) update.deadline = schedule.deadline;
   if (schedule?.scheduleNote !== undefined) update.schedule_note = schedule.scheduleNote;
+  // Phase 3 / Plan 03 — persist the "Why you" reasoning envelope.
+  // Validated against AssignmentReasoningSchema before write; on parse
+  // failure we log + write null. The assignment itself proceeds either
+  // way — reasoning is auditing copy, not the source-of-truth assignment.
+  if (reasoning !== undefined) {
+    const parsed = AssignmentReasoningSchema.safeParse(reasoning);
+    if (parsed.success) {
+      update.assignment_reasoning = parsed.data;
+    } else {
+      logger.warn('invalid_assignment_reasoning', {
+        taskId,
+        err: parsed.error.message,
+      });
+      update.assignment_reasoning = null;
+    }
+  }
   const { error } = await supabase
     .from('agent_tasks')
     .update(update)

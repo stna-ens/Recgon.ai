@@ -328,6 +328,24 @@ describe('dispatcher — 3-pass judgment integration (Plan 03-02 / JUDGE-01, 02,
     expect(byTask['task-b']).toBe(tmB.id);  // judge override → tmB at index 0
     expect(byTask['task-c']).toBe(tmA.id);  // math top-1
     expect(byTask['task-d']).toBe(tmB.id);  // math top-1
+
+    // Phase 3 / Plan 03 — every assignTask call now carries the
+    // AssignmentReasoning envelope. assignTask signature is:
+    //   (taskId, teammateId, assignedBy, jobId, schedule, reasoning)
+    // So `reasoning` is arg index 5. Judge-picked tasks get
+    // `kind: 'llm_tiebreaker'`, math top-1 tasks get `kind: 'math_only'`.
+    const reasoningByTask = Object.fromEntries(
+      mockedAssignTask.mock.calls.map(
+        (call: unknown[]) => [
+          call[0] as string,
+          call[5] as { kind: string } | undefined,
+        ],
+      ),
+    );
+    expect(reasoningByTask['task-a']?.kind).toBe('llm_tiebreaker');
+    expect(reasoningByTask['task-b']?.kind).toBe('llm_tiebreaker');
+    expect(reasoningByTask['task-c']?.kind).toBe('math_only');
+    expect(reasoningByTask['task-d']?.kind).toBe('math_only');
   });
 
   it('cap-exhausted variant: when checkAndIncrement returns allowed:false, chat is NEVER called and all tasks fall back to math top-1', async () => {
