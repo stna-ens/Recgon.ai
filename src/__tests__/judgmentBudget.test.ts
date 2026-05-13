@@ -246,12 +246,15 @@ describe('judgmentBudget — daily safety cap (JUDGE-10)', () => {
       const date = currentUsageDate();
       seedRow('team-a', date, 50, /*alertSent*/ false);
       process.env.DEV_OPS_ALERT_EMAIL = 'ops@example.com';
+      process.env.RESEND_API_KEY = 'test-resend-key';
 
       await alertCapExceededOnce('team-a', date);
       expect(fakeTable.get(key('team-a', date))?.cap_alert_sent).toBe(true);
       expect(resendSendCalls.length).toBe(1);
       expect(resendSendCalls[0].to).toBe('ops@example.com');
       expect(resendSendCalls[0].subject).toContain('team-a');
+
+      delete process.env.RESEND_API_KEY;
     });
   });
 });
