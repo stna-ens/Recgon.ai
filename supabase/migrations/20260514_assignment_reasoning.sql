@@ -11,6 +11,13 @@
 -- "tasks assigned by math-only" without a full table scan, for future
 -- analytics (D-29 surface), without indexing every NULL row.
 
+-- WR-09 — this column stays NULL for any row written before Phase 3 ships.
+-- A future `NOT NULL` constraint REQUIRES a backfill migration that writes
+-- `{ "kind": "math_only", ... }` reasoning for legacy assignments first.
+-- Without that backfill, adding NOT NULL would fail on production with
+-- existing legacy rows. Document this guard rail here so the next
+-- migration author doesn't trip it.
+
 alter table public.agent_tasks
   add column if not exists assignment_reasoning jsonb default null;
 
