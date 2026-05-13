@@ -6,6 +6,8 @@
 
 import { CANONICAL_ROLES, CANONICAL_MODIFIERS } from '@/lib/recgon/skillVocabulary';
 import { wrapUntrusted } from '@/lib/llm/utils';
+// WR-07 — shared band thresholds (prompts.ts + whyYou.ts can't drift).
+import { bandFor, PROMPT_BAND_THRESHOLDS } from '@/lib/recgon/bandThresholds';
 
 // ── Codebase analysis ────────────────────────────────────────────────────────
 
@@ -1060,10 +1062,11 @@ Exactly one pick per task_id in the input. Do not skip tasks. Do not add tasks.`
 // If a future phase allows user-typed titles in `JudgeTaskInput.title` or
 // adds user-typed task titles to `recentTasks`, wrap those fields in
 // <user_content>...</user_content> per QUAL-02.
+// WR-07 — thresholds imported from src/lib/recgon/bandThresholds.ts (top of
+// this file). bandLabel(n) is the thin wrapper used by the judge prompt
+// builders below.
 function bandLabel(n: number): 'low' | 'medium' | 'high' {
-  if (n >= 0.7) return 'high';
-  if (n >= 0.45) return 'medium';
-  return 'low';
+  return bandFor(n, PROMPT_BAND_THRESHOLDS);
 }
 
 // Minimal XML escape for the few characters that would break our pseudo-XML

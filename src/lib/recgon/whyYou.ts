@@ -17,6 +17,9 @@
 // renderer itself doesn't know who's reading.
 
 import type { AssignmentReasoning } from './types';
+// WR-07 — thresholds shared with prompts.ts so the two band functions
+// can't drift independently.
+import { bandFor, COPY_BAND_THRESHOLDS } from './bandThresholds';
 
 export type WhyYouOutput = {
   // Locale-stable label for now. The eyebrow heading on TaskDetailPanel
@@ -46,15 +49,15 @@ const REASON_HEADERS: Record<string, string> = {
 
 // ── Threshold helper for math-only band labels ──────────────────────────────
 //
-// Plan 03-03 requirement: thresholds are <0.4 = low, 0.4-0.7 = medium,
-// ≥0.7 = high. These differ slightly from `prompts.ts`'s `bandLabel` (which
-// uses 0.45) — that one feeds the LLM prompt and is intentionally tuned for
-// LLM clarity; this one feeds human-facing copy.
+// WR-07 — thresholds live in src/lib/recgon/bandThresholds.ts (shared with
+// prompts.ts's bandLabel). The copy thresholds are <0.4 = low,
+// 0.4-0.7 = medium, ≥0.7 = high. They differ slightly from the prompt
+// thresholds (which use 0.45 for medium) — the prompt path is tuned for
+// LLM clarity, this one for human-facing copy. The shared module documents
+// why the two sets exist and prevents independent drift.
 
 function band(n: number): 'low' | 'medium' | 'high' {
-  if (n >= 0.7) return 'high';
-  if (n >= 0.4) return 'medium';
-  return 'low';
+  return bandFor(n, COPY_BAND_THRESHOLDS);
 }
 
 // ── Defensive HTML strip ───────────────────────────────────────────────────
