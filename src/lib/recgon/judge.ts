@@ -59,29 +59,43 @@ export const CLOSE_CALL_THRESHOLD = 0.20;
  * case-insensitive. Used both for the judge response and as defense-in-depth
  * when copy is rendered for the "Why you" line.
  *
- * Vocabulary scope (Plan 04 Task 2):
+ * Vocabulary scope (Plan 04 Task 2, extended by WR-01 fix):
  *   - English: he, she, they, him, her, them, his, hers, theirs
  *   - Spanish: el, ella, ellos, ellas (`el` is too noisy — single letter `el`
  *     collides with English determiners; covered via `elle` for French/Spanish
  *     'she' usage only)
- *   - French:  il, elle
- *   - German:  sie, er
+ *   - Portuguese: ele, ela
+ *   - Dutch:    hij, zij
+ *   - Italian:  lui, lei
+ *   - French:   il, elle
+ *   - German:   sie, er
+ *
+ * WR-01 fix: the previous `\b` boundary missed cases where a pronoun was
+ * adjacent to Unicode punctuation, apostrophes (`she's`), or other
+ * non-word-boundary contexts that JavaScript's ASCII-only `\b` doesn't treat
+ * as boundaries. We use a custom boundary that allows start/end-of-string
+ * AND any non-letter character on either side, so `she's`, `er;`, and
+ * `sie."` all trip the deny.
  *
  * The 5 bias fixtures cover English / Turkish / Arabic / East-Asian / Spanish
  * name vocabularies; the deny-list extends to the pronouns most likely to
- * leak into LLM output for those locales. `il`, `er`, and `sie` are short
- * tokens but the `\b` boundary + the fact that the LLM is instructed to
- * write second-person English copy keeps false-positive risk low.
+ * leak into LLM output for those locales. `il`, `er`, `sie`, `lei` are
+ * short tokens but the fact that the LLM is instructed to write
+ * second-person English copy keeps false-positive risk low.
  *
  * Adding new pronouns: extend the alternation; do NOT relax the boundary.
  */
 const PRONOUN_DENY =
-  /\b(he|she|they|him|her|them|his|hers|theirs|elle|il|sie|er)\b/i;
+  /(^|[^a-z])(he|she|they|him|her|them|his|hers|theirs|ele|ela|elle|il|sie|er|hij|zij|lui|lei)([^a-z]|$)/i;
 
 // Cross-candidate reference pattern. The prompt tells the LLM to address the
 // chosen candidate directly ("you finished..."), not to compare candidates
 // by id ("candidate_2 has..."). We reject any mention of candidate_N.
-const CROSS_CANDIDATE_REF = /candidate_\s*\d+/i;
+//
+// WR-02 fix — accept any separator between "candidate" and the digit, not
+// just underscore. Catches `candidate 2`, `Candidate-2`, `candidate.2` as
+// well as the canonical `candidate_2` shape.
+const CROSS_CANDIDATE_REF = /candidate[\s_\-.]*\d+/i;
 
 // Number-word vocabulary used by the over-cited-count check on
 // `recent_track_record`. The LLM is told to cite a number of tasks; we
@@ -211,6 +225,24 @@ export async function runJudgment(
     throw new JudgeError('judge response failed schema validation', { cause: err });
   }
 
+  // CR-02 fix — reject duplicate task_id in picks BEFORE per-pick validation.
+  // Without this, the LLM could return N picks all carrying the same task_id;
+  // the per-input "skipped" check below would catch the missing task, but the
+  // dispatcher's `judgeMap.set(pick.task_id, pick)` clobbers on each duplicate,
+  // so the pick that lands on `task-a` may actually be the one shaped against
+  // `task-b`'s candidate slate. That's a real correctness hazard.
+  const seenTaskIds = new Set<string>();
+  for (let i = 0; i < result.picks.length; i++) {
+    const p = result.picks[i];
+    if (seenTaskIds.has(p.task_id)) {
+      throw new JudgeError(
+        `duplicate pick for task_id '${p.task_id}'`,
+        { taskId: p.task_id, pickIndex: i },
+      );
+    }
+    seenTaskIds.add(p.task_id);
+  }
+
   // Post-hoc content validation — one pick at a time, matched up to its
   // task input by `task_id`. This is where we catch hallucinated facts.
   for (let i = 0; i < result.picks.length; i++) {
@@ -314,6 +346,17 @@ export function validateJudgePick(
     }
 
     case 'recent_track_record': {
+      // WR-08 fix — mirror the interest_match guard: reject when the
+      // reason cites recent track record but the candidate has no recent
+      // tasks. Without this, the LLM can write "you finished tasks
+      // recently" (no number) and the validator never catches that the
+      // claim is unfounded.
+      if (chosen.recentTasks.length === 0) {
+        throw new JudgeError(
+          `recent_track_record reason given but candidate has no recent tasks: '${sentence}'`,
+          { taskId: task.taskId, pickIndex },
+        );
+      }
       const maxAllowed = chosen.recentTasks.length;
       const tokens = sentence.match(NUMBER_TOKEN);
       if (tokens) {

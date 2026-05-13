@@ -389,6 +389,211 @@ describe('runJudgment — validator edge cases (Plan 04 Task 2)', () => {
   });
 });
 
+describe('runJudgment — CR-02 duplicate task_id rejection', () => {
+  it('throws JudgeError when the LLM returns two picks for the same task_id', async () => {
+    const fixA = loadFixture('bias-01-english-male.json');
+    const fixB = loadFixture('bias-02-turkish-female.json');
+    const inputA = fixtureToJudgeInput(fixA);
+    const inputB = fixtureToJudgeInput(fixB);
+
+    // Both picks carry inputA.taskId — duplicate. The duplicate check must
+    // fire BEFORE the per-input "skipped task_id" check (since both checks
+    // would catch *something* here, we want to specifically lock that the
+    // duplicate-detection path is the one that fires).
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: inputA.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'recent_track_record',
+            reason_sentence: 'you finished two typescript tasks recently.',
+            confidence: 'high',
+          },
+          {
+            task_id: inputA.taskId, // duplicate
+            chosen_candidate_id: 2,
+            reason_code: 'recent_track_record',
+            reason_sentence: 'you finished two typescript tasks recently.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+
+    await expect(runJudgment([inputA, inputB], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+    await expect(runJudgment([inputA, inputB], { chat: stub })).rejects.toMatchObject({
+      message: expect.stringContaining('duplicate pick'),
+    });
+  });
+});
+
+describe('runJudgment — WR-02 cross-candidate ref separators', () => {
+  it('throws on "candidate 2" (space separator)', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'skill_depth',
+            reason_sentence: 'candidate 2 lacks typescript depth this week.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+
+  it('throws on "Candidate-2" (hyphen separator, capitalized)', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'skill_depth',
+            reason_sentence: 'Candidate-2 lacks typescript depth this week.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+});
+
+describe('runJudgment — WR-01 extended pronoun coverage', () => {
+  it('throws on Portuguese pronoun "ela"', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'recent_track_record',
+            reason_sentence: 'ela finished typescript tasks recently.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+
+  it('throws on Italian pronoun "lui"', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'recent_track_record',
+            reason_sentence: 'lui finished typescript tasks recently.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+
+  it('throws on pronoun adjacent to apostrophe ("she\'s")', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'recent_track_record',
+            reason_sentence: "she's finished typescript tasks recently.",
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+    await expect(runJudgment([input], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+});
+
+describe('runJudgment — WR-08 recent_track_record empty guard', () => {
+  it('throws when reason_code is recent_track_record but candidate has zero recent tasks', async () => {
+    // Build a JudgeTaskInput where candidate 1 has empty recentTasks. We
+    // start from a fixture and overwrite candidate 1's recentTasks to [].
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    const inputWithEmpty: JudgeTaskInput = {
+      ...input,
+      candidates: input.candidates.map((c, i) =>
+        i === 0 ? { ...c, recentTasks: [] } : c,
+      ),
+    };
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'recent_track_record',
+            // Sentence WITHOUT a number — pre-WR-08, this passed because
+            // the number-token loop iterated over zero tokens.
+            reason_sentence: 'you have completed similar tasks recently.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+
+    await expect(runJudgment([inputWithEmpty], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+    await expect(runJudgment([inputWithEmpty], { chat: stub })).rejects.toMatchObject({
+      message: expect.stringContaining('no recent tasks'),
+    });
+  });
+});
+
+describe('runJudgment — WR-05 skill `ts` does not match `typescript`', () => {
+  it('rejects skill_depth where confirmedSkills has `ts` but sentence cites `typescript`', async () => {
+    const fix = loadFixture('bias-01-english-male.json');
+    const input = fixtureToJudgeInput(fix);
+    // Candidate 1's confirmedSkills includes typescript already. We
+    // narrow to just `ts` (shorthand that does NOT appear in
+    // "typescript" via the whole-word boundary) and the LLM sentence
+    // mentions typescript. The validator must reject.
+    const inputTsOnly: JudgeTaskInput = {
+      ...input,
+      candidates: input.candidates.map((c, i) =>
+        i === 0 ? { ...c, confirmedSkills: ['ts'] } : c,
+      ),
+    };
+    const { stub } = makeChatStub(
+      JSON.stringify({
+        picks: [
+          {
+            task_id: input.taskId,
+            chosen_candidate_id: 1,
+            reason_code: 'skill_depth',
+            reason_sentence: 'your typescript skill is the strongest match this week.',
+            confidence: 'high',
+          },
+        ],
+      }),
+    );
+
+    await expect(runJudgment([inputTsOnly], { chat: stub })).rejects.toBeInstanceOf(JudgeError);
+  });
+});
+
 describe('computeJudgeCacheKey', () => {
   it('is deterministic for identical inputs', () => {
     const k1 = computeJudgeCacheKey('tsk-1', ['a', 'b', 'c'], 'hash-xyz');
