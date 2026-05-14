@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: ready_to_plan
 stopped_at: Plan 03-04 code complete; awaiting user real-LLM bias baseline (Task 4 checkpoint)
 last_updated: "2026-05-14T01:15:00.000Z"
 last_activity: 2026-05-14 -- Plan 03-04 complete (bias regression CI + nightly real-LLM workflow + validator edge cases + Phase 3 roll-up); Phase 3 ship-readiness pending user Task 4 real-LLM run
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
   completed_plans: 12
-  percent: 100
+  percent: 67
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 03 (llm-judgment-overlay) — CODE COMPLETE; awaiting user Task 4 baseline
-Plan: 4 of 4 (DONE)
-Status: Phase 03 all 4 plans complete; pending user real-LLM bias regression one-off run + Plan 03-03 Task 5 manual UAT before phase formally ships
-Last activity: 2026-05-14 -- Plan 03-04 complete (bias regression test stubbed+real-LLM, nightly CI workflow, validator edge cases, Phase 3 roll-up, ROADMAP threshold-lock addendum)
+Phase: 4
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-14
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 4
+- Total plans completed: 8
 - Average duration: —
 - Total execution time: —
 
@@ -46,6 +46,7 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | — | — | — | — |
 | 01 | 4 | - | - |
+| 03 | 4 | - | - |
 
 **Recent Trend:**
 
