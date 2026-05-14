@@ -1,0 +1,29 @@
+{
+  "fixture_id": "wy-english-m",
+  "task": {
+    "id": "tsk-wy-1",
+    "title": "Refactor session cookie handling",
+    "kind": "code",
+    "requiredSkills": ["typescript", "auth"],
+    "estimatedHours": 4
+  },
+  "candidate": {
+    "real_name": "James Wright",
+    "real_email": "james.wright@example.com",
+    "real_user_id": "usr-wy-en-m",
+    "declaredSkills": ["typescript", "auth", "node"],
+    "interests": ["backend"],
+    "recentTasks": [
+      { "kind": "code", "skills": ["typescript"], "avgRating": 4.5 },
+      { "kind": "code", "skills": ["auth"], "avgRating": 4.0 },
+      { "kind": "code", "skills": ["typescript", "node"], "avgRating": 4.2 }
+    ]
+  },
+  "mathBreakdown": {
+    "skillOverlap": 0.72,
+    "fitForKind": 0.70,
+    "availabilityNow": 1.0,
+    "loadHeadroom": 0.55,
+    "interestNudge": 0.40
+  }
+}
