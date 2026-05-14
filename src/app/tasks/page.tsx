@@ -134,6 +134,10 @@ function V2TasksInner() {
   // Optimistic moves keep the card in the destination column while the API
   // call is in flight, preventing the visible "jump back" before refresh.
   const [optimistic, setOptimistic] = useState<Record<string, ColumnKey>>({});
+  // Phase 3 / Plan 03 — Why you sentence for the currently expanded task.
+  // Fetched lazily from /api/recgon/tasks/[id] when a task panel opens, so
+  // the raw assignment_reasoning JSONB never travels via /api/inbox.
+  const [whyYouMap, setWhyYouMap] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     try {
@@ -428,6 +432,31 @@ function V2TasksInner() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [expandedTask]);
+
+  // Phase 3 / Plan 03 — fetch the Why-you sentence for the expanded task.
+  // The server-side privacy filter at /api/recgon/tasks/[id] gates which
+  // viewers receive `whyYouSentence` (assignee + team owner only). Raw
+  // assignment_reasoning JSONB never leaves that endpoint, so this fetch is
+  // safe to call for any viewer — non-authorized viewers simply get a
+  // response without the field, and the block below stays hidden.
+  useEffect(() => {
+    if (!expandedTask) return;
+    const taskId = expandedTask.id;
+    if (whyYouMap[taskId] !== undefined) return; // already fetched
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/recgon/tasks/${taskId}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const sentence: string | undefined = data?.task?.whyYouSentence;
+        if (!cancelled && typeof sentence === 'string' && sentence.length > 0) {
+          setWhyYouMap((prev) => ({ ...prev, [taskId]: sentence }));
+        }
+      } catch { /* swallowed — block stays hidden on fetch error */ }
+    })();
+    return () => { cancelled = true; };
+  }, [expandedTask?.id]);
 
   /* REAL lighting — SVG feSpecularLighting with a feDistantLight
      gives a uniform directional light (top-left, elevation 55°)
@@ -752,6 +781,13 @@ function V2TasksInner() {
                   evidence={t.verification_evidence ?? null}
                 />
               </div>
+
+              {whyYouMap[t.id] && (
+                <div className="v2-tasks-detail-whyyou">
+                  <span className="recgon-label v2-block-eye">why you</span>
+                  <p className="v2-tasks-detail-whyyou-sentence">{whyYouMap[t.id]}</p>
+                </div>
+              )}
 
               {t.description && <p className="v2-tasks-detail-desc">{cleanText(t.description)}</p>}
 
@@ -1610,6 +1646,23 @@ function V2TasksInner() {
         }
         .v2-tasks-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
         .v2-block-eye { display: block; margin: 0 0 6px; }
+
+        /* Phase 3 / Plan 03 — Why you block in the task detail panel.
+           Sits between the status chiprow and the description. Inherits the
+           project's signature-pink accent on the left edge so the AI-PM
+           reasoning is visually anchored without introducing a new aesthetic. */
+        .v2-tasks-detail-whyyou {
+          padding: 10px 12px;
+          background: rgba(var(--signature-rgb), 0.05);
+          border-left: 2px solid rgba(var(--signature-rgb), 0.45);
+          border-radius: 4px;
+        }
+        .v2-tasks-detail-whyyou-sentence {
+          font-size: 13px;
+          line-height: 1.6;
+          color: var(--txt-pure);
+          margin: 0;
+        }
 
         /* Buttons (mirror old inbox) */
         .v2-btn {
