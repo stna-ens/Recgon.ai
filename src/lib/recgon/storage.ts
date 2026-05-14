@@ -951,7 +951,10 @@ export async function logEvent(input: {
     | 'reschedule_requested'
     | 'rescheduled'
     | 'overloaded'
-    | 'no_fit';
+    | 'no_fit'
+    // Phase 3 / Plan 06 — refusal/deferral events for owner observability.
+    | 'triaged'
+    | 'deferred';
   payload?: Record<string, unknown>;
 }): Promise<void> {
   await supabase.from('teammate_event_log').insert({

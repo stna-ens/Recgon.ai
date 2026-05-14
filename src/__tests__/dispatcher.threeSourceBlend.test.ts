@@ -26,6 +26,10 @@ vi.mock('@/lib/recgon/storage', () => ({
   getTask: vi.fn(),
   getTeammate: vi.fn().mockResolvedValue(null),
   updateTaskRequiredSkills: vi.fn().mockResolvedValue(undefined),
+  // Plan 06 — triage/deferral helpers (no-op for this suite).
+  markTaskForTriage: vi.fn().mockResolvedValue(undefined),
+  deferTaskScheduledDate: vi.fn().mockResolvedValue(undefined),
+  clearTriageNote: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/recgon/profileStorage', () => ({

@@ -3,7 +3,16 @@
 // 1. Read unified brain
 // 2. Mint tasks (idempotent via dedupKey)
 // 3. For each unassigned task in the team, score every active teammate and
-//    pick the best. If best < MIN_FIT_SCORE, leave unassigned and log no_fit.
+//    pick the best, then apply the Phase 3 / Plan 06 four-outcome decision tree:
+//      (a) hasMinimumFit fails on every candidate → markTaskForTriage('no_clear_fit')
+//      (b) Qualified candidates exist but all booked NOW + priority < 3 →
+//          findEarliestCapacityWindow → deferTaskScheduledDate, or
+//          markTaskForTriage('no_capacity_in_window') when the lookahead is empty
+//      (c) Qualified candidates booked NOW + priority >= 3 →
+//          markTaskForTriage('no_capacity_high_priority')
+//      (d) Qualified + capacity NOW → dispatchSingleTaskWithReasoning; if Plan
+//          03-05's grounded Why-you sentence is null → markTaskForTriage(
+//          'no_grounded_reason'), otherwise assign and clearTriageNote.
 // 4. Write assignment, append assignment_log, log event, enqueue execution
 //    for AI assignments (notification for humans handled in Slice 2).
 
@@ -13,7 +22,14 @@ import { chatViaProviders } from '../llm/providers';
 import { notifyTeammateAssigned } from '../notifications';
 import { readUnifiedBrain } from './brain';
 import { mintTasksFromBrain } from './taskMint';
-import { rankMatches, type MatchResult } from './match';
+import {
+  rankMatches,
+  hasMinimumFit,
+  findEarliestCapacityWindow,
+  DEFER_FLOOR,
+  HIGH_PRIORITY_THRESHOLD,
+  type MatchResult,
+} from './match';
 import { planTaskSchedule, scheduleTimelinessScore, type SchedulePlan } from './scheduler';
 import { tagSingleTaskWithSkills } from './skillTagger';
 import { listProfiles } from './profileStorage';
@@ -49,6 +65,9 @@ import {
   getTask,
   getTeammate,
   updateTaskRequiredSkills,
+  markTaskForTriage,
+  deferTaskScheduledDate,
+  clearTriageNote,
 } from './storage';
 import type {
   AgentTask,
@@ -60,6 +79,7 @@ import type {
   JudgeTaskInput,
   TaskStatus,
   TeammateProfile,
+  TriageNote,
   WorkingHours,
 } from './types';
 
@@ -246,7 +266,20 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
 
   let assigned = 0;
   let noFit = 0;
+  let triaged = 0;
+  let deferred = 0;
   for (const [taskId, entry] of ranked) {
+    // ── Plan 06 decision tree: refuse / defer / assign ──────────────────
+    const outcome = await routeTaskOrTriage(teamId, entry);
+    if (outcome === 'triaged') {
+      triaged++;
+      continue;
+    }
+    if (outcome === 'deferred') {
+      deferred++;
+      continue;
+    }
+
     const pick = judgeMap.get(taskId) ?? null;
     const reasoning = buildAssignmentReasoning(entry, pick);
     const result = await dispatchSingleTaskWithReasoning(
@@ -261,6 +294,7 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
     );
     if (result === 'assigned') assigned++;
     else if (result === 'no_fit') noFit++;
+    else if (result === 'triage') triaged++;
   }
 
   logger.info('recgon dispatch complete', {
@@ -269,6 +303,8 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
     skipped,
     assigned,
     noFit,
+    triaged,
+    deferred,
     backfilled,
     closeCalls: closeCalls.length,
     judgePicks: judgeMap.size,
@@ -281,9 +317,118 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
     assigned,
     noFit,
     backfilled,
-    triaged: 0,
-    deferred: 0,
+    triaged,
+    deferred,
   };
+}
+
+// ── Phase 3 / Plan 06 — refusal + deferral router ──────────────────────────
+//
+// Returns one of three outcomes BEFORE the normal assignment path:
+//   - 'triaged'   → task is parked with a triage_note; counted toward triaged
+//   - 'deferred'  → task's scheduledDate moved forward; counted toward deferred
+//   - 'proceed'   → math + capacity gates passed; caller proceeds with the
+//                   normal dispatchSingleTaskWithReasoning path.
+//
+// This is the single source of truth for the four-outcome decision tree.
+// Both `runDispatch` (cron loop) and `dispatchTask` (single-task path) call
+// into it so the behaviour is identical on both code paths.
+async function routeTaskOrTriage(
+  teamId: string,
+  entry: RankEntry,
+): Promise<'triaged' | 'deferred' | 'proceed'> {
+  const qualified = entry.ranked.filter((r) => hasMinimumFit(r.breakdown));
+
+  // Outcome 2 — no_clear_fit. No candidate has any FIT signal above the
+  // floor. Availability + load alone NEVER qualify (user rule 2026-05-15).
+  if (qualified.length === 0) {
+    await markTaskForTriage(entry.task.id, 'no_clear_fit');
+    await logEvent({
+      teamId,
+      taskId: entry.task.id,
+      event: 'triaged',
+      payload: {
+        triage_note: 'no_clear_fit',
+        candidate_count: entry.ranked.length,
+        top_breakdown: entry.ranked[0]?.breakdown ?? null,
+      },
+    });
+    return 'triaged';
+  }
+
+  // Qualified candidates exist. Check whether the top one is available NOW.
+  const topQualified = qualified[0];
+  const availNow = topQualified.breakdown.availabilityNow;
+
+  if (availNow < DEFER_FLOOR) {
+    // Outcome 4' — high-priority bypass. priority>=3 tasks can't sit.
+    if (entry.task.priority >= HIGH_PRIORITY_THRESHOLD) {
+      await markTaskForTriage(entry.task.id, 'no_capacity_high_priority');
+      await logEvent({
+        teamId,
+        taskId: entry.task.id,
+        event: 'triaged',
+        payload: {
+          triage_note: 'no_capacity_high_priority',
+          priority: entry.task.priority,
+          top_availability: availNow,
+        },
+      });
+      return 'triaged';
+    }
+
+    // Outcome 3 — defer if a future window is available, otherwise Outcome 4.
+    const nextDate = findEarliestCapacityWindow(qualified, entry.task);
+    if (nextDate) {
+      await deferTaskScheduledDate(entry.task.id, nextDate);
+      await logEvent({
+        teamId,
+        taskId: entry.task.id,
+        event: 'deferred',
+        payload: {
+          new_scheduled_date: nextDate.toISOString().slice(0, 10),
+          qualified_count: qualified.length,
+          top_availability: availNow,
+        },
+      });
+      return 'deferred';
+    }
+
+    // Outcome 4 — no capacity within the lookahead window.
+    await markTaskForTriage(entry.task.id, 'no_capacity_in_window');
+    await logEvent({
+      teamId,
+      taskId: entry.task.id,
+      event: 'triaged',
+      payload: {
+        triage_note: 'no_capacity_in_window',
+        qualified_count: qualified.length,
+        top_availability: availNow,
+      },
+    });
+    return 'triaged';
+  }
+
+  // Outcome 1 — proceed with normal assignment. The whyYouSentence=null
+  // refusal is handled INSIDE dispatchSingleTaskWithReasoning (it has the
+  // chosen-match context the LLM call needs).
+  return 'proceed';
+}
+
+// Internal helper used by dispatchSingleTaskWithReasoning to mark the
+// whyYouSentence=null refusal path. Centralised so the log event payload
+// is consistent with the routeTaskOrTriage cases above.
+async function triageForUngroundedReason(
+  teamId: string,
+  taskId: string,
+): Promise<void> {
+  await markTaskForTriage(taskId, 'no_grounded_reason');
+  await logEvent({
+    teamId,
+    taskId,
+    event: 'triaged',
+    payload: { triage_note: 'no_grounded_reason' as TriageNote },
+  });
 }
 
 // ── Pass 2 helper: batched LLM judge call with cache + cap ─────────────────
@@ -696,7 +841,7 @@ async function dispatchSingleTaskWithReasoning(
     string,
     Array<{ kind: string; skills: string[]; avgRating?: number }>
   > = new Map(),
-): Promise<'assigned' | 'no_fit' | 'skip'> {
+): Promise<'assigned' | 'no_fit' | 'skip' | 'triage'> {
   // Phase 3 / Plan 03 — `reasoning` is LIVE: assignScheduledTask passes it
   // to assignTask, which persists it to agent_tasks.assignment_reasoning.
   // notifyTeammateAssigned also receives it for the "Why you" email line.
@@ -865,7 +1010,24 @@ async function dispatchSingleTaskWithReasoning(
     chatViaProviders,
   );
 
+  // Plan 06 — coupling with Plan 03-05's grounded Why-you. If the LLM
+  // couldn't ground a sentence even though math + capacity gates passed,
+  // the dispatcher refuses to assign and triages the task. (This is the
+  // 5th triage path; the other four are handled by routeTaskOrTriage
+  // before this function is called.)
+  if (
+    'whyYouSentence' in reasoning &&
+    reasoning.whyYouSentence === null
+  ) {
+    await triageForUngroundedReason(teamId, task.id);
+    return 'triage';
+  }
+
   await assignScheduledTask(task, best.match.teammate.id, 'recgon', best.plan, reasoning);
+  // Plan 06 — successful assignment clears any prior triage_note so a
+  // task that was previously refused doesn't leave stale metadata when
+  // conditions change (skill added, calendar freed, etc.).
+  await clearTriageNote(task.id);
   await logEvent({
     teamId,
     teammateId: best.match.teammate.id,
@@ -1029,12 +1191,13 @@ async function logNoFit(teamId: string, task: AgentTask, reason: string): Promis
 // Used by tests and by the manual /recgon/dispatch route. Collapses to a
 // degenerate N=1 case of `runDispatch`'s 3-pass flow — same `runJudgment`
 // path, same cap check, same `dispatchSingleTaskWithReasoning` — so QUAL-03
-// behaviour is identical on the cron and the manual path.
+// behaviour is identical on the cron and the manual path. Plan 06 also
+// shares routeTaskOrTriage with runDispatch so refusal/deferral apply here too.
 export async function dispatchTask(
   teamId: string,
   taskId: string,
   options: { excludeTeammateIds?: string[] } = {},
-): Promise<'assigned' | 'no_fit' | 'skip'> {
+): Promise<'assigned' | 'no_fit' | 'skip' | 'triage' | 'deferred'> {
   const rawTask = await getTask(taskId);
   if (!rawTask || rawTask.status !== 'unassigned') return 'skip';
 
@@ -1058,6 +1221,11 @@ export async function dispatchTask(
   });
   const isCloseCall = r.length >= 2 && r[0].score - r[1].score < CLOSE_CALL_THRESHOLD;
   const entry: RankEntry = { task: fresh, ranked: r, isCloseCall };
+
+  // ── Plan 06: same refusal/deferral router as the cron loop ──────────────
+  const outcome = await routeTaskOrTriage(teamId, entry);
+  if (outcome === 'triaged') return 'triage';
+  if (outcome === 'deferred') return 'deferred';
 
   // ── Pass 2 (N=1): same judge helper, same cache, same cap ───────────────
   // Cache is per-call; for the manual path the cache holds at most 1 entry

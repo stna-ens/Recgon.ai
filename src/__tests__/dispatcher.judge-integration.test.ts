@@ -27,6 +27,11 @@ vi.mock('@/lib/recgon/storage', () => ({
   getTask: vi.fn(),
   getTeammate: vi.fn().mockResolvedValue(null),
   updateTaskRequiredSkills: vi.fn().mockResolvedValue(undefined),
+  // Plan 06 — triage/deferral helpers (no-op for this suite since these
+  // tests run with fully-qualified candidates that bypass the refusal path).
+  markTaskForTriage: vi.fn().mockResolvedValue(undefined),
+  deferTaskScheduledDate: vi.fn().mockResolvedValue(undefined),
+  clearTriageNote: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/recgon/profileStorage', () => ({
@@ -111,10 +116,17 @@ vi.mock('@/lib/recgon/judgmentBudget', () => ({
 // don't double-count chat calls. The Why-you LLM path has its own unit
 // tests + bias regression — this suite asserts the JUDGE batch shape +
 // budget behaviour, not the Why-you call accounting.
+//
+// Plan 06 update: null whyYouSentence is now a refusal trigger
+// (`triage_note='no_grounded_reason'`), so we return a non-null grounded
+// sentence here to keep assignments flowing. The judge-integration suite
+// is not testing the refusal path; that lives in
+// `dispatcher.zero-signal-refusal.test.ts`.
 vi.mock('@/lib/recgon/whyYouLLM', () => ({
-  generateWhyYouSentence: vi
-    .fn()
-    .mockResolvedValue({ sentence: null, citedSignal: null }),
+  generateWhyYouSentence: vi.fn().mockResolvedValue({
+    sentence: 'You have the matching skills for this work.',
+    citedSignal: 'declared_skill_match',
+  }),
 }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────

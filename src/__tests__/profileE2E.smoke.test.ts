@@ -20,6 +20,10 @@ vi.mock('@/lib/recgon/storage', () => ({
   getTask: vi.fn(),
   getTeammate: vi.fn().mockResolvedValue(null),
   updateTaskRequiredSkills: vi.fn().mockResolvedValue(undefined),
+  // Plan 06 — triage/deferral helpers (no-op for this suite).
+  markTaskForTriage: vi.fn().mockResolvedValue(undefined),
+  deferTaskScheduledDate: vi.fn().mockResolvedValue(undefined),
+  clearTriageNote: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/recgon/profileStorage', () => ({
@@ -48,6 +52,17 @@ vi.mock('@/lib/recgon/skillTagger', () => ({
 
 vi.mock('@/lib/notifications', () => ({
   notifyTeammateAssigned: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Plan 06: stub generateWhyYouSentence to return a non-null grounded
+// sentence so the smoke assignment path is not refused by the new
+// no_grounded_reason refusal trigger. This suite tests the profileMerge
+// rebind (real rankMatches), not the Why-you grounding path.
+vi.mock('@/lib/recgon/whyYouLLM', () => ({
+  generateWhyYouSentence: vi.fn().mockResolvedValue({
+    sentence: 'You have the matching skills for this work.',
+    citedSignal: 'declared_skill_match',
+  }),
 }));
 
 vi.mock('@/lib/supabase', () => ({
