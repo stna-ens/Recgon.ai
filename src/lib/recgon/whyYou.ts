@@ -17,9 +17,6 @@
 // renderer itself doesn't know who's reading.
 
 import type { AssignmentReasoning } from './types';
-// WR-07 — thresholds shared with prompts.ts so the two band functions
-// can't drift independently.
-import { bandFor, COPY_BAND_THRESHOLDS } from './bandThresholds';
 
 export type WhyYouOutput = {
   // Locale-stable label for now. The eyebrow heading on TaskDetailPanel
@@ -46,19 +43,6 @@ const REASON_HEADERS: Record<string, string> = {
   task_kind_familiarity: 'Familiar work',
   capacity_headroom: 'Clearest week',
 };
-
-// ── Threshold helper for math-only band labels ──────────────────────────────
-//
-// WR-07 — thresholds live in src/lib/recgon/bandThresholds.ts (shared with
-// prompts.ts's bandLabel). The copy thresholds are <0.4 = low,
-// 0.4-0.7 = medium, ≥0.7 = high. They differ slightly from the prompt
-// thresholds (which use 0.45 for medium) — the prompt path is tuned for
-// LLM clarity, this one for human-facing copy. The shared module documents
-// why the two sets exist and prevents independent drift.
-
-function band(n: number): 'low' | 'medium' | 'high' {
-  return bandFor(n, COPY_BAND_THRESHOLDS);
-}
 
 // ── Defensive HTML strip ───────────────────────────────────────────────────
 //
@@ -97,21 +81,60 @@ export function renderWhyYou(reasoning: AssignmentReasoning): WhyYouOutput {
  * Build the math-only sentence from a math breakdown. Used both when
  * `kind === 'math_only'` AND when an LLM-tiebreaker envelope is malformed.
  *
- * The two signals we surface are skill overlap and calendar availability —
- * the two most legible numbers from a teammate's perspective. Workload
- * headroom is a derived quantity; fit-for-kind is too internal a concept
- * to surface as a band label.
+ * Voice rule: never expose raw band labels ("low / medium / high") to the
+ * assignee — that reads as the system grading the teammate in their face.
+ * Instead, pick the SINGLE strongest signal and lead with it in PM voice.
+ *
+ * Degenerate case (no signal stood out — every breakdown field below
+ * SIGNAL_FLOOR): explicit honest fallback that doesn't pretend a reason
+ * existed.
  */
+
+// Below this floor a signal is too weak to honestly cite as the reason
+// you were picked. With every signal below the floor we use the explicit
+// "no teammate stood out" copy rather than fabricating a winner.
+const SIGNAL_FLOOR = 0.15;
+
+const MATH_SIGNAL_COPY: Array<{
+  key: 'skillOverlap' | 'availabilityNow' | 'fitForKind' | 'loadHeadroom' | 'interestNudge';
+  sentence: string;
+}> = [
+  { key: 'skillOverlap',    sentence: 'Your background matches what this task needs.' },
+  { key: 'availabilityNow', sentence: 'You have the clearest week ahead of you.' },
+  { key: 'fitForKind',      sentence: "This is the kind of work you've been doing lately." },
+  { key: 'loadHeadroom',    sentence: 'Your plate has the most room for this right now.' },
+  { key: 'interestNudge',   sentence: "This lines up with what you've shown interest in." },
+];
+
 function renderMathOnly(
   mathBreakdown: AssignmentReasoning extends { mathBreakdown: infer M } ? M : never,
 ): WhyYouOutput {
-  const skillBand = band(mathBreakdown.skillOverlap);
-  const availBand = band(mathBreakdown.availabilityNow);
+  // Find the strongest signal across the five breakdown fields. Stable
+  // order: when two signals tie (e.g. all zeros), the first entry in
+  // MATH_SIGNAL_COPY wins, so output stays deterministic.
+  let top: { score: number; sentence: string } = {
+    score: -Infinity,
+    sentence: MATH_SIGNAL_COPY[0].sentence,
+  };
+  for (const { key, sentence } of MATH_SIGNAL_COPY) {
+    const score = mathBreakdown[key];
+    if (typeof score === 'number' && score > top.score) {
+      top = { score, sentence };
+    }
+  }
+
+  // No real signal — be honest about it rather than masking with a band.
+  if (top.score < SIGNAL_FLOOR) {
+    return {
+      headerLabel: 'WHY YOU',
+      sentence: 'Picking you for this one — no teammate had a clear edge, so going on overall availability.',
+      confidenceClass: 'na',
+    };
+  }
+
   return {
     headerLabel: 'WHY YOU',
-    sentence: stripHtml(
-      `Your fit score was strongest among teammates available this week (${skillBand} skill / ${availBand} availability).`,
-    ),
+    sentence: stripHtml(top.sentence),
     confidenceClass: 'na',
   };
 }

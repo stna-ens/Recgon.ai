@@ -127,29 +127,87 @@ describe('renderWhyYou — LLM reason_codes (5 cases)', () => {
 });
 
 describe('renderWhyYou — math-only fallback', () => {
-  it('uses skill+availability band labels (low/medium/high) when kind is math_only', () => {
-    const reasoning = mathOnly(0.85, 0.75); // high / high
+  // The math-only renderer NEVER surfaces raw band labels to the assignee.
+  // It picks the SINGLE strongest signal and leads with a PM-voice sentence,
+  // or falls back to an explicit "no teammate stood out" line when every
+  // signal is below SIGNAL_FLOOR (0.15).
+
+  it('returns the WHY YOU header label and confidenceClass=na', () => {
+    const reasoning = mathOnly(0.85, 0.75);
     const out = renderWhyYou(reasoning);
     expect(out.headerLabel).toBe('WHY YOU');
-    expect(out.sentence).toContain('skill');
-    expect(out.sentence).toContain('high');
     expect(out.confidenceClass).toBe('na');
   });
 
-  it('renders the math-only template literally (no LLM voice)', () => {
-    const reasoning = mathOnly(0.55, 0.5); // medium / medium
+  it('leads with the skill-overlap sentence when skill is the top signal', () => {
+    // baseMathBreakdown has skillOverlap:0.85 (top), availabilityNow:0.8,
+    // fitForKind:0.7, loadHeadroom:0.6, interestNudge:0 → skill wins.
+    const out = renderWhyYou(mathOnly(0.85, 0.75));
+    expect(out.sentence).toBe('Your background matches what this task needs.');
+  });
+
+  it('leads with the availability sentence when availability is the top signal', () => {
+    const reasoning: AssignmentReasoning = {
+      kind: 'math_only',
+      mathScore: 0.5,
+      mathBreakdown: {
+        skillOverlap: 0.2,
+        availabilityNow: 0.9,
+        fitForKind: 0.1,
+        loadHeadroom: 0.1,
+        interestNudge: 0,
+      },
+    };
+    const out = renderWhyYou(reasoning);
+    expect(out.sentence).toBe('You have the clearest week ahead of you.');
+  });
+
+  it('leads with the load-headroom sentence when capacity is the top signal', () => {
+    const reasoning: AssignmentReasoning = {
+      kind: 'math_only',
+      mathScore: 0.5,
+      mathBreakdown: {
+        skillOverlap: 0.2,
+        availabilityNow: 0.3,
+        fitForKind: 0.2,
+        loadHeadroom: 0.8,
+        interestNudge: 0,
+      },
+    };
+    expect(renderWhyYou(reasoning).sentence).toBe('Your plate has the most room for this right now.');
+  });
+
+  it('falls back to "no teammate stood out" when every signal is below 0.15 (degenerate case)', () => {
+    const reasoning: AssignmentReasoning = {
+      kind: 'math_only',
+      mathScore: 0,
+      mathBreakdown: {
+        skillOverlap: 0,
+        availabilityNow: 0,
+        fitForKind: 0,
+        loadHeadroom: 0,
+        interestNudge: 0,
+      },
+    };
     const out = renderWhyYou(reasoning);
     expect(out.sentence).toBe(
-      'Your fit score was strongest among teammates available this week (medium skill / medium availability).',
+      'Picking you for this one — no teammate had a clear edge, so going on overall availability.',
     );
   });
 
-  it('thresholds: <0.4 → low, 0.4-0.7 → medium, ≥0.7 → high', () => {
-    expect(renderWhyYou(mathOnly(0.3, 0.3)).sentence).toContain('low skill / low availability');
-    expect(renderWhyYou(mathOnly(0.5, 0.5)).sentence).toContain('medium skill / medium availability');
-    expect(renderWhyYou(mathOnly(0.8, 0.8)).sentence).toContain('high skill / high availability');
-    expect(renderWhyYou(mathOnly(0.4, 0.4)).sentence).toContain('medium skill / medium availability');
-    expect(renderWhyYou(mathOnly(0.7, 0.7)).sentence).toContain('high skill / high availability');
+  it('NEVER surfaces raw band labels (low/medium/high) to the assignee', () => {
+    // The system should not grade the teammate to their face. Confirm
+    // across a representative range of breakdown scores.
+    const cases = [
+      mathOnly(0.3, 0.3),
+      mathOnly(0.5, 0.5),
+      mathOnly(0.8, 0.8),
+      mathOnly(0.1, 0.1),
+    ];
+    for (const r of cases) {
+      const out = renderWhyYou(r);
+      expect(out.sentence).not.toMatch(/\b(low|medium|high)\b/i);
+    }
   });
 });
 
@@ -168,8 +226,9 @@ describe('renderWhyYou — defense in depth', () => {
       },
     };
     const out = renderWhyYou(reasoning);
-    // Falls back to math template, not the LLM header.
-    expect(out.sentence).toContain('Your fit score was strongest');
+    // Falls back to math-only path. baseMathBreakdown overridden with
+    // skillOverlap:0.8 (top) → skill-overlap sentence.
+    expect(out.sentence).toBe('Your background matches what this task needs.');
     expect(out.confidenceClass).toBe('na');
   });
 
