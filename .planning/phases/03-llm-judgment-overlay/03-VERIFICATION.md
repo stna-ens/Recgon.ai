@@ -1,7 +1,8 @@
 ---
 phase: 03-llm-judgment-overlay
 verified: 2026-05-14T02:07:00Z
-status: human_needed
+status: gaps_routed
+gaps_routed_to: 03.1-llm-judgment-overlay-gap-closure
 score: 11/12 must-haves verified
 overrides_applied: 1
 overrides:
@@ -12,7 +13,15 @@ overrides:
 human_verification:
   - test: "Plan 03-03 Task 5 manual UAT — assignee / owner / other-teammate privacy spot-check on the Why-you block in TaskDetailPanel and assignment email"
     expected: "Assignee sees Why-you in email + popup. Owner sees Why-you in popup for every assignee. Other teammates see the task but NO Why-you block."
-    why_human: "Visual confirmation across three browser sessions (assignee / owner / non-assignee teammate) cannot be verified programmatically. Privacy filter passes its 5 server-side test scenarios; visual rendering across viewer roles needs eyes-on."
+    status: routed-to-3.1
+    why_human: "Visual confirmation across three browser sessions cannot be verified programmatically. UAT on 2026-05-15 surfaced two deeper product gaps (dispatcher assigns on zero fit signals; Why-you copy is generic templates not grounded reasoning) that Phase 3.1 addresses. The privacy filter itself (5 server-side tests) remains GREEN."
+phase_3_1_gaps:
+  - gap: "Dispatcher assigns tasks even when no candidate has any fit signal above the floor"
+    evidence: "agent_tasks row beb5b3e9-... has assignment_reasoning.mathBreakdown with every field = 0; assignee was picked anyway"
+    rule: "If no candidate has any fit signal above SIGNAL_FLOOR, the task stays unassigned and the owner triages"
+  - gap: "Why-you copy is template-based on the math-only path, not grounded reasoning"
+    evidence: "Live UAT showed 'Your fit score was strongest among teammates available this week (low skill / low availability)' — reads as the system grading the teammate, not as a PM citing real signals"
+    rule: "Always call the LLM for the Why-you sentence (task + chosen teammate's profile + math breakdown), so every assignment has grounded reasoning citing specific signals from the teammate's actual history"
 ---
 
 # Phase 3: LLM Judgment Overlay Verification Report

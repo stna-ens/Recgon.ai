@@ -1,14 +1,15 @@
 ---
-status: partial
+status: resolved
 phase: 03-llm-judgment-overlay
 source: ["03-VERIFICATION.md"]
 started: 2026-05-14T02:08:00Z
-updated: 2026-05-14T02:08:00Z
+updated: 2026-05-15T00:30:00Z
+resolved_by: 03.1-llm-judgment-overlay-gap-closure
 ---
 
 ## Current Test
 
-[awaiting human testing]
+[routed to Phase 3.1 — see Gaps section]
 
 ## Tests
 
@@ -31,9 +32,22 @@ steps:
 
 total: 1
 passed: 0
-issues: 0
-pending: 1
+issues: 2
+pending: 0
 skipped: 0
 blocked: 0
+routed_to_followup: 1
 
 ## Gaps
+
+### Gap 1: Dispatcher assigns tasks with zero-signal fit scores
+status: routed-to-phase-3.1
+discovered: 2026-05-15T00:10:00Z via live UAT on /tasks
+evidence: agent_tasks row `beb5b3e9-6ea2-4a85-974c-bbf247f2c5c8` has assignment_reasoning.mathBreakdown with every field = 0 (fitForKind, loadHeadroom, skillOverlap, interestNudge, availabilityNow). The dispatcher picked an assignee anyway. The rule should be: if no candidate has ANY fit signal above the floor, the task stays unassigned and the owner triages.
+
+### Gap 2: Why-you copy is generic templates, not grounded reasoning
+status: routed-to-phase-3.1
+discovered: 2026-05-15T00:10:00Z via live UAT on /tasks
+evidence: The math-only path uses static templates ("Your background matches what this task needs") that don't cite specific signals from the assignee's profile. The LLM judge path produces specific copy but only fires on close calls. Fix: always call the LLM for the Why-you sentence, given (task spec + chosen teammate's profile + math breakdown), so every assignment gets grounded reasoning.
+
+Both gaps tracked in Phase 3.1 — see `.planning/phases/03.1-*/`.
