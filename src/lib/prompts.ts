@@ -1153,3 +1153,144 @@ ${candidateBlocks}
   return `Pick one candidate per task from the math top-3 below. Return JSON only.
 ${blocks}`;
 }
+
+// ── Phase 3 — LLM judgment overlay (Plan 05) ─────────────────────────────────
+//
+// WHY_YOU_GROUNDED — grounded "Why you" sentence prompt. Called ONCE per
+// assignment (math-only OR llm_tiebreaker fallback path). Returns one short
+// sentence citing a real signal from the chosen teammate's payload, or null
+// when no signal can be grounded.
+//
+// Plan 05 user-approved copy. Hard rules:
+//   - LLM cites ONE signal that EXISTS in the chosen_candidate payload.
+//   - NEVER invents skills, tasks, ratings, or interests not in the payload.
+//   - NEVER uses names, pronouns, or candidate IDs.
+//   - PM voice, second-person ("you", "your").
+//   - ≤25 words. Plain text.
+//   - Returns sentence=null rather than assigning on no real reason
+//     ("they had time" is not a reason — user Hard Rule 2).
+//
+// Schema enforced by `WhyYouGroundedSchema` in `schemas.ts`; post-hoc
+// grounding validator lives in `src/lib/recgon/whyYouLLM.ts` (Zod can't see
+// the candidate payload).
+
+export const WHY_YOU_GROUNDED_SYSTEM = `You are Recgon, an AI Product Manager. A teammate has just been assigned a task. Your job: write ONE short sentence (≤25 words) explaining WHY this teammate fits this specific task, citing ONE concrete signal from their payload.
+
+What counts as a valid signal (pick exactly ONE, lead with it):
+- skill_depth         — a confirmed skill that matches the task
+- recent_track_record — actual count of recent tasks they completed
+- task_kind_familiarity — task's kind matches a kind they recently worked on
+- interest_match       — confirmed interest that aligns with this work
+- capacity_headroom    — ONLY when no fit signal exists AND availability high.
+                        Lead with availability ONLY if all four fit signals
+                        are weak.
+
+Hard rules:
+- Cite ONE signal that EXISTS in the chosen_candidate payload below.
+- NEVER invent skills, tasks, ratings, or interests not in the payload.
+- NEVER use names, pronouns, or candidate IDs.
+- NEVER use "the AI", "the algorithm", "I picked".
+- Write in PM voice, second-person: "you", "your".
+- ≤25 words. Plain text.
+- If NO signal in the payload clearly fits → return sentence=null. Better
+  to refuse than to assign on no real reason. "They had time" is not a reason.
+
+Output ONE JSON object, no markdown:
+{ "sentence": "...", "cited_signal": "skill_depth" }
+or
+{ "sentence": null, "cited_signal": null }`;
+
+// SECURITY (T-03-05-02 / T-03-05-08): WhyYou builder inputs land in this
+// prompt body unwrapped. They are SAFE because:
+//   - `task.title` is minted by Recgon's brain, never user-typed freeform.
+//   - `task.kind` + `requiredSkills` come from canonical vocab.
+//   - `candidate.declaredSkills` + `interests` are canonical vocab (Phase 2 D-23).
+//   - `recentTasks` carries kinds + skills + ratings — NEVER task titles
+//     (Pitfall 9 from RESEARCH — untrusted text in prompt).
+// The builder API DOES NOT accept `name`, `email`, or any identity field —
+// callers cannot accidentally leak them. The bias regression test (Task 4)
+// asserts zero real names in any of 150 prompt bodies as defense-in-depth.
+
+export type WhyYouTaskBlock = {
+  id: string;
+  title: string;
+  kind: string;
+  requiredSkills: string[];
+  estimatedHours: number;
+};
+
+export type WhyYouCandidateBlock = {
+  declaredSkills: string[];
+  interests: string[];
+  recentTasks: Array<{ kind: string; skills: string[]; avgRating?: number }>;
+};
+
+export type WhyYouMathBreakdown = {
+  skillOverlap: number;
+  fitForKind: number;
+  availabilityNow: number;
+  loadHeadroom: number;
+  interestNudge?: number | null;
+};
+
+/**
+ * Build the anonymized user prompt body for the WHY_YOU_GROUNDED call.
+ * Produces an `<assignment>` block with `<task>`, `<chosen_candidate>` (no
+ * name, no email, no pronouns), and `<math_breakdown>` band labels. Recent
+ * task titles are NEVER included — only kind + skills + optional avg rating.
+ *
+ * The signature DOES NOT accept any identity field. If a caller wants to
+ * embed a name, they cannot — the parameter shape excludes the surface.
+ */
+export function buildWhyYouGroundedUserPrompt(
+  task: WhyYouTaskBlock,
+  candidate: WhyYouCandidateBlock,
+  mathBreakdown: WhyYouMathBreakdown,
+): string {
+  const recentLines =
+    candidate.recentTasks.length === 0
+      ? '    none'
+      : candidate.recentTasks
+          .map(
+            (r) =>
+              `    - ${r.kind} (skills: ${r.skills.join(', ') || 'none'}) avg_rating ${
+                r.avgRating !== undefined ? r.avgRating.toFixed(1) : 'unrated'
+              }`,
+          )
+          .join('\n');
+
+  const recentCount = candidate.recentTasks.length;
+  const matchingKindCount = candidate.recentTasks.filter(
+    (r) => r.kind === task.kind,
+  ).length;
+
+  return `<assignment>
+  <task>
+    <task_id>${task.id}</task_id>
+    <task_title>${escapeXmlForJudge(task.title)}</task_title>
+    <task_kind>${task.kind}</task_kind>
+    <required_skills>${task.requiredSkills.join(', ') || 'none'}</required_skills>
+    <estimated_hours>${task.estimatedHours}</estimated_hours>
+  </task>
+
+  <chosen_candidate>
+    <declared_skills>${candidate.declaredSkills.join(', ') || 'none'}</declared_skills>
+    <interests>${candidate.interests.join(', ') || 'none'}</interests>
+    <recent_tasks_count>${recentCount}</recent_tasks_count>
+    <recent_tasks_matching_kind>${matchingKindCount}</recent_tasks_matching_kind>
+    <recent_tasks_14d>
+${recentLines}
+    </recent_tasks_14d>
+    <math_breakdown>
+      skill_overlap: ${mathBreakdown.skillOverlap.toFixed(2)} (${bandLabel(mathBreakdown.skillOverlap)})
+      fit_for_kind: ${mathBreakdown.fitForKind.toFixed(2)} (${bandLabel(mathBreakdown.fitForKind)})
+      availability_now: ${mathBreakdown.availabilityNow.toFixed(2)} (${bandLabel(mathBreakdown.availabilityNow)})
+      load_headroom: ${mathBreakdown.loadHeadroom.toFixed(2)} (${bandLabel(mathBreakdown.loadHeadroom)})
+    </math_breakdown>
+  </chosen_candidate>
+</assignment>
+
+Pick exactly one signal that exists in the chosen_candidate payload above. Return JSON only:
+{ "sentence": "...", "cited_signal": "skill_depth" | "recent_track_record" | "task_kind_familiarity" | "interest_match" | "capacity_headroom" }
+or { "sentence": null, "cited_signal": null } if no signal fits.`;
+}

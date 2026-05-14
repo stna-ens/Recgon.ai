@@ -376,6 +376,39 @@ export const JudgeResultSchema = z.object({
 export type JudgePick = z.infer<typeof JudgePickSchema>;
 export type JudgeResult = z.infer<typeof JudgeResultSchema>;
 
+// ── Phase 3 — LLM judgment overlay (Plan 05) ─────────────────────────────────
+//
+// Schema for the grounded "Why you" sentence prompt response. Paired with the
+// `WHY_YOU_GROUNDED_SYSTEM` prompt in `prompts.ts` and consumed by
+// `generateWhyYouSentence` in `lib/recgon/whyYouLLM.ts`. Any schema failure
+// (including the 30-word refine cap) → caller returns `{sentence:null,
+// citedSignal:null}` so the dispatcher (Plan 03-06) can treat the assignment
+// as ungrounded.
+//
+// Reuses `REASON_CODES` from the judge prompt so math-only and llm_tiebreaker
+// paths speak the same five-signal vocabulary.
+//
+// Word-count refine is 30 (prompt asks for ≤25 to leave headroom). Char ceiling
+// is 200 (defense in depth alongside the word check, mirrors the judge's
+// 150-char/25-word pair).
+
+export const WhyYouGroundedSchema = z.object({
+  sentence: z
+    .string()
+    .nullable()
+    .refine(
+      (s) => s === null || s.trim().split(/\s+/).length <= 30,
+      { message: 'sentence exceeds 30 words' },
+    )
+    .refine(
+      (s) => s === null || s.length <= 200,
+      { message: 'sentence exceeds 200 chars' },
+    ),
+  cited_signal: z.enum(REASON_CODES).nullable(),
+});
+
+export type WhyYouGrounded = z.infer<typeof WhyYouGroundedSchema>;
+
 // ── Phase 3 — LLM judgment overlay (Plan 03) ─────────────────────────────────
 //
 // Validation shape for the JSONB written to `agent_tasks.assignment_reasoning`.
