@@ -69,9 +69,20 @@ export async function notifyTeammateAssigned(input: {
   // Render the "Why you" line ONLY when a reasoning envelope is present.
   // The renderer is the single source of truth for the copy (D-29) so the
   // pop-up and the email always say the same thing.
-  const whyYouHtml = input.reasoning
-    ? `<p style="font-size: 0.85rem; color: #444; margin: 0 0 1.25rem; padding: 0.75rem 1rem; background: #fff5f9; border-left: 2px solid #FF3D7F; border-radius: 6px;"><strong style="color: #FF3D7F;">Why you:</strong> ${escapeHtml(renderWhyYou(input.reasoning).sentence)}</p>`
-    : '';
+  //
+  // Plan 05: renderWhyYou is async — the math_only path can call the LLM
+  // on legacy rows (rows assigned pre-Plan-05 without a pre-rendered
+  // sentence on the envelope). In production the dispatcher pre-renders
+  // and stuffs `whyYouSentence` on the envelope, so this just reads it
+  // back with no new LLM call. When the sentence is null (LLM couldn't
+  // ground), the email omits the "Why you" line entirely.
+  let whyYouHtml = '';
+  if (input.reasoning) {
+    const out = await renderWhyYou(input.reasoning);
+    if (out.sentence) {
+      whyYouHtml = `<p style="font-size: 0.85rem; color: #444; margin: 0 0 1.25rem; padding: 0.75rem 1rem; background: #fff5f9; border-left: 2px solid #FF3D7F; border-radius: 6px;"><strong style="color: #FF3D7F;">Why you:</strong> ${escapeHtml(out.sentence)}</p>`;
+    }
+  }
 
   try {
     const { error } = await resend.emails.send({

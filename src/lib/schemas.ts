@@ -432,12 +432,16 @@ export const AssignmentReasoningSchema = z.discriminatedUnion('kind', [
     kind: z.literal('math_only'),
     mathScore: z.number(),
     mathBreakdown: MathBreakdownSchema,
+    // Plan 05 — pre-rendered grounded "Why you" sentence (or null when the
+    // LLM couldn't ground; undefined for pre-Plan-05 rows).
+    whyYouSentence: z.string().nullable().optional(),
   }),
   z.object({
     kind: z.literal('llm_tiebreaker'),
     mathScore: z.number(),
     mathBreakdown: MathBreakdownSchema,
     judge: JudgePickSchema,
+    whyYouSentence: z.string().nullable().optional(),
   }),
 ]);
 

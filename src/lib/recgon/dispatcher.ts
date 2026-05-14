@@ -27,6 +27,10 @@ import {
   type JudgeChatAdapter,
 } from './judge';
 import {
+  generateWhyYouSentence,
+  type WhyYouChatAdapter,
+} from './whyYouLLM';
+import {
   checkAndIncrement,
   alertCapExceededOnce,
   currentUsageDate,
@@ -219,6 +223,22 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
   });
 
   // ── PASS 3: assign each task per judge pick OR math top-1 ──────────────
+  //
+  // Plan 05: recent_tasks_14d is needed for the grounded Why-you LLM call
+  // on math_only assignments too (not just close-calls). Load it ONCE per
+  // dispatch for ALL ranked top-1 candidates so we never re-query per task.
+  const allTopCandidateUserIds = new Set<string>();
+  for (const entry of ranked.values()) {
+    const top = entry.ranked[0];
+    if (!top) continue;
+    const uid = (top.teammate as { userId?: string | null }).userId;
+    if (uid) allTopCandidateUserIds.add(uid);
+  }
+  const recentForAllTops = await loadRecentTasksForCandidates(
+    teamId,
+    [...allTopCandidateUserIds],
+  );
+
   let assigned = 0;
   let noFit = 0;
   for (const [taskId, entry] of ranked) {
@@ -231,6 +251,8 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
       pick,
       reasoning,
       mergedTeammates,
+      [],
+      recentForAllTops,
     );
     if (result === 'assigned') assigned++;
     else if (result === 'no_fit') noFit++;
@@ -512,8 +534,11 @@ async function loadRecentTasksForCandidates(
 
 /**
  * Build the AssignmentReasoning envelope that gets passed to the storage
- * layer (Plan 03 will wire it to the DB write). For now the storage layer
- * silently drops the reasoning — it's threaded so the contract is in place.
+ * layer. Plan 03-05 adds `whyYouSentence` to the envelope — it's pre-rendered
+ * just before `assignTask` by `preRenderWhyYouSentence`, NOT here, because the
+ * actually-assigned teammate isn't known yet when this is called (judge pick
+ * may be excluded; fallback paths exist). This function still produces the
+ * envelope shape; the LLM call lands later.
  */
 function buildAssignmentReasoning(
   entry: RankEntry,
@@ -531,6 +556,84 @@ function buildAssignmentReasoning(
     return { kind: 'llm_tiebreaker', mathScore, mathBreakdown, judge: pick };
   }
   return { kind: 'math_only', mathScore, mathBreakdown };
+}
+
+// ── Phase 3 Plan 05: pre-render Why-you sentence at assignment time ───────
+//
+// `preRenderWhyYouSentence(task, chosenMatch, reasoning, chat)` runs the
+// grounded LLM call ONCE per assignment, returning a new reasoning envelope
+// with `whyYouSentence` stuffed on it. Behavior matrix:
+//   - llm_tiebreaker → keep `judge.reason_sentence` as the grounded copy
+//     (it's already produced by runJudgment with the same anonymized inputs
+//     and validated). No new LLM call.
+//   - math_only → call `generateWhyYouSentence`. Result.sentence may be
+//     null (LLM couldn't ground) — pass null through to the envelope so
+//     downstream consumers (Plan 03-06) can refuse the assignment.
+//
+// Cost: at most ONE extra LLM call per assignment on the math_only path.
+// At 50 dispatches/day × 30% close-call rate = ~35 math_only assignments/day
+// → ~$0.006/day at $0.00017/call (well under the v3 cost guard envelope).
+//
+// Privacy / threat: the candidate payload built here goes through
+// `buildWhyYouGroundedUserPrompt` which strips identity fields by API
+// design — Task 4 bias regression asserts this end-to-end.
+async function preRenderWhyYouSentence(
+  task: AgentTask,
+  chosenMatch: MatchResult,
+  reasoning: AssignmentReasoning,
+  recentByUser: Map<
+    string,
+    Array<{ kind: string; skills: string[]; avgRating?: number }>
+  >,
+  chat: WhyYouChatAdapter,
+): Promise<AssignmentReasoning> {
+  // llm_tiebreaker — judge sentence is already grounded. Stuff it on the
+  // envelope so callers have ONE field to read regardless of path.
+  if (reasoning.kind === 'llm_tiebreaker') {
+    return {
+      ...reasoning,
+      whyYouSentence: reasoning.judge.reason_sentence ?? null,
+    };
+  }
+
+  // math_only — call the LLM for a grounded sentence.
+  const uid =
+    (chosenMatch.teammate as { userId?: string | null }).userId ??
+    chosenMatch.teammate.id;
+  const interests =
+    (chosenMatch.teammate as { interests?: string[] }).interests ?? [];
+  const recentTasks = recentByUser.get(uid) ?? [];
+
+  try {
+    const result = await generateWhyYouSentence({
+      task: {
+        id: task.id,
+        title: task.title,
+        kind: task.kind,
+        requiredSkills: task.requiredSkills,
+        estimatedHours: task.estimatedHours,
+      },
+      candidate: {
+        declaredSkills: chosenMatch.teammate.skills ?? [],
+        interests,
+        recentTasks,
+      },
+      mathBreakdown: reasoning.mathBreakdown,
+      chat,
+    });
+    return {
+      ...reasoning,
+      whyYouSentence: result.sentence,
+    };
+  } catch (err) {
+    // generateWhyYouSentence is designed never to throw, but defense-in-depth
+    // so a future regression doesn't blow up the dispatch loop.
+    logger.warn('preRenderWhyYouSentence threw unexpectedly', {
+      taskId: task.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return { ...reasoning, whyYouSentence: null };
+  }
 }
 
 async function backfillLegacySchedules(
@@ -578,6 +681,14 @@ async function dispatchSingleTaskWithReasoning(
   reasoningIn: AssignmentReasoning,
   teammates: Awaited<ReturnType<typeof listTeammatesWithStats>>,
   excludeIds: string[] = [],
+  // Plan 05: recent-tasks-14d for the grounded Why-you LLM call. Populated
+  // by `runDispatch` (Pass 3 setup) and `dispatchTask` (single-task path).
+  // Empty map = no recent-task signals available → LLM won't cite
+  // recent_track_record (the grounding validator rejects it on length 0).
+  recentByUser: Map<
+    string,
+    Array<{ kind: string; skills: string[]; avgRating?: number }>
+  > = new Map(),
 ): Promise<'assigned' | 'no_fit' | 'skip'> {
   // Phase 3 / Plan 03 — `reasoning` is LIVE: assignScheduledTask passes it
   // to assignTask, which persists it to agent_tasks.assignment_reasoning.
@@ -672,6 +783,22 @@ async function dispatchSingleTaskWithReasoning(
         await logNoFit(teamId, task, 'no_calendar_capacity');
         return 'no_fit';
       }
+      // Plan 05: pre-render grounded Why-you for the owner-fallback assignee.
+      // Build a MatchResult-like shape from the teammate so the LLM gets the
+      // owner's skill/interest payload (the owner doesn't appear in `ranked`
+      // when MIN_FIT_SCORE excluded them).
+      const ownerMatchShape: MatchResult = {
+        teammate: ownerTeammate as unknown as MatchResult['teammate'],
+        score: 0,
+        breakdown: reasoning.mathBreakdown,
+      };
+      reasoning = await preRenderWhyYouSentence(
+        task,
+        ownerMatchShape,
+        reasoning,
+        recentByUser,
+        chatViaProviders,
+      );
       await assignScheduledTask(task, ownerTeammate.id, 'recgon', ownerPlan, reasoning);
       await logEvent({
         teamId,
@@ -718,6 +845,18 @@ async function dispatchSingleTaskWithReasoning(
     await logNoFit(teamId, task, 'no_fit_or_calendar_capacity');
     return 'no_fit';
   }
+
+  // Plan 05: pre-render grounded Why-you sentence ONCE, BEFORE assignTask.
+  // This is the single LLM call per assignment. assignTask persists the
+  // resulting `whyYouSentence` on assignment_reasoning so the API + email
+  // + UI all read one value with no re-call.
+  reasoning = await preRenderWhyYouSentence(
+    task,
+    best.match,
+    reasoning,
+    recentByUser,
+    chatViaProviders,
+  );
 
   await assignScheduledTask(task, best.match.teammate.id, 'recgon', best.plan, reasoning);
   await logEvent({
@@ -925,6 +1064,15 @@ export async function dispatchTask(
   const pick = judgeMap.get(fresh.id) ?? null;
   const reasoning = buildAssignmentReasoning(entry, pick);
 
+  // Plan 05: load recent-tasks for the top-1 candidate so the grounded
+  // Why-you LLM call has recent_track_record signal available.
+  const topUid = r[0]
+    ? (r[0].teammate as { userId?: string | null }).userId
+    : undefined;
+  const recentForTop = topUid
+    ? await loadRecentTasksForCandidates(teamId, [topUid])
+    : new Map<string, Array<{ kind: string; skills: string[]; avgRating?: number }>>();
+
   // ── Pass 3 (N=1): assign with the chosen match + reasoning envelope ─────
   return dispatchSingleTaskWithReasoning(
     teamId,
@@ -934,5 +1082,6 @@ export async function dispatchTask(
     reasoning,
     mergedTeammates,
     excludeIds,
+    recentForTop,
   );
 }

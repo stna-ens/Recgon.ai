@@ -343,13 +343,26 @@ export type JudgeTaskInput = {
 
 // Written to `agent_tasks.assignment_reasoning` JSONB by Plan 03. Plan 01
 // defines the shape so the judge module + dispatcher integration agree on it.
+//
+// Plan 05: both discriminants gain an optional `whyYouSentence?: string | null`
+// pre-rendered at assignment time by the dispatcher's grounded LLM call.
+// Callers (API/email/UI) read it directly with NO new LLM call. Null means
+// the LLM tried but couldn't ground a sentence (or cap was exhausted) —
+// Plan 03-06 wires the null trigger to assignment refusal. Undefined means
+// the envelope is from a pre-Plan-05 row (legacy back-compat).
 export type AssignmentReasoning =
-  | { kind: 'math_only'; mathScore: number; mathBreakdown: MatchResult['breakdown'] }
+  | {
+      kind: 'math_only';
+      mathScore: number;
+      mathBreakdown: MatchResult['breakdown'];
+      whyYouSentence?: string | null;
+    }
   | {
       kind: 'llm_tiebreaker';
       mathScore: number;
       mathBreakdown: MatchResult['breakdown'];
       judge: JudgePick;
+      whyYouSentence?: string | null;
     };
 
 // Re-export the schema-derived JudgePick/JudgeResult so consumers can import

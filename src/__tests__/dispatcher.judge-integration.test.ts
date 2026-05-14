@@ -107,6 +107,16 @@ vi.mock('@/lib/recgon/judgmentBudget', () => ({
   DAILY_JUDGMENT_CALL_CAP: 50,
 }));
 
+// Plan 05: stub generateWhyYouSentence so these JUDGE integration tests
+// don't double-count chat calls. The Why-you LLM path has its own unit
+// tests + bias regression — this suite asserts the JUDGE batch shape +
+// budget behaviour, not the Why-you call accounting.
+vi.mock('@/lib/recgon/whyYouLLM', () => ({
+  generateWhyYouSentence: vi
+    .fn()
+    .mockResolvedValue({ sentence: null, citedSignal: null }),
+}));
+
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import { runDispatch } from '@/lib/recgon/dispatcher';

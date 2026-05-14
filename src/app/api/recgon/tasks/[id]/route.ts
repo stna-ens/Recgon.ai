@@ -64,9 +64,15 @@ export async function GET(
   // Compose the response: never include the raw blob. When authorized,
   // include the rendered sentence as `whyYouSentence`. When not, omit
   // the field entirely so clients can't infer the existence of reasoning.
+  //
+  // Plan 05: renderWhyYou is async — in production the envelope already
+  // carries `whyYouSentence` (pre-rendered by dispatcher) and this awaits
+  // a no-op string read. Legacy rows (pre-Plan-05) may trigger an LLM
+  // call on first read; for null sentences we still emit the field as
+  // `null` so the client UI can branch on it explicitly.
   const responsePayload: Record<string, unknown> = { ...rest };
   if (assignmentReasoning && (isAssignee || isOwner)) {
-    const out = renderWhyYou(assignmentReasoning);
+    const out = await renderWhyYou(assignmentReasoning);
     responsePayload.whyYouSentence = out.sentence;
   }
 
