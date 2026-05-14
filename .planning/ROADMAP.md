@@ -13,6 +13,7 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
 - [ ] **Phase 1: Profile Foundation** — Teammates self-declare skills + capacity; dispatcher reads through `profileMerge`.
 - [ ] **Phase 2: GitHub Skill Inference** — Commit history seeds skills with consent, confirm/reject UI, and time-decayed EMA.
 - [ ] **Phase 3: LLM Judgment Overlay** — On close fit-score calls, an anonymized batched LLM tiebreaker picks the final assignee with a structured "why".
+- [ ] **Phase 3.5: Owner Task Board** (INSERTED 2026-05-15) — Owner-facing structured grid showing who/what/when/why for every team task, with triage + deferred items as first-class. Surfaces what Phase 3 just made addressable.
 - [ ] **Phase 4: Personalized Task Framing** — Queued reframe job rewrites each assigned task in the assignee's voice with where-to-start pointers.
 - [ ] **Phase 5: Live Code Infrastructure** — Incremental analyzer + per-file SHA cache; tree-sitter and Octokit added as server-only deps.
 - [ ] **Phase 6: Brain Integration & Cost Guards** — Brain consumes `LiveCodeDelta[]`; mint caps, WIP gate, cool-down, and v3 telemetry land.
@@ -74,6 +75,20 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
 > **Gap-closure addendum (Plan 03-06, 2026-05-15):** Phase 3 now includes a four-outcome refusal + deferral decision tree in front of every dispatch assignment (closing VERIFICATION `phase_3_1_gaps#1` + user rule 2026-05-15). New locked constants in `src/lib/recgon/match.ts`: `SIGNAL_FLOOR=0.15` (FIT-signal floor: skillOverlap | fitForKind | interestNudge must clear it; availability + load explicitly NOT FIT signals), `DEFER_FLOOR=0.3` (availability below this means "booked NOW"), `DEFER_LOOKAHEAD_WEEKS=4` (capacity scan horizon), `HIGH_PRIORITY_THRESHOLD=3` (priority that bypasses deferral). New `agent_tasks.triage_note` column (migration `20260516_triage_note_column.sql` — additive nullable + partial index for Plan 03-07's TASKS-page triage view). Deferral persists via `scheduled_date` + `schedule_note`; triage persists via the new `triage_note` column. The grounded Why-you LLM returning `null` (Plan 03-05) is treated as a 5th refusal path → `triage_note='no_grounded_reason'`. **User must apply migration `20260516_triage_note_column.sql` before production cron picks up the new column.**
 
 > **Plan progress (Phase 3):** 7 plans total. Plans 01-06 complete. Plan 03-07 (TASKS-page triage view) is the last remaining Phase 3 plan.
+
+### Phase 3.5: Owner Task Board
+**Goal:** A team owner opens a single page and immediately understands the team's task picture: who is doing what, when each task is scheduled, why each assignee was picked, and which tasks are flagged for triage or deferred. The page replaces the long list view with a dense, scannable grid — Excel-table feel, not literal spreadsheet. Triage + deferred items (from Phase 3 dispatcher) are first-class columns/rows, not buried in detail pages.
+**Mode:** mvp
+**Depends on:** Phase 3 (consumes triage_note, deferred scheduledDate, assignment_reasoning, manually-assign endpoint)
+**Requirements:** TBD via discuss-phase
+**Success Criteria** (what must be TRUE):
+  1. A team owner opens a single URL and sees every team task in a structured grid with columns surfacing assignee, scheduled date, kind, status, why-you sentence, and triage/defer state — no scrolling through 40+ list rows to find one task.
+  2. Triaged tasks (`triage_note IS NOT NULL`) and deferred tasks (`scheduled_date > today`) are visible as first-class row states, not hidden in detail pop-ups. Owner can act on them inline (assign manually, dismiss, or bump scheduled date) without leaving the page.
+  3. The board can be sorted by assignee (each teammate's plate in one view), by week (next week's load at a glance), or by state (all triage + defer items together). Filter by assignee, kind, or priority.
+  4. The `/tasks` page is clarified: it stays the personal-assignee view (only your own tasks), separate from the owner board. No team-wide info on `/tasks`.
+  5. Members and viewers either see a stripped-down version (only their own tasks in the grid) or are routed to `/tasks` — the owner board is owner-scoped by default.
+**Plans:** TBD via plan-phase. Likely 3-4 plans: (1) URL + page scaffold + owner-only API, (2) grid component + columns + row states, (3) inline actions (manual assign, dismiss triage, bump schedule), (4) `/tasks` cleanup to remove ambiguity.
+**Research recommended:** light — design discussion is the main work; the data layer is already in place from Phase 3.
 
 ### Phase 4: Personalized Task Framing
 **Goal:** When a task is assigned, a queued `task_reframe` job generates a personalized description for the assignee — why this fits them, where to start, how it ties to recent project state — stored alongside the original brain description and invalidated on reassignment, with tone bounded by the prompt registry.
