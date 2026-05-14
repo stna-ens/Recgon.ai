@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Plan 03-04 code-complete; awaiting user real-LLM bias regression baseline (Task 4 checkpoint) + Plan 03 Task 5 manual UAT before Phase 3 formally ships
-last_updated: "2026-05-14T22:09:21.085Z"
-last_activity: 2026-05-14
+stopped_at: Plan 03-06 complete (Gap 1 + Gap 3 closure: dispatcher refusal + deferral 4-outcome decision tree wired); Plan 03-07 (TASKS-page triage view) is the last remaining Phase 3 plan. User must apply 20260516_triage_note_column.sql migration before production cron picks up the new column.
+last_updated: "2026-05-15T22:30:00.000Z"
+last_activity: 2026-05-15
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 15
-  completed_plans: 13
-  percent: 87
+  total_plans: 16
+  completed_plans: 15
+  percent: 94
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-14
+Phase: 3
+Plan: 06 complete; Plan 07 pending
+Status: Phase 3 gap-closure 2 of 2 wired (Gap 1 zero-signal refusal + Gap 3 deferral rule); Plan 03-07 TASKS-page triage view is the final Phase 3 plan
+Last activity: 2026-05-15
 
 Progress: [██████████] 100%
 
@@ -66,6 +66,8 @@ Progress: [██████████] 100%
 | Phase 03 P02 | 35 | 4 tasks | 8 files |
 | Phase 03 P03 | 45 | 4 tasks | 10 files |
 | Phase 03 P04 | 12 | 5 tasks | 7 files |
+| Phase 03 P05 | 35 | 5 tasks | 14 files |
+| Phase 03 P06 | 14 | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -91,6 +93,8 @@ Recent decisions affecting current work:
 - Plan 03-02: Dispatcher wired to judge via 3-pass restructure (rank-all → batch-judge → assign+notify). CLOSE_CALL_THRESHOLD locked at 0.20 (RESEARCH Q1 sub-note; supersedes JUDGE-01 0.15 per CONTEXT D-30 quality > cost). Single `applyJudgmentIfClose` helper shared between runDispatch + dispatchTask (one source of truth — N=1 collapses to degenerate batch). In-process Map<cacheKey, JudgePick> cache lives per dispatch (no module-level state). `judgmentBudget.ts` per-team daily cap (DAILY_JUDGMENT_CALL_CAP=50, T-03-02-01) with idempotent dev-ops alert email AT-MOST-ONCE per (team, day) via cap_alert_sent flag (T-03-02-02). Fails-open on DB errors (T-03-02-03 accepted concurrency margin). `team_llm_usage` migration committed (additive, FK→teams.id text) — user applies before live cron picks up cap. AssignmentReasoning envelope computed + threaded through dispatchSingleTaskWithReasoning but void`d; Plan 03-03 wires it to storage. 217/217 tests pass (no regressions), tsc clean.
 - [Phase ?]: Plan 03-03: assignment_reasoning JSONB column on agent_tasks (additive, default null, kind-discriminator partial index). renderWhyYou single-source renderer (5 LLM reason_codes + math-only template + defense-in-depth fallback for malformed llm_tiebreaker payloads). Server-side privacy filter at GET /api/recgon/tasks/[id]: assignee + owner see whyYouSentence pre-rendered; raw JSONB NEVER returned. assignTask Zod-validates reasoning at storage boundary; invalid -> log warn + write null (fail-open). Email body + TaskDetailPanel WhyYouBlock both consume renderWhyYou output. JUDGE-07 + JUDGE-08 complete. User must apply BOTH Plan 02 + Plan 03 migrations to live DB; Task 5 manual UAT pending.
 - Plan 03-04: bias regression test (5 fixtures × 30 trials = 150 calls) in `src/__tests__/judge.bias-regression.test.ts` — two modes: stubbed (default; round-robin pick cycling guarantees 10/10/10 per fixture; verifies wiring) and real-LLM (`JUDGE_BIAS_REAL_LLM=1`; uses chatViaProviders; nightly only, ~$0.30/run, ~10 min). Three assertions: end-to-end anonymization (zero real names in any of 150 prompt bodies), top-pick-rate band ≤15pp across fixtures, no fixture >50% top-rate (real-LLM noise floor). PRONOUN_DENY extended with elle/il/sie/er (French/Spanish/German) — covers bias-fixture vocab scope; JSDoc warns against relaxing \\b boundary. 4 new validator edge-case tests added (empty sentence / unicode pronoun / capitalized Candidate_2 / numeric-word over-count). Nightly GitHub Actions workflow `.github/workflows/judge-bias-nightly.yml` (cron 0 4 * * * UTC + workflow_dispatch + concurrency:cancel-in-progress:false + secrets-only API keys + issue-on-failure with comment-dedup) — NOT a required PR check. CLAUDE.md documents JUDGE_BIAS_REAL_LLM env var. ROADMAP Phase 3 threshold-lock addendum: CLOSE_CALL_THRESHOLD=0.20 (planner-locked) supersedes 0.15 (cost-driven origin preserved). All 12 requirements (JUDGE-01..10 + QUAL-01 + QUAL-03) traced to delivering tasks. All 5 ROADMAP success criteria met. Phase 3 code-complete; pending user Task 4 real-LLM run for baseline + Plan 03 Task 5 manual UAT before formal ship. Initial stub used hash-mod-3 → drifted 16.7pp in stubbed mode (sample-size noise at N=30); replaced with round-robin → 0pp by construction.
+- Plan 03-05: LLM-grounded Why-you. Math-only template path DELETED entirely; renderer rewritten as async thin reader over pre-rendered envelope. WHY_YOU_GROUNDED prompt + WhyYouGroundedSchema + generateWhyYouSentence in `whyYouLLM.ts` (adapter-injected, post-hoc grounding validator, returns sentence: null when ungrounded → Plan 03-06's refusal trigger). Bias regression env-gated (WHY_YOU_BIAS_REAL_LLM=1) mirrors JUDGE pattern. 268/268 tests green.
+- Plan 03-06: Dispatcher 4-outcome decision tree (refuse / defer / triage / assign) — closes Gap 1 (zero-signal refusal, VERIFICATION phase_3_1_gaps#1) AND Gap 3 (user rule 2026-05-15: never assign by availability alone). Constants SIGNAL_FLOOR=0.15 / DEFER_FLOOR=0.3 / DEFER_LOOKAHEAD_WEEKS=4 / HIGH_PRIORITY_THRESHOLD=3 (boundary-locked by tests). hasMinimumFit + findEarliestCapacityWindow pure helpers in match.ts. Storage helpers markTaskForTriage / deferTaskScheduledDate / clearTriageNote. New triage_note column (additive nullable; partial index). TriageNote union (4 values: no_clear_fit / no_grounded_reason / no_capacity_in_window / no_capacity_high_priority). DispatchResult.triaged + DispatchResult.deferred counters. routeTaskOrTriage centralised in dispatcher shared by runDispatch + dispatchTask. whyYouSentence===null couples to triage no_grounded_reason. Owner-fallback path preserved as structurally separate safety net. 298/298 tests green; tsc clean; build succeeds. User must apply 20260516_triage_note_column.sql migration before production cron uses the new column. NOTE: findEarliestCapacityWindow default projection is conservative (reads availabilityNow as future-week value); a follow-up plan should wire loadHoursByDateFor* for real calendar lookahead.
 
 ### Pending Todos
 
@@ -117,7 +121,7 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-14T01:15:00.000Z
+Last session: 2026-05-14T22:29:21.220Z
 Stopped at: Plan 03-04 code-complete; awaiting user real-LLM bias regression baseline (Task 4 checkpoint) + Plan 03 Task 5 manual UAT before Phase 3 formally ships
 Resume file: None
 Resume command: After Task 4 baseline + UAT approval, `/gsd-execute-phase 4` to begin Phase 4 (personalized task framing)

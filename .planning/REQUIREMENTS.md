@@ -33,12 +33,14 @@ Each requirement maps to one of the canonical phases A → E from `.planning/res
 - [ ] **JUDGE-02**: When the gap is ≥ 0.15, math wins outright — no LLM call (cost short-circuit).
 - [ ] **JUDGE-03**: The LLM judgment call uses anonymized candidate labels (`candidate_1`, `candidate_2`, `candidate_3`) — never real names or pronouns, to prevent name / gender bias.
 - [ ] **JUDGE-04**: The LLM judgment call returns a structured `{chosen_index, tiebreaker_factor, confidence}` schema — no freeform reasoning string that can hallucinate.
-- [ ] **JUDGE-05**: If the LLM provider chain fails, errors out, or returns an invalid response, the dispatcher falls back to the pure-math top-1 candidate without breaking the assignment flow.
+- [x] **JUDGE-05**: If the LLM provider chain fails, errors out, or returns an invalid response, the dispatcher falls back to the pure-math top-1 candidate without breaking the assignment flow. Plan 03-06 extends: if NEITHER math nor LLM produces a grounded signal, refuse to assign and triage instead of dumping on whoever is free.
 - [ ] **JUDGE-06**: All tiebreaker decisions in a single dispatch run are batched into ONE LLM call (8 close-call tasks → 1 call, not 8).
 - [x] **JUDGE-07**: Each assignment writes a structured `assignment_reasoning` JSONB column on `agent_tasks` containing math score breakdown AND (when used) the LLM tiebreaker factor.
 - [x] **JUDGE-08**: The task detail UI surfaces a human-readable "why this person" line built from the math + LLM reasoning — never a black box.
 - [ ] **JUDGE-09**: Assignment is cached by `(taskId, candidateIds-sorted, mathScoresHash)` so cron retries on the same task do not flip the assignee.
 - [ ] **JUDGE-10**: A per-team daily LLM budget cap (configurable) forces math-only fallback once exceeded for that day.
+- [x] **GAP-3.1-01**: When no candidate has a FIT signal (skillOverlap | fitForKind | interestNudge ≥ SIGNAL_FLOOR=0.15) the dispatcher refuses to assign and triages with `triage_note='no_clear_fit'`. Availability + load alone NEVER qualify a candidate (closes VERIFICATION `phase_3_1_gaps#1` + user rule 2026-05-15).
+- [x] **GAP-3.1-03**: When qualified candidates exist but all are booked NOW (availabilityNow < DEFER_FLOOR=0.3), priority < HIGH_PRIORITY_THRESHOLD=3 tasks defer their scheduledDate forward via `findEarliestCapacityWindow` (4-week scan); priority ≥ 3 tasks bypass deferral to triage `no_capacity_high_priority`. When no capacity opens in the window, triage `no_capacity_in_window` (user rule 2026-05-15).
 
 ### Personalized Framing (Phase D — AI PM persona)
 
