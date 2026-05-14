@@ -85,7 +85,9 @@ export const CLOSE_CALL_THRESHOLD = 0.20;
  *
  * Adding new pronouns: extend the alternation; do NOT relax the boundary.
  */
-const PRONOUN_DENY =
+// Exported (Plan 03-05) so the grounded "Why you" validator can reuse the
+// same deny-list (one source of truth for pronoun policy across prompts).
+export const PRONOUN_DENY =
   /(^|[^a-z])(he|she|they|him|her|them|his|hers|theirs|ele|ela|elle|il|sie|er|hij|zij|lui|lei)([^a-z]|$)/i;
 
 // Cross-candidate reference pattern. The prompt tells the LLM to address the
