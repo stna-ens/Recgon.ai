@@ -954,7 +954,10 @@ export async function logEvent(input: {
     | 'no_fit'
     // Phase 3 / Plan 06 — refusal/deferral events for owner observability.
     | 'triaged'
-    | 'deferred';
+    | 'deferred'
+    // Phase 3 / Plan 07 — owner override of a triaged task. Audits the
+    // owner_user_id, assignee_id, and prior_triage_note for traceability.
+    | 'manually_assigned';
   payload?: Record<string, unknown>;
 }): Promise<void> {
   await supabase.from('teammate_event_log').insert({
