@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Plan 03-04 code complete; awaiting user real-LLM bias baseline (Task 4 checkpoint)
-last_updated: "2026-05-14T01:15:00.000Z"
-last_activity: 2026-05-14 -- Plan 03-04 complete (bias regression CI + nightly real-LLM workflow + validator edge cases + Phase 3 roll-up); Phase 3 ship-readiness pending user Task 4 real-LLM run
+status: planning
+stopped_at: Plan 03-04 code-complete; awaiting user real-LLM bias regression baseline (Task 4 checkpoint) + Plan 03 Task 5 manual UAT before Phase 3 formally ships
+last_updated: "2026-05-14T22:09:21.085Z"
+last_activity: 2026-05-14
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 67
+  completed_phases: 2
+  total_plans: 15
+  completed_plans: 13
+  percent: 87
 ---
 
 # Project State
@@ -122,6 +122,7 @@ Stopped at: Plan 03-04 code-complete; awaiting user real-LLM bias regression bas
 Resume file: None
 Resume command: After Task 4 baseline + UAT approval, `/gsd-execute-phase 4` to begin Phase 4 (personalized task framing)
 User action pending:
+
   1. Run `JUDGE_BIAS_REAL_LLM=1 npx vitest run src/__tests__/judge.bias-regression.test.ts` once (~$0.30, ~10 min); record per-fixture pickCounts in `03-04-SUMMARY.md` Real-LLM Bias Baseline section; type "approved".
   2. Plan 03-03 Task 5 manual UAT — open one assignment task as assignee, owner, and other-teammate to verify "Why you" privacy filter renders correctly across 3 viewer roles.
   Both Phase 2 + Phase 3 Supabase migrations are already applied to the live project (verified upstream).

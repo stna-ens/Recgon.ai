@@ -21,6 +21,7 @@ Optional:
 - Quota bypass (comma-separated emails exempt from analysis quota): `QUOTA_EXEMPT_EMAILS`
 - Recgon dev-ops alert (Phase 3 / Plan 03-02 — receives one email per team per UTC day when the LLM judgment cap is hit): `DEV_OPS_ALERT_EMAIL`
 - Judge bias regression (Phase 3 / Plan 03-04): `JUDGE_BIAS_REAL_LLM` — set to `1` to run `src/__tests__/judge.bias-regression.test.ts` against the real `chatViaProviders` chain (Gemini → Claude). Default unset = deterministic stub mode. Used by the nightly CI workflow `.github/workflows/judge-bias-nightly.yml` only; do not enable on every PR (cost: ~$0.30/run, latency: ~10 min).
+- Why-you grounded bias regression (Phase 3 / Plan 03-05): `WHY_YOU_BIAS_REAL_LLM` — set to `1` to run `src/__tests__/whyYouLLM.bias-regression.test.ts` against the real `chatViaProviders` chain. Default unset = deterministic stub mode. Nightly only (cost: ~$0.05/run, latency: ~5 min). Mirrors `JUDGE_BIAS_REAL_LLM` env-gate pattern; do not enable on every PR.
 - MCP server auth (stdio server only): `RECGON_MCP_TOKEN`
 
 ## Stack
