@@ -255,7 +255,24 @@ export type AgentTask = {
   // it. API routes strip this before returning to clients (privacy boundary
   // T-03-03-03) — only the rendered `whyYouSentence` string is exposed.
   assignmentReasoning?: AssignmentReasoning | null;
+  // Phase 3 / Plan 06 — explanation for why this task stays unassigned.
+  // Set by the dispatcher when no candidate clears the FIT-signal floor, or
+  // when qualified candidates have no capacity within the lookahead, or
+  // when the grounded Why-you LLM cannot produce a sentence. Cleared on
+  // successful assignment. Deferred tasks (scheduled forward) keep this
+  // null — the reason lives in schedule_note. Null on pre-Plan-06 rows.
+  triageNote?: TriageNote | null;
 };
+
+// Phase 3 / Plan 06 — refusal categories for the Pass 3 decision tree.
+// Each value maps to a distinct outcome the dispatcher records when it
+// CANNOT assign a task. Deferred tasks (scheduledDate moved forward) are
+// NOT a triage state — they keep triageNote=null.
+export type TriageNote =
+  | 'no_clear_fit'              // no candidate above SIGNAL_FLOOR on any FIT signal
+  | 'no_grounded_reason'        // qualified but Plan 03-05 Why-you LLM returned null
+  | 'no_capacity_in_window'     // qualified candidates booked across full lookahead
+  | 'no_capacity_high_priority'; // priority>=3 + qualified-but-booked-NOW (bypasses deferral)
 
 export type TaskRating = {
   taskId: string;

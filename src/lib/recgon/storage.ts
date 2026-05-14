@@ -26,6 +26,7 @@ import type {
   VerificationStatus,
   VerificationEvidence,
   RescheduleRequestStatus,
+  TriageNote,
 } from './types';
 
 // Keep the assignment log bounded so the row doesn't grow unbounded.
@@ -104,6 +105,9 @@ type TaskRow = {
   // null on pre-Phase-3 rows and on legacy manual reassignments that don't
   // pass reasoning. Shape validated by AssignmentReasoningSchema.
   assignment_reasoning: AssignmentReasoning | null;
+  // Phase 3 / Plan 06 — refusal note when the dispatcher cannot assign.
+  // Nullable; null for assigned/deferred rows and pre-Plan-06 rows.
+  triage_note: TriageNote | null;
 };
 
 function mapTask(row: TaskRow): AgentTask {
@@ -146,6 +150,9 @@ function mapTask(row: TaskRow): AgentTask {
     // API routes NEVER return this raw blob to clients (privacy boundary,
     // T-03-03-03) — they convert to whyYouSentence via renderWhyYou first.
     assignmentReasoning: row.assignment_reasoning ?? null,
+    // Phase 3 / Plan 06 — refusal explanation; null for assigned/deferred
+    // tasks and pre-Plan-06 rows.
+    triageNote: row.triage_note ?? null,
   };
 }
 
@@ -590,6 +597,72 @@ export async function setTaskSchedule(
   if (Object.keys(update).length === 0) return;
   const { error } = await supabase.from('agent_tasks').update(update).eq('id', taskId);
   if (error) throw new Error(`setTaskSchedule failed: ${error.message}`);
+}
+
+// ── Phase 3 / Plan 06 — triage + deferral helpers ──────────────────────────
+
+/**
+ * Mark a task as triaged (cannot be auto-assigned). The task stays
+ * `status='unassigned'` and the owner triages manually via the Plan 03-07
+ * TASKS-page view. Idempotent: writing the same note is a no-op overwrite.
+ *
+ * Also clears `assigned_to` defensively in case a prior assignment cycle
+ * partially wrote that field before deciding to triage.
+ */
+export async function markTaskForTriage(
+  taskId: string,
+  note: TriageNote,
+): Promise<void> {
+  const { error } = await supabase
+    .from('agent_tasks')
+    .update({
+      triage_note: note,
+      assigned_to: null,
+      status: 'unassigned',
+    })
+    .eq('id', taskId);
+  if (error) throw new Error(`markTaskForTriage failed: ${error.message}`);
+}
+
+/**
+ * Defer a task to a future scheduledDate. Used by the dispatcher when
+ * qualified candidates exist but all are booked NOW and the task is not
+ * high-priority. The task stays `status='unassigned'` with
+ * `triage_note=null` so the NEXT dispatch run on the new scheduledDate
+ * picks it up cleanly. The deferral reason rides on `schedule_note` so
+ * the owner can see why this task's schedule moved without having to look
+ * at `triage_note`.
+ *
+ * Idempotent: writing the same date is a no-op overwrite.
+ */
+export async function deferTaskScheduledDate(
+  taskId: string,
+  newDate: Date,
+): Promise<void> {
+  const iso = newDate.toISOString().slice(0, 10);
+  const { error } = await supabase
+    .from('agent_tasks')
+    .update({
+      scheduled_date: iso,
+      schedule_note: `Deferred — qualified candidates booked, retrying ${iso}`,
+      status: 'unassigned',
+      triage_note: null,
+    })
+    .eq('id', taskId);
+  if (error) throw new Error(`deferTaskScheduledDate failed: ${error.message}`);
+}
+
+/**
+ * Clear a task's triage note. Used by the successful-assignment path so
+ * previously-triaged tasks reflect the new state cleanly (next dispatch
+ * doesn't see a stale `no_clear_fit` next to an actually-assigned row).
+ */
+export async function clearTriageNote(taskId: string): Promise<void> {
+  const { error } = await supabase
+    .from('agent_tasks')
+    .update({ triage_note: null })
+    .eq('id', taskId);
+  if (error) throw new Error(`clearTriageNote failed: ${error.message}`);
 }
 
 export async function requestTaskReschedule(

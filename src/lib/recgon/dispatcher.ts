@@ -155,6 +155,11 @@ export type DispatchResult = {
   assigned: number;
   noFit: number;
   backfilled: number;
+  // Phase 3 / Plan 06 — refusal + deferral counters. `triaged` counts
+  // tasks that hit any of the four `triage_note` values; `deferred` counts
+  // tasks whose scheduledDate was moved forward to wait for capacity.
+  triaged: number;
+  deferred: number;
 };
 
 export async function runDispatch(teamId: string): Promise<DispatchResult> {
@@ -276,6 +281,8 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
     assigned,
     noFit,
     backfilled,
+    triaged: 0,
+    deferred: 0,
   };
 }
 

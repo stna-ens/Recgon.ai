@@ -22,6 +22,42 @@ import type { AgentTask, BrainEntry, Teammate, TeammateWithStats, WorkingHours }
 // record} must contribute, otherwise the task bubbles to the owner.
 export const MIN_FIT_SCORE = 0.4;
 
+// Phase 3 / Plan 06 — refusal + deferral constants.
+//
+// SIGNAL_FLOOR is a SECOND gate on top of MIN_FIT_SCORE. MIN_FIT_SCORE
+// filters the overall weighted-sum score (which can be reached via
+// availability + load alone). SIGNAL_FLOOR filters by per-signal grounding:
+// at least one of {skillOverlap, fitForKind, interestNudge} — the FIT
+// signals — must clear it. Availability and load are deliberately EXCLUDED
+// here because the user's product rule (2026-05-15) is that Recgon must
+// NEVER assign a task to someone just because they had time:
+//   "the recgon should NEVER EVER assign a task to someone because nobody
+//   else had time. If the task has nobody to do it because they are
+//   scheduled, it just should be assigned to a further time"
+// So a candidate with availabilityNow=1.0 + zero fit signals does not
+// qualify under hasMinimumFit. Same rule covers Gap 1 (zero-signal refusal).
+export const SIGNAL_FLOOR = 0.15;
+
+// DEFER_FLOOR is the per-candidate availability floor used in the deferral
+// branch. When ALL qualified candidates (passed hasMinimumFit) have
+// availabilityNow < DEFER_FLOOR right now, the task is DEFERRED — its
+// scheduledDate moves forward instead of being dumped on a less-qualified
+// teammate who happened to be free.
+export const DEFER_FLOOR = 0.3;
+
+// DEFER_LOOKAHEAD_WEEKS bounds the deferral scan. The dispatcher scans
+// week-by-week from today through this many weeks ahead looking for the
+// earliest opening; if no qualified candidate hits DEFER_FLOOR within
+// the window, the task triages with `no_capacity_in_window` instead so
+// the owner sees that the team is consistently slammed.
+export const DEFER_LOOKAHEAD_WEEKS = 4;
+
+// HIGH_PRIORITY_THRESHOLD switches the booked-qualified branch from
+// deferral to immediate triage. Priority >= 3 bypasses the deferral path
+// entirely (high-prio tasks can't sit waiting for a week's opening).
+// Priority 0..2 defer normally.
+export const HIGH_PRIORITY_THRESHOLD = 3;
+
 const W_SKILL = 0.45;
 const W_FIT = 0.30;
 const W_AVAIL = 0.15;
@@ -264,4 +300,94 @@ export function pickBestForBrainEntry(
     },
     now,
   );
+}
+
+// ── Phase 3 / Plan 06 — refusal + deferral helpers ─────────────────────────
+
+/**
+ * FIT-signal floor check. TRUE iff at least one of the FIT signals
+ * (skillOverlap | fitForKind | interestNudge) is >= SIGNAL_FLOOR.
+ *
+ * Availability and load are NOT FIT signals — they're tiebreakers. A
+ * candidate who is 100% free but has zero overlap with the task does NOT
+ * qualify, by user rule (see SIGNAL_FLOOR comment). The dispatcher uses
+ * this to refuse to assign zero-signal tasks: when every candidate fails
+ * hasMinimumFit, the task is triaged with `no_clear_fit` instead of
+ * being assigned to whoever happens to have a free week.
+ */
+export function hasMinimumFit(breakdown: MatchResult['breakdown']): boolean {
+  return (
+    breakdown.skillOverlap >= SIGNAL_FLOOR ||
+    breakdown.fitForKind >= SIGNAL_FLOOR ||
+    breakdown.interestNudge >= SIGNAL_FLOOR
+  );
+}
+
+// Monday-of-week helper. Given an arbitrary Date, returns a new Date set to
+// 00:00 UTC of the Monday of that week. ISO weeks: Monday=1, Sunday=7.
+function mondayOf(d: Date): Date {
+  const day = d.getUTCDay(); // 0=Sun, 1=Mon..6=Sat
+  // Distance back to Monday: Sun→-6, Mon→0, Tue→-1..Sat→-5.
+  const offsetDays = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d.getTime());
+  monday.setUTCDate(monday.getUTCDate() + offsetDays);
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday;
+}
+
+/**
+ * Per-candidate availability projection. Default reads the breakdown's
+ * existing availabilityNow as the week-0 value and assumes the same number
+ * for future weeks (best-effort fallback when no real calendar projection
+ * is wired). Production deployments inject a real `projectionFn` that
+ * queries the candidate's calendar `weekOffset` weeks ahead. Tests inject
+ * a deterministic stub so date math is reproducible.
+ */
+export type CapacityProjectionFn = (
+  candidateId: string,
+  weekOffset: number,
+) => number;
+
+export type FindCapacityOpts = {
+  now?: Date;
+  projectionFn?: CapacityProjectionFn;
+};
+
+/**
+ * Scans week-by-week from `now` through DEFER_LOOKAHEAD_WEEKS looking for
+ * the earliest week where at least one qualified candidate's projected
+ * availabilityNow is >= DEFER_FLOOR. Returns Monday of that week as a UTC
+ * Date. Returns null if no opening exists in the window.
+ *
+ * Empty qualified[] → null (no one to wait for). Used by the dispatcher
+ * deferral branch to compute the new scheduledDate.
+ */
+export function findEarliestCapacityWindow(
+  qualified: MatchResult[],
+  _task: AgentTask | MatchInput,
+  opts: FindCapacityOpts = {},
+): Date | null {
+  if (qualified.length === 0) return null;
+  const now = opts.now ?? new Date();
+  // Default projection: trust the breakdown's availabilityNow for every
+  // future week (no real calendar lookahead). This is the safety-net
+  // behaviour; production callers should inject a real projectionFn.
+  const projectionFn: CapacityProjectionFn =
+    opts.projectionFn ??
+    ((id) => {
+      const match = qualified.find((q) => q.teammate.id === id);
+      return match?.breakdown.availabilityNow ?? 0;
+    });
+
+  for (let weekOffset = 0; weekOffset <= DEFER_LOOKAHEAD_WEEKS; weekOffset++) {
+    const anyOpen = qualified.some((q) => {
+      const projected = projectionFn(q.teammate.id, weekOffset);
+      return projected >= DEFER_FLOOR;
+    });
+    if (anyOpen) {
+      const weekDate = new Date(now.getTime() + weekOffset * 7 * 24 * 60 * 60 * 1000);
+      return mondayOf(weekDate);
+    }
+  }
+  return null;
 }
