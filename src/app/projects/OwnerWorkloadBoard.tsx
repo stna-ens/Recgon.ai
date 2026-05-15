@@ -25,7 +25,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -35,6 +35,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import { getWeekRange, weekDays, localDateKey } from '@/components/v2/calendar/calendarUtils';
@@ -43,6 +44,7 @@ import type { AgentTask, TeammateWithStats } from '@/lib/recgon/types';
 import { TriageDock } from '@/components/v2/projects/owner/TriageDock';
 import { OwnerWorkloadGrid } from '@/components/v2/projects/owner/OwnerWorkloadGrid';
 import { ReschedulePicker } from '@/components/v2/projects/owner/ReschedulePicker';
+import { TableBoard } from '@/components/v2/projects/owner/TableBoard';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 type Props = {
@@ -89,7 +91,7 @@ export function decodeDropTarget(id: string): DropTarget | null {
 }
 
 export function OwnerWorkloadBoard({ teamId }: Props) {
-  const { currentTeam } = useTeam();
+  const { currentTeam, projects: teamProjects } = useTeam();
   const { addToast } = useToast();
   const isOwner = currentTeam?.role === 'owner';
 
@@ -100,6 +102,19 @@ export function OwnerWorkloadBoard({ teamId }: Props) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<AgentTask | null>(null);
   const [reschedulePickerOpen, setReschedulePickerOpen] = useState(false);
+
+  // Plan 03.5-04 — view-toggle. Default 'workload'; second view = sortable table.
+  // The toggle does NOT trigger a re-fetch (tasks already loaded) and does NOT
+  // clear optimisticOverrides (so a chip dragged then quickly toggled still
+  // reflects the optimistic position when the user toggles back).
+  const [viewMode, setViewMode] = useState<'workload' | 'table'>('workload');
+
+  // Plan 03.5-04 — TableBoard kebab menu actions. We re-use the existing
+  // reschedule picker by reusing setSelectedTask + setReschedulePickerOpen.
+  // For "assign manually" from the table we open a small picker-anchored
+  // dropdown via state; simpler to push the task into a queue and render
+  // AssignTeammatePicker via TaskDetailPanel for now.
+  const [tableAssignTask, setTableAssignTask] = useState<AgentTask | null>(null);
 
   // Plan 03.5-03 — optimistic overrides mirror src/app/tasks/page.tsx:134-217.
   // Keyed by task.id; cleared by useEffect when the server state catches up.
@@ -615,6 +630,46 @@ export function OwnerWorkloadBoard({ teamId }: Props) {
           <button type="button" className="owner-board-nav-btn" onClick={handlePrev} aria-label="Previous 2 weeks">⟨</button>
           <button type="button" className="owner-board-nav-btn" onClick={handleToday} aria-label="Today">today</button>
           <button type="button" className="owner-board-nav-btn" onClick={handleNext} aria-label="Next 2 weeks">⟩</button>
+
+          {/* Plan 03.5-04 — workload / table view toggle (D-08).
+              Mirrors WeekNav.tsx lines 93-122 (cal-view-trigger styling +
+              Radix DropdownMenu + `•` glyph in signature pink for active). */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                className="cal-view-trigger"
+                aria-label="Toggle view"
+                data-testid="owner-view-toggle-trigger"
+              >
+                <span className="cal-view-trigger-dot" aria-hidden="true" />
+                <span className="cal-view-trigger-text">{viewMode}</span>
+                <span className="cal-view-trigger-chev" aria-hidden="true">⌄</span>
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                className="cal-view-menu-panel"
+                sideOffset={6}
+                align="end"
+                data-testid="owner-view-toggle-menu"
+              >
+                {(['workload', 'table'] as const).map((option) => (
+                  <DropdownMenu.Item
+                    key={option}
+                    className={`cal-view-option${viewMode === option ? ' is-active' : ''}`}
+                    onSelect={() => setViewMode(option)}
+                    data-testid={`owner-view-toggle-option-${option}`}
+                  >
+                    <span className="cal-view-option-label">{option}</span>
+                    {viewMode === option && (
+                      <span className="cal-view-option-mark" aria-hidden="true">•</span>
+                    )}
+                  </DropdownMenu.Item>
+                ))}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         </div>
       </header>
 
@@ -637,22 +692,40 @@ export function OwnerWorkloadBoard({ teamId }: Props) {
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <div className="owner-board-outer">
-          <div className="owner-board-scroll" data-testid="owner-board-grid">
-            <OwnerWorkloadGrid
-              teammates={teammates}
-              tasks={gridTasks}
-              dayDates={dayDates}
-              onChipClick={handleChipClick}
-            />
-            {!loading && teammates.length === 0 && (
-              <div className="owner-board-empty">No active teammates in this team yet.</div>
-            )}
-            {loading && (
-              <div className="owner-board-loading" aria-busy="true">loading workload…</div>
-            )}
+        {viewMode === 'workload' ? (
+          <div className="owner-board-outer">
+            <div className="owner-board-scroll" data-testid="owner-board-grid">
+              <OwnerWorkloadGrid
+                teammates={teammates}
+                tasks={gridTasks}
+                dayDates={dayDates}
+                onChipClick={handleChipClick}
+              />
+              {!loading && teammates.length === 0 && (
+                <div className="owner-board-empty">No active teammates in this team yet.</div>
+              )}
+              {loading && (
+                <div className="owner-board-loading" aria-busy="true">loading workload…</div>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          // Plan 03.5-04 — table view branch. Drag-drop is workload-only; the
+          // DndContext still wraps this branch so the optimistic overrides
+          // (managed at this level) persist across view switches even when an
+          // in-flight drag was just committed.
+          <TableBoard
+            tasks={gridTasks}
+            teammates={teammates}
+            projects={(teamProjects ?? []).map((p) => ({ id: p.id, name: p.name }))}
+            onRowClick={(t) => handleChipClick(t.id)}
+            onAssign={(t) => setTableAssignTask(t)}
+            onReschedule={(t) => {
+              setSelectedTask(t);
+              setReschedulePickerOpen(true);
+            }}
+          />
+        )}
       </DndContext>
 
       <TaskDetailPanel
@@ -682,6 +755,23 @@ export function OwnerWorkloadBoard({ teamId }: Props) {
         ) : undefined}
       />
 
+      {/* Plan 03.5-04 — TableBoard kebab "assign manually" target.
+          Renders an AssignTeammatePicker anchored to a hidden trigger and
+          imperatively opens it when tableAssignTask is set. We reuse the
+          same handleAssign mutation path as the dock picker. */}
+      {tableAssignTask && (
+        <TableAssignFlow
+          task={tableAssignTask}
+          teammates={teammates}
+          onAssign={async (teammateId) => {
+            const taskId = tableAssignTask.id;
+            setTableAssignTask(null);
+            await handleAssign(taskId, teammateId);
+          }}
+          onClose={() => setTableAssignTask(null)}
+        />
+      )}
+
       <ConfirmDialog
         open={pendingInFlight !== null}
         onOpenChange={(open) => {
@@ -709,6 +799,86 @@ export function OwnerWorkloadBoard({ teamId }: Props) {
       />
 
       <style>{css}</style>
+    </div>
+  );
+}
+
+/**
+ * Plan 03.5-04 — modal-style wrapper around AssignTeammatePicker for the
+ * TableBoard kebab "assign manually" action. Uses a Radix Dialog instead of
+ * dropdown because the table row's kebab Dropdown is already closed by the
+ * time the parent state updates (Radix's `onSelect` closes the menu
+ * unconditionally). The dialog gives the picker a stable, focused anchor.
+ */
+function TableAssignFlow({
+  task,
+  teammates,
+  onAssign,
+  onClose,
+}: {
+  task: AgentTask;
+  teammates: TeammateWithStats[];
+  onAssign: (teammateId: string) => Promise<void> | void;
+  onClose: () => void;
+}) {
+  const submittingRef = useRef(false);
+  const activeTeammates = teammates.filter((t) => t.status === 'active');
+
+  const handlePick = async (teammateId: string) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await onAssign(teammateId);
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-label={`assign ${task.title} manually`}
+      className="owner-board-assign-overlay"
+      onClick={onClose}
+      data-testid="table-assign-overlay"
+    >
+      <div
+        className="owner-board-assign-card"
+        onClick={(e) => e.stopPropagation()}
+        role="document"
+      >
+        <div className="owner-board-assign-eyebrow">ASSIGN</div>
+        <div className="owner-board-assign-title">{task.title}</div>
+        <div className="owner-board-assign-list">
+          {activeTeammates.length === 0 ? (
+            <div className="owner-board-assign-empty">No active teammates.</div>
+          ) : (
+            activeTeammates.map((tm) => (
+              <button
+                key={tm.id}
+                type="button"
+                className="owner-board-assign-option"
+                onClick={() => void handlePick(tm.id)}
+                data-testid={`table-assign-option-${tm.id}`}
+              >
+                <span className="owner-board-assign-option-name">{tm.displayName}</span>
+                {tm.title && (
+                  <span className="owner-board-assign-option-title">{tm.title}</span>
+                )}
+              </button>
+            ))
+          )}
+        </div>
+        <div className="owner-board-assign-foot">
+          <button
+            type="button"
+            className="owner-board-assign-cancel"
+            onClick={onClose}
+          >
+            cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -875,5 +1045,214 @@ const css = `
 .cal-panel-btn.is-owner:hover {
   color: var(--signature);
   border-color: var(--signature);
+}
+
+/* Plan 03.5-04 — view toggle (mirrors WeekNav.tsx cal-view-trigger styles). */
+.cal-view-trigger {
+  min-width: 132px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+  background: transparent;
+  border: 1px solid var(--rule, rgba(255,255,255,0.10));
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+  cursor: pointer;
+  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+  margin-left: 12px;
+}
+.cal-view-trigger:hover,
+.cal-view-trigger[data-state="open"] {
+  color: var(--txt-muted);
+  border-color: rgba(var(--signature-rgb), 0.35);
+  background: rgba(var(--signature-rgb), 0.03);
+}
+.cal-view-trigger:focus-visible {
+  outline: 2px solid var(--signature);
+  outline-offset: 2px;
+}
+.cal-view-trigger-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--signature);
+  box-shadow: 0 0 8px var(--signature);
+  flex-shrink: 0;
+}
+.cal-view-trigger-text {
+  flex: 1;
+  text-align: left;
+}
+.cal-view-trigger-chev {
+  font-size: 12px;
+  color: var(--txt-faint);
+  transform: translateY(-1px);
+}
+.cal-view-menu-panel {
+  min-width: 132px;
+  padding: 6px;
+  background: var(--bg-card, rgba(20, 20, 22, 0.92));
+  border: 1px solid var(--rule, rgba(255,255,255,0.10));
+  border-radius: 10px;
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  box-shadow: var(--v2-shadow-strong, 0 22px 50px -22px rgba(0,0,0,0.45));
+  z-index: 9999;
+  animation: ownerBoardViewMenuIn 150ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes ownerBoardViewMenuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cal-view-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 9px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--txt-muted);
+  cursor: pointer;
+  outline: none;
+  transition: background 160ms ease, color 160ms ease;
+}
+.cal-view-option[data-highlighted],
+.cal-view-option:hover {
+  background: rgba(var(--signature-rgb), 0.06);
+  color: var(--txt-pure);
+}
+.cal-view-option.is-active {
+  color: var(--txt-pure);
+}
+.cal-view-option-mark {
+  color: var(--signature);
+  text-shadow: 0 0 8px var(--signature);
+}
+
+/* Plan 03.5-04 — TableBoard kebab "assign manually" overlay. */
+.owner-board-assign-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: ownerBoardAssignFade 160ms ease-out;
+}
+@keyframes ownerBoardAssignFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.owner-board-assign-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-card, rgba(20, 20, 22, 0.95));
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-deep, 0 22px 50px -22px rgba(0,0,0,0.45));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.owner-board-assign-eyebrow {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  color: var(--signature);
+}
+.owner-board-assign-title {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 14px;
+  color: var(--txt-pure);
+  font-weight: 600;
+}
+.owner-board-assign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.owner-board-assign-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.owner-board-assign-option:hover,
+.owner-board-assign-option:focus-visible {
+  background: rgba(var(--signature-rgb), 0.06);
+  border-color: rgba(var(--signature-rgb), 0.35);
+  outline: none;
+}
+.owner-board-assign-option-name {
+  font-size: 13px;
+  color: var(--txt-pure);
+  font-weight: 600;
+}
+.owner-board-assign-option-title {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+}
+.owner-board-assign-empty {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--txt-faint);
+  padding: 16px;
+  text-align: center;
+}
+.owner-board-assign-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+.owner-board-assign-cancel {
+  background: transparent;
+  border: 1px solid var(--rule);
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.0px;
+  text-transform: uppercase;
+  color: var(--txt-muted);
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.owner-board-assign-cancel:hover {
+  color: var(--txt-pure);
+  border-color: var(--rule-strong);
 }
 `;
