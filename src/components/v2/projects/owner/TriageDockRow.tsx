@@ -14,6 +14,8 @@
 
 'use client';
 
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import type { AgentTask, TeammateWithStats } from '@/lib/recgon/types';
 import { AssignTeammatePicker } from './AssignTeammatePicker';
 
@@ -53,9 +55,36 @@ function reasonCopy(task: AgentTask, isDeferred: boolean): string {
 export function TriageDockRow({ task, isDeferred, teammates, onAssign, onDismiss }: Props) {
   const reason = reasonCopy(task, isDeferred);
 
+  // Plan 03.5-03 — dock rows are dnd-kit drag sources with kind='dock-row'.
+  // Dropping a dock row onto a cell fires BOTH assign + schedule in one op.
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { kind: 'dock-row' },
+  });
+  const dragStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+    touchAction: 'none',
+  };
+
   return (
-    <li className="triage-row" role="listitem" data-testid={`triage-row-${task.id}`}>
+    <li
+      ref={setNodeRef}
+      className="triage-row"
+      role="listitem"
+      data-testid={`triage-row-${task.id}`}
+      style={dragStyle}
+    >
       <div className="triage-row-title-line">
+        <span
+          className="triage-row-grip"
+          {...attributes}
+          {...listeners}
+          aria-label={`drag ${task.title}`}
+          data-testid={`triage-row-grip-${task.id}`}
+        >
+          ⋮⋮
+        </span>
         <span className="triage-row-title" title={task.title}>{task.title}</span>
         {isDeferred && (
           <button
@@ -104,6 +133,19 @@ const css = `
   gap: 8px;
   min-width: 0;
 }
+.triage-row-grip {
+  color: var(--txt-faint);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: -1.5px;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  padding: 0 2px;
+  line-height: 1;
+}
+.triage-row-grip:active { cursor: grabbing; }
+.triage-row-grip:hover { color: var(--signature); }
 .triage-row-title {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 11px;

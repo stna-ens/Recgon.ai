@@ -1,16 +1,18 @@
-// Phase 3.5 / Plan 03.5-02 — owner workload grid (14-day SwimLanes + chips).
+// Phase 3.5 / Plan 03.5-02 + 03 — owner workload grid (14-day SwimLanes + chips).
 //
-// Reuses the calendar SwimLane (with dragMode="dnd-kit" — outer DndContext
-// is mounted by OwnerWorkloadBoard) and WeekHeader components verbatim.
-// CapacityBars ride into SwimLane via the new `laneLabelExtra` slot (Plan
-// 03.5-02 SwimLane extension) so the grid stays a clean 1 + N column layout.
+// Plan 03.5-02 shipped: reuse SwimLane + WeekHeader, attach CapacityBars via
+// the new laneLabelExtra slot, render 14 days.
 //
-// Card layout is built inline here because the calendar utility `buildCards`
-// scopes to a 7-day week; for the 14-day owner grid we map task scheduled
-// dates against the supplied 14-element `dayDates` array directly.
+// Plan 03.5-03 adds: dnd-kit wrappers around each chip (useDraggable), each
+// day cell (useDroppable, id="{teammateId}__{dateISO}"), and each lane label
+// (useDroppable, id="{teammateId}__lane"). The outer DndContext lives in
+// OwnerWorkloadBoard so drop targets register across the whole page.
 
 'use client';
 
+import type { ReactNode } from 'react';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import type { AgentTask, TeammateWithStats } from '@/lib/recgon/types';
 import type { CalendarCard } from '@/components/v2/calendar/calendarTypes';
 import { SwimLane } from '@/components/v2/calendar/SwimLane';
@@ -26,8 +28,6 @@ type Props = {
   onChipClick: (taskId: string) => void;
 };
 
-// Build CalendarCard[] for a single teammate over the 14-day window.
-// Multi-day tasks (scheduledUntilDate > scheduledDate) clamp into the window.
 function buildCardsForWindow(
   tasks: AgentTask[],
   teammateId: string,
@@ -76,9 +76,99 @@ function formatWeekStart(d: Date): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
 }
 
+// ── dnd-kit wrapper sub-components ─────────────────────────────────────────
+
+/**
+ * Wrap a rendered chip in useDraggable. Sets the drag-source id = task.id
+ * + data { kind: 'task' } so OwnerWorkloadBoard.onDragEnd knows where the
+ * chip came from.
+ */
+function DraggableChip({
+  taskId,
+  children,
+}: {
+  taskId: string;
+  children: ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: taskId,
+    data: { kind: 'task' },
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+    cursor: 'grab',
+    touchAction: 'none', // recommended by dnd-kit for PointerSensor
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      data-testid={`draggable-chip-${taskId}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Wrap a day cell in useDroppable with id "{teammateId}__{dateISO}".
+ */
+function DroppableCell({
+  teammateId,
+  dateISO,
+  children,
+}: {
+  teammateId: string;
+  dateISO: string;
+  children: ReactNode;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `${teammateId}__${dateISO}`,
+    data: { kind: 'cell', teammateId, dateISO },
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      data-droppable-id={`${teammateId}__${dateISO}`}
+      data-is-over={isOver ? 'true' : undefined}
+      style={{ display: 'contents' }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Wrap a lane label in useDroppable with id "{teammateId}__lane" so dropping
+ * a chip onto the row label reassigns while keeping the chip's existing date.
+ */
+function DroppableLaneLabel({
+  teammateId,
+  children,
+}: {
+  teammateId: string;
+  children: ReactNode;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `${teammateId}__lane`,
+    data: { kind: 'lane', teammateId },
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      data-droppable-id={`${teammateId}__lane`}
+      data-is-over={isOver ? 'true' : undefined}
+      style={{ display: 'contents' }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function OwnerWorkloadGrid({ teammates, tasks, dayDates, onChipClick }: Props) {
-  // Split the 14-day window into Wk 1 (days 0-6) and Wk 2 (days 7-13) for
-  // capacity-bar math.
   const wk1Start = dayDates[0];
   const wk2Start = dayDates[7];
   const wk1StartISO = wk1Start ? localDateKey(wk1Start) : '';
@@ -129,6 +219,17 @@ export function OwnerWorkloadGrid({ teammates, tasks, dayDates, onChipClick }: P
             draggingTaskId={null}
             dragMode="dnd-kit"
             laneLabelExtra={extra}
+            laneLabelWrapper={(node, ctx) => (
+              <DroppableLaneLabel teammateId={ctx.teammateId}>{node}</DroppableLaneLabel>
+            )}
+            cellWrapper={(node, ctx) => (
+              <DroppableCell teammateId={ctx.teammateId} dateISO={ctx.dateISO}>
+                {node}
+              </DroppableCell>
+            )}
+            chipWrapper={(node, ctx) => (
+              <DraggableChip taskId={ctx.taskId}>{node}</DraggableChip>
+            )}
           />
         );
       })}

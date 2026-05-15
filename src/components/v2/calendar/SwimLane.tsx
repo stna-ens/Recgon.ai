@@ -31,6 +31,13 @@ type Props = {
   // for per-week capacity bars; the existing /calendar callers omit the prop
   // and get the prior layout byte-for-byte (default undefined).
   laneLabelExtra?: ReactNode;
+  // Phase 3.5 (Plan 03.5-03): optional wrappers for the lane label + each
+  // day cell + each chip, so the owner workload board can attach dnd-kit
+  // refs (useDroppable / useDraggable) without forking SwimLane.
+  // Defaults are pass-through (identity) so existing callers are unaffected.
+  laneLabelWrapper?: (children: ReactNode, ctx: { teammateId: string }) => ReactNode;
+  cellWrapper?: (children: ReactNode, ctx: { teammateId: string; dateISO: string; dayIndex: number }) => ReactNode;
+  chipWrapper?: (children: ReactNode, ctx: { taskId: string; teammateId: string }) => ReactNode;
 };
 
 const VISIBLE_CAP = 3;
@@ -81,7 +88,14 @@ export function SwimLane({
   onTaskResize,
   dragMode = 'native',
   laneLabelExtra,
+  laneLabelWrapper,
+  cellWrapper,
+  chipWrapper,
 }: Props) {
+  // Pass-through helpers so the JSX below can call them unconditionally.
+  const wrapLaneLabel = laneLabelWrapper ?? ((children) => children);
+  const wrapCell = cellWrapper ?? ((children) => children);
+  const wrapChip = chipWrapper ?? ((children) => children);
   // Phase 3.5: gate HTML5 wiring so it only fires in 'native' mode.
   // RESEARCH § Pitfall 2 — HTML5 + dnd-kit cannot both be active or drops fire twice.
   const useNativeDrag = dragMode === 'native';
@@ -224,23 +238,26 @@ export function SwimLane({
 
   return (
     <div className="cal-lane" style={laneVars}>
-      <div className={`cal-lane-label${isOdd ? ' is-odd' : ''}`}>
-        <div className="cal-lane-label-inner">
-          <TeammateAvatar
-            name={teammate.displayName}
-            avatarUrl={teammate.avatarUrl}
-            avatarColor={teammate.avatarColor}
-            size={26}
-          />
-          <div className="cal-lane-name-wrap">
-            <span className="cal-lane-name">{teammate.displayName}</span>
-            {teammate.title && <span className="cal-lane-title">{teammate.title}</span>}
+      {wrapLaneLabel(
+        <div className={`cal-lane-label${isOdd ? ' is-odd' : ''}`}>
+          <div className="cal-lane-label-inner">
+            <TeammateAvatar
+              name={teammate.displayName}
+              avatarUrl={teammate.avatarUrl}
+              avatarColor={teammate.avatarColor}
+              size={26}
+            />
+            <div className="cal-lane-name-wrap">
+              <span className="cal-lane-name">{teammate.displayName}</span>
+              {teammate.title && <span className="cal-lane-title">{teammate.title}</span>}
+            </div>
           </div>
-        </div>
-        {laneLabelExtra ? (
-          <div className="cal-lane-label-extra">{laneLabelExtra}</div>
-        ) : null}
-      </div>
+          {laneLabelExtra ? (
+            <div className="cal-lane-label-extra">{laneLabelExtra}</div>
+          ) : null}
+        </div>,
+        { teammateId: teammate.id },
+      )}
 
       <div className="cal-lane-grid">
         {dayDates.map((date, di) => {
@@ -263,11 +280,13 @@ export function SwimLane({
             && resize.card.teammateId === teammate.id
             && di >= resize.startDayIndex
             && di <= resize.targetEndIndex;
-          return (
+          const cellDateISO = localDateKey(date);
+          const cellNode = (
             <div
-              key={`${teammate.id}-${localDateKey(date)}`}
+              key={`${teammate.id}-${cellDateISO}`}
               data-day-index={di}
               data-teammate-id={teammate.id}
+              data-cell-id={`${teammate.id}__${cellDateISO}`}
               className={`cal-day-cell${hidden ? ' is-hidden' : ''}${isOdd ? ' is-odd' : ''}${dropDayIndex === di ? ' is-drop-hover' : ''}${inResizeRange ? ' is-resize-preview' : ''}`}
               onDragOver={useNativeDrag ? (e) => {
                 if (!canDrop || hidden) return;
@@ -307,16 +326,19 @@ export function SwimLane({
                       '--row': row,
                     } as CSSProperties}
                   >
-                    <EventChip
-                      card={card}
-                      teammate={teammate}
-                      onClick={onCardClick}
-                      draggable={chipDraggable}
-                      onDragStart={onTaskDragStart}
-                      onDragEnd={onTaskDragEnd}
-                      resizable={canReschedule && Boolean(onTaskResize)}
-                      onResizeStart={handleResizeStart}
-                    />
+                    {wrapChip(
+                      <EventChip
+                        card={card}
+                        teammate={teammate}
+                        onClick={onCardClick}
+                        draggable={chipDraggable}
+                        onDragStart={onTaskDragStart}
+                        onDragEnd={onTaskDragEnd}
+                        resizable={canReschedule && Boolean(onTaskResize)}
+                        onResizeStart={handleResizeStart}
+                      />,
+                      { taskId: card.task.id, teammateId: teammate.id },
+                    )}
                   </div>
                 );
               })}
@@ -341,17 +363,20 @@ export function SwimLane({
 
               <div className="cal-card-stack">
                 {visible.map((card) => (
-                  <EventChip
-                    key={card.id}
-                    card={card}
-                    teammate={teammate}
-                    onClick={onCardClick}
-                    draggable={chipDraggable}
-                    onDragStart={onTaskDragStart}
-                    onDragEnd={onTaskDragEnd}
-                    resizable={canReschedule && Boolean(onTaskResize)}
-                    onResizeStart={handleResizeStart}
-                  />
+                  wrapChip(
+                    <EventChip
+                      key={card.id}
+                      card={card}
+                      teammate={teammate}
+                      onClick={onCardClick}
+                      draggable={chipDraggable}
+                      onDragStart={onTaskDragStart}
+                      onDragEnd={onTaskDragEnd}
+                      resizable={canReschedule && Boolean(onTaskResize)}
+                      onResizeStart={handleResizeStart}
+                    />,
+                    { taskId: card.task.id, teammateId: teammate.id },
+                  )
                 ))}
                 {(overflow > 0 || (isExpanded && cellSingles.length > VISIBLE_CAP)) && (
                   <button type="button" className="cal-day-more" onClick={() => toggleCell(di)}>
@@ -361,6 +386,7 @@ export function SwimLane({
               </div>
             </div>
           );
+          return wrapCell(cellNode, { teammateId: teammate.id, dateISO: cellDateISO, dayIndex: di });
         })}
       </div>
 
