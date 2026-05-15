@@ -1,4 +1,4 @@
-// Phase 3.5 / Plan 03.5-02 — single row inside the owner-board Triage Dock.
+// Phase 3.5 / Plan 03.5-02 + 03 — single row inside the owner-board Triage Dock.
 //
 // Three-line stack per UI-SPEC §6 / §7:
 //   1. Title (mono 11px, ellipsized).
@@ -9,19 +9,20 @@
 //        no_capacity_in_window     → "qualified but booked through 4 wks"
 //        no_capacity_high_priority → "high-priority + no capacity now"
 //        deferred                  → "deferred → MMM D" (uppercase MMM)
-//   3. Action row: [assign manually] placeholder button. Dropdown picker
-//      wiring lands in 03.5-03. Deferred rows additionally expose a "×"
-//      dismiss slot wrapped in a placeholder tooltip — Wave 3 wires it.
+//   3. Action row: <AssignTeammatePicker> for triaged rows; deferred rows
+//      additionally expose a "×" dismiss slot. Plan 03.5-03 wires both.
 
 'use client';
 
-import type { AgentTask } from '@/lib/recgon/types';
+import type { AgentTask, TeammateWithStats } from '@/lib/recgon/types';
+import { AssignTeammatePicker } from './AssignTeammatePicker';
 
 type Props = {
   task: AgentTask;
   isDeferred: boolean;
-  onAssignClick?: (taskId: string) => void;
-  onDismissClick?: (taskId: string) => void;
+  teammates: TeammateWithStats[];
+  onAssign?: (taskId: string, teammateId: string) => Promise<void> | void;
+  onDismiss?: (taskId: string) => Promise<void> | void;
 };
 
 function reasonCopy(task: AgentTask, isDeferred: boolean): string {
@@ -49,20 +50,21 @@ function reasonCopy(task: AgentTask, isDeferred: boolean): string {
   }
 }
 
-export function TriageDockRow({ task, isDeferred, onAssignClick, onDismissClick }: Props) {
+export function TriageDockRow({ task, isDeferred, teammates, onAssign, onDismiss }: Props) {
   const reason = reasonCopy(task, isDeferred);
+
   return (
-    <li className="triage-row" role="listitem">
+    <li className="triage-row" role="listitem" data-testid={`triage-row-${task.id}`}>
       <div className="triage-row-title-line">
         <span className="triage-row-title" title={task.title}>{task.title}</span>
         {isDeferred && (
           <button
             type="button"
             className="triage-row-dismiss"
-            data-testid="triage-row-dismiss"
+            data-testid={`triage-row-dismiss-${task.id}`}
             aria-label={`dismiss ${task.title} from dock`}
             title="Dismiss from dock — task stays in calendar"
-            onClick={() => onDismissClick?.(task.id)}
+            onClick={() => onDismiss?.(task.id)}
           >
             ×
           </button>
@@ -70,14 +72,14 @@ export function TriageDockRow({ task, isDeferred, onAssignClick, onDismissClick 
       </div>
       <span className="triage-row-reason">{reason}</span>
       <div className="triage-row-actions">
-        <button
-          type="button"
-          className="triage-row-action"
-          aria-label={`assign ${task.title}`}
-          onClick={() => onAssignClick?.(task.id)}
-        >
-          assign manually
-        </button>
+        <AssignTeammatePicker
+          teammates={teammates}
+          onAssign={async (teammateId) => {
+            await onAssign?.(task.id, teammateId);
+          }}
+          triggerLabel="assign manually"
+          ariaLabel={`assign ${task.title}`}
+        />
       </div>
       <style>{css}</style>
     </li>
@@ -142,6 +144,10 @@ const css = `
 .triage-row-action:hover {
   color: var(--signature);
   border-color: var(--signature);
+}
+.triage-row-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 .triage-row-dismiss {
   background: transparent;

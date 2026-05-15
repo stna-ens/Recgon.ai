@@ -18,17 +18,21 @@
 'use client';
 
 import * as Collapsible from '@radix-ui/react-collapsible';
-import type { AgentTask } from '@/lib/recgon/types';
+import type { AgentTask, TeammateWithStats } from '@/lib/recgon/types';
 import { TriageDockRow } from './TriageDockRow';
 
 type Props = {
   triaged: AgentTask[];
   deferred: AgentTask[];
-  onAssignClick?: (taskId: string) => void;
-  onDismissClick?: (taskId: string) => void;
+  /** Active teammates rendered in each row's AssignTeammatePicker. */
+  teammates: TeammateWithStats[];
+  /** Plan 03.5-03 — fires when the owner picks a teammate from the inline picker. */
+  onAssign?: (taskId: string, teammateId: string) => Promise<void> | void;
+  /** Plan 03.5-03 — fires when the owner clicks the dismiss × on a deferred row. */
+  onDismiss?: (taskId: string) => Promise<void> | void;
 };
 
-export function TriageDock({ triaged, deferred, onAssignClick, onDismissClick }: Props) {
+export function TriageDock({ triaged, deferred, teammates, onAssign, onDismiss }: Props) {
   const count = triaged.length + deferred.length;
   const isCollapsed = count === 0;
 
@@ -56,7 +60,8 @@ export function TriageDock({ triaged, deferred, onAssignClick, onDismissClick }:
             key={task.id}
             task={task}
             isDeferred={false}
-            onAssignClick={onAssignClick}
+            teammates={teammates}
+            onAssign={onAssign}
           />
         ))}
         {deferred.map((task) => (
@@ -64,8 +69,9 @@ export function TriageDock({ triaged, deferred, onAssignClick, onDismissClick }:
             key={task.id}
             task={task}
             isDeferred={true}
-            onAssignClick={onAssignClick}
-            onDismissClick={onDismissClick}
+            teammates={teammates}
+            onAssign={onAssign}
+            onDismiss={onDismiss}
           />
         ))}
       </ul>

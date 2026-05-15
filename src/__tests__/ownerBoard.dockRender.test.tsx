@@ -10,7 +10,7 @@ import { fixtureTask, triagedTask, deferredTask } from './ownerBoard/setup';
 
 describe('TriageDock — collapsed/expanded states (UI-SPEC §6)', () => {
   it('renders a 40px-tall "TRIAGE · CLEAR" pill when both buckets are empty', () => {
-    const { container, getByText } = render(<TriageDock triaged={[]} deferred={[]} />);
+    const { container, getByText } = render(<TriageDock triaged={[]} deferred={[]} teammates={[]} />);
     expect(getByText('TRIAGE · CLEAR')).toBeTruthy();
     // Collapsed state marker (we use a class hook for the height + signature glow).
     const root = container.querySelector('[data-testid="triage-dock"]');
@@ -22,7 +22,7 @@ describe('TriageDock — collapsed/expanded states (UI-SPEC §6)', () => {
 
   it('renders an expanded card with "TRIAGE · 1 NEEDS YOUR EYES" header + 1 row for a single triaged task', () => {
     const { container, getByText, getAllByRole } = render(
-      <TriageDock triaged={[triagedTask]} deferred={[]} />,
+      <TriageDock triaged={[triagedTask]} deferred={[]} teammates={[]} />,
     );
     expect(getByText('TRIAGE · 1 NEEDS YOUR EYES')).toBeTruthy();
     expect(getByText('Refactor auth module')).toBeTruthy();
@@ -35,7 +35,7 @@ describe('TriageDock — collapsed/expanded states (UI-SPEC §6)', () => {
   });
 
   it('renders deferred row with "deferred → MMM D" copy in uppercase month', () => {
-    const { getByText } = render(<TriageDock triaged={[]} deferred={[deferredTask]} />);
+    const { getByText } = render(<TriageDock triaged={[]} deferred={[deferredTask]} teammates={[]} />);
     expect(getByText('TRIAGE · 1 NEEDS YOUR EYES')).toBeTruthy();
     expect(getByText('Investigate prod log')).toBeTruthy();
     // The deferred date 2026-05-22 → "MAY 22"
@@ -50,7 +50,7 @@ describe('TriageDock — collapsed/expanded states (UI-SPEC §6)', () => {
     const deferredB = fixtureTask({ id: 'd-b', title: 'D', status: 'unassigned', assignedTo: null, scheduledDate: '2026-05-25', triageNote: null });
     const deferredC = fixtureTask({ id: 'd-c', title: 'E', status: 'unassigned', assignedTo: null, scheduledDate: '2026-05-26', triageNote: null });
     const { getByText, getAllByRole } = render(
-      <TriageDock triaged={[triagedA, triagedB]} deferred={[deferredA, deferredB, deferredC]} />,
+      <TriageDock triaged={[triagedA, triagedB]} deferred={[deferredA, deferredB, deferredC]} teammates={[]} />,
     );
     expect(getByText('TRIAGE · 5 NEEDS YOUR EYES')).toBeTruthy();
     expect(getAllByRole('listitem').length).toBe(5);
@@ -74,13 +74,13 @@ describe('TriageDockRow — reason copy mapping (D-14)', () => {
         scheduledDate: null,
         triageNote: note,
       });
-      const { getByText, queryByTestId } = render(
-        <TriageDockRow task={task} isDeferred={false} />,
+      const { getByText, container } = render(
+        <TriageDockRow task={task} isDeferred={false} teammates={[]} />,
       );
       expect(getByText(expected)).toBeTruthy();
       expect(getByText(`Task ${note}`)).toBeTruthy();
-      // Triaged rows DO NOT expose a dismiss slot.
-      expect(queryByTestId('triage-row-dismiss')).toBeNull();
+      // Triaged rows DO NOT expose a dismiss slot. (testid is now keyed by task id.)
+      expect(container.querySelector('[data-testid^="triage-row-dismiss-"]')).toBeNull();
     });
   });
 
@@ -93,8 +93,8 @@ describe('TriageDockRow — reason copy mapping (D-14)', () => {
       scheduledDate: '2026-05-22',
       triageNote: null,
     });
-    const { container, getByTestId } = render(<TriageDockRow task={task} isDeferred={true} />);
+    const { container } = render(<TriageDockRow task={task} isDeferred={true} teammates={[]} />);
     expect(container.textContent).toMatch(/deferred\s*→\s*MAY 22/);
-    expect(getByTestId('triage-row-dismiss')).toBeTruthy();
+    expect(container.querySelector('[data-testid="triage-row-dismiss-deferred-row"]')).toBeTruthy();
   });
 });
