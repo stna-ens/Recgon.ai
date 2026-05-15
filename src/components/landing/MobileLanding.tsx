@@ -219,6 +219,16 @@ export default function MobileLanding() {
   const [devKey, setDevKey] = useState(0);
   const [devStarted, setDevStarted] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [diving, setDiving] = useState(false);
+
+  const handleDive = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setDiving(true);
+    document
+      .getElementById('mlnd-features')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => setDiving(false), 720);
+  };
 
   // Audience rotator — fires only after the hero decrypt finishes so the
   // first paint is "for small teams" cleanly.
@@ -328,8 +338,13 @@ export default function MobileLanding() {
             Recgon reads your codebase, analytics, and team — then decides what to ship next and who should ship it.
           </p>
 
-          <a href="#mlnd-features" className="mlnd-cta-ghost">
-            See what you’ll get ↓
+          <a
+            href="#mlnd-features"
+            className={`mlnd-cta-ghost${diving ? ' is-diving' : ''}`}
+            onClick={handleDive}
+          >
+            See what you’ll get{' '}
+            <span className="mlnd-cta-arrow" aria-hidden="true">↓</span>
           </a>
         </div>
       </section>
@@ -606,6 +621,28 @@ export default function MobileLanding() {
           transition: transform 0.15s ease, background 0.25s ease, border-color 0.25s ease;
         }
         .mlnd-cta-ghost:active { transform: scale(0.98); }
+        .mlnd-cta-arrow {
+          display: inline-block;
+          margin-left: 4px;
+          will-change: transform, opacity;
+        }
+        .mlnd-cta-ghost.is-diving {
+          background: rgba(var(--signature-rgb), 0.12);
+          border-color: rgba(var(--signature-rgb), 0.42);
+        }
+        .mlnd-cta-ghost.is-diving .mlnd-cta-arrow {
+          animation: mlnd-cta-dive 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes mlnd-cta-dive {
+          0%   { transform: translateY(0);   opacity: 1; }
+          38%  { transform: translateY(14px); opacity: 0; }
+          39%  { transform: translateY(-14px); opacity: 0; }
+          70%  { transform: translateY(-2px); opacity: 1; }
+          100% { transform: translateY(0);   opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .mlnd-cta-ghost.is-diving .mlnd-cta-arrow { animation: none; }
+        }
 
         /* ─────────── Generic section ─────────── */
         .mlnd-section {
