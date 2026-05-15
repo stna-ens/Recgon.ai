@@ -27,8 +27,7 @@ if (typeof Element !== 'undefined') {
 // jsdom shim — ResizeObserver is used by the v2-tasks page light-tracking
 // effect. jsdom omits it; without this stub, mounting V2TasksInner throws.
 if (typeof globalThis !== 'undefined' && !('ResizeObserver' in globalThis)) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).ResizeObserver = class {
+  (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
@@ -36,8 +35,7 @@ if (typeof globalThis !== 'undefined' && !('ResizeObserver' in globalThis)) {
 }
 // Same shim for IntersectionObserver, which v2-tasks may also touch.
 if (typeof globalThis !== 'undefined' && !('IntersectionObserver' in globalThis)) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).IntersectionObserver = class {
+  (globalThis as { IntersectionObserver?: unknown }).IntersectionObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
