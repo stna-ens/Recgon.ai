@@ -280,7 +280,7 @@ export default function MobileLanding() {
           <Aurora colorStops={['#0a0205', '#c2357a', '#0a0205']} amplitude={0.9} blend={0.55} speed={0.35} />
         </div>
         <div className="mlnd-hero-bg" aria-hidden="true">
-          <LandingDotField mode="parent" spacing={20} reach={160} autoRoam baseRadius={1} maxRadius={3.4} />
+          <LandingDotField mode="parent" spacing={20} reach={160} autoRoam ignorePointer baseRadius={1} maxRadius={3.4} />
         </div>
         <div className="mlnd-hero-fade" aria-hidden="true" />
 
@@ -336,9 +336,6 @@ export default function MobileLanding() {
 
       {/* ── Features ───────────────────────────────────────────────────── */}
       <section id="mlnd-features" className="mlnd-section mlnd-features">
-        <div className="mlnd-section-bg" aria-hidden="true">
-          <LandingDotField mode="parent" spacing={28} reach={180} autoRoam baseRadius={0.7} maxRadius={2.4} baseAlpha={0.16} />
-        </div>
         <div className="mlnd-section-inner">
           <Reveal>
             <span className="recgon-label">capabilities · 06</span>
@@ -415,9 +412,6 @@ export default function MobileLanding() {
 
       {/* ── FAQ ────────────────────────────────────────────────────────── */}
       <section className="mlnd-section mlnd-faq">
-        <div className="mlnd-section-bg" aria-hidden="true">
-          <LandingDotField mode="parent" spacing={30} reach={170} autoRoam baseRadius={0.7} maxRadius={2.2} baseAlpha={0.14} />
-        </div>
         <div className="mlnd-section-inner">
           <Reveal>
             <span className="recgon-label">faq</span>
@@ -518,6 +512,10 @@ export default function MobileLanding() {
           pointer-events: none;
           mix-blend-mode: screen;
           opacity: 0.65;
+          /* Fade the dot field away from edges so the lensing hotspot
+             never visually grazes the screen border. */
+          -webkit-mask-image: radial-gradient(ellipse 78% 62% at 50% 50%, black 30%, transparent 100%);
+          mask-image: radial-gradient(ellipse 78% 62% at 50% 50%, black 30%, transparent 100%);
         }
         .mlnd-hero-bg > canvas { width: 100%; height: 100%; }
         .mlnd-hero-fade {
@@ -623,19 +621,6 @@ export default function MobileLanding() {
           background: linear-gradient(180deg, var(--bg-deep) 0%, rgba(var(--signature-rgb), 0.03) 100%);
         }
 
-        .mlnd-section-bg {
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          pointer-events: none;
-          overflow: hidden;
-        }
-        .mlnd-section-bg > canvas { width: 100%; height: 100%; }
-        .mlnd-features .mlnd-section-bg,
-        .mlnd-faq .mlnd-section-bg {
-          -webkit-mask-image: radial-gradient(ellipse 95% 75% at 50% 40%, black 35%, transparent 100%);
-          mask-image: radial-gradient(ellipse 95% 75% at 50% 40%, black 35%, transparent 100%);
-        }
         .mlnd-section-inner {
           position: relative;
           z-index: 1;

@@ -20,6 +20,10 @@ interface Props {
    *  field stays "alive" on mobile / without input. Real pointer input still
    *  takes over while active and falls back to roam after ~1.2s idle. */
   autoRoam?: boolean;
+  /** Ignore pointer input entirely — autoRoam drives unconditionally. Use on
+   *  mobile / hero backdrops where taps and scrolls shouldn't yank the field
+   *  out of its idle motion. */
+  ignorePointer?: boolean;
 }
 
 export default function LandingDotField({
@@ -30,6 +34,7 @@ export default function LandingDotField({
   baseRadius = 0.9,
   maxRadius = 3,
   autoRoam = false,
+  ignorePointer = false,
 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -99,8 +104,10 @@ export default function LandingDotField({
     // Idle threshold before autoRoam reclaims the cursor.
     const POINTER_IDLE_MS = 1200;
 
-    target?.addEventListener('pointermove', onMove as EventListener);
-    target?.addEventListener('pointerleave', onLeave as EventListener);
+    if (!ignorePointer) {
+      target?.addEventListener('pointermove', onMove as EventListener);
+      target?.addEventListener('pointerleave', onLeave as EventListener);
+    }
 
     const reduce =
       typeof window !== 'undefined' &&
@@ -130,10 +137,10 @@ export default function LandingDotField({
       const w = c.clientWidth;
       const h = c.clientHeight;
       ctx.clearRect(0, 0, w, h);
-      const cols = Math.ceil(w / spacing) + 1;
-      const rows = Math.ceil(h / spacing) + 1;
-      const offX = spacing / 2;
-      const offY = spacing / 2;
+      const cols = Math.floor(w / spacing);
+      const rows = Math.floor(h / spacing);
+      const offX = (w - (cols - 1) * spacing) / 2;
+      const offY = (h - (rows - 1) * spacing) / 2;
       ctx.fillStyle = `rgba(${cachedSig}, ${cachedBaseA})`;
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
@@ -164,8 +171,11 @@ export default function LandingDotField({
         const elapsed = (tNow - startedAt) / 1000;
         const cx = w * 0.5;
         const cy = h * 0.55;
-        const rx = w * 0.42;
-        const ry = h * 0.32;
+        // Keep the virtual cursor well clear of the canvas edges so the
+        // lensing hotspot never grazes the viewport — about 60% of the
+        // half-width is the sweet spot: still feels roomy, never escapes.
+        const rx = w * 0.28;
+        const ry = h * 0.22;
         mx = cx + Math.sin(elapsed * 0.32) * rx + Math.sin(elapsed * 0.17) * (rx * 0.18);
         my = cy + Math.cos(elapsed * 0.41) * ry + Math.cos(elapsed * 0.11) * (ry * 0.22);
       }
@@ -191,10 +201,10 @@ export default function LandingDotField({
       const h = c.clientHeight;
       ctx.clearRect(0, 0, w, h);
 
-      const cols = Math.ceil(w / spacing) + 1;
-      const rows = Math.ceil(h / spacing) + 1;
-      const offX = spacing / 2;
-      const offY = spacing / 2;
+      const cols = Math.floor(w / spacing);
+      const rows = Math.floor(h / spacing);
+      const offX = (w - (cols - 1) * spacing) / 2;
+      const offY = (h - (rows - 1) * spacing) / 2;
 
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
@@ -211,10 +221,14 @@ export default function LandingDotField({
           const safeD = d || 0.0001;
           const ux = dx / safeD;
           const uy = dy / safeD;
-          const px = x + ux * PUSH_MAX * t;
-          const py = y + uy * PUSH_MAX * t;
           const r = BASE_R + (MAX_R - BASE_R) * t;
           const a = BASE_A + (MAX_A - BASE_A) * t;
+          const px = x + ux * PUSH_MAX * t;
+          const py = y + uy * PUSH_MAX * t;
+          // Skip any dot whose pushed position would land outside the
+          // canvas. Clamping created edge-clusters; skipping just lets
+          // those dots disappear cleanly.
+          if (px < r || px > w - r || py < r || py > h - r) continue;
           ctx.fillStyle = `rgba(${sig}, ${a})`;
           ctx.beginPath();
           ctx.arc(px, py, r, 0, Math.PI * 2);
@@ -253,8 +267,10 @@ export default function LandingDotField({
       onMove(e);
       start();
     };
-    target?.removeEventListener('pointermove', onMove as EventListener);
-    target?.addEventListener('pointermove', wrappedMove);
+    if (!ignorePointer) {
+      target?.removeEventListener('pointermove', onMove as EventListener);
+      target?.addEventListener('pointermove', wrappedMove);
+    }
 
     // Pause whenever the tab is hidden. setInterval/rAF still fire in some
     // browsers (throttled), but we don't want to be in the work-doing path.
@@ -294,10 +310,12 @@ export default function LandingDotField({
       io?.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('resize', resize);
-      target?.removeEventListener('pointermove', wrappedMove);
-      target?.removeEventListener('pointerleave', onLeave as EventListener);
+      if (!ignorePointer) {
+        target?.removeEventListener('pointermove', wrappedMove);
+        target?.removeEventListener('pointerleave', onLeave as EventListener);
+      }
     };
-  }, [mode, spacing, reach, baseAlpha, baseRadius, maxRadius, autoRoam]);
+  }, [mode, spacing, reach, baseAlpha, baseRadius, maxRadius, autoRoam, ignorePointer]);
 
   return <canvas ref={ref} className="v2-fc-canvas" aria-hidden="true" />;
 }
