@@ -20,6 +20,12 @@ type Props = {
   onTaskDragStart?: (e: DragEvent<HTMLDivElement>, card: CalendarCard) => void;
   onTaskDragEnd?: () => void;
   onTaskResize?: (input: { taskId: string; scheduledUntilDate: string | null }) => void;
+  // Phase 3.5 (Plan 03.5-01): switch the drag-and-drop mechanism per RESEARCH § Pitfall 2.
+  //   'native'  (default) keeps the current /calendar HTML5 wiring untouched.
+  //   'dnd-kit' suppresses HTML5 listeners + draggable attribute so an outer
+  //             <DndContext> can attach refs without double-firing.
+  //   'none'    disables drag entirely.
+  dragMode?: 'native' | 'dnd-kit' | 'none';
 };
 
 const VISIBLE_CAP = 3;
@@ -68,7 +74,12 @@ export function SwimLane({
   onTaskDragStart,
   onTaskDragEnd,
   onTaskResize,
+  dragMode = 'native',
 }: Props) {
+  // Phase 3.5: gate HTML5 wiring so it only fires in 'native' mode.
+  // RESEARCH § Pitfall 2 — HTML5 + dnd-kit cannot both be active or drops fire twice.
+  const useNativeDrag = dragMode === 'native';
+  const chipDraggable = canReschedule && useNativeDrag;
   const [expandedCells, setExpandedCells] = useState<Set<number>>(new Set());
   const [dropDayIndex, setDropDayIndex] = useState<number | null>(null);
   const [resize, setResize] = useState<{
@@ -249,22 +260,22 @@ export function SwimLane({
               data-day-index={di}
               data-teammate-id={teammate.id}
               className={`cal-day-cell${hidden ? ' is-hidden' : ''}${isOdd ? ' is-odd' : ''}${dropDayIndex === di ? ' is-drop-hover' : ''}${inResizeRange ? ' is-resize-preview' : ''}`}
-              onDragOver={(e) => {
+              onDragOver={useNativeDrag ? (e) => {
                 if (!canDrop || hidden) return;
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
                 setDropDayIndex(di);
-              }}
-              onDragLeave={() => {
+              } : undefined}
+              onDragLeave={useNativeDrag ? () => {
                 if (dropDayIndex === di) setDropDayIndex(null);
-              }}
-              onDrop={(e) => {
+              } : undefined}
+              onDrop={useNativeDrag ? (e) => {
                 if (!canDrop || hidden || !draggingTaskId || !onTaskDrop) return;
                 e.preventDefault();
                 const taskId = e.dataTransfer.getData('application/x-recgon-task') || draggingTaskId;
                 setDropDayIndex(null);
                 onTaskDrop({ taskId, teammateId: teammate.id, dayDate: date });
-              }}
+              } : undefined}
             >
               {showLoadBar && (
                 <div className={`cal-day-load${overloaded ? ' is-overloaded' : ''}`}>
@@ -291,7 +302,7 @@ export function SwimLane({
                       card={card}
                       teammate={teammate}
                       onClick={onCardClick}
-                      draggable={canReschedule}
+                      draggable={chipDraggable}
                       onDragStart={onTaskDragStart}
                       onDragEnd={onTaskDragEnd}
                       resizable={canReschedule && Boolean(onTaskResize)}
@@ -326,7 +337,7 @@ export function SwimLane({
                     card={card}
                     teammate={teammate}
                     onClick={onCardClick}
-                    draggable={canReschedule}
+                    draggable={chipDraggable}
                     onDragStart={onTaskDragStart}
                     onDragEnd={onTaskDragEnd}
                     resizable={canReschedule && Boolean(onTaskResize)}
