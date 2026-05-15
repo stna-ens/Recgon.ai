@@ -1,21 +1,24 @@
 // dnd-kit STABLE v6 — import from @dnd-kit/core only. Do NOT import from @dnd-kit/react (v2.0-pre).
 // Multi-owner concurrent drag = last-write-wins per CONTEXT D-deferred. Document only; no defensive code in v1.
 //
-// Phase 3.5 / Plan 03.5-01 — owner-only workload board shell.
+// Phase 3.5 / Plan 03.5-02 — owner-only workload board: dock + grid + chip detail.
 //
-// Scope of this plan (Wave 1):
-//   - 14-day grid scaffold (header row + one empty SwimLane per active teammate)
-//   - DndContext mounted at the grid root with PointerSensor + KeyboardSensor
-//   - SwimLane wired with dragMode="dnd-kit" (Plan 01 Task 1) so the existing
-//     HTML5 wiring is suppressed and an outer dnd-kit DragOverlay can take over.
+// What this board renders (D-05/07/10/11/12/13):
+//   - TriageDock above the grid: collapsed pill when count=0, expanded
+//     glass-card with row-per-task when count>0. Deferred tasks appear here
+//     AND in the calendar grid (D-13 "appears in BOTH").
+//   - 14-day grid (`OwnerWorkloadGrid`): one row per active teammate,
+//     CapacityBars in the lane label (Wk1 + Wk2), chips in day cells.
+//   - Chip click → TaskDetailPanel (existing component). Detail fetch goes
+//     through `/api/recgon/tasks/[id]` which applies the privacy filter on
+//     whyYouSentence — the bulk dock/board fetches NEVER carry it.
 //
 // Out of scope (lands in later plans):
-//   - Chips (cards={[]} here); chip data + per-week capacity bar land in 03.5-02.
-//   - Triage dock placeholder only; the real TriageDock component lands in 03.5-02.
-//   - onDragEnd is a no-op; drag wiring (reassign + reschedule) lands in 03.5-03.
-//   - View toggle (workload / table) lands in 03.5-04.
+//   - Drag-to-reassign / drag-to-reschedule wiring (03.5-03).
+//   - Triage Dock assign-manually picker + dismiss action (03.5-03).
+//   - View toggle (workload / table — 03.5-04).
 //
-// Companion docs: 03.5-UI-SPEC §4, 03.5-RESEARCH § Pattern 1, 03.5-PATTERNS lines 51-94.
+// Companion docs: 03.5-UI-SPEC §4/§6, 03.5-CONTEXT D-05/07/10/11/12/13/14.
 
 'use client';
 
@@ -29,14 +32,19 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { SwimLane } from '@/components/v2/calendar/SwimLane';
-import { WeekHeader } from '@/components/v2/calendar/WeekHeader';
-import { getWeekRange, weekDays } from '@/components/v2/calendar/calendarUtils';
-import type { TeammateWithStats } from '@/lib/recgon/types';
+import { useTeam } from '@/components/TeamProvider';
+import { getWeekRange, weekDays, localDateKey } from '@/components/v2/calendar/calendarUtils';
+import { TaskDetailPanel } from '@/components/v2/calendar/TaskDetailPanel';
+import type { AgentTask, TeammateWithStats } from '@/lib/recgon/types';
+import { TriageDock } from '@/components/v2/projects/owner/TriageDock';
+import { OwnerWorkloadGrid } from '@/components/v2/projects/owner/OwnerWorkloadGrid';
 
 type Props = {
   teamId: string;
 };
+
+type DockData = { triaged: AgentTask[]; deferred: AgentTask[] };
+type BoardData = { teammates: TeammateWithStats[]; tasks: AgentTask[] };
 
 const VISIBLE_DAYS = 14;
 
@@ -58,38 +66,62 @@ function formatMonthDay(d: Date): string {
 }
 
 export function OwnerWorkloadBoard({ teamId }: Props) {
+  const { currentTeam } = useTeam();
+  const isOwner = currentTeam?.role === 'owner';
+
   const [anchor, setAnchor] = useState<Date>(() => new Date());
-  const [teammates, setTeammates] = useState<TeammateWithStats[]>([]);
+  const [dock, setDock] = useState<DockData | null>(null);
+  const [board, setBoard] = useState<BoardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<AgentTask | null>(null);
 
   const dayDates = useMemo(() => build14DayWindow(anchor), [anchor]);
   const rangeStart = dayDates[0];
   const rangeEnd = dayDates[dayDates.length - 1];
+  const startISO = localDateKey(rangeStart);
+  const endISO = localDateKey(rangeEnd);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor),
   );
 
+  // Fetch dock + board in parallel. Re-runs on teamId or window change.
   useEffect(() => {
     if (!teamId) return;
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/teams/${teamId}/teammates`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : { teammates: [] }))
-      .then((data: { teammates?: TeammateWithStats[] }) => {
+    setErrorMessage(null);
+
+    const dockReq = fetch(`/api/recgon/owner/dock?teamId=${encodeURIComponent(teamId)}`, { cache: 'no-store' })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`dock fetch failed (${r.status})`);
+        return (await r.json()) as DockData;
+      });
+
+    const boardReq = fetch(
+      `/api/recgon/owner/board?teamId=${encodeURIComponent(teamId)}&startDate=${encodeURIComponent(startISO)}&endDate=${encodeURIComponent(endISO)}`,
+      { cache: 'no-store' },
+    ).then(async (r) => {
+      if (!r.ok) throw new Error(`board fetch failed (${r.status})`);
+      return (await r.json()) as BoardData;
+    });
+
+    Promise.all([dockReq, boardReq])
+      .then(([dockData, boardData]) => {
         if (cancelled) return;
-        const list = (data.teammates ?? []).filter((t) => t.status === 'active');
-        setTeammates(list);
+        setDock(dockData);
+        setBoard(boardData);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return;
-        setTeammates([]);
+        setErrorMessage(err instanceof Error ? err.message : 'couldn’t reach recgon');
         setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [teamId]);
+  }, [teamId, startISO, endISO]);
 
   const handlePrev = useCallback(() => {
     setAnchor((prev) => {
@@ -111,8 +143,35 @@ export function OwnerWorkloadBoard({ teamId }: Props) {
 
   // onDragEnd wired in 03.5-03.
   const handleDragEnd = useCallback((_event: DragEndEvent) => {
-    // No-op for Wave 1. Reassign + reschedule lands in 03.5-03.
+    // No-op for Wave 2. Reassign + reschedule lands in 03.5-03.
   }, []);
+
+  // Chip click: open TaskDetailPanel. We pre-fetch the detail row via the
+  // existing privacy-filtered route so whyYouSentence (when authorized) is
+  // populated before the panel mounts.
+  const handleChipClick = useCallback(async (taskId: string) => {
+    try {
+      const res = await fetch(`/api/recgon/tasks/${encodeURIComponent(taskId)}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const body = await res.json() as { task: AgentTask };
+      setSelectedTask(body.task);
+    } catch {
+      // Swallow — chip click failure is non-fatal; user can click again.
+    }
+  }, []);
+
+  const closePanel = useCallback(() => setSelectedTask(null), []);
+
+  // D-13: deferred tasks appear in BOTH the dock AND the calendar grid. We
+  // therefore concat the dock's deferred bucket with the board's assigned
+  // tasks before passing to the grid.
+  const gridTasks = useMemo<AgentTask[]>(() => {
+    const assigned = board?.tasks ?? [];
+    const deferred = dock?.deferred ?? [];
+    return [...assigned, ...deferred];
+  }, [board, dock]);
+
+  const teammates = board?.teammates ?? [];
 
   const headlineYear = rangeStart.getFullYear() === rangeEnd.getFullYear()
     ? String(rangeStart.getFullYear())
@@ -137,8 +196,18 @@ export function OwnerWorkloadBoard({ teamId }: Props) {
         </div>
       </header>
 
-      {/* TriageDock lands in 03.5-02. */}
-      <aside className="owner-board-dock-placeholder" aria-label="Triage dock placeholder" data-testid="owner-board-dock-placeholder" />
+      <TriageDock
+        triaged={dock?.triaged ?? []}
+        deferred={dock?.deferred ?? []}
+        onAssignClick={(_id) => { /* picker lands in 03.5-03 */ }}
+        onDismissClick={(_id) => { /* wired in 03.5-03 */ }}
+      />
+
+      {errorMessage && (
+        <div className="owner-board-error" role="alert">
+          couldn&rsquo;t reach recgon — {errorMessage}
+        </div>
+      )}
 
       <DndContext
         sensors={sensors}
@@ -146,44 +215,36 @@ export function OwnerWorkloadBoard({ teamId }: Props) {
         onDragEnd={handleDragEnd}
       >
         <div className="owner-board-outer">
-          <div className="owner-board-scroll">
-            <div
-              className="owner-board-grid"
-              style={{
-                gridTemplateColumns: `var(--cal-label-width, 180px) repeat(${VISIBLE_DAYS}, minmax(var(--cal-day-min-width, 110px), 1fr))`,
-              }}
-              data-testid="owner-board-grid"
-            >
-              <WeekHeader dayDates={dayDates} activeDayIndex={null} rowLabel="TEAMMATE" />
-
-              {loading ? (
-                <div className="owner-board-loading" style={{ gridColumn: `1 / ${VISIBLE_DAYS + 2}` }} aria-busy="true">
-                  loading teammates…
-                </div>
-              ) : teammates.length === 0 ? (
-                <div className="owner-board-empty" style={{ gridColumn: `1 / ${VISIBLE_DAYS + 2}` }}>
-                  No active teammates in this team yet.
-                </div>
-              ) : (
-                teammates.map((tm, idx) => (
-                  <SwimLane
-                    key={tm.id}
-                    teammate={tm}
-                    cards={[]}
-                    dayDates={dayDates}
-                    activeDayIndex={null}
-                    onCardClick={() => {}}
-                    laneIndex={idx}
-                    canReschedule={false}
-                    draggingTaskId={null}
-                    dragMode="dnd-kit"
-                  />
-                ))
-              )}
-            </div>
+          <div className="owner-board-scroll" data-testid="owner-board-grid">
+            {/* Always render the grid so the 14 day-headers + empty-row chrome
+                are present even before the teammate fetch settles (Wave 1
+                shellRender locks .cal-day-header count and the testid above).
+                The grid tolerates an empty teammates array (renders header
+                row only). */}
+            <OwnerWorkloadGrid
+              teammates={teammates}
+              tasks={gridTasks}
+              dayDates={dayDates}
+              onChipClick={handleChipClick}
+            />
+            {!loading && teammates.length === 0 && (
+              <div className="owner-board-empty">No active teammates in this team yet.</div>
+            )}
+            {loading && (
+              <div className="owner-board-loading" aria-busy="true">loading workload…</div>
+            )}
           </div>
         </div>
       </DndContext>
+
+      <TaskDetailPanel
+        task={selectedTask}
+        isOpen={selectedTask !== null}
+        currentTeammateId={null}
+        isOwner={isOwner}
+        onClose={closePanel}
+        onRefresh={closePanel}
+      />
 
       <style>{css}</style>
     </div>
@@ -196,7 +257,7 @@ const css = `
   flex-direction: column;
   gap: 18px;
   animation: ownerBoardFade 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --cal-label-width: 180px;
+  --cal-label-width: 220px;
   --cal-day-min-width: 110px;
   padding-bottom: 32px;
   max-width: 1440px;
@@ -212,7 +273,7 @@ const css = `
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 22px 14px;
+  padding: 18px 22px 4px;
   flex-wrap: wrap;
 }
 .owner-board-nav-left {
@@ -278,12 +339,15 @@ const css = `
   border-color: var(--rule-strong);
 }
 
-.owner-board-dock-placeholder {
-  /* Placeholder slot — real TriageDock arrives in 03.5-02. Zero height + no
-     visible chrome so the grid floats up against the page header. */
-  height: 0;
-  margin: 0;
-  padding: 0;
+.owner-board-error {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--danger, #ff6b6b);
+  padding: 10px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: rgba(255, 80, 80, 0.06);
 }
 
 .owner-board-outer {
@@ -313,10 +377,6 @@ const css = `
 }
 .owner-board-scroll:hover::-webkit-scrollbar-thumb {
   background: rgba(var(--signature-rgb), 0.2);
-}
-.owner-board-grid {
-  display: grid;
-  min-width: 100%;
 }
 .owner-board-loading,
 .owner-board-empty {
