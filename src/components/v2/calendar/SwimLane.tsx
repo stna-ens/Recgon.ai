@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { EventChip } from './EventChip';
 import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
 import type { CalendarCard } from './calendarTypes';
@@ -26,6 +26,11 @@ type Props = {
   //             <DndContext> can attach refs without double-firing.
   //   'none'    disables drag entirely.
   dragMode?: 'native' | 'dnd-kit' | 'none';
+  // Phase 3.5 (Plan 03.5-02): optional node rendered INSIDE the lane-label
+  // cell, BELOW the avatar/name row. The owner workload board uses this slot
+  // for per-week capacity bars; the existing /calendar callers omit the prop
+  // and get the prior layout byte-for-byte (default undefined).
+  laneLabelExtra?: ReactNode;
 };
 
 const VISIBLE_CAP = 3;
@@ -75,6 +80,7 @@ export function SwimLane({
   onTaskDragEnd,
   onTaskResize,
   dragMode = 'native',
+  laneLabelExtra,
 }: Props) {
   // Phase 3.5: gate HTML5 wiring so it only fires in 'native' mode.
   // RESEARCH § Pitfall 2 — HTML5 + dnd-kit cannot both be active or drops fire twice.
@@ -231,6 +237,9 @@ export function SwimLane({
             {teammate.title && <span className="cal-lane-title">{teammate.title}</span>}
           </div>
         </div>
+        {laneLabelExtra ? (
+          <div className="cal-lane-label-extra">{laneLabelExtra}</div>
+        ) : null}
       </div>
 
       <div className="cal-lane-grid">
@@ -377,12 +386,23 @@ const css = `
   box-sizing: border-box;
 }
 .cal-lane-label.is-odd { background: linear-gradient(0deg, rgba(var(--signature-rgb), 0.018), rgba(var(--signature-rgb), 0.018)), var(--bg-card); }
+.cal-lane-label {
+  flex-direction: column;
+  align-items: stretch;
+}
 .cal-lane-label-inner {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
   box-sizing: border-box;
+  min-width: 0;
+}
+.cal-lane-label-extra {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
 }
 .cal-lane-name-wrap { display: flex; flex-direction: column; min-width: 0; }
