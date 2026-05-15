@@ -70,8 +70,10 @@ export async function GET(request: Request): Promise<Response> {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
-  // 4) Fetch + defensive re-strip.
-  const { triaged, deferred } = await listOwnerDockTasks(teamId);
+  // 4) Fetch + defensive re-strip. Pass viewer user id so per-user
+  //    `owner_dock_dismissals` rows filter the deferred bucket (Plan 03.5-03).
+  //    Triaged rows are NEVER filtered — they always need owner attention.
+  const { triaged, deferred } = await listOwnerDockTasks(teamId, session.user.id);
   return NextResponse.json({
     triaged: scrubReasoning(triaged),
     deferred: scrubReasoning(deferred),

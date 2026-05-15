@@ -107,7 +107,9 @@ describe('GET /api/recgon/owner/dock — success', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({ triaged: [], deferred: [] });
-    expect(mockListOwnerDockTasks).toHaveBeenCalledWith('team-1');
+    // Plan 03.5-03: dock route now passes the viewer's user id so the
+    // storage helper can filter per-user dismissed deferred rows (D-17).
+    expect(mockListOwnerDockTasks).toHaveBeenCalledWith('team-1', 'user-owner');
   });
 
   it('returns triaged + deferred separately and excludes normal assigned tasks', async () => {

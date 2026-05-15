@@ -704,6 +704,7 @@ function stripAssignmentReasoning(task: AgentTask): AgentTask {
  */
 export async function listOwnerDockTasks(
   teamId: string,
+  viewerUserId?: string,
 ): Promise<{ triaged: AgentTask[]; deferred: AgentTask[] }> {
   const today = new Date().toISOString().slice(0, 10);
 
@@ -738,10 +739,66 @@ export async function listOwnerDockTasks(
   const triaged = (triagedRes.data ?? [])
     .filter((r) => isAssignableTaskRow(r as TaskRow))
     .map((r) => stripAssignmentReasoning(mapTask(r as TaskRow)));
-  const deferred = (deferredRes.data ?? [])
+  let deferred = (deferredRes.data ?? [])
     .filter((r) => isAssignableTaskRow(r as TaskRow))
     .map((r) => stripAssignmentReasoning(mapTask(r as TaskRow)));
+
+  // Phase 3.5 / Plan 03.5-03 — per-user dismissal filter (D-17).
+  // Triaged rows are NEVER filtered: they represent dispatcher refusals
+  // that need owner action regardless of dismissal preference. Only the
+  // deferred bucket can be hidden per-viewer.
+  if (viewerUserId && deferred.length > 0) {
+    const dismissedIds = await listDismissedTaskIds(viewerUserId, teamId);
+    if (dismissedIds.size > 0) {
+      deferred = deferred.filter((t) => !dismissedIds.has(t.id));
+    }
+  }
+
   return { triaged, deferred };
+}
+
+// ── Phase 3.5 / Plan 03.5-03 — Owner dock dismissals ───────────────────────
+
+/**
+ * Mark a deferred dock row as dismissed for the given viewer. Idempotent on
+ * (user_id, task_id) PK — clicking dismiss twice is a no-op.
+ *
+ * Triaged-rows-are-not-dismissable is enforced at the route layer, not here
+ * (the storage helper is a thin write; the route owns the policy guard so
+ * future callers can't accidentally bypass it).
+ */
+export async function dismissDockItem(userId: string, taskId: string): Promise<void> {
+  const { error } = await supabase
+    .from('owner_dock_dismissals')
+    .upsert(
+      {
+        user_id: userId,
+        task_id: taskId,
+        dismissed_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,task_id', ignoreDuplicates: true },
+    );
+  if (error) throw new Error(`dismissDockItem failed: ${error.message}`);
+}
+
+/**
+ * Return the set of task ids the given user has dismissed from the dock,
+ * scoped to a single team (so a stale dismissal in another team doesn't
+ * silently affect this view). The team scope is enforced via inner join on
+ * agent_tasks; rows whose task no longer matches the team_id filter are not
+ * returned.
+ */
+export async function listDismissedTaskIds(
+  userId: string,
+  teamId: string,
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('owner_dock_dismissals')
+    .select('task_id, agent_tasks!inner(id, team_id)')
+    .eq('user_id', userId)
+    .eq('agent_tasks.team_id', teamId);
+  if (error) throw new Error(`listDismissedTaskIds failed: ${error.message}`);
+  return new Set((data ?? []).map((r) => r.task_id as string));
 }
 
 /**
