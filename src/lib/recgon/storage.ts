@@ -665,6 +665,118 @@ export async function clearTriageNote(taskId: string): Promise<void> {
   if (error) throw new Error(`clearTriageNote failed: ${error.message}`);
 }
 
+// ── Phase 3.5 / Plan 03.5-02 — Owner board bulk-fetch helpers ──────────────
+//
+// Privacy boundary: BOTH helpers below MUST strip `assignmentReasoning` from
+// every row before returning. `assignment_reasoning` JSONB is the privacy
+// boundary set by T-03-03-03 — its only authorized exposure is the rendered
+// `whyYouSentence` string via the per-task `/api/recgon/tasks/[id]` route.
+// Bulk owner-board paths never carry it. (Defense in depth — even though the
+// API route ALSO strips, doing it here means future callers of these helpers
+// can't accidentally relax the contract.)
+
+/**
+ * Strip `assignmentReasoning` from an AgentTask. Returns an AgentTask shape
+ * with the field absent (not null) — `'assignmentReasoning' in result === false`.
+ * Used by the bulk owner-board fetch boundary so the field is never returned.
+ */
+function stripAssignmentReasoning(task: AgentTask): AgentTask {
+  // Destructure and discard. The unused var name documents the intent.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { assignmentReasoning, ...rest } = task;
+  return rest as AgentTask;
+}
+
+/**
+ * Return the two task buckets that populate the owner-board Triage Dock:
+ *
+ *   - `triaged`:   status='unassigned' AND triage_note IS NOT NULL
+ *                  (dispatcher refused to assign — no_clear_fit /
+ *                  no_grounded_reason / no_capacity_*).
+ *   - `deferred`:  status='unassigned' AND triage_note IS NULL AND
+ *                  scheduled_date > CURRENT_DATE (dispatcher pushed the
+ *                  schedule forward awaiting capacity).
+ *
+ * SQL queries per .planning/phases/03.5-owner-task-board/03.5-RESEARCH.md
+ * § Triage Dock Data Query. Insight-only source_ref tasks are filtered out
+ * (mirrors `listTasks`). Privacy: assignment_reasoning is stripped at the
+ * boundary regardless of what the DB row holds (T-03-03-03 hedge).
+ */
+export async function listOwnerDockTasks(
+  teamId: string,
+): Promise<{ triaged: AgentTask[]; deferred: AgentTask[] }> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Triaged: unassigned + triage_note set. No scheduled_date filter — a
+  // triaged task may or may not have a scheduledDate; both belong in the dock.
+  const triagedQ = supabase
+    .from('agent_tasks')
+    .select('*')
+    .eq('team_id', teamId)
+    .eq('status', 'unassigned')
+    .not('triage_note', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  // Deferred: unassigned, triage_note IS NULL, scheduled_date strictly in the
+  // future. Past-dated unassigned tasks belong in triage scope (they should
+  // re-dispatch), not dock-deferred.
+  const deferredQ = supabase
+    .from('agent_tasks')
+    .select('*')
+    .eq('team_id', teamId)
+    .eq('status', 'unassigned')
+    .is('triage_note', null)
+    .gt('scheduled_date', today)
+    .order('scheduled_date', { ascending: true })
+    .limit(500);
+
+  const [triagedRes, deferredRes] = await Promise.all([triagedQ, deferredQ]);
+  if (triagedRes.error) throw new Error(`listOwnerDockTasks triaged: ${triagedRes.error.message}`);
+  if (deferredRes.error) throw new Error(`listOwnerDockTasks deferred: ${deferredRes.error.message}`);
+
+  const triaged = (triagedRes.data ?? [])
+    .filter((r) => isAssignableTaskRow(r as TaskRow))
+    .map((r) => stripAssignmentReasoning(mapTask(r as TaskRow)));
+  const deferred = (deferredRes.data ?? [])
+    .filter((r) => isAssignableTaskRow(r as TaskRow))
+    .map((r) => stripAssignmentReasoning(mapTask(r as TaskRow)));
+  return { triaged, deferred };
+}
+
+/**
+ * Return all tasks for a team whose `scheduled_date` falls within the given
+ * inclusive ISO date window AND whose status is one of the four "active"
+ * states (assigned / accepted / in_progress / awaiting_review).
+ *
+ * Used by the owner-board grid to populate the 14-day calendar chips. The
+ * deferred bucket from `listOwnerDockTasks` is rendered alongside (D-13:
+ * deferred tasks appear in BOTH dock AND calendar) — this helper does NOT
+ * include deferred tasks because they're `status='unassigned'`.
+ *
+ * Privacy: `assignment_reasoning` is stripped at the boundary (T-03-03-03 hedge).
+ */
+export async function listAssignedTasksInWindow(
+  teamId: string,
+  startDateISO: string,
+  endDateISO: string,
+): Promise<AgentTask[]> {
+  const ACTIVE_STATUSES: TaskStatus[] = ['assigned', 'accepted', 'in_progress', 'awaiting_review'];
+  const { data, error } = await supabase
+    .from('agent_tasks')
+    .select('*')
+    .eq('team_id', teamId)
+    .in('status', ACTIVE_STATUSES)
+    .gte('scheduled_date', startDateISO)
+    .lte('scheduled_date', endDateISO)
+    .order('scheduled_date', { ascending: true })
+    .limit(1000);
+  if (error) throw new Error(`listAssignedTasksInWindow failed: ${error.message}`);
+  return (data ?? [])
+    .filter((r) => isAssignableTaskRow(r as TaskRow))
+    .map((r) => stripAssignmentReasoning(mapTask(r as TaskRow)));
+}
+
 export async function requestTaskReschedule(
   taskId: string,
   request: {
