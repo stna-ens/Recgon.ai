@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 3.5 (Owner Task Board) COMPLETE — 4 plans, 16 atomic commits, 401/401 tests passing, build green, verifier verdict COMPLETE (all 5 SUCCESS criteria met). User must apply supabase/migrations/20260517_owner_dock_dismissals.sql before production cron picks up the new table.
-last_updated: "2026-05-16T02:30:00.000Z"
-last_activity: 2026-05-16
+stopped_at: Plan 03-06 complete (Gap 1 + Gap 3 closure: dispatcher refusal + deferral 4-outcome decision tree wired); Plan 03-07 (TASKS-page triage view) is the last remaining Phase 3 plan. User must apply 20260516_triage_note_column.sql migration before production cron picks up the new column.
+last_updated: "2026-05-15T22:30:00.000Z"
+last_activity: 2026-05-15
 progress:
-  total_phases: 7
-  completed_phases: 3
-  total_plans: 20
-  completed_plans: 19
-  percent: 95
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 16
+  completed_plans: 15
+  percent: 94
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** The right task gets to the right teammate at the right time, with reasoning the teammate can trust.
-**Current focus:** Phase 3.5 — Owner Task Board COMPLETE; Phase 4 (personalized task framing) next
+**Current focus:** Phase 03 — llm-judgment-overlay
 
 ## Current Position
 
-Phase: 3.5 complete
-Plan: 4/4 complete
-Status: Owner Task Board MVP shipped — /projects role router + workload swim-lane grid (14-day, lane-per-teammate) + per-week capacity bars (green/yellow/signature thresholds) + triage dock + deferred-task surface + manual-assign + reschedule + per-user dismiss + dnd-kit drag-drop (chip→teammate, chip→day, dock→cell) + optimistic UI w/ rollback + ConfirmDialog for in-flight chip moves + sortable Table view toggle + /tasks personal header strip. Privacy filter defense-in-depth verified at storage mapper + route scrub layers.
-Last activity: 2026-05-16
+Phase: 3
+Plan: 06 complete; Plan 07 pending
+Status: Phase 3 gap-closure 2 of 2 wired (Gap 1 zero-signal refusal + Gap 3 deferral rule); Plan 03-07 TASKS-page triage view is the final Phase 3 plan
+Last activity: 2026-05-15
 
 Progress: [██████████] 100%
 
@@ -95,7 +95,6 @@ Recent decisions affecting current work:
 - Plan 03-04: bias regression test (5 fixtures × 30 trials = 150 calls) in `src/__tests__/judge.bias-regression.test.ts` — two modes: stubbed (default; round-robin pick cycling guarantees 10/10/10 per fixture; verifies wiring) and real-LLM (`JUDGE_BIAS_REAL_LLM=1`; uses chatViaProviders; nightly only, ~$0.30/run, ~10 min). Three assertions: end-to-end anonymization (zero real names in any of 150 prompt bodies), top-pick-rate band ≤15pp across fixtures, no fixture >50% top-rate (real-LLM noise floor). PRONOUN_DENY extended with elle/il/sie/er (French/Spanish/German) — covers bias-fixture vocab scope; JSDoc warns against relaxing \\b boundary. 4 new validator edge-case tests added (empty sentence / unicode pronoun / capitalized Candidate_2 / numeric-word over-count). Nightly GitHub Actions workflow `.github/workflows/judge-bias-nightly.yml` (cron 0 4 * * * UTC + workflow_dispatch + concurrency:cancel-in-progress:false + secrets-only API keys + issue-on-failure with comment-dedup) — NOT a required PR check. CLAUDE.md documents JUDGE_BIAS_REAL_LLM env var. ROADMAP Phase 3 threshold-lock addendum: CLOSE_CALL_THRESHOLD=0.20 (planner-locked) supersedes 0.15 (cost-driven origin preserved). All 12 requirements (JUDGE-01..10 + QUAL-01 + QUAL-03) traced to delivering tasks. All 5 ROADMAP success criteria met. Phase 3 code-complete; pending user Task 4 real-LLM run for baseline + Plan 03 Task 5 manual UAT before formal ship. Initial stub used hash-mod-3 → drifted 16.7pp in stubbed mode (sample-size noise at N=30); replaced with round-robin → 0pp by construction.
 - Plan 03-05: LLM-grounded Why-you. Math-only template path DELETED entirely; renderer rewritten as async thin reader over pre-rendered envelope. WHY_YOU_GROUNDED prompt + WhyYouGroundedSchema + generateWhyYouSentence in `whyYouLLM.ts` (adapter-injected, post-hoc grounding validator, returns sentence: null when ungrounded → Plan 03-06's refusal trigger). Bias regression env-gated (WHY_YOU_BIAS_REAL_LLM=1) mirrors JUDGE pattern. 268/268 tests green.
 - Plan 03-06: Dispatcher 4-outcome decision tree (refuse / defer / triage / assign) — closes Gap 1 (zero-signal refusal, VERIFICATION phase_3_1_gaps#1) AND Gap 3 (user rule 2026-05-15: never assign by availability alone). Constants SIGNAL_FLOOR=0.15 / DEFER_FLOOR=0.3 / DEFER_LOOKAHEAD_WEEKS=4 / HIGH_PRIORITY_THRESHOLD=3 (boundary-locked by tests). hasMinimumFit + findEarliestCapacityWindow pure helpers in match.ts. Storage helpers markTaskForTriage / deferTaskScheduledDate / clearTriageNote. New triage_note column (additive nullable; partial index). TriageNote union (4 values: no_clear_fit / no_grounded_reason / no_capacity_in_window / no_capacity_high_priority). DispatchResult.triaged + DispatchResult.deferred counters. routeTaskOrTriage centralised in dispatcher shared by runDispatch + dispatchTask. whyYouSentence===null couples to triage no_grounded_reason. Owner-fallback path preserved as structurally separate safety net. 298/298 tests green; tsc clean; build succeeds. User must apply 20260516_triage_note_column.sql migration before production cron uses the new column. NOTE: findEarliestCapacityWindow default projection is conservative (reads availabilityNow as future-week value); a follow-up plan should wire loadHoursByDateFor* for real calendar lookahead.
-- Phase 3.5 (Owner Task Board) complete in 4 vertical-slice plans (16 atomic commits). Plan 03.5-01: role-router /projects → owner sees new OwnerWorkloadBoard (dnd-kit DndContext + Pointer/Keyboard sensors + 14-day empty grid scaffold + lane-per-teammate), non-owner still sees existing tile list (byte-identical extraction in NonOwnerProjectsView); SwimLane gained additive dragMode prop (default 'native' = byte-identical for existing callers); @dnd-kit/core@^6.3.1 + @dnd-kit/utilities@^3.2.2 installed. Plan 03.5-02: read-only board (GET /api/recgon/owner/dock returning {triaged, deferred} with assignment_reasoning STRIPPED at row mapper + route layer + privacy contract test; new owner-only GET /api/recgon/owner/board for all-projects assigned-window because /api/teams/[id]/calendar is project-scoped — deviation documented; TriageDock with Radix Collapsible (40px "TRIAGE · CLEAR" pill collapsed, glass-card expanded), TriageDockRow with placeholder action buttons, CapacityBar with green<60% / yellow 60-85% / signature pink >85% + ARIA progressbar, OwnerWorkloadGrid wrapping N SwimLanes with dragMode='dnd-kit'). Plan 03.5-03: inline actions + drag-drop (supabase/migrations/20260517_owner_dock_dismissals.sql with per-user dismissal table PK user_id+task_id; POST /api/recgon/owner/dock/dismiss idempotent; AssignTeammatePicker Radix DropdownMenu; ReschedulePicker Radix Popover REUSING existing /api/teams/[id]/tasks/[taskId]/schedule endpoint; dnd-kit useDraggable on chips + useDroppable on cells + lane labels; OwnerWorkloadBoard onDragEnd decodes drop-target-id strings ('{teammateId}__{dateISO}' cells, '{teammateId}__lane' lane drops, 'dock' reverse drops); optimisticOverrides state with rollback on API failure; ConfirmDialog interception for in-flight chips per UI-SPEC §7). Plan 03.5-04: TableBoard sortable 6-col (TASK/ASSIGNEE/PROJECT/DATE/PRIORITY/STATE) with kebab actions delegating to existing pickers (no new mutation endpoints); viewMode 'workload'|'table' toggle on OwnerWorkloadBoard; /tasks page personal header strip with role-conditional /projects link. Final state: 401/401 tests passing (+80 from baseline 321), build green, verifier verdict COMPLETE — all 5 SUCCESS criteria MET; privacy defense-in-depth verified at storage mapper + route scrub layers. USER MUST APPLY supabase/migrations/20260517_owner_dock_dismissals.sql to live DB before next cron tick (endpoint returns 500 until table exists).
 
 ### Pending Todos
 
@@ -122,12 +121,12 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-16T02:30:00.000Z
-Stopped at: Phase 3.5 (Owner Task Board) complete and verified — 4 plans, 16 commits, 401/401 tests, verifier verdict COMPLETE. Ready for Phase 4 (personalized task framing) once user applies the dismissals migration + completes manual UAT of the new board.
+Last session: 2026-05-14T22:29:21.220Z
+Stopped at: Plan 03-04 code-complete; awaiting user real-LLM bias regression baseline (Task 4 checkpoint) + Plan 03 Task 5 manual UAT before Phase 3 formally ships
 Resume file: None
-Resume command: After migration applied + manual UAT approval, `/gsd-execute-phase 4` to begin Phase 4 (personalized task framing).
+Resume command: After Task 4 baseline + UAT approval, `/gsd-execute-phase 4` to begin Phase 4 (personalized task framing)
 User action pending:
 
-  1. Apply `supabase/migrations/20260517_owner_dock_dismissals.sql` to live Supabase before next cron tick (POST /api/recgon/owner/dock/dismiss returns 500 until table exists).
-  2. Manual UAT of the new owner board: log in as owner → /projects → confirm workload grid renders, triage dock pinned above, capacity bars color-coded, chips clickable → TaskDetailPanel, drag-drop reassigns + reschedules, dismiss × removes deferred items, Table view toggle sorts correctly. Then log in as member/viewer → /projects → confirm existing tile list still shows (no board leak).
-  3. Carry-over from Phase 3: real-LLM bias regression baseline (`JUDGE_BIAS_REAL_LLM=1 npx vitest run src/__tests__/judge.bias-regression.test.ts`, ~$0.30, ~10 min) still pending if not yet captured.
+  1. Run `JUDGE_BIAS_REAL_LLM=1 npx vitest run src/__tests__/judge.bias-regression.test.ts` once (~$0.30, ~10 min); record per-fixture pickCounts in `03-04-SUMMARY.md` Real-LLM Bias Baseline section; type "approved".
+  2. Plan 03-03 Task 5 manual UAT — open one assignment task as assignee, owner, and other-teammate to verify "Why you" privacy filter renders correctly across 3 viewer roles.
+  Both Phase 2 + Phase 3 Supabase migrations are already applied to the live project (verified upstream).

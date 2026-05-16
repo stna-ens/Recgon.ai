@@ -113,7 +113,7 @@ function validDrop(from: ColumnKey, to: ColumnKey): 'accept' | 'complete' | null
 }
 
 function V2TasksInner() {
-  const { projects: teamProjects, currentTeam } = useTeam();
+  const { projects: teamProjects } = useTeam();
   const projects = useMemo(() => teamProjects ?? [], [teamProjects]);
   const { addToast } = useToast();
 
@@ -603,34 +603,6 @@ function V2TasksInner() {
         </div>
       </header>
 
-      {/* Plan 03.5-04 — personal tasks header strip. Tells the viewer that
-          /tasks is their personal queue; signals owners that the team-wide
-          owner board lives at /projects (link rendered only when role===owner).
-          Strip hidden while currentTeam === null to avoid flashing. */}
-      {currentTeam && (
-        <section className="v2-tasks-personal-strip" aria-label="personal tasks header">
-          <div className="recgon-label v2-tasks-personal-eyebrow">PERSONAL TASKS</div>
-          <p className="v2-tasks-personal-body">
-            Your assigned + accepted + in-review tasks.
-            {currentTeam.role === 'owner' ? (
-              <>
-                {' '}Owners can see the full team board at{' '}
-                <Link
-                  href="/projects"
-                  className="v2-tasks-personal-link"
-                  style={{ color: 'var(--signature)' }}
-                >
-                  /projects
-                </Link>
-                .
-              </>
-            ) : (
-              <>{' '}Owners can see the full team board.</>
-            )}
-          </p>
-        </section>
-      )}
-
       {loading ? (
         <div className="v2-tasks-board">
           {COLUMNS.map((col) => (
@@ -1013,51 +985,6 @@ function V2TasksInner() {
           font-size: 22px;
           font-weight: 700;
           line-height: 1;
-        }
-
-        /* Plan 03.5-04 — personal tasks header strip. */
-        .v2-tasks-personal-strip {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          padding: 14px 18px;
-          border: 1px solid var(--rule);
-          border-radius: 12px;
-          background: rgba(255, 255, 255, 0.02);
-          margin-top: -6px;
-        }
-        .v2-tasks-personal-eyebrow {
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 1.6px;
-          color: var(--signature);
-          text-transform: uppercase;
-        }
-        .v2-tasks-personal-body {
-          margin: 0;
-          font-size: 12.5px;
-          color: var(--txt-muted);
-          letter-spacing: 0.15px;
-          line-height: 1.55;
-        }
-        .v2-tasks-personal-link {
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 0.4px;
-          text-decoration: none;
-          border-bottom: 1px solid transparent;
-          padding-bottom: 1px;
-          transition: border-color 140ms ease, opacity 140ms ease;
-        }
-        .v2-tasks-personal-link:hover {
-          border-color: var(--signature);
-        }
-        .v2-tasks-personal-link:focus-visible {
-          outline: 2px solid var(--signature);
-          outline-offset: 2px;
-          border-radius: 2px;
         }
 
         .v2-tasks-search-wrap {

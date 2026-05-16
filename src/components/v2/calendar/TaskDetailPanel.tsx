@@ -61,13 +61,9 @@ type Props = {
   isOwner: boolean;
   onClose: () => void;
   onRefresh: () => void;
-  // Phase 3.5 / Plan 03.5-03 — optional owner-only action slot rendered
-  // next to the SCHEDULED section. The owner workload board passes a
-  // ReschedulePicker trigger; other callers leave the slot empty.
-  ownerScheduledActions?: React.ReactNode;
 };
 
-export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onClose, onRefresh, ownerScheduledActions }: Props) {
+export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onClose, onRefresh }: Props) {
   const { addToast } = useToast();
   const [working, setWorking] = useState(false);
   const [proofText, setProofText] = useState('');
@@ -294,9 +290,6 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                   )}
                 </p>
                 {task.scheduleNote && <p className="cal-panel-section-note">{task.scheduleNote}</p>}
-                {ownerScheduledActions && (
-                  <div className="cal-panel-owner-actions">{ownerScheduledActions}</div>
-                )}
               </section>
             )}
 

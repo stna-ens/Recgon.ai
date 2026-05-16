@@ -15,8 +15,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/utilities": "^3.2.2",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@google-analytics/data": "^5.2.1",
