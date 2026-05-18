@@ -34,6 +34,12 @@ const TABS: Tab[] = [
     isActive: (path, id) => path.startsWith(`/projects/${id}/analytics`),
   },
   {
+    key: 'marketing',
+    label: 'Marketing',
+    href: (id) => `/projects/${id}/marketing`,
+    isActive: (path, id) => path.startsWith(`/projects/${id}/marketing`),
+  },
+  {
     key: 'settings',
     label: 'Settings',
     href: (id) => `/projects/${id}/settings`,
