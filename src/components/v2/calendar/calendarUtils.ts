@@ -39,6 +39,15 @@ export function isToday(d: Date): boolean {
   return isSameDay(d, new Date());
 }
 
+// Signed day delta between two YYYY-MM-DD keys (a - b). Used by the calendar
+// to find the nearest scheduled date to today when auto-jumping past an
+// empty current week.
+export function daysBetween(a: string, b: string): number {
+  const da = new Date(`${a}T00:00:00`);
+  const db = new Date(`${b}T00:00:00`);
+  return Math.round((da.getTime() - db.getTime()) / 86_400_000);
+}
+
 // Local YYYY-MM-DD for a given Date (matches getDay grouping in week view).
 export function localDateKey(d: Date): string {
   const y = d.getFullYear();

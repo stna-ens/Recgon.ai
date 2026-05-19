@@ -9,7 +9,7 @@ import { WeekHeader } from './WeekHeader';
 import { SwimLane } from './SwimLane';
 import { UnscheduledSidebar } from './UnscheduledSidebar';
 import type { CalendarCard, WeekRange } from './calendarTypes';
-import { addWeeks, buildCards, getWeekRange, localDateKey, weekDays } from './calendarUtils';
+import { addWeeks, buildCards, daysBetween, getWeekRange, localDateKey, weekDays } from './calendarUtils';
 
 type ServerData = {
   teammates: TeammateWithStats[];
@@ -37,6 +37,10 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
   const [activeDayIndex, setActiveDayIndex] = useState<number | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const verifyingRef = useRef(false);
+  // One-time jump to the nearest week containing tasks. Without this, a
+  // project whose tasks are all in past/future weeks renders an empty grid
+  // on the current week with no hint that data exists elsewhere.
+  const autoJumpedRef = useRef(false);
 
   const fetch_ = useCallback(async (opts: { initial?: boolean } = {}) => {
     if (!teamId) return;
@@ -116,6 +120,32 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
     () => (data?.tasks ?? []).filter((t) => !t.scheduledDate),
     [data],
   );
+
+  // Auto-jump once: if the user lands on an empty week but the project has
+  // tasks scheduled in some other week, navigate to the week of the nearest
+  // scheduled task so they see content immediately.
+  useEffect(() => {
+    if (autoJumpedRef.current) return;
+    if (!data) return;
+    let hasCardsInCurrentWeek = false;
+    for (const cards of cardsByTeammate.values()) {
+      if (cards.length > 0) { hasCardsInCurrentWeek = true; break; }
+    }
+    if (hasCardsInCurrentWeek) { autoJumpedRef.current = true; return; }
+    const scheduledDates = data.tasks
+      .map((t) => t.scheduledDate)
+      .filter((d): d is string => !!d);
+    if (scheduledDates.length === 0) { autoJumpedRef.current = true; return; }
+    const todayKey = localDateKey(new Date());
+    let nearest = scheduledDates[0];
+    let nearestDelta = Math.abs(daysBetween(nearest, todayKey));
+    for (const d of scheduledDates) {
+      const delta = Math.abs(daysBetween(d, todayKey));
+      if (delta < nearestDelta) { nearest = d; nearestDelta = delta; }
+    }
+    autoJumpedRef.current = true;
+    setWeekRange(getWeekRange(new Date(`${nearest}T00:00:00`)));
+  }, [data, cardsByTeammate]);
 
   const handleCardClick = useCallback((_card: CalendarCard) => {}, []);
 
