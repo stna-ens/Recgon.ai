@@ -109,6 +109,11 @@ type TaskRow = {
   // Phase 3 / Plan 06 — refusal note when the dispatcher cannot assign.
   // Nullable; null for assigned/deferred rows and pre-Plan-06 rows.
   triage_note: TriageNote | null;
+  // Phase 3.6 / Plan 01 — overdue-tier book-keeping. `overdue_tier` is the
+  // last tier the cron actioned (0=none, 1=nudged, 2=escalated,
+  // 3=auto-rescheduled). `last_overdue_action_at` drives the 24h cool-down.
+  overdue_tier?: number | null;
+  last_overdue_action_at?: string | null;
 };
 
 function mapTask(row: TaskRow): AgentTask {
@@ -154,6 +159,14 @@ function mapTask(row: TaskRow): AgentTask {
     // Phase 3 / Plan 06 — refusal explanation; null for assigned/deferred
     // tasks and pre-Plan-06 rows.
     triageNote: row.triage_note ?? null,
+    // Phase 3.6 / Plan 04 — surface the overdue book-keeping fields on the
+    // canonical AgentTask so the UI (chip + tier badge) can read them
+    // without a separate query. Row schema has `overdue_tier int default 0`
+    // and `last_overdue_action_at timestamptz` (Plan 01 migration).
+    // Both default to null on pre-migration test fixtures; the UI treats
+    // null `overdueTier` as 0.
+    overdueTier: ((row.overdue_tier ?? 0) as 0 | 1 | 2 | 3),
+    lastOverdueActionAt: row.last_overdue_action_at ?? null,
   };
 }
 

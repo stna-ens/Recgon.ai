@@ -5,6 +5,8 @@ import { ProofDropZone } from '@/components/ProofDropZone';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { AgentTask } from '@/lib/recgon/types';
 import { useToast } from '@/components/Toast';
+import { daysOverdue, isOverdue } from '@/lib/recgon/overduePolicy';
+import { OverdueChip } from './OverdueChip';
 
 const KIND_LABEL: Record<string, string> = {
   next_step: 'next step', dev_prompt: 'dev', marketing: 'marketing',
@@ -45,6 +47,128 @@ function WhyYouBlock({ sentence }: { sentence?: string }) {
     <section className="cal-panel-section">
       <span className="cal-panel-section-eyebrow">WHY YOU</span>
       <p className="cal-panel-section-note">{sentence}</p>
+    </section>
+  );
+}
+
+// Phase 3.6 / Plan 04 — owner-only snooze control.
+//
+// Renders three preset chips (1d, 3d, 7d) + a custom integer input (1..30).
+// POSTs to `/api/teams/[teamId]/tasks/[taskId]/snooze` with `{ days }`.
+// On success, calls `onSnoozed()` so the parent panel can refresh + hide
+// the OverdueChip immediately. On failure, surfaces a toast and leaves the
+// chip in place so the user knows the snooze did not land.
+//
+// Caller is responsible for gating render on owner role + isOverdue —
+// this sub-component assumes both are already true.
+function SnoozeControl({
+  taskId,
+  teamId,
+  onSnoozed,
+  onError,
+}: {
+  taskId: string;
+  teamId: string;
+  onSnoozed: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [working, setWorking] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customDays, setCustomDays] = useState<string>('');
+
+  const submit = useCallback(async (days: number) => {
+    if (working) return;
+    if (!Number.isInteger(days) || days < 1 || days > 30) {
+      onError('days must be an integer between 1 and 30');
+      return;
+    }
+    setWorking(true);
+    try {
+      const res = await fetch(`/api/teams/${teamId}/tasks/${taskId}/snooze`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ days }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'snooze failed');
+      }
+      onSnoozed();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'snooze failed');
+    } finally {
+      setWorking(false);
+    }
+  }, [working, taskId, teamId, onSnoozed, onError]);
+
+  const submitCustom = useCallback(() => {
+    const n = parseInt(customDays, 10);
+    void submit(n);
+  }, [customDays, submit]);
+
+  return (
+    <section className="cal-panel-section">
+      <span className="cal-panel-section-eyebrow">SNOOZE</span>
+      <p className="cal-panel-section-note">
+        Push this task forward without reassigning. Tier resets on snooze.
+      </p>
+      <div className="cal-panel-actions">
+        <button
+          type="button"
+          className="cal-panel-btn"
+          onClick={() => submit(1)}
+          disabled={working}
+          data-snooze="1"
+        >1 day</button>
+        <button
+          type="button"
+          className="cal-panel-btn"
+          onClick={() => submit(3)}
+          disabled={working}
+          data-snooze="3"
+        >3 days</button>
+        <button
+          type="button"
+          className="cal-panel-btn"
+          onClick={() => submit(7)}
+          disabled={working}
+          data-snooze="7"
+        >7 days</button>
+        <button
+          type="button"
+          className="cal-panel-btn"
+          onClick={() => setCustomOpen((v) => !v)}
+          disabled={working}
+          data-snooze="custom"
+        >custom</button>
+      </div>
+      {customOpen && (
+        <div className="cal-panel-reschedule-form">
+          <label className="cal-panel-field">
+            <span className="cal-panel-field-label">days (1-30)</span>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              step={1}
+              value={customDays}
+              onChange={(e) => setCustomDays(e.target.value)}
+              className="cal-panel-input is-mono"
+              placeholder="e.g. 5"
+              aria-label="Custom snooze days"
+            />
+          </label>
+          <div className="cal-panel-actions cal-panel-actions-right">
+            <button
+              type="button"
+              className="cal-panel-btn is-primary"
+              onClick={submitCustom}
+              disabled={working}
+              data-snooze-submit="true"
+            >{working ? 'snoozing' : 'snooze'}</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -289,9 +413,43 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                     </>
                   )}
                 </p>
+                {(() => {
+                  // Phase 3.6 / Plan 04 — inline overdue chip alongside the
+                  // scheduled date. Owners see tier-encoded color; assignees
+                  // see uniform pink.
+                  const today = new Date();
+                  if (!isOverdue(task, today)) return null;
+                  const endKey = task.scheduledUntilDate ?? task.scheduledDate;
+                  if (!endKey) return null;
+                  const days = Math.max(1, daysOverdue(endKey, today));
+                  const tier = ((task.overdueTier ?? 0) as 0 | 1 | 2 | 3);
+                  return (
+                    <div className="cal-panel-overdue-row">
+                      <OverdueChip tier={tier} days={days} ownerView={isOwner} />
+                    </div>
+                  );
+                })()}
                 {task.scheduleNote && <p className="cal-panel-section-note">{task.scheduleNote}</p>}
               </section>
             )}
+
+            {(() => {
+              // Phase 3.6 / Plan 04 — owner-only snooze control. Only render
+              // when (a) viewer is owner, (b) task is currently overdue.
+              // Non-owners (including the assignee) never see this; the
+              // assignee uses "request reschedule" instead.
+              const today = new Date();
+              if (!isOwner) return null;
+              if (!isOverdue(task, today)) return null;
+              return (
+                <SnoozeControl
+                  taskId={task.id}
+                  teamId={task.teamId}
+                  onSnoozed={() => { addToast('snoozed', 'success'); onRefresh(); }}
+                  onError={(msg) => addToast(msg, 'error')}
+                />
+              );
+            })()}
 
             {hasPendingReschedule && (
               <section className="cal-panel-section is-reschedule">
@@ -577,6 +735,11 @@ const css = `
   margin: 0;
   line-height: 1.5;
   font-style: italic;
+}
+.cal-panel-overdue-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .cal-panel-actions {

@@ -355,6 +355,7 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
                     onTaskDragStart={(e, card) => beginTaskDrag(e, card.task.id)}
                     onTaskDragEnd={clearDrag}
                     onTaskResize={handleTaskResize}
+                    ownerView={isOwner}
                   />
                 ))
               )}

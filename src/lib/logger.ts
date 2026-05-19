@@ -43,3 +43,22 @@ export const logger = {
   warn: (message: string, meta?: unknown) => emit('warn', message, meta),
   error: (message: string, meta?: unknown) => emit('error', message, meta),
 };
+
+// ── Phase 3.6 / Plan 04 — overdue-pressure counter ────────────────────────
+//
+// Fixed-shape counter for the overdue sweep + snooze paths. Emits one
+// structured `overdue_counter` line per action so downstream log
+// aggregators can bucket nudged / escalated / auto_rescheduled / snoozed
+// counts per team without parsing free-form messages.
+//
+// Kept on the logger module (not on overdueRunner.ts) so any future call
+// site — including the snooze API route, which lives outside the runner —
+// imports the same well-known function.
+export type OverdueCounterKind = 'nudged' | 'escalated' | 'auto_rescheduled' | 'snoozed';
+
+export function logOverdueCounter(
+  kind: OverdueCounterKind,
+  meta: { teamId: string; taskId: string },
+): void {
+  logger.info('overdue_counter', { kind, ...meta });
+}

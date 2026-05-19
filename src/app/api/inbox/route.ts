@@ -8,7 +8,15 @@ function isInsightOnlySourceRef(ref: unknown): boolean {
   return Boolean(ref && typeof ref === 'object' && (ref as { kind?: unknown }).kind === 'top_risk');
 }
 
-const INBOX_BASE_SELECT = 'id, team_id, project_id, title, description, kind, source, source_ref, priority, status, assigned_at, deadline, scheduled_date, schedule_note, result, created_at, completed_at, assigned_to, verification_status, verification_evidence';
+// Phase 3.6 / Plan 04 — `overdue_tier` + `last_overdue_action_at` join the
+// projection so the /tasks UI can render the OverdueChip without a second
+// fetch. `scheduled_until_date` is also added (used by `isOverdue` to
+// measure days-overdue from the end of multi-day windows). A third tier of
+// fallback select is layered in below so environments that haven't applied
+// the Plan 01 migration yet (`overdue_tier`/`last_overdue_action_at`) still
+// return tasks instead of 500-ing.
+const INBOX_LEGACY_SELECT = 'id, team_id, project_id, title, description, kind, source, source_ref, priority, status, assigned_at, deadline, scheduled_date, schedule_note, result, created_at, completed_at, assigned_to, verification_status, verification_evidence';
+const INBOX_BASE_SELECT = `${INBOX_LEGACY_SELECT}, scheduled_until_date, overdue_tier, last_overdue_action_at`;
 const INBOX_RESCHEDULE_SELECT = `${INBOX_BASE_SELECT}, reschedule_request_status, reschedule_requested_at, reschedule_requested_by, reschedule_request_note, reschedule_requested_date`;
 
 type InboxTaskRow = {
@@ -25,6 +33,7 @@ type InboxTaskRow = {
   assigned_at: string | null;
   deadline: string | null;
   scheduled_date?: string | null;
+  scheduled_until_date?: string | null;
   schedule_note?: string | null;
   reschedule_request_status?: string | null;
   reschedule_requested_at?: string | null;
@@ -37,6 +46,8 @@ type InboxTaskRow = {
   assigned_to: string | null;
   verification_status: string | null;
   verification_evidence: Record<string, unknown> | null;
+  overdue_tier?: number | null;
+  last_overdue_action_at?: string | null;
 };
 
 function withRescheduleDefaults(task: InboxTaskRow): InboxTaskRow {
@@ -66,7 +77,13 @@ async function fetchInboxTasks(teammateIds: string[]): Promise<{ tasks: InboxTas
   if (!primary.error) return { tasks: ((primary.data ?? []) as unknown as InboxTaskRow[]).map(withRescheduleDefaults) };
   if (primary.error.code !== '42703') return { tasks: [], error: primary.error.message };
 
-  const fallback = await run(INBOX_BASE_SELECT);
+  // Tier-2 fallback: reschedule columns present, overdue columns missing.
+  const overdueless = await run(`${INBOX_LEGACY_SELECT}, reschedule_request_status, reschedule_requested_at, reschedule_requested_by, reschedule_request_note, reschedule_requested_date`);
+  if (!overdueless.error) return { tasks: ((overdueless.data ?? []) as unknown as InboxTaskRow[]).map(withRescheduleDefaults) };
+  if (overdueless.error.code !== '42703') return { tasks: [], error: overdueless.error.message };
+
+  // Tier-3 fallback: neither reschedule nor overdue columns present.
+  const fallback = await run(INBOX_LEGACY_SELECT);
   if (fallback.error) return { tasks: [], error: fallback.error.message };
   return { tasks: ((fallback.data ?? []) as unknown as InboxTaskRow[]).map(withRescheduleDefaults) };
 }

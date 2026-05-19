@@ -5,6 +5,8 @@ import type { CalendarCard } from './calendarTypes';
 import type { TeammateWithStats } from '@/lib/recgon/types';
 import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
 import { stripMd } from '@/lib/strings';
+import { OverdueChip } from './OverdueChip';
+import { daysOverdue, isOverdue } from '@/lib/recgon/overduePolicy';
 
 const STATUS_COLOR: Record<string, string> = {
   completed:       'var(--success)',
@@ -30,6 +32,10 @@ type Props = {
   // calendar so a card can show which team it came from when the lane no
   // longer carries that signal.
   teamBadge?: { name: string; color: string | null } | null;
+  // Phase 3.6 / Plan 04 — when true, the chip exposes tier-2/3 color
+  // encoding (owner gets escalation visibility). Default false so the
+  // assignee view stays uniform pink.
+  ownerView?: boolean;
 };
 
 export function EventChip({
@@ -42,12 +48,22 @@ export function EventChip({
   resizable = false,
   onResizeStart,
   teamBadge,
+  ownerView = false,
 }: Props) {
   const accentColor = STATUS_COLOR[card.task.status] ?? 'var(--signature)';
   const cleanTitle = stripMd(card.title);
   const hasRescheduleRequest = card.task.rescheduleRequestStatus === 'pending';
   const hours = card.estimatedHours;
   const hoursLabel = `${hours.toFixed(hours % 1 === 0 ? 0 : 1)}h`;
+
+  // Phase 3.6 / Plan 04 — derive overdue state from the pure policy helper.
+  // The chip renders whenever the task is in an overdue band, regardless of
+  // tier/cool-down (those gate the *action*, not the *state*).
+  const today = new Date();
+  const overdueNow = isOverdue(card.task, today);
+  const endKey = card.task.scheduledUntilDate ?? card.task.scheduledDate;
+  const lateDays = overdueNow && endKey ? Math.max(1, daysOverdue(endKey, today)) : 0;
+  const tier = ((card.task.overdueTier ?? 0) as 0 | 1 | 2 | 3);
 
   // Track whether the mousedown that started this interaction landed on the
   // resize handle. If so, suppress the chip's HTML5 drag — otherwise the
@@ -114,6 +130,9 @@ export function EventChip({
           <span className="cal-chip-team-dot" aria-hidden="true" />
           <span className="cal-chip-team-name">{teamBadge.name}</span>
         </span>
+      )}
+      {overdueNow && (
+        <OverdueChip tier={tier} days={lateDays} ownerView={ownerView} className="cal-chip-overdue" />
       )}
       {hasRescheduleRequest && <span className="cal-chip-request">move</span>}
       {resizable && (
@@ -276,6 +295,13 @@ const css = `
   display: block;
 }
 .cal-chip-multi .cal-chip-request {
+  align-self: center;
+  margin-left: auto;
+}
+.cal-chip-overdue {
+  align-self: flex-start;
+}
+.cal-chip-multi .cal-chip-overdue {
   align-self: center;
   margin-left: auto;
 }

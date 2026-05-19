@@ -262,6 +262,15 @@ export type AgentTask = {
   // successful assignment. Deferred tasks (scheduled forward) keep this
   // null — the reason lives in schedule_note. Null on pre-Plan-06 rows.
   triageNote?: TriageNote | null;
+  // Phase 3.6 / Plan 01 — derived overdue state stored on agent_tasks.
+  // `overdueTier` is the LAST tier the cron emitted an action for (0 = none
+  // yet). `lastOverdueActionAt` is the ISO timestamp of that action.
+  // Both are advisory: the UI checks `isOverdue(task, today)` to decide
+  // whether to render the chip at all; the tier value drives chip color
+  // (1=pink, 2=amber, 3=red filled) when overdue. Optional + nullable for
+  // back-compat with rows minted before the Plan 01 migration.
+  overdueTier?: 0 | 1 | 2 | 3 | null;
+  lastOverdueActionAt?: string | null;
 };
 
 // Phase 3 / Plan 06 — refusal categories for the Pass 3 decision tree.

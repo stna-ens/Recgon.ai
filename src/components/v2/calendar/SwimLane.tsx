@@ -20,6 +20,10 @@ type Props = {
   onTaskDragStart?: (e: DragEvent<HTMLDivElement>, card: CalendarCard) => void;
   onTaskDragEnd?: () => void;
   onTaskResize?: (input: { taskId: string; scheduledUntilDate: string | null }) => void;
+  // Phase 3.6 / Plan 04 — when true, EventChip's OverdueChip surfaces
+  // tier-2/3 escalation color encoding. Threaded from WeekCalendar which
+  // reads `currentTeam.role === 'owner'`.
+  ownerView?: boolean;
 };
 
 const VISIBLE_CAP = 3;
@@ -68,6 +72,7 @@ export function SwimLane({
   onTaskDragStart,
   onTaskDragEnd,
   onTaskResize,
+  ownerView = false,
 }: Props) {
   const [expandedCells, setExpandedCells] = useState<Set<number>>(new Set());
   const [dropDayIndex, setDropDayIndex] = useState<number | null>(null);
@@ -296,6 +301,7 @@ export function SwimLane({
                       onDragEnd={onTaskDragEnd}
                       resizable={canReschedule && Boolean(onTaskResize)}
                       onResizeStart={handleResizeStart}
+                      ownerView={ownerView}
                     />
                   </div>
                 );
@@ -315,6 +321,7 @@ export function SwimLane({
                     teammate={teammate}
                     onClick={() => {}}
                     draggable={false}
+                    ownerView={ownerView}
                   />
                 </div>
               )}
@@ -331,6 +338,7 @@ export function SwimLane({
                     onDragEnd={onTaskDragEnd}
                     resizable={canReschedule && Boolean(onTaskResize)}
                     onResizeStart={handleResizeStart}
+                    ownerView={ownerView}
                   />
                 ))}
                 {(overflow > 0 || (isExpanded && cellSingles.length > VISIBLE_CAP)) && (

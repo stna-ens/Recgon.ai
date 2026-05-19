@@ -7,6 +7,8 @@ import { useToast } from '@/components/Toast';
 import { ProofDropZone } from '@/components/ProofDropZone';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
+import { OverdueChip } from '@/components/v2/calendar/OverdueChip';
+import { daysOverdue, isOverdue } from '@/lib/recgon/overduePolicy';
 
 interface TaskItem {
   id: string;
@@ -22,6 +24,7 @@ interface TaskItem {
   assigned_at: string;
   deadline: string | null;
   scheduled_date: string | null;
+  scheduled_until_date: string | null;
   schedule_note: string | null;
   reschedule_request_status?: 'none' | 'pending' | 'resolved' | 'dismissed';
   reschedule_requested_at?: string | null;
@@ -31,6 +34,23 @@ interface TaskItem {
   result: Record<string, unknown> | null;
   verification_status?: VerificationStatus;
   verification_evidence?: VerificationEvidence | null;
+  // Phase 3.6 / Plan 04 — derived overdue book-keeping. Tier 0..3 (last
+  // action by the daily cron); we derive `isOverdue` state from
+  // scheduled_date + status via the shared `overduePolicy` helper.
+  overdue_tier?: number | null;
+  last_overdue_action_at?: string | null;
+}
+
+// Adapter — TaskItem uses snake_case shape; the pure `isOverdue` /
+// `daysOverdue` helpers consume camelCase AgentTask-shaped objects. Keep
+// the adapter local so the policy module stays the single source of truth.
+function taskItemToOverdueShape(t: TaskItem) {
+  return {
+    status: t.status,
+    scheduledDate: t.scheduled_date,
+    scheduledUntilDate: t.scheduled_until_date,
+    assignedTo: 'self', // /tasks lists only the viewer's tasks; non-null is enough for the policy gate
+  } as const;
 }
 
 type ColumnKey = 'assigned' | 'wip' | 'review';
@@ -120,6 +140,9 @@ function V2TasksInner() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  // Phase 3.6 / Plan 04 — when true, only render tasks the policy considers
+  // overdue today. Empty state copy switches accordingly.
+  const [overdueOnly, setOverdueOnly] = useState(false);
   const [working, setWorking] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [proofText, setProofText] = useState<string>('');
@@ -223,13 +246,26 @@ function V2TasksInner() {
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return tasks;
-    return tasks.filter((t) => {
+    const today = new Date();
+    let base = tasks;
+    if (overdueOnly) {
+      base = base.filter((t) => isOverdue(taskItemToOverdueShape(t), today));
+    }
+    if (!q) return base;
+    return base.filter((t) => {
       const title = (t.title ?? '').toLowerCase();
       const desc = (t.description ?? '').toLowerCase();
       return title.includes(q) || desc.includes(q);
     });
-  }, [tasks, searchQuery]);
+  }, [tasks, searchQuery, overdueOnly]);
+
+  // Phase 3.6 / Plan 04 — pre-computed count of overdue tasks so the filter
+  // chip can show a badge ("overdue · 3"). Recomputes on the same clock
+  // `filtered` uses, so the chip and the filtered list stay consistent.
+  const overdueCount = useMemo(() => {
+    const today = new Date();
+    return tasks.reduce((acc, t) => acc + (isOverdue(taskItemToOverdueShape(t), today) ? 1 : 0), 0);
+  }, [tasks]);
 
   const grouped = useMemo(() => {
     const out: Record<ColumnKey, TaskItem[]> = { assigned: [], wip: [], review: [] };
@@ -601,6 +637,21 @@ function V2TasksInner() {
             >×</button>
           )}
         </div>
+
+        {/* Phase 3.6 / Plan 04 — overdue filter. Sits alongside search;
+            when active, the task list narrows to `isOverdue(task, today)`
+            and the column empty-states swap to the overdue copy. */}
+        <button
+          type="button"
+          className={`v2-tasks-filter-chip${overdueOnly ? ' is-active' : ''}`}
+          onClick={() => setOverdueOnly((v) => !v)}
+          aria-pressed={overdueOnly}
+          data-filter="overdue"
+        >
+          <span className="v2-tasks-filter-dot" aria-hidden="true" />
+          <span>overdue</span>
+          {overdueCount > 0 && <span className="v2-tasks-filter-count">{overdueCount}</span>}
+        </button>
       </header>
 
       {loading ? (
@@ -658,9 +709,15 @@ function V2TasksInner() {
                 <div className="v2-tasks-col-body">
                   {items.length === 0 ? (
                     <div className="v2-tasks-col-empty">
-                      {col.key === 'assigned' && 'nothing waiting on you.'}
-                      {col.key === 'wip' && 'nothing in flight.'}
-                      {col.key === 'review' && 'nothing under review.'}
+                      {overdueOnly
+                        ? "nothing slipping — you're on top of it"
+                        : (
+                          <>
+                            {col.key === 'assigned' && 'nothing waiting on you.'}
+                            {col.key === 'wip' && 'nothing in flight.'}
+                            {col.key === 'review' && 'nothing under review.'}
+                          </>
+                        )}
                     </div>
                   ) : (
                     items.map((t) => {
@@ -714,6 +771,20 @@ function V2TasksInner() {
                               <span className="v2-tasks-card-chip" title={`Team: ${t.teamName}`}>{t.teamName}</span>
                             )}
                             {schedule && <span className="v2-tasks-card-schedule" title={t.schedule_note ?? undefined}>{schedule}</span>}
+                            {(() => {
+                              // Phase 3.6 / Plan 04 — overdue chip inline
+                              // alongside schedule text. /tasks shows only
+                              // the viewer's own tasks (assignee view), so
+                              // ownerView stays false — uniform pink chip.
+                              const today = new Date();
+                              const shape = taskItemToOverdueShape(t);
+                              if (!isOverdue(shape, today)) return null;
+                              const endKey = t.scheduled_until_date ?? t.scheduled_date;
+                              if (!endKey) return null;
+                              const days = Math.max(1, daysOverdue(endKey, today));
+                              const tier = ((t.overdue_tier ?? 0) as 0 | 1 | 2 | 3);
+                              return <OverdueChip tier={tier} days={days} ownerView={false} />;
+                            })()}
                             <span className="v2-tasks-card-time">{relTime(t.assigned_at)}</span>
                           </div>
                         </article>
@@ -1034,6 +1105,61 @@ function V2TasksInner() {
         .v2-tasks-search-clear:hover {
           color: var(--danger);
           background: rgba(248, 113, 113, 0.10);
+        }
+
+        /* Phase 3.6 / Plan 04 — overdue filter chip. Inert outline by
+           default, lights up to signature pink when active. The count
+           badge inside the chip mirrors the column-count pill styling. */
+        .v2-tasks-filter-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 7px 12px;
+          background: transparent;
+          border: 1px solid var(--rule);
+          border-radius: 10px;
+          cursor: pointer;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 10.5px;
+          font-weight: 700;
+          letter-spacing: 1.2px;
+          text-transform: lowercase;
+          color: var(--txt-muted);
+          transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+        }
+        .v2-tasks-filter-chip:hover {
+          color: var(--txt-pure);
+          border-color: rgba(var(--signature-rgb), 0.35);
+        }
+        .v2-tasks-filter-chip.is-active {
+          color: var(--signature);
+          border-color: var(--signature);
+          background: rgba(var(--signature-rgb), 0.06);
+        }
+        .v2-tasks-filter-chip:focus-visible {
+          outline: 2px solid var(--signature);
+          outline-offset: 2px;
+        }
+        .v2-tasks-filter-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          opacity: 0.7;
+          flex-shrink: 0;
+        }
+        .v2-tasks-filter-count {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 9.5px;
+          font-weight: 700;
+          font-variant-numeric: tabular-nums;
+          color: inherit;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid currentColor;
+          padding: 0 6px;
+          border-radius: 999px;
+          min-width: 18px;
+          text-align: center;
         }
 
         /* Board — hosts both the colored aurora light sources (::before)

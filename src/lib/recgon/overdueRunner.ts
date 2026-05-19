@@ -39,7 +39,7 @@ import {
   sendOverdueEscalation,
   sendAutoReschedulNotice,
 } from '../email';
-import { logger } from '../logger';
+import { logger, logOverdueCounter } from '../logger';
 
 export type OverdueOwner = {
   userId: string;
@@ -109,6 +109,7 @@ export async function executeOverdueAction(
       teammateId: teammate.id,
       daysOverdue: overdue,
     });
+    logOverdueCounter('nudged', { teamId: task.teamId, taskId: task.id });
     return;
   }
 
@@ -132,6 +133,7 @@ export async function executeOverdueAction(
       ownerUserId: owner.userId,
       daysOverdue: overdue,
     });
+    logOverdueCounter('escalated', { teamId: task.teamId, taskId: task.id });
     return;
   }
 
@@ -178,6 +180,7 @@ export async function executeOverdueAction(
         newScheduledDate: plan.scheduledDate,
         daysOverdue: overdue,
       });
+      logOverdueCounter('auto_rescheduled', { teamId: task.teamId, taskId: task.id });
       return;
     }
 
@@ -195,6 +198,7 @@ export async function executeOverdueAction(
       daysOverdue: overdue,
       handoff: 'unassigned_no_capacity',
     });
+    logOverdueCounter('auto_rescheduled', { teamId: task.teamId, taskId: task.id });
     return;
   }
 }

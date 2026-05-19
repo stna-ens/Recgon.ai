@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { verifyTeamAccess } from '@/lib/teamStorage';
 import { getTask, snoozeTask } from '@/lib/recgon/storage';
+import { logOverdueCounter } from '@/lib/logger';
 
 const TERMINAL_STATUSES = new Set(['completed', 'cancelled', 'declined', 'failed']);
 
@@ -54,6 +55,7 @@ export async function POST(
   }
 
   await snoozeTask(taskId, days as number);
+  logOverdueCounter('snoozed', { teamId, taskId });
 
   return NextResponse.json({ ok: true });
 }
