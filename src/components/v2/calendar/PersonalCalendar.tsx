@@ -48,6 +48,22 @@ export function PersonalCalendar() {
     else window.localStorage.removeItem(FILTER_STORAGE_KEY);
   }, [selectedTeamId]);
 
+  // Self-heal a stale team filter: if the persisted selectedTeamId does not
+  // match any team in the current server response (for example, the user has
+  // switched accounts or left the previously-filtered team), clear it so the
+  // calendar falls back to "all teams" instead of silently hiding everything.
+  // Without this, a stored filter from a previous session can render the
+  // calendar permanently blank with no visible filter UI to undo it (the
+  // filter trigger only renders when teams.length > 1).
+  useEffect(() => {
+    if (!data) return;
+    if (!selectedTeamId) return;
+    const knownTeamIds = new Set(data.teams.map((t) => t.id));
+    if (!knownTeamIds.has(selectedTeamId)) {
+      setSelectedTeamId(null);
+    }
+  }, [data, selectedTeamId]);
+
   const fetch_ = useCallback(async (opts: { initial?: boolean } = {}) => {
     if (opts.initial) setLoading(true); else setRefreshing(true);
     try {
