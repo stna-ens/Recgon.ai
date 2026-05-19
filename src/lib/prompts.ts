@@ -1294,3 +1294,85 @@ Pick exactly one signal that exists in the chosen_candidate payload above. Retur
 { "sentence": "...", "cited_signal": "skill_depth" | "recent_track_record" | "task_kind_familiarity" | "interest_match" | "capacity_headroom" }
 or { "sentence": null, "cited_signal": null } if no signal fits.`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3.6 / Plan 03 — Overdue task pressure email templates.
+//
+// Plain text + plain subject literals. NO LLM call — copy is fully
+// deterministic per (task, daysOverdue) tuple. Tone mirrors
+// `notifyTeammateAssigned` in `src/lib/notifications.ts`: PM voice, no shame,
+// no false urgency, always offers an out ("request reschedule"). Subject
+// lines stay under 78 chars so they don't truncate in standard inbox views.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Defensive: a task title can be long; cap the slice we put in the subject
+// line so it never blows the typical 78-char header window. Body shows the
+// full title.
+function clampTitleForSubject(title: string, max = 60): string {
+  if (title.length <= max) return title;
+  return `${title.slice(0, max - 1)}…`;
+}
+
+function dayWord(n: number): string {
+  return n === 1 ? 'day' : 'days';
+}
+
+export const OVERDUE_NUDGE_TEMPLATE = (input: {
+  taskTitle: string;
+  daysOverdue: number;
+  taskUrl: string;
+}): { subject: string; body: string } => {
+  const title = clampTitleForSubject(input.taskTitle);
+  return {
+    subject: `Quick check-in on "${title}"`,
+    body: `Hey —
+
+"${input.taskTitle}" was scheduled for ${input.daysOverdue} ${dayWord(input.daysOverdue)} ago and is still open.
+
+No pressure on the day itself. If it's blocked, hit "request reschedule" so Recgon knows and can route around it. Otherwise, you can pick it up here:
+${input.taskUrl}
+
+— Recgon`,
+  };
+};
+
+export const OVERDUE_ESCALATE_TEMPLATE = (input: {
+  assigneeName: string;
+  taskTitle: string;
+  daysOverdue: number;
+  taskUrl: string;
+}): { subject: string; body: string } => {
+  const title = clampTitleForSubject(input.taskTitle);
+  return {
+    subject: `Heads-up: ${input.assigneeName}'s task is ${input.daysOverdue} ${dayWord(input.daysOverdue)} overdue`,
+    body: `Heads-up —
+
+${input.assigneeName}'s task "${input.taskTitle}" has been open for ${input.daysOverdue} ${dayWord(input.daysOverdue)} past its scheduled day. Recgon already nudged ${input.assigneeName} directly; this is the second touch.
+
+You don't need to do anything right now — if it stays open for a few more days, Recgon will auto-reschedule it to the next free slot on ${input.assigneeName}'s calendar. If you want to step in earlier, you can snooze, reassign, or rewrite it here:
+${input.taskUrl}
+
+— Recgon
+
+(Subject ref: ${title})`,
+  };
+};
+
+export const OVERDUE_RESCHEDULE_TEMPLATE = (input: {
+  taskTitle: string;
+  newDate: string;
+  taskUrl: string;
+}): { subject: string; body: string } => {
+  const title = clampTitleForSubject(input.taskTitle);
+  return {
+    subject: `Recgon moved "${title}" to ${input.newDate}`,
+    body: `Hey —
+
+"${input.taskTitle}" sat open past its window, so Recgon moved it forward to ${input.newDate} — the next day with capacity on your calendar.
+
+Nothing to do right now. If that date doesn't work either, hit "request reschedule" and we'll route around you:
+${input.taskUrl}
+
+— Recgon`,
+  };
+};

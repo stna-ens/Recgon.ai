@@ -976,24 +976,273 @@ export async function logEvent(input: {
   });
 }
 
-// ── Phase 3.6 / Plan 01 — Overdue task pressure (walking skeleton) ──────────
+// ── Phase 3.6 / Plan 03 — Overdue task pressure (real implementation) ──────
 //
-// `sweepOverdueTeams()` is the entry the daily cron calls. Today it returns
-// zeros — Plan 02 lands `decideOverdueAction()` in `overduePolicy.ts` (pure
-// function, fully unit-tested), and Plan 03 wires Resend emails + storage
-// writes inside this loop. Keeping the shape stable now means the cron
-// route + frontend counters can be built against it ahead of the policy.
-export async function sweepOverdueTeams(): Promise<{
+// Plan 01 landed the walking-skeleton stub; Plan 02 landed the pure policy
+// (`overduePolicy.ts`); Plan 03 (this code) wires them together and adds the
+// side-effect helpers (`markOverdueAction`, `snoozeTask`) plus the
+// `sweepOverdueTeams` iterator that the daily cron calls.
+//
+// Iterator shape:
+//   1. Load every team with `overdue_pressure_enabled = true`.
+//   2. Per team, load active-status tasks + teammates-with-stats + owner.
+//   3. Per task, call the pure `decideOverdueAction`.
+//   4. For non-`none` decisions, call `executeOverdueAction` (overdueRunner)
+//      which sends the email and persists the storage update via the
+//      `markOverdueAction` helper below.
+//   5. Aggregate counts into the `actionsByKind` bucket and return.
+
+import { decideOverdueAction, ACTIVE_OVERDUE_STATUSES } from './overduePolicy';
+import type { OverdueTier } from './types';
+
+/**
+ * Persist the side effect of an overdue action atomically:
+ *   - Bump `agent_tasks.overdue_tier` (1/2/3) and `last_overdue_action_at`
+ *     (NOW) so the 24h cool-down kicks in for the next sweep.
+ *   - Write a row to `teammate_event_log` describing what fired.
+ *
+ * `event` must match the just-promoted tier (1↔nudged, 2↔escalated,
+ * 3↔auto_rescheduled). Callers in `overdueRunner.ts` pass this consistently;
+ * the runtime accepts a mismatched pair (it's only a typing nicety) but the
+ * audit trail will look weird, so don't.
+ *
+ * NOTE: we don't run this inside a Postgres transaction because Supabase
+ * client-side transactions aren't available with the service-role REST
+ * client. The two writes are independent rows on independent tables, and
+ * the 24h cool-down gate is on `last_overdue_action_at` — so the worst
+ * possible interleaving (event log written, tier bump fails) leaves a
+ * harmless extra audit row and the next sweep re-fires the action. The
+ * inverse (tier bump succeeds, event log fails) is the more "expensive"
+ * failure but still safe: cool-down protects against double-action.
+ */
+export async function markOverdueAction(
+  taskId: string,
+  tier: Exclude<OverdueTier, 0>,
+  event: 'nudged' | 'escalated' | 'auto_rescheduled',
+  context?: {
+    teamId?: string;
+    teammateId?: string | null;
+    daysOverdue?: number;
+    previousScheduledDate?: string | null;
+    newScheduledDate?: string | null;
+    ownerUserId?: string | null;
+    handoff?: string;
+  },
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const { error: tierErr } = await supabase
+    .from('agent_tasks')
+    .update({
+      overdue_tier: tier,
+      last_overdue_action_at: nowIso,
+    })
+    .eq('id', taskId);
+  if (tierErr) throw new Error(`markOverdueAction tier-write failed: ${tierErr.message}`);
+
+  // We need teamId for the event-log row. Cheapest path: take it from the
+  // caller's context. If absent (defensive), fetch the row.
+  let teamId = context?.teamId ?? null;
+  if (!teamId) {
+    const { data } = await supabase
+      .from('agent_tasks')
+      .select('team_id')
+      .eq('id', taskId)
+      .maybeSingle();
+    teamId = (data?.team_id as string | undefined) ?? null;
+  }
+  if (!teamId) {
+    // Should never happen for a real task — log and skip the event row.
+    logger.warn('markOverdueAction missing teamId for event log', { taskId, tier, event });
+    return;
+  }
+
+  await logEvent({
+    teamId,
+    teammateId: context?.teammateId ?? null,
+    taskId,
+    event,
+    payload: {
+      tier,
+      daysOverdue: context?.daysOverdue,
+      previousScheduledDate: context?.previousScheduledDate ?? null,
+      newScheduledDate: context?.newScheduledDate ?? null,
+      ownerUserId: context?.ownerUserId ?? null,
+      handoff: context?.handoff,
+    },
+  });
+}
+
+/**
+ * Owner-initiated snooze. Pushes `scheduled_date` (and
+ * `scheduled_until_date` if set) forward by N calendar days, resets the
+ * overdue tier to 0, clears the cool-down timestamp, and writes a 'snoozed'
+ * event-log row so the audit trail tracks who-snoozed-what.
+ *
+ * `days` is validated by the calling route (1–30); this helper trusts that.
+ */
+export async function snoozeTask(taskId: string, days: number): Promise<void> {
+  const { data: row, error: fetchErr } = await supabase
+    .from('agent_tasks')
+    .select('team_id, assigned_to, scheduled_date, scheduled_until_date')
+    .eq('id', taskId)
+    .maybeSingle();
+  if (fetchErr) throw new Error(`snoozeTask fetch failed: ${fetchErr.message}`);
+  if (!row) throw new Error('snoozeTask: task not found');
+  const startKey = row.scheduled_date as string | null;
+  // If a task has no schedule, snooze pushes from today.
+  const baseStart = startKey ?? new Date().toISOString().slice(0, 10);
+  const baseEndKey = (row.scheduled_until_date as string | null) ?? baseStart;
+  const startMs = Date.parse(`${baseStart}T00:00:00Z`);
+  const endMs = Date.parse(`${baseEndKey}T00:00:00Z`);
+  const DAY = 24 * 60 * 60 * 1000;
+  const newStart = new Date(startMs + days * DAY).toISOString().slice(0, 10);
+  const newEnd = new Date(endMs + days * DAY).toISOString().slice(0, 10);
+  const updateEnd = (row.scheduled_until_date as string | null) ? newEnd : null;
+
+  const { error: updErr } = await supabase
+    .from('agent_tasks')
+    .update({
+      scheduled_date: newStart,
+      scheduled_until_date: updateEnd,
+      overdue_tier: 0,
+      last_overdue_action_at: null,
+      schedule_note: `snoozed ${days} day${days === 1 ? '' : 's'} (from ${startKey ?? 'unscheduled'})`,
+    })
+    .eq('id', taskId);
+  if (updErr) throw new Error(`snoozeTask update failed: ${updErr.message}`);
+
+  await logEvent({
+    teamId: row.team_id as string,
+    teammateId: (row.assigned_to as string | null) ?? null,
+    taskId,
+    event: 'snoozed',
+    payload: {
+      days,
+      previousScheduledDate: startKey,
+      newScheduledDate: newStart,
+    },
+  });
+}
+
+// ── Sweep entry point ──────────────────────────────────────────────────────
+
+type TeamOverdueRow = {
+  id: string;
+  name: string;
+  created_by: string;
+};
+
+type TaskOverdueRow = TaskRow & {
+  overdue_tier: number | null;
+  last_overdue_action_at: string | null;
+};
+
+function activeTaskMap(row: TaskOverdueRow): AgentTask & {
+  overdueTier: OverdueTier;
+  lastOverdueActionAt: string | null;
+} {
+  return {
+    ...mapTask(row),
+    overdueTier: ((row.overdue_tier ?? 0) as OverdueTier),
+    lastOverdueActionAt: row.last_overdue_action_at,
+  };
+}
+
+export async function sweepOverdueTeams(today: Date = new Date()): Promise<{
   teamsProcessed: number;
   actionsByKind: OverdueSweepCounts;
 }> {
-  return {
-    teamsProcessed: 0,
-    actionsByKind: {
-      nudge_teammate: 0,
-      escalate_to_owner: 0,
-      auto_reschedule: 0,
-      none: 0,
-    },
+  // Lazy import — `overdueRunner` imports back from this module
+  // (`markOverdueAction`, `reassignTask`, `setTaskSchedule`,
+  // `loadHoursByDateForTeammate`, `loadHoursByDateForUser`), and a top-of-file
+  // import would create an evaluation cycle.
+  const { executeOverdueAction } = await import('./overdueRunner');
+  const counts: OverdueSweepCounts = {
+    nudge_teammate: 0,
+    escalate_to_owner: 0,
+    auto_reschedule: 0,
+    none: 0,
   };
+
+  const { data: teamRows, error: teamsErr } = await supabase
+    .from('teams')
+    .select('id, name, created_by')
+    .eq('overdue_pressure_enabled', true);
+  if (teamsErr) throw new Error(`sweepOverdueTeams teams query failed: ${teamsErr.message}`);
+  const teams = (teamRows ?? []) as TeamOverdueRow[];
+
+  for (const team of teams) {
+    // Load active-status tasks for the team, including the overdue columns.
+    const { data: taskRows, error: tasksErr } = await supabase
+      .from('agent_tasks')
+      .select('*')
+      .eq('team_id', team.id)
+      .in('status', ACTIVE_OVERDUE_STATUSES as unknown as string[]);
+    if (tasksErr) throw new Error(`sweepOverdueTeams tasks query failed: ${tasksErr.message}`);
+
+    const tasks = ((taskRows ?? []) as TaskOverdueRow[])
+      .filter((r) => isAssignableTaskRow(r))
+      .map((r) => activeTaskMap(r));
+
+    if (tasks.length === 0) continue;
+
+    const teammates = await listTeammatesWithStats(team.id);
+
+    // Resolve the owner once per team. `teams.created_by` is the canonical
+    // owner anchor; their email lives on the `users` table.
+    const ownerUserId = team.created_by;
+    const { data: ownerRow } = await supabase
+      .from('users')
+      .select('email, nickname')
+      .eq('id', ownerUserId)
+      .maybeSingle();
+    const owner = {
+      userId: ownerUserId,
+      email: (ownerRow?.email as string | undefined) ?? null,
+      nickname: (ownerRow?.nickname as string | undefined) ?? null,
+    };
+
+    for (const task of tasks) {
+      const action = decideOverdueAction({
+        task: {
+          id: task.id,
+          status: task.status,
+          scheduledDate: task.scheduledDate,
+          scheduledUntilDate: task.scheduledUntilDate,
+          assignedTo: task.assignedTo,
+          overdueTier: task.overdueTier,
+          lastOverdueActionAt: task.lastOverdueActionAt,
+        },
+        teamOverduePressureEnabled: true,
+        today,
+      });
+
+      if (action.kind === 'none') {
+        counts.none++;
+        continue;
+      }
+
+      const teammate = teammates.find((tm) => tm.id === task.assignedTo);
+      if (!teammate) {
+        // Task is assigned to someone who no longer exists / is retired.
+        // Treat as a no-op — owner-side cleanup is a separate concern.
+        counts.none++;
+        continue;
+      }
+
+      try {
+        await executeOverdueAction(task, action, teammate, owner, today);
+        counts[action.kind]++;
+      } catch (err) {
+        logger.error('sweepOverdueTeams: executeOverdueAction failed', {
+          err: err instanceof Error ? err.message : String(err),
+          taskId: task.id,
+          kind: action.kind,
+        });
+        // Keep going — one bad task shouldn't abort the whole sweep.
+      }
+    }
+  }
+
+  return { teamsProcessed: teams.length, actionsByKind: counts };
 }
