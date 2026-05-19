@@ -62,12 +62,10 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
               <div key={i} className="glass-card is-static v2-batt-card">
                 <div className="v2-batt-card-head">
                   <span className="v2-batt-rank">#{String(i + 1).padStart(2, '0')}</span>
-                  <div className="v2-batt-id">
-                    <span className="v2-batt-name">{c.name}</span>
-                    {c.url && (
-                      <a href={c.url} target="_blank" rel="noreferrer" className="v2-batt-visit">visit ↗</a>
-                    )}
-                  </div>
+                  <span className="v2-batt-name">{c.name}</span>
+                  {c.url && (
+                    <a href={c.url} target="_blank" rel="noreferrer" className="v2-batt-visit">visit ↗</a>
+                  )}
                   {c.messagingTone && (
                     <span className="v2-batt-tone">tone · {c.messagingTone}</span>
                   )}

@@ -840,7 +840,15 @@ export default function V2ProjectOverviewPage() {
                     <span className="v2-ladder-idx">{String(i + 1).padStart(2, '0')}</span>
                   </div>
                   <div className="v2-ladder-body">
-                    <p className="v2-ladder-text">{s}</p>
+                    <p className="v2-ladder-text">
+                      {s.split(/(\*\*[^*]+\*\*)/g).map((chunk, k) =>
+                        chunk.startsWith('**') && chunk.endsWith('**') ? (
+                          <strong key={k}>{chunk.slice(2, -2)}</strong>
+                        ) : (
+                          <span key={k}>{chunk}</span>
+                        )
+                      )}
+                    </p>
                   </div>
                 </div>
               );

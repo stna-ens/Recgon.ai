@@ -768,7 +768,8 @@
       .v2-batt-card-head {
         display: flex;
         align-items: flex-start;
-        gap: 12px;
+        flex-wrap: wrap;
+        gap: 8px 12px;
         padding-bottom: 12px;
         border-bottom: 1px dashed var(--rule);
         min-width: 0;
@@ -788,24 +789,20 @@
         font-variant-numeric: tabular-nums;
         line-height: 1.4;
       }
-      .v2-batt-id {
-        flex: 1 1 auto;
-        display: flex;
-        align-items: baseline;
-        gap: 10px;
-        flex-wrap: wrap;
-        min-width: 0;
-      }
       .v2-batt-name {
-        flex: 1 1 100%;
+        flex: 1 1 auto;
+        min-width: 0;
         font-size: 16px;
         font-weight: 700;
         color: var(--txt-pure);
         letter-spacing: -0.01em;
         line-height: 1.35;
         word-break: break-word;
+        align-self: center;
       }
       .v2-batt-visit {
+        flex: 0 0 auto;
+        align-self: center;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
         font-size: 10.5px;
         color: var(--signature);
@@ -818,11 +815,16 @@
       }
       .v2-batt-visit:hover { background: rgba(var(--signature-rgb), 0.08); }
       .v2-batt-tone {
+        flex: 1 1 100%;
+        min-width: 0;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
         font-size: 10px;
+        line-height: 1.5;
         color: var(--txt-faint);
         letter-spacing: 0.3px;
         text-transform: lowercase;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
       .v2-batt-summary {
         display: block;
