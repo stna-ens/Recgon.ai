@@ -41,3 +41,6 @@ recgon-*.png
 
 # playwright snapshots (local dev artifacts)
 .playwright-mcp/
+
+# vitest coverage reports
+coverage/
