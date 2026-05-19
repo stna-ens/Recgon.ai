@@ -27,6 +27,7 @@ import type {
   VerificationEvidence,
   RescheduleRequestStatus,
   TriageNote,
+  OverdueSweepCounts,
 } from './types';
 
 // Keep the assignment log bounded so the row doesn't grow unbounded.
@@ -957,7 +958,13 @@ export async function logEvent(input: {
     | 'deferred'
     // Phase 3 / Plan 07 — owner override of a triaged task. Audits the
     // owner_user_id, assignee_id, and prior_triage_note for traceability.
-    | 'manually_assigned';
+    | 'manually_assigned'
+    // Phase 3.6 / Plan 01 — graduated overdue-pressure events. Plan 03
+    // writes these from the sweep cron (`/api/cron/overdue-sweep`).
+    | 'nudged'
+    | 'escalated'
+    | 'auto_rescheduled'
+    | 'snoozed';
   payload?: Record<string, unknown>;
 }): Promise<void> {
   await supabase.from('teammate_event_log').insert({
@@ -967,4 +974,26 @@ export async function logEvent(input: {
     event: input.event,
     payload: input.payload ?? {},
   });
+}
+
+// ── Phase 3.6 / Plan 01 — Overdue task pressure (walking skeleton) ──────────
+//
+// `sweepOverdueTeams()` is the entry the daily cron calls. Today it returns
+// zeros — Plan 02 lands `decideOverdueAction()` in `overduePolicy.ts` (pure
+// function, fully unit-tested), and Plan 03 wires Resend emails + storage
+// writes inside this loop. Keeping the shape stable now means the cron
+// route + frontend counters can be built against it ahead of the policy.
+export async function sweepOverdueTeams(): Promise<{
+  teamsProcessed: number;
+  actionsByKind: OverdueSweepCounts;
+}> {
+  return {
+    teamsProcessed: 0,
+    actionsByKind: {
+      nudge_teammate: 0,
+      escalate_to_owner: 0,
+      auto_reschedule: 0,
+      none: 0,
+    },
+  };
 }

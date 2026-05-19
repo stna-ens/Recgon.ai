@@ -35,6 +35,9 @@
     "src/app/api/cron/github-skill-inference/route.ts": {
       "maxDuration": 60
     },
+    "src/app/api/cron/overdue-sweep/route.ts": {
+      "maxDuration": 60
+    },
     "src/app/api/teams/[id]/inferred-skills/scan/route.ts": {
       "maxDuration": 60
     }
@@ -51,6 +54,10 @@
     {
       "path": "/api/cron/github-skill-inference",
       "schedule": "0 6 * * 0"
+    },
+    {
+      "path": "/api/cron/overdue-sweep",
+      "schedule": "0 9 * * *"
     }
   ]
 }

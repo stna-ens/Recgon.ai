@@ -386,3 +386,39 @@ export type AssignmentReasoning =
 // everything from one place. Callers that want the Zod schema itself import
 // from `lib/schemas`.
 export type { JudgePick, JudgeResult } from '../schemas';
+
+// ── Phase 3.6 — Overdue task pressure (Plan 01) ──────────────────────────────
+//
+// Type scaffolding only. The decision function (`decideOverdueAction`) lands
+// in Plan 02 (`src/lib/recgon/overduePolicy.ts`); side effects (email +
+// storage writes) land in Plan 03. These types pin the contract between the
+// cron route, the (currently stubbed) sweep entry, and the future policy.
+//
+// `OverdueTier` mirrors the int stored in `agent_tasks.overdue_tier`:
+//   0 = no action yet
+//   1 = nudge sent to the assignee (1–2 days overdue)
+//   2 = escalation sent to the owner (3–6 days overdue)
+//   3 = auto-rescheduled to next available working day (7+ days overdue)
+//
+// `OverdueAction` is the discriminated union the policy returns. Each
+// variant carries the tier it represents so callers don't have to remember
+// the mapping. `none` is the no-op outcome (task not overdue, in cool-down,
+// or terminal status).
+
+export type OverdueTier = 0 | 1 | 2 | 3;
+
+export type OverdueAction =
+  | { kind: 'nudge_teammate'; tier: 1 }
+  | { kind: 'escalate_to_owner'; tier: 2 }
+  | { kind: 'auto_reschedule'; tier: 3 }
+  | { kind: 'none' };
+
+// Counters returned by the daily sweep — one bucket per OverdueAction.kind.
+// Plan 04 surfaces these on the owner board; Plan 03 will increment them as
+// it executes actions.
+export type OverdueSweepCounts = {
+  nudge_teammate: number;
+  escalate_to_owner: number;
+  auto_reschedule: number;
+  none: number;
+};
