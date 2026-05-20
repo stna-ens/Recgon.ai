@@ -19,6 +19,7 @@
 import { logger } from '../logger';
 import { supabase } from '../supabase';
 import { chatViaProviders } from '../llm/providers';
+import { enqueueJob } from '../llm/jobQueue';
 import { notifyTeammateAssigned } from '../notifications';
 import { readUnifiedBrain } from './brain';
 import { mintTasksFromBrain } from './taskMint';
@@ -952,6 +953,16 @@ async function dispatchSingleTaskWithReasoning(
         chatViaProviders,
       );
       await assignScheduledTask(task, ownerTeammate.id, 'recgon', ownerPlan, reasoning);
+      // Phase 4 / Plan 01 — FRAME-01 fire-and-forget reframe enqueue.
+      // Runs AFTER assignTask succeeded (above) and BEFORE notifyTeammateAssigned
+      // (below) so the job is queued by the time the email goes out.
+      enqueueReframeJob(task.id, ownerTeammate.id, teamId).catch((err) => {
+        logger.warn('task_reframe enqueue helper threw (unexpected)', {
+          taskId: task.id,
+          teammateId: ownerTeammate.id,
+          err: err instanceof Error ? err.message : String(err),
+        });
+      });
       await logEvent({
         teamId,
         teammateId: ownerTeammate.id,
@@ -1024,6 +1035,17 @@ async function dispatchSingleTaskWithReasoning(
   }
 
   await assignScheduledTask(task, best.match.teammate.id, 'recgon', best.plan, reasoning);
+  // Phase 4 / Plan 01 — FRAME-01 fire-and-forget reframe enqueue.
+  // Runs AFTER assignTask succeeded and BEFORE notifyTeammateAssigned so
+  // the job is queued by the time the email goes out (Plan 02 will switch
+  // the email body to read personalized_description when populated).
+  enqueueReframeJob(task.id, best.match.teammate.id, teamId).catch((err) => {
+    logger.warn('task_reframe enqueue helper threw (unexpected)', {
+      taskId: task.id,
+      teammateId: best.match.teammate.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  });
   // Plan 06 — successful assignment clears any prior triage_note so a
   // task that was previously refused doesn't leave stale metadata when
   // conditions change (skill added, calendar freed, etc.).
@@ -1159,6 +1181,58 @@ async function assignScheduledTask(
     },
     reasoning,
   );
+}
+
+/**
+ * Resolve the teammate's `userId` (since `agent_tasks.assigned_to` stores
+ * teammate IDs, not user IDs) and enqueue exactly one `task_reframe` job
+ * for that user. Fire-and-forget: every error path (teammate not found,
+ * non-user teammate, supabase failure on enqueue) is swallowed with a log
+ * — the assignment must NOT roll back because the reframe queue hiccupped.
+ *
+ * Single source of truth for both `runDispatch` (via `assignScheduledTask`)
+ * and `dispatchTask` (also via `assignScheduledTask`). FRAME-01.
+ */
+export async function enqueueReframeJob(
+  taskId: string,
+  assigneeTeammateId: string,
+  teamId: string,
+): Promise<void> {
+  let userId: string | null = null;
+  try {
+    const teammate = await getTeammate(assigneeTeammateId);
+    userId = teammate?.userId ?? null;
+  } catch (err) {
+    logger.warn('task_reframe: getTeammate failed (skipping enqueue)', {
+      taskId,
+      assigneeTeammateId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return;
+  }
+  if (!userId) {
+    // Legacy non-user teammate (kind='ai' or pre-Plan-1 manual rows) has no
+    // userId to personalize for. Skip silently — no reframe possible.
+    logger.debug('task_reframe skipped — teammate has no userId', {
+      taskId,
+      assigneeTeammateId,
+    });
+    return;
+  }
+  try {
+    await enqueueJob({
+      teamId,
+      userId,
+      kind: 'task_reframe',
+      payload: { taskId, assigneeUserId: userId, teamId },
+    });
+  } catch (err) {
+    logger.warn('task_reframe enqueue failed', {
+      taskId,
+      assigneeUserId: userId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 function withPlan(task: AgentTask, plan: SchedulePlan): AgentTask {
