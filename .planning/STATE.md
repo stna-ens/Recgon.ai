@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 3.6 (Overdue Task Pressure) complete — all 4 plans shipped (walking skeleton → pure policy → wired sweep + emails + snooze API → UI chips/badges/SnoozeControl/counters). Phase 3 also effectively complete (Plan 03-07 TASKS-page triage view descoped 2026-05-15; API half shipped, UI half intentionally dropped). Phase 4 (Personalized Task Framing) is next.
-last_updated: "2026-05-20T00:00:00.000Z"
-last_activity: 2026-05-20
+status: executing
+stopped_at: Phase 3.6 (Overdue Task Pressure) complete, all 4 plans shipped (commits 69fb566 → b457394 → 72f6995 → fb3205a). Phase 3 effectively complete too (Plan 03-07 descoped 2026-05-15; API half shipped, UI half intentionally dropped). Phase 4 (Personalized Task Framing) is the next milestone phase.
+last_updated: "2026-05-20T11:15:02.427Z"
+last_activity: 2026-05-20 -- Phase 04 execution started
 progress:
-  total_phases: 7
-  completed_phases: 2
-  total_plans: 20
+  total_phases: 8
+  completed_phases: 4
+  total_plans: 26
   completed_plans: 19
-  percent: 95
+  percent: 73
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 4
-Plan: not yet planned (Phase 4 needs /gsd-plan-phase)
-Status: Phase 3 + Phase 3.6 both complete; Phase 4 (Personalized Task Framing) is next per ROADMAP execution order.
-Last activity: 2026-05-20
+Phase: 04 (personalized-task-framing) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 04
+Last activity: 2026-05-20 -- Phase 04 execution started
 
 Progress: [██████████] 100%
 
