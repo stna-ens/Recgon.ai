@@ -17,7 +17,13 @@ export async function GET(
   if (!task || task.teamId !== teamId) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
-  return NextResponse.json({ task });
+  // CR-01: strip personalized columns at the route boundary. Personalized
+  // text is only served by the viewer-discriminated route at
+  // /api/recgon/tasks/[id]; this listing surface must never leak it.
+  const { personalizedDescription: _pd, personalizedDescriptionForUserId: _pdfu, ...rest } = task;
+  void _pd;
+  void _pdfu;
+  return NextResponse.json({ task: rest });
 }
 
 export async function DELETE(

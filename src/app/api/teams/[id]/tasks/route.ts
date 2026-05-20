@@ -34,7 +34,17 @@ export async function GET(
     kind: kind && VALID_KINDS.includes(kind) ? kind : undefined,
     projectId: projectId ?? undefined,
   });
-  return NextResponse.json({ tasks });
+  // CR-01: strip personalized columns at the route boundary. The mapped
+  // AgentTask carries them so the worker + the viewer-discriminated route
+  // can read them, but every other surface must NOT serialize them — the
+  // canonical privacy invariant lives at the read boundary, not in storage.
+  const sanitized = tasks.map((t) => {
+    const { personalizedDescription: _pd, personalizedDescriptionForUserId: _pdfu, ...rest } = t;
+    void _pd;
+    void _pdfu;
+    return rest;
+  });
+  return NextResponse.json({ tasks: sanitized });
 }
 
 export async function POST(

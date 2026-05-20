@@ -77,5 +77,16 @@ export async function GET(request: NextRequest) {
     }));
   }
 
-  return NextResponse.json({ tasks, teams, projects });
+  // CR-01: strip personalized columns at the route boundary. Personalized
+  // text is only served by the viewer-discriminated route at
+  // /api/recgon/tasks/[id]; the cross-team personal calendar must never
+  // leak it (calendar can return tasks the viewer is NOT the assignee of
+  // in edge cases — defense in depth).
+  const sanitizedTasks = tasks.map((t) => {
+    const { personalizedDescription: _pd, personalizedDescriptionForUserId: _pdfu, ...rest } = t;
+    void _pd;
+    void _pdfu;
+    return rest;
+  });
+  return NextResponse.json({ tasks: sanitizedTasks, teams, projects });
 }
