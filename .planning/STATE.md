@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3.6 (Overdue Task Pressure) complete, all 4 plans shipped (commits 69fb566 → b457394 → 72f6995 → fb3205a). Phase 3 effectively complete too (Plan 03-07 descoped 2026-05-15; API half shipped, UI half intentionally dropped). Phase 4 (Personalized Task Framing) is the next milestone phase.
-last_updated: "2026-05-20T17:30:00.000Z"
-last_activity: 2026-05-20 -- Phase 04 Plan 02 complete (viewer-discriminated read shipped)
+stopped_at: Phase 4 (Personalized Task Framing) code-complete, all 3 plans shipped (Plans 04-01, 04-02, 04-03). Reassignment invalidation atomic; FRAME-04 closed. 30 new golden fixtures (12 FRAME-06 tone + 8 FRAME-07 grounding + 6 invalidation + 4 negative controls). enqueueReframeJob extracted to leaf module reframeEnqueue.ts to break the storage→dispatcher import cycle. Manual UAT auto-approved per orchestrator auto-mode. Phase 5 (Live Code Infrastructure) is next.
+last_updated: "2026-05-20T17:45:00.000Z"
+last_activity: 2026-05-20 -- Phase 04 Plan 03 complete (reassignment invalidation + FRAME-06/07 golden tests)
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 26
-  completed_plans: 19
-  percent: 73
+  completed_plans: 20
+  percent: 77
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 04 (personalized-task-framing) — EXECUTING
-Plan: 2 of 3
-Status: Executing Phase 04
-Last activity: 2026-05-20 -- Phase 04 Plan 02 complete (viewer-discriminated read shipped); Plan 04-03 (reassignment invalidation + golden tests) is next
+Phase: 04 (personalized-task-framing) — CODE-COMPLETE
+Plan: 3 of 3 (all shipped)
+Status: Phase 04 complete; next phase is 05 (Live Code Infrastructure)
+Last activity: 2026-05-20 -- Phase 04 Plan 03 complete (reassignment invalidation + FRAME-06/FRAME-07 golden tests); Phase 4 code-complete
 
-Progress: [██████████] 100%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [██████████] 100%
 | Phase 03 P05 | 35 | 5 tasks | 14 files |
 | Phase 03 P06 | 14 | 3 tasks | 12 files |
 | Phase 04 P02 | 8 | 2 tasks | 5 files |
+| Phase 04 P03 | 10 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,7 @@ Recent decisions affecting current work:
 - Plan 03.6-03: Wired sweep (`72f6995`). Replaced stub `sweepOverdueTeams` with real iterator; `overdueRunner.executeOverdueAction` performs email send (Resend templates in `prompts.ts`) + storage update + event log write; `buildSchedulePlan`-driven auto-reschedule with reassignment fallback when original assignee out of capacity; owner-only `POST /api/recgon/tasks/[id]/snooze` route with day-count body validation.
 - Plan 03.6-04: UI surfacing + telemetry (`fb3205a`). Tiered overdue chip on `/tasks` cards, calendar cards, and project Calendar tab; owner-only tier badge on owner board surfaces; `SnoozeControl` in task detail (owner-only, day picker); `/tasks` overdue filter + empty state; logger counters wired (`overdue.nudged`, `overdue.escalated`, `overdue.auto_rescheduled`, `overdue.snoozed`). Phase 3.6 complete.
 - Plan 04-02: viewer-discriminated description (`1369dc3`, `43fc7c2`). `mapTask` now maps `personalized_description` + `personalized_description_for_user_id` from row to AgentTask (snake→camel boundary). API route `/api/recgon/tasks/[id]` adds `shouldServePersonalized` gate (assignee + non-empty personalized text + userId match) and explicit destructure+overwrite (NEVER spread the task — T-04-02-01 mitigation). FRAME-04 read-boundary race shield: stale mid-reassignment rows refuse to serve to a userId that doesn't match the column. notifications.ts picks personalized when bound; escapeHtml now wraps the description in the email body (T-04-02-03 defense in depth). TaskDetailPanel already read task.description directly — zero client change needed; the API is the single source of truth post-Plan-02. 14 new tests, 402/6 suite, tsc clean, build clean. Manual UAT auto-approved (orchestrator auto-mode) — relying on automated test surface. FRAME-03 + FRAME-05 closed.
+- Plan 04-03: reassignment invalidation + FRAME-06/07 golden tests (`3ff8ea8`, `c5048ab`, `9c9eb1b`). enqueueReframeJob extracted from dispatcher.ts to leaf module `reframeEnqueue.ts` and re-exported from reframe.ts for grep-discoverability — breaks the storage→dispatcher import cycle that would result from storage.reassignTask now needing the helper. storage.reassignTask reads current assigned_to + team_id, detects actual reassignment vs no-op, and on actual reassignment nulls personalized_description AND personalized_description_for_user_id in the SAME supabase update (atomic — no cron-cycle gap where new assignee could read stale text). Then fires enqueueReframeJob (defense-in-depth .catch around the fire-and-forget helper). 6 invalidation regression tests + 12 FRAME-06 tone-violation golden fixtures (flattery / false-familiarity / pronouns) + 2 negative controls + 8 FRAME-07 grounding fixtures (inferred-skill / inferred-preference / inferred-recent-state — one fixture deliberately accepts either tone_reject OR grounding_reject because the LLM payload contains "love" which trips tone first) + 2 negative controls = 30 new fixtures total. All three call paths (reassign/schedule/decline routes) inherit the new behavior via reassignTask — no per-route changes. 432/6 suite, tsc clean, build clean. Manual UAT auto-approved (orchestrator auto-mode). FRAME-04 + FRAME-06 + FRAME-07 closed; FRAME-01 + FRAME-02 retroactively marked complete (Plan 04-01 closure). Phase 4 code-complete.
 
 ### Pending Todos
 
@@ -128,10 +130,10 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-20T17:30:00.000Z
-Stopped at: Phase 4 Plan 02 complete. Viewer-discriminated description shipped end-to-end — API route at `/api/recgon/tasks/[id]` serves personalized text only when (a) viewer is the assignee, (b) personalizedDescription is non-empty, (c) personalized_description_for_user_id matches session.user.id; raw personalized fields stripped via destructure+overwrite (T-04-02-01 mitigation; FRAME-04 read-boundary race shield). Assignment email picks personalized when bound to assignee; escapeHtml now wraps the description (T-04-02-03 defense in depth). TaskDetailPanel already reads task.description directly — no client change needed. 14 new tests (8 route + 6 notifications), 402 passed / 6 skipped, tsc clean, build succeeds. Manual UAT (Task 2.3) auto-approved per orchestrator (relying on automated test surface + privacy regression suite). Plan 04-03 (reassignment invalidation + 12 FRAME-06 + 8 FRAME-07 golden fixtures) is next.
+Last session: 2026-05-20T17:45:00.000Z
+Stopped at: Phase 4 Plan 03 complete — Phase 4 code-complete. reassignTask now invalidates personalized_description + personalized_description_for_user_id atomically (same supabase update as assigned_to change) and enqueues a new reframe job for the new assignee. enqueueReframeJob extracted to leaf module reframeEnqueue.ts (avoids storage→dispatcher cycle); re-exported from reframe.ts for discoverability. All three call paths (reassign/schedule/decline routes) inherit the new behavior — no per-route changes. 30 new tests pin FRAME-04 invalidation + FRAME-06 tone bounds (12 flattery/familiarity/pronoun fixtures + 2 negative controls) + FRAME-07 grounding (8 inferred-data fixtures + 2 negative controls). Manual UAT (Task 3.4) auto-approved per orchestrator (relying on the 30 new fixtures + full 432/6 suite + tsc + build as verification surface). Phase 5 (Live Code Infrastructure) is next.
 Resume file: None
-Resume command: `/gsd-plan-phase 4` to begin planning Phase 4 (Personalized Task Framing). Phase 4 docs to read first: `.planning/ROADMAP.md` (Phase 4 success criteria + 3-plan hint) and `.planning/REQUIREMENTS.md` (FRAME-01..07).
+Resume command: `/gsd-plan-phase 5` to begin planning Phase 5 (Live Code Infrastructure). Phase 5 docs to read first: `.planning/ROADMAP.md` (Phase 5 success criteria) and `.planning/REQUIREMENTS.md` (LIVECODE-01..08). Note: Phase 5 is research-recommended per ROADMAP — consider `/gsd-research-phase` before planning.
 User action pending:
 
   1. Apply `supabase/migrations/20260518_drop_owner_dock_dismissals.sql` to live Supabase (carry-over from Phase 3.5 reversal — owner_dock_dismissals table exists but no code references it).

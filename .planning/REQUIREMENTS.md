@@ -44,13 +44,13 @@ Each requirement maps to one of the canonical phases A → E from `.planning/res
 
 ### Personalized Framing (Phase D — AI PM persona)
 
-- [ ] **FRAME-01**: When a task is assigned, a `task_reframe` job is enqueued (never inline in the dispatcher) to generate a personalized description for the assignee.
-- [ ] **FRAME-02**: The personalized description is stored in a new `agent_tasks.personalized_description` column alongside the original brain-generated description (original preserved).
+- [x] **FRAME-01**: When a task is assigned, a `task_reframe` job is enqueued (never inline in the dispatcher) to generate a personalized description for the assignee.
+- [x] **FRAME-02**: The personalized description is stored in a new `agent_tasks.personalized_description` column alongside the original brain-generated description (original preserved).
 - [x] **FRAME-03**: The personalized description includes: why this fits the assignee, where to start (file or folder pointer), and how it connects to recent project state (analytics change, code area, prior task) — when those signals exist.
-- [ ] **FRAME-04**: The personalized description is tied to a `personalized_description_for_user_id` column. If the task is reassigned to a different person, the column is invalidated and a new reframe job is enqueued.
+- [x] **FRAME-04**: The personalized description is tied to a `personalized_description_for_user_id` column. If the task is reassigned to a different person, the column is invalidated and a new reframe job is enqueued.
 - [x] **FRAME-05**: The assignee sees the personalized description in the task detail UI and in the assignment email. The owner / re-assignment flow sees the original.
-- [ ] **FRAME-06**: Reframing tone is bounded by the prompt registry (no flattery, no sycophancy, no familiarity assumptions). A bounded set of acceptable rhetorical moves is whitelisted in `prompts.ts`.
-- [ ] **FRAME-07**: Reframing never references personal information the assignee did not declare in their profile (no inference of preferences from external data).
+- [x] **FRAME-06**: Reframing tone is bounded by the prompt registry (no flattery, no sycophancy, no familiarity assumptions). A bounded set of acceptable rhetorical moves is whitelisted in `prompts.ts`.
+- [x] **FRAME-07**: Reframing never references personal information the assignee did not declare in their profile (no inference of preferences from external data).
 
 ### Live Code Signal (Phase E — Brain freshness)
 
@@ -144,13 +144,13 @@ Filled by the roadmapper. Each requirement maps to exactly one phase.
 | JUDGE-08 | Phase 3 | Complete |
 | JUDGE-09 | Phase 3 | Pending |
 | JUDGE-10 | Phase 3 | Pending |
-| FRAME-01 | Phase 4 | Pending |
-| FRAME-02 | Phase 4 | Pending |
+| FRAME-01 | Phase 4 | Complete (Plan 04-01) |
+| FRAME-02 | Phase 4 | Complete (Plan 04-01) |
 | FRAME-03 | Phase 4 | Complete (Plan 04-02) |
-| FRAME-04 | Phase 4 | Pending |
+| FRAME-04 | Phase 4 | Complete (Plan 04-03) |
 | FRAME-05 | Phase 4 | Complete (Plan 04-02) |
-| FRAME-06 | Phase 4 | Pending |
-| FRAME-07 | Phase 4 | Pending |
+| FRAME-06 | Phase 4 | Complete (Plan 04-01 module + Plan 04-03 golden tests) |
+| FRAME-07 | Phase 4 | Complete (Plan 04-01 module + Plan 04-03 golden tests) |
 | LIVECODE-01 | Phase 5 | Pending |
 | LIVECODE-02 | Phase 5 | Pending |
 | LIVECODE-03 | Phase 6 | Pending |
