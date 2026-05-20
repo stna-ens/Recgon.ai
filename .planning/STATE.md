@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: ready_to_plan
 stopped_at: Phase 4 (Personalized Task Framing) code-complete, all 3 plans shipped (Plans 04-01, 04-02, 04-03). Reassignment invalidation atomic; FRAME-04 closed. 30 new golden fixtures (12 FRAME-06 tone + 8 FRAME-07 grounding + 6 invalidation + 4 negative controls). enqueueReframeJob extracted to leaf module reframeEnqueue.ts to break the storage→dispatcher import cycle. Manual UAT auto-approved per orchestrator auto-mode. Phase 5 (Live Code Infrastructure) is next.
 last_updated: "2026-05-20T17:45:00.000Z"
 last_activity: 2026-05-20 -- Phase 04 Plan 03 complete (reassignment invalidation + FRAME-06/07 golden tests)
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 26
   completed_plans: 20
-  percent: 77
+  percent: 75
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 04 (personalized-task-framing) — CODE-COMPLETE
-Plan: 3 of 3 (all shipped)
-Status: Phase 04 complete; next phase is 05 (Live Code Infrastructure)
-Last activity: 2026-05-20 -- Phase 04 Plan 03 complete (reassignment invalidation + FRAME-06/FRAME-07 golden tests); Phase 4 code-complete
+Phase: 5
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-20
 
 Progress: [████████░░] 77%
 
@@ -36,7 +36,7 @@ Progress: [████████░░] 77%
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed: 11
 - Average duration: —
 - Total execution time: —
 
@@ -47,6 +47,7 @@ Progress: [████████░░] 77%
 | — | — | — | — |
 | 01 | 4 | - | - |
 | 03 | 4 | - | - |
+| 4 | 3 | - | - |
 
 **Recent Trend:**
 

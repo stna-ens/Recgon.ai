@@ -125,7 +125,7 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
   3. Reassigning a task to a different person automatically invalidates `personalized_description_for_user_id`, enqueues a new `task_reframe` job, and the new assignee sees their own personalized description after the next cron drain (the old description is never shown to the new assignee).
   4. The personalized description never references information the assignee did not declare in their profile (no inferred preferences from external data); content is bounded by the whitelisted rhetorical moves in `prompts.ts` (no flattery, no sycophancy, no false familiarity).
   5. The assignment email sent via Resend includes the personalized description for the assignee (not the original brain description), end-to-end.
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 - [x] `04-01-PLAN.md` — Walking skeleton: pure `reframe.ts` module (adapter-injected chat, FRAME-06/07 post-hoc tone + grounding validators), `task_reframe` JobKind + worker registration, dispatcher post-assignTask enqueue helper, additive migration adding `personalized_description` + `personalized_description_for_user_id` columns to `agent_tasks` (operator must apply via `supabase db push`). **Complete 2026-05-20** — see `.planning/phases/04-personalized-task-framing/04-01-SUMMARY.md`.
 - [x] `04-02-PLAN.md` — Viewer-discriminated read end-to-end: `/api/recgon/tasks/[id]` server-side selects personalized vs original based on session.user.id match; Resend assignment email body uses personalized when bound to assignee; TaskDetailPanel consumes single API-resolved description field (no client-side privacy logic); privacy regression tests assert raw personalized fields never leak. **Complete 2026-05-20** — see `.planning/phases/04-personalized-task-framing/04-02-SUMMARY.md`.
 - [x] `04-03-PLAN.md` — Reassignment invalidation + golden tests: `reassignTask` atomically nulls both personalized columns + enqueues new reframe job for new assignee; `enqueueReframeJob` extracted from dispatcher to a leaf `reframeEnqueue.ts` module (re-exported from `reframe.ts` for grep-discoverability — avoids storage → dispatcher → storage import cycle); 12 FRAME-06 tone-bound golden fixtures + 8 FRAME-07 grounding golden fixtures lock the validators against future prompt drift. **Complete 2026-05-20** — see `.planning/phases/04-personalized-task-framing/04-03-SUMMARY.md`.
@@ -170,6 +170,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 3.5 (REVERSED) → 3.6 → 4 
 | 3. LLM Judgment Overlay | 6/7 | Complete (Plan 07 descoped 2026-05-15) | 2026-05-15 |
 | 3.5. Owner Task Board | 0/4 | Reversed 2026-05-16 | - |
 | 3.6. Overdue Task Pressure | 4/4 | Complete | 2026-05-20 |
-| 4. Personalized Task Framing | 0/3 | Next | - |
+| 4. Personalized Task Framing | 3/3 | Complete    | 2026-05-20 |
 | 5. Live Code Infrastructure | 0/4 | Not started | - |
 | 6. Brain Integration & Cost Guards | 0/4 | Not started | - |
