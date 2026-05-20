@@ -409,6 +409,38 @@ export const WhyYouGroundedSchema = z.object({
 
 export type WhyYouGrounded = z.infer<typeof WhyYouGroundedSchema>;
 
+// ── Phase 4 — Personalized task framing (Plan 01) ────────────────────────────
+//
+// Schema for the per-assignment task reframe response. Paired with the
+// `TASK_REFRAME_SYSTEM` prompt in `prompts.ts` and consumed by `runReframe`
+// in `lib/recgon/reframe.ts`. Schema failure → `ReframeError` with
+// `kind='schema_reject'`; the worker layer surfaces the throw to the job
+// queue's exponential-backoff retry.
+//
+// Hard bounds:
+//   - `sentence` 40–220 chars (worker uses 60–180 word-count refine in prompt;
+//     schema bounds are looser so genuine variations don't hit the floor).
+//   - `cited_moves` length 1–3, each value from the FRAME-06 whitelist —
+//     enumerated here so Zod catches the bad path before the grounding
+//     validator runs.
+//   - `cited_signals` length 0–8 (each entry must appear in the assignee's
+//     declared profile or recent project state — enforced by the post-hoc
+//     grounding validator, not Zod).
+
+export const RHETORICAL_MOVES = [
+  'fit_acknowledgement',
+  'start_location',
+  'recent_state_link',
+] as const;
+
+export const ReframeResultSchema = z.object({
+  sentence: z.string().min(40).max(220),
+  cited_moves: z.array(z.enum(RHETORICAL_MOVES)).min(1).max(3),
+  cited_signals: z.array(z.string()).max(8),
+});
+
+export type ReframeResultPayload = z.infer<typeof ReframeResultSchema>;
+
 // ── Phase 3 — LLM judgment overlay (Plan 03) ─────────────────────────────────
 //
 // Validation shape for the JSONB written to `agent_tasks.assignment_reasoning`.

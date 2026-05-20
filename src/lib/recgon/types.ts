@@ -271,6 +271,17 @@ export type AgentTask = {
   // back-compat with rows minted before the Plan 01 migration.
   overdueTier?: 0 | 1 | 2 | 3 | null;
   lastOverdueActionAt?: string | null;
+  // Phase 4 / Plan 01 — personalized task framing. `personalizedDescription`
+  // is the assignee-specific sentence the `task_reframe` worker writes after
+  // each assignment; it never overrides the canonical `description` (which
+  // owner + non-assignee viewers continue to read). `personalizedDescriptionForUserId`
+  // pins the userId the sentence was generated for so the dispatcher can
+  // invalidate (Plan 03) on reassignment without re-running the worker.
+  // Both fields are NULL on pre-Phase-4 rows + while the worker job is queued
+  // + when the LLM failed all retries; the worker fails-soft when the
+  // underlying columns are missing (FRAME-02 — additive migration).
+  personalizedDescription?: string | null;
+  personalizedDescriptionForUserId?: string | null;
 };
 
 // Phase 3 / Plan 06 — refusal categories for the Pass 3 decision tree.

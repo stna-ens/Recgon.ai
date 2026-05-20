@@ -1296,6 +1296,164 @@ or { "sentence": null, "cited_signal": null } if no signal fits.`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Phase 4 / Plan 01 — Personalized task framing prompt.
+//
+// TASK_REFRAME — called ONCE per assignment by the `task_reframe` worker
+// (src/lib/recgon/reframe.ts). Produces a single second-person sentence that
+// reframes the canonical task description for the specific assignee, citing
+// ONE concrete signal from their declared profile or recent project state.
+//
+// Voice: Recgon as AI Product Manager, second-person ("you/your"). Sentence
+// is 60–180 chars and the prompt enforces rhetorical bounds on top of the
+// schema check.
+//
+// PROHIBITED rhetorical moves (FRAME-06 — the LLM must NEVER produce these):
+//   - flattery ("you're great at X")
+//   - shared_history_assumption ("as you know" / "like last time")
+//   - false_familiarity ("I know how you feel")
+//
+// WHITELISTED rhetorical moves (FRAME-06 — exactly one or two, never zero):
+//   - fit_acknowledgement → cite ONE concrete declared skill OR a reason_code
+//     from the Phase 3 assignmentReasoning (skill_depth / recent_track_record
+//     / interest_match / task_kind_familiarity).
+//   - start_location → cite ONE file / folder / route from recentProjectState
+//     OR from task.description.
+//   - recent_state_link → cite ONE recent analytics change / commit area /
+//     prior task title from recentProjectState.
+//
+// Grounding rules (FRAME-07 — post-hoc validator in reframe.ts enforces these
+// at the boundary; the prompt also states them so the LLM rarely violates):
+//   - NEVER invent skills not in `assignee.declaredSkills`.
+//   - NEVER invent interests not in `assignee.declaredInterests`.
+//   - NEVER reference data the assignee did not self-declare.
+//   - NEVER use pronouns (he/she/they/him/her).
+//
+// Output shape (JSON, validated by `ReframeResultSchema` in schemas.ts):
+//   { "sentence": "...", "cited_moves": ["fit_acknowledgement"], "cited_signals": ["typescript"] }
+//
+// SECURITY: the user prompt body wraps untrusted-ish fields (declaredSkills,
+// declaredInterests) but those are canonical-vocab already (Phase 2 D-23).
+// The task.title is Recgon-minted, never user-typed freeform. Recent project
+// state arrives from project_analyses + commit summaries — all server-side
+// generated. No identity fields (name, email) are ever in the prompt body.
+
+// Frozen tuple consumed by reframe.ts as the post-hoc whitelist guard. Mirrors
+// the `RHETORICAL_MOVES` const in schemas.ts (kept duplicated so the prompt
+// file is self-contained and the prompt text and tuple cannot drift apart).
+export const RHETORICAL_MOVES_WHITELIST = [
+  'fit_acknowledgement',
+  'start_location',
+  'recent_state_link',
+] as const;
+
+export const TASK_REFRAME_SYSTEM = `You are Recgon, an AI Product Manager. A teammate has just been assigned a task. Your job: rewrite the task description in ONE short sentence (60–180 chars, second-person "you/your") that explains how THIS specific assignee fits THIS specific task — citing one concrete signal from their declared profile or recent project state.
+
+Choose ONE or TWO rhetorical moves from the WHITELIST:
+- fit_acknowledgement   — cite ONE declared skill from assignee.declaredSkills OR ONE reason_code from assignmentReasoning (e.g. "your typescript background", "given your recent track record on api work").
+- start_location        — cite ONE concrete file / folder / route from recentProjectState OR task.description (e.g. "start at src/lib/auth.ts", "the /api/teams route").
+- recent_state_link     — cite ONE recent analytics change / commit area / prior task title from recentProjectState (e.g. "the bounce-rate spike you saw last week", "building on the login refactor").
+
+PROHIBITED rhetorical moves (NEVER produce sentences in these shapes):
+- flattery                       — "you're great at X", "you're amazing", "you'll love this", "perfect for you".
+- shared_history_assumption      — "as you know", "like last time", "remember when", "you've seen this before".
+- false_familiarity              — "I know how you feel", "I get it", "trust me on this".
+
+Hard rules:
+- NEVER invent skills not in assignee.declaredSkills.
+- NEVER invent interests not in assignee.declaredInterests.
+- NEVER reference data the assignee did not self-declare.
+- NEVER use pronouns (he/she/they/him/her/them/his/hers/theirs).
+- NEVER use names, email addresses, or candidate IDs.
+- If the assignee's declared profile is empty AND recentProjectState is null/empty, write a short honest sentence that does NOT cite any signal — but you MUST still pick at least one move slot; in that case use fit_acknowledgement and leave cited_signals=[]. The grounding validator will reject any unfounded citation.
+- Plain text, ≤220 chars, ≥40 chars.
+
+Output ONE JSON object, no markdown:
+{ "sentence": "...", "cited_moves": ["fit_acknowledgement"], "cited_signals": ["typescript"] }`;
+
+export type TaskReframeAssigneeBlock = {
+  userId: string;
+  declaredSkills: string[];
+  declaredInterests: string[];
+};
+
+export type TaskReframeRecentState = {
+  recentCommitFiles?: string[];
+  recentAnalyticsChange?: string;
+  recentTaskTitles?: string[];
+} | null;
+
+export type TaskReframeAssignmentReasoningBlock = {
+  kind: 'math_only' | 'llm_tiebreaker';
+  reasonCode?: string | null;
+  reasonSentence?: string | null;
+} | null;
+
+export type TaskReframeTaskBlock = {
+  id: string;
+  title: string;
+  description: string;
+  kind: string;
+};
+
+/**
+ * Build the user-prompt body for the TASK_REFRAME call. Serializes the
+ * assignee profile, task, recent project state, and (optional) Phase 3
+ * assignment reasoning into a pseudo-XML payload block. Mirrors the
+ * `buildWhyYouGroundedUserPrompt` shape so the LLM sees a consistent
+ * structure across Phase 3 and Phase 4 prompts.
+ */
+export function buildTaskReframeUserPrompt(inputs: {
+  task: TaskReframeTaskBlock;
+  assignee: TaskReframeAssigneeBlock;
+  assignmentReasoning: TaskReframeAssignmentReasoningBlock;
+  recentProjectState: TaskReframeRecentState;
+}): string {
+  const { task, assignee, assignmentReasoning, recentProjectState } = inputs;
+
+  const commitFiles = recentProjectState?.recentCommitFiles ?? [];
+  const recentTitles = recentProjectState?.recentTaskTitles ?? [];
+  const analyticsChange = recentProjectState?.recentAnalyticsChange ?? null;
+
+  const reasoningBlock = assignmentReasoning
+    ? `  <assignment_reasoning>
+    <kind>${assignmentReasoning.kind}</kind>
+    <reason_code>${assignmentReasoning.reasonCode ?? 'none'}</reason_code>
+    <reason_sentence>${escapeXmlForJudge(assignmentReasoning.reasonSentence ?? '')}</reason_sentence>
+  </assignment_reasoning>`
+    : '  <assignment_reasoning>none</assignment_reasoning>';
+
+  const recentStateBlock =
+    recentProjectState === null
+      ? '  <recent_project_state>none</recent_project_state>'
+      : `  <recent_project_state>
+    <recent_commit_files>${commitFiles.join(', ') || 'none'}</recent_commit_files>
+    <recent_analytics_change>${escapeXmlForJudge(analyticsChange ?? 'none')}</recent_analytics_change>
+    <recent_task_titles>${recentTitles.map(escapeXmlForJudge).join(' | ') || 'none'}</recent_task_titles>
+  </recent_project_state>`;
+
+  return `<reframe>
+  <task>
+    <task_id>${task.id}</task_id>
+    <task_title>${escapeXmlForJudge(task.title)}</task_title>
+    <task_kind>${task.kind}</task_kind>
+    <task_description>${escapeXmlForJudge(task.description)}</task_description>
+  </task>
+
+  <assignee>
+    <declared_skills>${assignee.declaredSkills.join(', ') || 'none'}</declared_skills>
+    <declared_interests>${assignee.declaredInterests.join(', ') || 'none'}</declared_interests>
+  </assignee>
+
+${reasoningBlock}
+
+${recentStateBlock}
+</reframe>
+
+Write ONE second-person sentence reframing the task for this specific assignee. Cite ONE concrete signal from declared_skills, declared_interests, assignment_reasoning, or recent_project_state. Use one or two moves from the WHITELIST. Return JSON only:
+{ "sentence": "...", "cited_moves": ["fit_acknowledgement", "start_location"], "cited_signals": ["typescript", "src/lib/auth.ts"] }`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Phase 3.6 / Plan 03 — Overdue task pressure email templates.
 //
 // Plain text + plain subject literals. NO LLM call — copy is fully
