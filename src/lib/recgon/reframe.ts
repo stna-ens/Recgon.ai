@@ -79,7 +79,7 @@ export { enqueueReframeJob } from './reframeEnqueue';
  * retries, not user-visible failures (worker fails-soft after max_attempts).
  */
 export const FORBIDDEN_FLATTERY_WORDS =
-  /\b(great|amazing|perfect|brilliant|love|fantastic|excellent|awesome)\b/i;
+  /\b(great(?:ly)?|amazing(?:ly)?|perfect(?:ly)?|brilliant(?:ly)?|lov(?:e|ed|es|ing|ely)|fantastic(?:ally)?|excellent(?:ly)?|awesome(?:ly)?)\b/i;
 
 /**
  * Forbidden shared-history / false-familiarity phrases. Case-insensitive.

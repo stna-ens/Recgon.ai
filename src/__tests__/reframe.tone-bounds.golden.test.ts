@@ -232,6 +232,121 @@ const REJECT_FIXTURES: ReadonlyArray<Fixture> = [
       cited_signals: ['TypeScript', 'src/auth.ts'],
     },
   },
+  // CR-02 inflected-form fixtures (9). The base regex covers "love",
+  // "amazing", "perfect", "brilliant", "excellent", "great" with whole-word
+  // `\b` boundaries, which lets common inflections slip past ("loved",
+  // "loves", "loving", "amazingly", "perfectly", "brilliantly",
+  // "excellently", "greatly", "lovely"). These fixtures pin the FRAME-06
+  // gate against each inflected form so future prompt drift or model
+  // regression cannot leak sycophancy through inflected verbs/adverbs.
+  {
+    id: 15,
+    label: 'flattery: loved (past tense)',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        "You've loved working on auth in src/auth.ts before, which makes this route a natural pick.",
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['auth', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 16,
+    label: 'flattery: loves (third person)',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'Anyone who loves TypeScript will gravitate to src/auth.ts — your declared skill set fits.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 17,
+    label: 'flattery: loving (gerund)',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        "You're loving the auth work lately — src/auth.ts in TypeScript is the right next file.",
+      cited_moves: ['start_location', 'fit_acknowledgement'],
+      cited_signals: ['src/auth.ts', 'TypeScript'],
+    },
+  },
+  {
+    id: 18,
+    label: 'flattery: lovely',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'Lovely chance to apply your TypeScript depth — src/auth.ts is the entry point to start at.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 19,
+    label: 'flattery: amazingly',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'This is amazingly aligned with your auth depth — src/auth.ts is the file to start the work in.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['auth', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 20,
+    label: 'flattery: perfectly',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        "You'll be perfectly suited to this TypeScript refactor in src/auth.ts based on your skill set.",
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 21,
+    label: 'flattery: brilliantly',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'Your brilliantly thorough TypeScript style fits src/auth.ts — start there to wire the route.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 22,
+    label: 'flattery: excellently',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'Excellently matched to your Postgres depth — supabase/migrations is where to start the work.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['Postgres', 'supabase/migrations'],
+    },
+  },
+  {
+    id: 23,
+    label: 'flattery: greatly',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'This greatly aligns with your TypeScript skill set — src/auth.ts is the right entry file.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
 ];
 
 // ── Negative controls (2) — clean sentences that MUST be accepted ───────────
@@ -326,6 +441,34 @@ describe('FRAME-06 tone validator — golden rejects (12 cases)', () => {
   });
   it(`fixture 12: pronoun 'her' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
     await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[11].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  // CR-02 inflected forms — kind: 'tone_reject'.
+  it(`fixture 15: flattery 'loved' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[12].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 16: flattery 'loves' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[13].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 17: flattery 'loving' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[14].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 18: flattery 'lovely' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[15].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 19: flattery 'amazingly' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[16].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 20: flattery 'perfectly' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[17].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 21: flattery 'brilliantly' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[18].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 22: flattery 'excellently' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[19].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 23: flattery 'greatly' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[20].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
   });
 });
 
