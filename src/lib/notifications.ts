@@ -63,7 +63,24 @@ export async function notifyTeammateAssigned(input: {
   const resend = new Resend(apiKey);
   const inboxUrl = `${appBaseUrl()}/inbox`;
   const taskTitle = input.task.title;
-  const taskDescription = input.task.description?.slice(0, 280) || '';
+  // Phase 4 / Plan 02 — assignee sees personalized; everyone else falls back
+  // to original. Safety net: even if the column has data, only serve it when
+  // personalized_description_for_user_id matches THIS teammate's userId.
+  // Plan 04-03 invalidates the column on reassignment, but this check
+  // defends against the cron-cycle race window (FRAME-04). The userId-match
+  // check uses teammate.userId (NOT task.assignedTo, which is a teammateId).
+  const personalizedAvailable =
+    typeof input.task.personalizedDescription === 'string' &&
+    input.task.personalizedDescription.length > 0 &&
+    input.task.personalizedDescriptionForUserId === input.teammate.userId &&
+    input.teammate.userId !== null;
+  const rawDescription = personalizedAvailable
+    ? input.task.personalizedDescription
+    : input.task.description;
+  // Defense-in-depth: escape the description before interpolating into the
+  // email HTML body (T-04-02-03 mitigation). React Email would auto-escape
+  // but we hand-build the HTML string so we escape ourselves.
+  const taskDescription = escapeHtml(rawDescription?.slice(0, 280) || '');
   const priority = `p${input.task.priority}`;
 
   // Render the "Why you" line ONLY when a reasoning envelope is present.
