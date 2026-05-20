@@ -394,7 +394,14 @@ export async function runTaskReframe(job: LLMJob): Promise<WorkerResult> {
 
   if (updateRes.error) {
     const msg = updateRes.error.message.toLowerCase();
-    if (msg.includes('column') && msg.includes('does not exist')) {
+    // WR-02: prefer the canonical Postgres error code (42703 = undefined_column)
+    // over substring matching on the message text. Supabase forwards the
+    // Postgres `code` field on PostgrestError; substring is kept as a
+    // belt-and-suspenders fallback in case future drivers strip the code.
+    const isUndefinedColumn =
+      updateRes.error.code === '42703' ||
+      (msg.includes('column') && msg.includes('does not exist'));
+    if (isUndefinedColumn) {
       logger.warn('reframe_columns_missing', {
         taskId: payload.taskId,
         err: updateRes.error.message,

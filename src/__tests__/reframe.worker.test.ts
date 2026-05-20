@@ -23,16 +23,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // We register a per-table handler so each call returns the right canned
 // payload. Calls are also recorded so tests can assert what the worker did.
 
-type StubMaybeSingle = () => Promise<{ data: unknown; error: { message: string } | null }>;
-type StubListResult = Promise<{ data: unknown; error: { message: string } | null }>;
-type StubUpdateResult = Promise<{ error: { message: string } | null }>;
+// WR-02: errors now expose an optional `code` field (Postgres error codes
+// — Supabase forwards them via PostgrestError.code). 42703 is the canonical
+// "undefined column" signal the worker checks first.
+type StubError = { message: string; code?: string } | null;
+type StubMaybeSingle = () => Promise<{ data: unknown; error: StubError }>;
+type StubListResult = Promise<{ data: unknown; error: StubError }>;
+type StubUpdateResult = Promise<{ error: StubError }>;
 
 type ReadHandler =
-  | { kind: 'single'; result: { data: unknown; error: { message: string } | null } }
-  | { kind: 'list'; result: { data: unknown; error: { message: string } | null } };
+  | { kind: 'single'; result: { data: unknown; error: StubError } }
+  | { kind: 'list'; result: { data: unknown; error: StubError } };
 
 type WriteHandler = {
-  result: { error: { message: string } | null };
+  result: { error: StubError };
 };
 
 const readHandlers = new Map<string, ReadHandler>();
@@ -225,7 +229,10 @@ describe('runTaskReframe — happy path', () => {
 });
 
 describe('runTaskReframe — columns_missing fail-soft', () => {
-  it('returns { skipped: true, reason: "columns_missing" } when supabase reports column does not exist', async () => {
+  // WR-02: detection uses Postgres error code 42703 first, with substring
+  // fallback. Fixture mocks both so the test pins the canonical signal AND
+  // remains compatible with the legacy substring path.
+  it('returns { skipped: true, reason: "columns_missing" } when supabase reports column does not exist (code 42703 + message)', async () => {
     setRead('agent_tasks', {
       kind: 'single',
       result: {
@@ -252,6 +259,7 @@ describe('runTaskReframe — columns_missing fail-soft', () => {
     setWrite('agent_tasks', {
       result: {
         error: {
+          code: '42703',
           message:
             'column "personalized_description" of relation "agent_tasks" does not exist',
         },
@@ -263,6 +271,51 @@ describe('runTaskReframe — columns_missing fail-soft', () => {
     expect(result).toMatchObject({ skipped: true, reason: 'columns_missing' });
     // The update was attempted (we want to verify it actually tried the write
     // path; columns_missing is detected from the response, not pre-checked).
+    expect(writeCalls).toHaveLength(1);
+  });
+
+  // WR-02: a future Postgres release (or locale change) might rewrite the
+  // "column ... does not exist" string. The canonical 42703 code must
+  // still trigger fail-soft even if the message no longer matches.
+  it('returns { skipped: true, reason: "columns_missing" } when error code is 42703 even if message text does not match', async () => {
+    setRead('agent_tasks', {
+      kind: 'single',
+      result: {
+        data: {
+          id: 'task-1',
+          team_id: 'team-1',
+          project_id: 'proj-1',
+          title: 'Wire login endpoint to Supabase',
+          description: 'Add the new POST /api/auth/login route to src/lib/auth.ts',
+          kind: 'dev_prompt',
+          assigned_to: 'teammate-1',
+          assignment_reasoning: null,
+        },
+        error: null,
+      },
+    });
+    setRead('teammates', {
+      kind: 'single',
+      result: {
+        data: { id: 'teammate-1', user_id: 'user-1', status: 'active' },
+        error: null,
+      },
+    });
+    setWrite('agent_tasks', {
+      result: {
+        error: {
+          code: '42703',
+          // Intentionally a non-matching message — e.g. a localized or
+          // future-rewritten Postgres error string. Substring fallback
+          // would NOT catch this; only the 42703 code does.
+          message: 'attribut "personalized_description" introuvable',
+        },
+      },
+    });
+
+    const result = await runTaskReframe(makeJob());
+
+    expect(result).toMatchObject({ skipped: true, reason: 'columns_missing' });
     expect(writeCalls).toHaveLength(1);
   });
 });
