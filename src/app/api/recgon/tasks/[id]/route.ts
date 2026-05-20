@@ -44,14 +44,9 @@ export async function GET(
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
-  // Detach assignment_reasoning from the response payload before privacy
-  // decisioning. `task` is the in-memory shape mapped from the DB row —
-  // mutating the field on a fresh shallow clone is safe.
-  const { assignmentReasoning, ...rest } = task;
-
-  // Decide who can see the "Why you" sentence. The assignee check requires
-  // mapping `task.assignedTo` (teammate id) → that teammate's `userId`,
-  // because the session knows about users not teammates.
+  // Decide viewer role. The assignee check requires mapping
+  // `task.assignedTo` (teammate id) → that teammate's `userId`, because
+  // the session knows about users not teammates.
   let isAssignee = false;
   if (task.assignedTo) {
     const assigneeTeammate = await getTeammate(task.assignedTo);
@@ -61,16 +56,60 @@ export async function GET(
   }
   const isOwner = role === 'owner';
 
-  // Compose the response: never include the raw blob. When authorized,
-  // include the rendered sentence as `whyYouSentence`. When not, omit
-  // the field entirely so clients can't infer the existence of reasoning.
+  // Phase 4 / Plan 02 — viewer-discriminated description.
+  // Serve the personalized text ONLY when ALL three predicates hold:
+  //   1. the viewer is the assignee (by userId, not teammateId)
+  //   2. `personalizedDescription` is a non-empty string (worker has run)
+  //   3. `personalizedDescriptionForUserId` matches THIS viewer's userId
+  //      (defense against the mid-reassignment race: Plan 04-03 nulls the
+  //      column on assignee change, but until that sweep runs the read
+  //      boundary must refuse to serve stale personalized text to a
+  //      different user — FRAME-04 safety net).
+  // Otherwise the viewer (owner, other teammate, or the assignee during
+  // the cron-cycle gap before reframe has landed) sees the original
+  // brain description. The decision is server-side; the client receives
+  // ONE `description` field, server-already-resolved, and cannot inspect
+  // which version it got (T-04-02-01).
+  const shouldServePersonalized =
+    isAssignee &&
+    typeof task.personalizedDescription === 'string' &&
+    task.personalizedDescription.length > 0 &&
+    task.personalizedDescriptionForUserId === session.user.id;
+  const effectiveDescription = shouldServePersonalized
+    ? task.personalizedDescription
+    : task.description;
+
+  // Privacy boundary: explicitly destructure and overwrite — NEVER spread
+  // the raw task into the response (T-04-02-01 mitigation). The raw
+  // personalized fields and the original description are pulled out and
+  // discarded; the response carries the server-selected description under
+  // the single `description` key.
+  const {
+    assignmentReasoning,
+    personalizedDescription: _pd,
+    personalizedDescriptionForUserId: _pdfu,
+    description: _origDesc,
+    ...restWithoutDescription
+  } = task;
+  void _pd;
+  void _pdfu;
+  void _origDesc;
+
+  const responsePayload: Record<string, unknown> = {
+    ...restWithoutDescription,
+    description: effectiveDescription,
+  };
+
+  // Phase 3 Plan 03 — never include the raw assignment_reasoning blob.
+  // When authorized (assignee or team owner), include the rendered "Why
+  // you" sentence; otherwise omit so clients can't infer the existence
+  // of reasoning.
   //
   // Plan 05: renderWhyYou is async — in production the envelope already
   // carries `whyYouSentence` (pre-rendered by dispatcher) and this awaits
   // a no-op string read. Legacy rows (pre-Plan-05) may trigger an LLM
   // call on first read; for null sentences we still emit the field as
   // `null` so the client UI can branch on it explicitly.
-  const responsePayload: Record<string, unknown> = { ...rest };
   if (assignmentReasoning && (isAssignee || isOwner)) {
     const out = await renderWhyYou(assignmentReasoning);
     responsePayload.whyYouSentence = out.sentence;

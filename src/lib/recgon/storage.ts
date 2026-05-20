@@ -114,6 +114,15 @@ type TaskRow = {
   // 3=auto-rescheduled). `last_overdue_action_at` drives the 24h cool-down.
   overdue_tier?: number | null;
   last_overdue_action_at?: string | null;
+  // Phase 4 / Plan 01 — personalized framing columns (additive migration).
+  // The task_reframe worker writes both atomically; the API route at
+  // `/api/recgon/tasks/[id]` reads them server-side and serves the
+  // personalized text ONLY when the viewer is the assignee whose userId
+  // matches `personalized_description_for_user_id` (Plan 04-02).
+  // The RAW columns NEVER cross the API boundary — they are stripped from
+  // the response payload (destructure + overwrite, not spread).
+  personalized_description?: string | null;
+  personalized_description_for_user_id?: string | null;
 };
 
 function mapTask(row: TaskRow): AgentTask {
@@ -167,6 +176,11 @@ function mapTask(row: TaskRow): AgentTask {
     // null `overdueTier` as 0.
     overdueTier: ((row.overdue_tier ?? 0) as 0 | 1 | 2 | 3),
     lastOverdueActionAt: row.last_overdue_action_at ?? null,
+    // Phase 4 / Plan 01 columns → camelCase fields on AgentTask. The route
+    // at /api/recgon/tasks/[id] consumes these to viewer-discriminate the
+    // description (Plan 04-02); they MUST NEVER appear on a response payload.
+    personalizedDescription: row.personalized_description ?? null,
+    personalizedDescriptionForUserId: row.personalized_description_for_user_id ?? null,
   };
 }
 
