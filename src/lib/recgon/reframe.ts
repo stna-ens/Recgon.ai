@@ -55,6 +55,20 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 export { RHETORICAL_MOVES_WHITELIST };
 
 /**
+ * Re-export the fire-and-forget `task_reframe` enqueue helper.
+ *
+ * The actual definition lives in `./reframeEnqueue` (a leaf module) to
+ * avoid an import cycle: `storage.ts → reframe.ts → storage.ts`. Storage
+ * needs the helper to invalidate + re-enqueue on `reassignTask`, and
+ * `reframeEnqueue.ts` is the only file that imports `getTeammate` from
+ * storage so the cycle stops there.
+ *
+ * Callers that historically import from `./reframe` (dispatcher) keep
+ * working unchanged thanks to this re-export.
+ */
+export { enqueueReframeJob } from './reframeEnqueue';
+
+/**
  * Forbidden flattery / over-enthusiastic vocabulary. Whole-word match,
  * case-insensitive. Triggers `tone_reject` (FRAME-06).
  *

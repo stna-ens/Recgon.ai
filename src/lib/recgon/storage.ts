@@ -7,6 +7,12 @@ import { supabase } from '../supabase';
 import { stripMd } from '../strings';
 import { logger } from '../logger';
 import { AssignmentReasoningSchema } from '../schemas';
+// Phase 4 Plan 03 — invalidate + re-enqueue reframe on reassignment.
+// Imported from the leaf `reframeEnqueue` module (NOT `reframe.ts` or
+// `dispatcher.ts`) to avoid an import cycle. Storage is upstream of both
+// reframe and dispatcher; this single leaf is the only file storage
+// transitively depends on for queue plumbing.
+import { enqueueReframeJob } from './reframeEnqueue';
 import type {
   Teammate,
   TeammateWithStats,
@@ -766,6 +772,21 @@ export async function reassignTask(
     scheduleNote?: string | null;
   },
 ): Promise<void> {
+  // Phase 4 / Plan 03 — read current state to detect an ACTUAL reassignment
+  // vs a no-op call. The personalized columns must NOT be invalidated when
+  // someone calls reassignTask(taskId, sameTeammate) — that's idempotent.
+  // We also need teamId for the reframe enqueue payload.
+  const { data: current } = await supabase
+    .from('agent_tasks')
+    .select('assigned_to, team_id')
+    .eq('id', taskId)
+    .maybeSingle();
+  const previousAssignedTo = (current?.assigned_to as string | null) ?? null;
+  const teamId = (current?.team_id as string | undefined) ?? '';
+  const isActualReassignment =
+    previousAssignedTo !== teammateId &&
+    (previousAssignedTo !== null || teammateId !== null);
+
   const update: Record<string, unknown> = {
     assigned_to: teammateId,
     assigned_by: assignedBy,
@@ -782,8 +803,41 @@ export async function reassignTask(
   if (schedule?.scheduledUntilDate !== undefined) update.scheduled_until_date = schedule.scheduledUntilDate;
   if (schedule?.deadline !== undefined) update.deadline = schedule.deadline;
   if (schedule?.scheduleNote !== undefined) update.schedule_note = schedule.scheduleNote;
+
+  // Phase 4 / Plan 03 — FRAME-04 atomic invalidation of personalized columns
+  // on actual reassignment. The new assignee must NEVER see text written for
+  // the previous assignee — not even for a single cron-cycle gap. Performed
+  // in the SAME supabase update statement as the `assigned_to` change so
+  // there is no window where the row carries both the new assignee AND the
+  // stale personalized text.
+  if (isActualReassignment) {
+    update.personalized_description = null;
+    update.personalized_description_for_user_id = null;
+  }
+
   const { error } = await supabase.from('agent_tasks').update(update).eq('id', taskId);
   if (error) throw new Error(`reassignTask failed: ${error.message}`);
+
+  // Phase 4 / Plan 03 — fire-and-forget reframe enqueue for the new assignee.
+  // Skipped when:
+  //   - No actual reassignment (idempotent no-op).
+  //   - teammateId is null (decline/unassign — no one to personalize for).
+  //
+  // `enqueueReframeJob` already catches its own errors internally, so this
+  // outer `.catch` is defense-in-depth: even if the helper itself were to
+  // throw (e.g. an unexpected upstream module-load failure under test or a
+  // refactor regression), reassignment success MUST be independent of queue
+  // health. The reassignment is the source of truth; the reframe is
+  // enhancement.
+  if (isActualReassignment && teammateId !== null) {
+    await enqueueReframeJob(taskId, teammateId, teamId).catch((err) => {
+      logger.warn('task_reframe enqueue helper threw (unexpected)', {
+        taskId,
+        teammateId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
 }
 
 export async function deleteTask(taskId: string): Promise<void> {

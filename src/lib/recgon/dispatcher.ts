@@ -19,7 +19,6 @@
 import { logger } from '../logger';
 import { supabase } from '../supabase';
 import { chatViaProviders } from '../llm/providers';
-import { enqueueJob } from '../llm/jobQueue';
 import { notifyTeammateAssigned } from '../notifications';
 import { readUnifiedBrain } from './brain';
 import { mintTasksFromBrain } from './taskMint';
@@ -47,6 +46,7 @@ import {
   generateWhyYouSentence,
   type WhyYouChatAdapter,
 } from './whyYouLLM';
+import { enqueueReframeJob } from './reframeEnqueue';
 import {
   checkAndIncrement,
   alertCapExceededOnce,
@@ -1183,57 +1183,11 @@ async function assignScheduledTask(
   );
 }
 
-/**
- * Resolve the teammate's `userId` (since `agent_tasks.assigned_to` stores
- * teammate IDs, not user IDs) and enqueue exactly one `task_reframe` job
- * for that user. Fire-and-forget: every error path (teammate not found,
- * non-user teammate, supabase failure on enqueue) is swallowed with a log
- * — the assignment must NOT roll back because the reframe queue hiccupped.
- *
- * Single source of truth for both `runDispatch` (via `assignScheduledTask`)
- * and `dispatchTask` (also via `assignScheduledTask`). FRAME-01.
- */
-export async function enqueueReframeJob(
-  taskId: string,
-  assigneeTeammateId: string,
-  teamId: string,
-): Promise<void> {
-  let userId: string | null = null;
-  try {
-    const teammate = await getTeammate(assigneeTeammateId);
-    userId = teammate?.userId ?? null;
-  } catch (err) {
-    logger.warn('task_reframe: getTeammate failed (skipping enqueue)', {
-      taskId,
-      assigneeTeammateId,
-      err: err instanceof Error ? err.message : String(err),
-    });
-    return;
-  }
-  if (!userId) {
-    // Legacy non-user teammate (kind='ai' or pre-Plan-1 manual rows) has no
-    // userId to personalize for. Skip silently — no reframe possible.
-    logger.debug('task_reframe skipped — teammate has no userId', {
-      taskId,
-      assigneeTeammateId,
-    });
-    return;
-  }
-  try {
-    await enqueueJob({
-      teamId,
-      userId,
-      kind: 'task_reframe',
-      payload: { taskId, assigneeUserId: userId, teamId },
-    });
-  } catch (err) {
-    logger.warn('task_reframe enqueue failed', {
-      taskId,
-      assigneeUserId: userId,
-      err: err instanceof Error ? err.message : String(err),
-    });
-  }
-}
+// Phase 4 Plan 03 — `enqueueReframeJob` moved to a leaf module so
+// `storage.ts::reassignTask` can also call it without creating an import
+// cycle (storage → dispatcher → storage). Single source of truth lives in
+// `./reframeEnqueue`; both dispatch paths and reassignTask import from
+// there. Re-exported from `./reframe` for grep-discoverability.
 
 function withPlan(task: AgentTask, plan: SchedulePlan): AgentTask {
   return {
