@@ -137,6 +137,26 @@ describe('FRAME-07 grounding validator — inferred-skill rejects (4 cases)', ()
     };
     await expectGroundingReject(inputs, payload);
   });
+
+  // WR-03: short declared values (single-letter "C" skill, common in
+  // legacy profile rows) previously made the haystack-includes branch
+  // pass for ANY cited_signal containing the letter — "react", "go", "c",
+  // "python" all leaked through. The min-length gate (≥3 chars on both
+  // sides) rejects this orphan signal.
+  it(`fixture 4b: declaredSkills=['c'] + cited_signals=['react'] → grounding_reject (sub-3-char gate)`, async () => {
+    const inputs = buildInputsWithProfile(
+      ['c'], // single-letter declared skill
+      [],
+      null,
+    );
+    const payload = {
+      sentence:
+        'Your React experience and TypeScript depth make this UI component refactor a natural starting fit.',
+      cited_moves: ['fit_acknowledgement'] as const,
+      cited_signals: ['react'] as const,
+    };
+    await expectGroundingReject(inputs, payload);
+  });
 });
 
 describe('FRAME-07 grounding validator — inferred-preference rejects (2 cases)', () => {

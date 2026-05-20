@@ -365,9 +365,16 @@ function validateGrounding(
 
   for (const signal of citedSignals) {
     const signalLower = signal.toLowerCase();
-    const inAllowed = allowedSignalHaystack.some(
-      (h) => h.includes(signalLower) || signalLower.includes(h),
-    );
+    // WR-03: require both sides to be ≥3 chars before substring overlap
+    // counts as grounded. Without this, a single-character declared
+    // skill/interest (e.g. legacy profile rows with skill='c') makes the
+    // haystack-includes branch pass for ANY cited_signal containing that
+    // letter — degrading the validator to near-zero strength.
+    const inAllowed = allowedSignalHaystack.some((h) => {
+      const hLower = h.toLowerCase();
+      if (hLower.length < 3 || signalLower.length < 3) return false;
+      return hLower.includes(signalLower) || signalLower.includes(hLower);
+    });
     const inTask =
       taskDescriptionLower.includes(signalLower) ||
       taskTitleLower.includes(signalLower);
