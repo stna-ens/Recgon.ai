@@ -13,7 +13,8 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
 - [ ] **Phase 1: Profile Foundation** — Teammates self-declare skills + capacity; dispatcher reads through `profileMerge`.
 - [ ] **Phase 2: GitHub Skill Inference** — Commit history seeds skills with consent, confirm/reject UI, and time-decayed EMA.
 - [ ] **Phase 3: LLM Judgment Overlay** — On close fit-score calls, an anonymized batched LLM tiebreaker picks the final assignee with a structured "why".
-- [ ] **Phase 3.5: Owner Task Board** (INSERTED 2026-05-15) — Owner-facing structured grid showing who/what/when/why for every team task, with triage + deferred items as first-class. Surfaces what Phase 3 just made addressable.
+- [ ] **Phase 3.5: Owner Task Board** (INSERTED 2026-05-15, REVERSED 2026-05-16) — Owner-facing structured grid; direction was wrong, rolled back same day.
+- [ ] **Phase 3.6: Overdue Task Pressure** (INSERTED 2026-05-19) — Daily sweep notices slipping work and applies graduated pressure (private nudge → owner escalation → auto-reschedule). Closes the most basic AI-PM gap: noticing tasks that miss their deadline.
 - [ ] **Phase 4: Personalized Task Framing** — Queued reframe job rewrites each assigned task in the assignee's voice with where-to-start pointers.
 - [ ] **Phase 5: Live Code Infrastructure** — Incremental analyzer + per-file SHA cache; tree-sitter and Octokit added as server-only deps.
 - [ ] **Phase 6: Brain Integration & Cost Guards** — Brain consumes `LiveCodeDelta[]`; mint caps, WIP gate, cool-down, and v3 telemetry land.
@@ -94,6 +95,25 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
 - [ ] `03.5-04-PLAN.md` — (a) Workload/Table view toggle (D-08 — sortable 6-col mono table with row-click → TaskDetailPanel + kebab actions reusing pickers from 03.5-03), (b) `/tasks` header strip clarifying "personal tasks — owner board lives at /projects" with owner-only signature-pink link. NO `/tasks` redesign (deferred).
 **Research recommended:** light — design discussion is the main work; the data layer is already in place from Phase 3.
 
+### Phase 3.6: Overdue Task Pressure (INSERTED 2026-05-19)
+**Goal:** When a task's `scheduled_date` is in the past and status is not terminal, Recgon applies graduated pressure — Tier 1 private nudge to the assignee (1-2 days late), Tier 2 escalation to the owner (3-6 days late), Tier 3 auto-reschedule to the assignee's next free day (7+ days late). Detection runs once daily via Vercel cron. 24-hour cool-down per tier. Owner has "Snooze N days" + "Force reassign" escape hatches. Per-team feature flag (default on). Closes the most basic AI-PM gap: noticing tasks that slip.
+**Mode:** mvp
+**Depends on:** Phase 3 (uses existing `scheduled_date`, `assignment_reasoning`, `teammate_event_log`, `buildSchedulePlan`)
+**Requirements:** SUCCESS-1..6 (treat ROADMAP success criteria as REQs — no separate REQUIREMENTS.md entries for this insertion)
+**Success Criteria** (what must be TRUE):
+  1. A task assigned with `scheduled_date = today - 2 days` and status `assigned` triggers exactly ONE nudge email to the assignee within 24h, ZERO emails to the owner.
+  2. The same task five days later triggers ONE owner escalation email (no second teammate nudge); owner board shows a tier-2 badge.
+  3. A task 8+ days overdue auto-reschedules to the assignee's next available working day via `buildSchedulePlan`; original date preserved in `schedule_note`; an `auto_rescheduled` event lands in `teammate_event_log`.
+  4. Running the overdue cron twice in the same 24h window produces zero duplicate emails for the same task at the same tier (cool-down via `last_overdue_action_at`).
+  5. Owner clicks "Snooze 3 days" on an overdue task → cron skips it until snooze expires; `overdue_tier` resets to 0; a `snoozed` event row is written.
+  6. With `teams.overdue_pressure_enabled = false`, the system behaves exactly as it does today — purely additive rollout.
+**Plans:** 4 plans
+- [x] `03.6-01-PLAN.md` — Schema migration (`overdue_tier`, `last_overdue_action_at`, `overdue_pressure_enabled`, event-log values), `/api/cron/overdue-sweep` route shell with `CRON_SECRET` auth, `vercel.json` daily schedule, type scaffolding. Walking skeleton.
+- [x] `03.6-02-PLAN.md` — Pure `overduePolicy.ts` with `decideOverdueAction(task, today)` returning one of `nudge_teammate | escalate_to_owner | auto_reschedule | none`. No-skip tier escalation, 24h cool-down, feature-flag respect. Comprehensive unit tests with injected clock.
+- [x] `03.6-03-PLAN.md` — Side effects: replace stub `sweepOverdueTeams` with real iterator; `overdueRunner.executeOverdueAction` for email (Resend templates in `prompts.ts`) + storage update + event log write; `buildSchedulePlan`-driven auto-reschedule with reassignment fallback; owner-only POST `/snooze` route.
+- [x] `03.6-04-PLAN.md` — UI surfacing: tiered overdue chip on `/tasks` cards + calendar cards + project Calendar tab; owner-only tier badge on owner board; `SnoozeControl` in task detail (owner-only, day picker); `/tasks` overdue filter + empty state; logger counters (`overdue.nudged`, `overdue.escalated`, `overdue.auto_rescheduled`, `overdue.snoozed`).
+**Research recommended:** skip — extends existing patterns (cron route, Resend, `buildSchedulePlan`, event log, prompts/schemas rule).
+
 ### Phase 4: Personalized Task Framing
 **Goal:** When a task is assigned, a queued `task_reframe` job generates a personalized description for the assignee — why this fits them, where to start, how it ties to recent project state — stored alongside the original brain description and invalidated on reassignment, with tone bounded by the prompt registry.
 **Mode:** mvp
@@ -105,7 +125,10 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
   3. Reassigning a task to a different person automatically invalidates `personalized_description_for_user_id`, enqueues a new `task_reframe` job, and the new assignee sees their own personalized description after the next cron drain (the old description is never shown to the new assignee).
   4. The personalized description never references information the assignee did not declare in their profile (no inferred preferences from external data); content is bounded by the whitelisted rhetorical moves in `prompts.ts` (no flattery, no sycophancy, no false familiarity).
   5. The assignment email sent via Resend includes the personalized description for the assignee (not the original brain description), end-to-end.
-**Plans:** 3 plans hint — (1) `reframe.ts` + `task_reframe` worker + `personalized_description` + `personalized_description_for_user_id` columns, (2) task detail UI + assignment email read personalized vs original based on viewer, (3) reassignment-invalidation hooks + bounded-tone prompt registry + golden tests for FRAME-06/07.
+**Plans:** 3 plans
+- [ ] `04-01-PLAN.md` — Walking skeleton: pure `reframe.ts` module (adapter-injected chat, FRAME-06/07 post-hoc tone + grounding validators), `task_reframe` JobKind + worker registration, dispatcher post-assignTask enqueue helper, additive migration adding `personalized_description` + `personalized_description_for_user_id` columns to `agent_tasks` (operator must apply via `supabase db push`).
+- [ ] `04-02-PLAN.md` — Viewer-discriminated read end-to-end: `/api/recgon/tasks/[id]` server-side selects personalized vs original based on session.user.id match; Resend assignment email body uses personalized when bound to assignee; TaskDetailPanel consumes single API-resolved description field (no client-side privacy logic); privacy regression tests assert raw personalized fields never leak.
+- [ ] `04-03-PLAN.md` — Reassignment invalidation + golden tests: `reassignTask` atomically nulls both personalized columns + enqueues new reframe job for new assignee; `enqueueReframeJob` extracted from dispatcher to `reframe.ts` (shared, no import cycle); 12 FRAME-06 tone-bound golden fixtures + 8 FRAME-07 grounding golden fixtures lock the validators against future prompt drift.
 **Research recommended:** skip — standard patterns (existing `llm_jobs` queue + `chatViaChain` + prompt registry).
 
 ### Phase 5: Live Code Infrastructure
@@ -138,14 +161,15 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 3.5 → 4 → 5 → 6
+Phases execute in numeric order: 1 → 2 → 3 → 3.5 (REVERSED) → 3.6 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Profile Foundation | 0/4 | Not started | - |
 | 2. GitHub Skill Inference | 0/4 | Not started | - |
-| 3. LLM Judgment Overlay | 2/4 | In progress | - |
-| 3.5. Owner Task Board | 0/4 | Not started | - |
-| 4. Personalized Task Framing | 0/3 | Not started | - |
+| 3. LLM Judgment Overlay | 6/7 | Complete (Plan 07 descoped 2026-05-15) | 2026-05-15 |
+| 3.5. Owner Task Board | 0/4 | Reversed 2026-05-16 | - |
+| 3.6. Overdue Task Pressure | 4/4 | Complete | 2026-05-20 |
+| 4. Personalized Task Framing | 0/3 | Next | - |
 | 5. Live Code Infrastructure | 0/4 | Not started | - |
 | 6. Brain Integration & Cost Guards | 0/4 | Not started | - |

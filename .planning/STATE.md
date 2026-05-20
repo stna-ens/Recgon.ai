@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Plan 03-06 complete (Gap 1 + Gap 3 closure: dispatcher refusal + deferral 4-outcome decision tree wired); Plan 03-07 (TASKS-page triage view) is the last remaining Phase 3 plan. User must apply 20260516_triage_note_column.sql migration before production cron picks up the new column.
-last_updated: "2026-05-15T22:30:00.000Z"
-last_activity: 2026-05-15
+stopped_at: Phase 3.6 (Overdue Task Pressure) complete — all 4 plans shipped (walking skeleton → pure policy → wired sweep + emails + snooze API → UI chips/badges/SnoozeControl/counters). Phase 3 also effectively complete (Plan 03-07 TASKS-page triage view descoped 2026-05-15; API half shipped, UI half intentionally dropped). Phase 4 (Personalized Task Framing) is next.
+last_updated: "2026-05-20T00:00:00.000Z"
+last_activity: 2026-05-20
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 2
-  total_plans: 16
-  completed_plans: 15
-  percent: 94
+  total_plans: 20
+  completed_plans: 19
+  percent: 95
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-11)
 
 **Core value:** The right task gets to the right teammate at the right time, with reasoning the teammate can trust.
-**Current focus:** Phase 03 — llm-judgment-overlay
+**Current focus:** Phase 04 — personalized-task-framing
 
 ## Current Position
 
-Phase: 3
-Plan: 06 complete; Plan 07 pending
-Status: Phase 3 gap-closure 2 of 2 wired (Gap 1 zero-signal refusal + Gap 3 deferral rule); Plan 03-07 TASKS-page triage view is the final Phase 3 plan
-Last activity: 2026-05-15
+Phase: 4
+Plan: not yet planned (Phase 4 needs /gsd-plan-phase)
+Status: Phase 3 + Phase 3.6 both complete; Phase 4 (Personalized Task Framing) is next per ROADMAP execution order.
+Last activity: 2026-05-20
 
 Progress: [██████████] 100%
 
@@ -96,6 +96,10 @@ Recent decisions affecting current work:
 - Plan 03-05: LLM-grounded Why-you. Math-only template path DELETED entirely; renderer rewritten as async thin reader over pre-rendered envelope. WHY_YOU_GROUNDED prompt + WhyYouGroundedSchema + generateWhyYouSentence in `whyYouLLM.ts` (adapter-injected, post-hoc grounding validator, returns sentence: null when ungrounded → Plan 03-06's refusal trigger). Bias regression env-gated (WHY_YOU_BIAS_REAL_LLM=1) mirrors JUDGE pattern. 268/268 tests green.
 - Plan 03-06: Dispatcher 4-outcome decision tree (refuse / defer / triage / assign) — closes Gap 1 (zero-signal refusal, VERIFICATION phase_3_1_gaps#1) AND Gap 3 (user rule 2026-05-15: never assign by availability alone). Constants SIGNAL_FLOOR=0.15 / DEFER_FLOOR=0.3 / DEFER_LOOKAHEAD_WEEKS=4 / HIGH_PRIORITY_THRESHOLD=3 (boundary-locked by tests). hasMinimumFit + findEarliestCapacityWindow pure helpers in match.ts. Storage helpers markTaskForTriage / deferTaskScheduledDate / clearTriageNote. New triage_note column (additive nullable; partial index). TriageNote union (4 values: no_clear_fit / no_grounded_reason / no_capacity_in_window / no_capacity_high_priority). DispatchResult.triaged + DispatchResult.deferred counters. routeTaskOrTriage centralised in dispatcher shared by runDispatch + dispatchTask. whyYouSentence===null couples to triage no_grounded_reason. Owner-fallback path preserved as structurally separate safety net. 298/298 tests green; tsc clean; build succeeds. User must apply 20260516_triage_note_column.sql migration before production cron uses the new column. NOTE: findEarliestCapacityWindow default projection is conservative (reads availabilityNow as future-week value); a follow-up plan should wire loadHoursByDateFor* for real calendar lookahead.
 - Phase 3.5 (Owner Task Board) was ATTEMPTED AND REVERSED on 2026-05-16. All 4 plans (16 atomic implementation commits + 4 SUMMARY docs + 1 VERIFICATION doc) shipped cleanly to main with 401/401 tests passing, verifier verdict COMPLETE. After review, user decided the direction was not right and asked to reverse it. Single revert commit (b724fb1) rolled back all 20 Phase 3.5 commits (skipping user's interleaved landing commits 25f5263 + 91dfdf1). Planning docs retained as record (CONTEXT, RESEARCH, UI-SPEC, PATTERNS, VALIDATION, 4 PLAN files) — IMPLEMENTATION removed (OwnerWorkloadBoard, OwnerWorkloadGrid, TriageDock, TriageDockRow, CapacityBar, AssignTeammatePicker, ReschedulePicker, TableBoard, NonOwnerProjectsView, ConfirmDialog, 3 new owner-only routes, dock dismissals migration, dnd-kit deps, SwimLane dragMode prop). Drop migration `supabase/migrations/20260518_drop_owner_dock_dismissals.sql` ships with the revert because user had already applied the create migration. Test count back to 307 (pre-3.5 baseline). What to learn: future Owner Task Board work should re-examine the premise (vision doc `project_owner_task_board` was the driver) before re-investing — the implementation worked but the direction was wrong; investigate WHY before redesigning.
+- Plan 03.6-01: Walking skeleton for overdue task pressure (`69fb566`). Schema migration columns `overdue_tier`, `last_overdue_action_at`, `overdue_pressure_enabled`, event-log values added; `/api/cron/overdue-sweep` route shell with `CRON_SECRET` auth; `vercel.json` daily schedule; type scaffolding. No behaviour yet — just the skeleton.
+- Plan 03.6-02: Pure `decideOverdueAction(task, today)` policy function (`b457394`) in `src/lib/recgon/overduePolicy.ts`. Decision tree returns one of `nudge_teammate | escalate_to_owner | auto_reschedule | none`. No-skip tier escalation, 24h cool-down enforcement, feature-flag respect. Comprehensive unit tests with injected clock — adapter pattern keeps it pure and testable.
+- Plan 03.6-03: Wired sweep (`72f6995`). Replaced stub `sweepOverdueTeams` with real iterator; `overdueRunner.executeOverdueAction` performs email send (Resend templates in `prompts.ts`) + storage update + event log write; `buildSchedulePlan`-driven auto-reschedule with reassignment fallback when original assignee out of capacity; owner-only `POST /api/recgon/tasks/[id]/snooze` route with day-count body validation.
+- Plan 03.6-04: UI surfacing + telemetry (`fb3205a`). Tiered overdue chip on `/tasks` cards, calendar cards, and project Calendar tab; owner-only tier badge on owner board surfaces; `SnoozeControl` in task detail (owner-only, day picker); `/tasks` overdue filter + empty state; logger counters wired (`overdue.nudged`, `overdue.escalated`, `overdue.auto_rescheduled`, `overdue.snoozed`). Phase 3.6 complete.
 
 ### Pending Todos
 
@@ -122,12 +126,14 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-16T03:15:00.000Z
-Stopped at: Phase 3.5 (Owner Task Board) implementation reversed after user review. Code state is back to pre-3.5 baseline (307 tests passing). Planning docs retained for future reconsideration.
+Last session: 2026-05-20T00:00:00.000Z
+Stopped at: Phase 3.6 (Overdue Task Pressure) complete, all 4 plans shipped (commits 69fb566 → b457394 → 72f6995 → fb3205a). Phase 3 effectively complete too (Plan 03-07 descoped 2026-05-15; API half shipped, UI half intentionally dropped). Phase 4 (Personalized Task Framing) is the next milestone phase.
 Resume file: None
-Resume command: Depends on what comes next — either rethink Phase 3.5 direction (read `.planning/phases/03.5-owner-task-board/03.5-CONTEXT.md` to understand original premise) OR `/gsd-execute-phase 4` to begin Phase 4 (personalized task framing).
+Resume command: `/gsd-plan-phase 4` to begin planning Phase 4 (Personalized Task Framing). Phase 4 docs to read first: `.planning/ROADMAP.md` (Phase 4 success criteria + 3-plan hint) and `.planning/REQUIREMENTS.md` (FRAME-01..07).
 User action pending:
 
-  1. Apply `supabase/migrations/20260518_drop_owner_dock_dismissals.sql` to live Supabase. The 20260517 create migration WAS applied before the reversal; the table now exists but no code references it. Drop migration cleans the schema.
-  2. Carry-over from Phase 3 (still pending from pre-reversal session): real-LLM bias regression baseline (`JUDGE_BIAS_REAL_LLM=1 npx vitest run src/__tests__/judge.bias-regression.test.ts`, ~$0.30, ~10 min) + Plan 03-03 Task 5 manual UAT for "Why you" privacy filter across 3 viewer roles.
-  3. Unrelated stash @{0} (`phase-3-profile-refactor-wip`) is still in place — your /teams/[id]/me profile refactor is preserved untouched, run `git stash pop` when ready to resume that work.
+  1. Apply `supabase/migrations/20260518_drop_owner_dock_dismissals.sql` to live Supabase (carry-over from Phase 3.5 reversal — owner_dock_dismissals table exists but no code references it).
+  2. Carry-over from Phase 3 (still pending): real-LLM bias regression baseline (`JUDGE_BIAS_REAL_LLM=1 npx vitest run src/__tests__/judge.bias-regression.test.ts`, ~$0.30, ~10 min) + Plan 03-03 Task 5 manual UAT for "Why you" privacy filter across 3 viewer roles.
+  3. Apply `supabase/migrations/20260516_triage_note_column.sql` if not already applied (Phase 3 Plan 06 — triage_note column for the 4-outcome decision tree).
+  4. Apply Phase 3.6 migration (`overdue_tier`, `last_overdue_action_at`, `overdue_pressure_enabled` columns) if not already applied — without it, the daily overdue-sweep cron will no-op.
+  5. Unrelated stash @{0} (`phase-3-profile-refactor-wip`) is still in place — your /teams/[id]/me profile refactor is preserved untouched, run `git stash pop` when ready to resume that work.
