@@ -8,7 +8,13 @@ export type JobKind =
   | 'idea_analysis'
   | 'task_verification'
   | 'commit_summary'
-  | 'github_skill_inference';
+  | 'github_skill_inference'
+  // Phase 4 / Plan 01 — personalized task framing. One job enqueued per
+  // successful assignment by `dispatcher.ts`. Worker (`runTaskReframe` in
+  // `workers.ts`) calls `runReframe()` and writes the personalized sentence
+  // to `agent_tasks.personalized_description`. Fire-and-forget at the
+  // dispatcher; failures here never block the assignment itself (FRAME-01).
+  | 'task_reframe';
 
 export type JobStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'dead';
 

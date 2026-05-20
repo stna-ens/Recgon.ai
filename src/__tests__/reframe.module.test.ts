@@ -250,7 +250,10 @@ describe('runReframe — llm_failure', () => {
 
 describe('runReframe — adapter injection', () => {
   it('uses opts.chat (no chatViaProviders call)', async () => {
-    const stub = vi.fn(async () => happyResponseJson());
+    const stub = vi.fn(
+      async (_system: string, _user: string): Promise<string> =>
+        happyResponseJson(),
+    );
     await runReframe(baseInputs, { chat: stub });
     expect(stub).toHaveBeenCalledTimes(1);
     // Argument shape: (systemPrompt, userPrompt, options?)

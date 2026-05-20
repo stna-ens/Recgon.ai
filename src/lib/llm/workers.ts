@@ -245,6 +245,175 @@ async function runCommitSummary(job: LLMJob): Promise<WorkerResult> {
   return row as unknown as WorkerResult;
 }
 
+// ── Task reframe (Phase 4 / Plan 01) ────────────────────────────────────────
+//
+// Per-assignment worker. Reads the canonical task row, loads the assignee's
+// declared profile, calls `runReframe()` (pure, adapter-injected), and
+// persists the resulting sentence to `agent_tasks.personalized_description`.
+//
+// Skip paths (return `{ skipped: true, reason: ... }` without throwing — the
+// queue treats these as success and does NOT retry):
+//   - `'reassigned'`       → assignee changed between enqueue and run.
+//   - `'columns_missing'`  → migration not applied (FRAME-02 fail-soft).
+//   - `'no_assignee'`      → task has no assigned_to (legacy or unassigned).
+//   - `'no_teammate'`      → assigned_to teammate row was retired/deleted.
+//   - `'no_user'`          → teammate.user_id is null (non-user teammate).
+//   - `'no_profile'`       → assignee has no teammate_profiles row yet.
+//
+// Throw paths (jobQueue's exponential backoff retries; max_attempts caps):
+//   - `ReframeError` of any kind → surfaced as a thrown Error for retry.
+
+export type TaskReframePayload = {
+  taskId: string;
+  assigneeUserId: string;
+  teamId: string;
+};
+
+export async function runTaskReframe(job: LLMJob): Promise<WorkerResult> {
+  const payload = job.payload as Partial<TaskReframePayload>;
+  if (!payload?.taskId || !payload?.assigneeUserId || !payload?.teamId) {
+    throw new Error('task_reframe job missing required fields (taskId, assigneeUserId, teamId)');
+  }
+
+  // 1. Load the canonical task row.
+  const taskRow = await supabase
+    .from('agent_tasks')
+    .select(
+      'id, team_id, project_id, title, description, kind, assigned_to, assignment_reasoning',
+    )
+    .eq('id', payload.taskId)
+    .maybeSingle();
+  if (taskRow.error) {
+    throw new Error(`task_reframe: failed to load task ${payload.taskId}: ${taskRow.error.message}`);
+  }
+  if (!taskRow.data) {
+    return { skipped: true, reason: 'task_not_found' };
+  }
+  const task = taskRow.data as {
+    id: string;
+    team_id: string;
+    project_id: string | null;
+    title: string;
+    description: string | null;
+    kind: string;
+    assigned_to: string | null;
+    assignment_reasoning: unknown;
+  };
+
+  if (!task.assigned_to) {
+    return { skipped: true, reason: 'no_assignee' };
+  }
+
+  // 2. Resolve the teammate → user_id and run the reassignment race shield.
+  const teammateRow = await supabase
+    .from('teammates')
+    .select('id, user_id, status')
+    .eq('id', task.assigned_to)
+    .maybeSingle();
+  if (teammateRow.error) {
+    throw new Error(
+      `task_reframe: failed to load teammate ${task.assigned_to}: ${teammateRow.error.message}`,
+    );
+  }
+  if (!teammateRow.data) {
+    return { skipped: true, reason: 'no_teammate' };
+  }
+  const teammate = teammateRow.data as {
+    id: string;
+    user_id: string | null;
+    status: string | null;
+  };
+  if (!teammate.user_id) {
+    return { skipped: true, reason: 'no_user' };
+  }
+  if (teammate.user_id !== payload.assigneeUserId) {
+    // Reassignment race — task moved to a different teammate after the job
+    // was enqueued. Plan 04-03 will hook reassignment to invalidate +
+    // re-enqueue; for now we silently skip.
+    return { skipped: true, reason: 'reassigned' };
+  }
+
+  // 3. Load the assignee's declared profile.
+  const profile = await getProfile(payload.teamId, payload.assigneeUserId).catch(() => null);
+  if (!profile) {
+    return { skipped: true, reason: 'no_profile' };
+  }
+
+  // 4. Best-effort recent project state. NEVER block reframe on failure here.
+  let recentProjectState: import('../recgon/reframe').ReframeInputs['recentProjectState'] = null;
+  try {
+    if (task.project_id) {
+      const recentTaskRows = await supabase
+        .from('agent_tasks')
+        .select('title')
+        .eq('project_id', task.project_id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      const titles = ((recentTaskRows.data ?? []) as { title: string }[])
+        .map((r) => r.title)
+        .filter((t) => typeof t === 'string' && t.length > 0);
+      if (titles.length > 0) {
+        recentProjectState = { recentTaskTitles: titles };
+      }
+    }
+  } catch (err) {
+    logger.warn('task_reframe: recentProjectState load failed (continuing)', {
+      taskId: payload.taskId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  // 5. Build inputs + run the pure module. ReframeError → re-throw for retry.
+  const { runReframe } = await import('../recgon/reframe');
+  const result = await runReframe({
+    task: {
+      id: task.id,
+      title: task.title,
+      description: task.description ?? '',
+      kind: task.kind,
+    },
+    assignee: {
+      userId: payload.assigneeUserId,
+      declaredSkills: profile.skillsCanonical ?? [],
+      declaredInterests: profile.interestsCanonical ?? [],
+    },
+    assignmentReasoning:
+      (task.assignment_reasoning as import('../recgon/types').AssignmentReasoning | null) ??
+      null,
+    recentProjectState,
+  });
+
+  // 6. Persist — fail-soft if the migration hasn't run in this env.
+  const updateRes = await supabase
+    .from('agent_tasks')
+    .update({
+      personalized_description: result.sentence,
+      personalized_description_for_user_id: payload.assigneeUserId,
+    })
+    .eq('id', payload.taskId);
+
+  if (updateRes.error) {
+    const msg = updateRes.error.message.toLowerCase();
+    if (msg.includes('column') && msg.includes('does not exist')) {
+      logger.warn('reframe_columns_missing', {
+        taskId: payload.taskId,
+        err: updateRes.error.message,
+      });
+      return { skipped: true, reason: 'columns_missing' };
+    }
+    throw new Error(
+      `task_reframe: failed to persist personalized_description for ${payload.taskId}: ${updateRes.error.message}`,
+    );
+  }
+
+  return {
+    success: true,
+    taskId: payload.taskId,
+    sentence: result.sentence,
+    citedMoves: result.citedMoves,
+  };
+}
+
 const WORKERS: Partial<Record<JobKind, Worker>> = {
   idea_analysis: withRecgonDispatch(runIdeaAnalysis),
   codebase_analysis: withRecgonDispatch(runCodebaseAnalysis),
@@ -252,6 +421,7 @@ const WORKERS: Partial<Record<JobKind, Worker>> = {
   task_verification: runTaskVerificationJob,
   commit_summary: runCommitSummary,
   github_skill_inference: runGithubSkillInference,
+  task_reframe: runTaskReframe,
 };
 
 export async function runJob(job: LLMJob): Promise<WorkerResult> {
