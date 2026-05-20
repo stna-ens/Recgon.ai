@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 3.6 (Overdue Task Pressure) complete, all 4 plans shipped (commits 69fb566 → b457394 → 72f6995 → fb3205a). Phase 3 effectively complete too (Plan 03-07 descoped 2026-05-15; API half shipped, UI half intentionally dropped). Phase 4 (Personalized Task Framing) is the next milestone phase.
-last_updated: "2026-05-20T11:15:02.427Z"
-last_activity: 2026-05-20 -- Phase 04 execution started
+last_updated: "2026-05-20T17:30:00.000Z"
+last_activity: 2026-05-20 -- Phase 04 Plan 02 complete (viewer-discriminated read shipped)
 progress:
   total_phases: 8
   completed_phases: 4
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 ## Current Position
 
 Phase: 04 (personalized-task-framing) — EXECUTING
-Plan: 1 of 3
+Plan: 2 of 3
 Status: Executing Phase 04
-Last activity: 2026-05-20 -- Phase 04 execution started
+Last activity: 2026-05-20 -- Phase 04 Plan 02 complete (viewer-discriminated read shipped); Plan 04-03 (reassignment invalidation + golden tests) is next
 
 Progress: [██████████] 100%
 
@@ -68,6 +68,7 @@ Progress: [██████████] 100%
 | Phase 03 P04 | 12 | 5 tasks | 7 files |
 | Phase 03 P05 | 35 | 5 tasks | 14 files |
 | Phase 03 P06 | 14 | 3 tasks | 12 files |
+| Phase 04 P02 | 8 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,7 @@ Recent decisions affecting current work:
 - Plan 03.6-02: Pure `decideOverdueAction(task, today)` policy function (`b457394`) in `src/lib/recgon/overduePolicy.ts`. Decision tree returns one of `nudge_teammate | escalate_to_owner | auto_reschedule | none`. No-skip tier escalation, 24h cool-down enforcement, feature-flag respect. Comprehensive unit tests with injected clock — adapter pattern keeps it pure and testable.
 - Plan 03.6-03: Wired sweep (`72f6995`). Replaced stub `sweepOverdueTeams` with real iterator; `overdueRunner.executeOverdueAction` performs email send (Resend templates in `prompts.ts`) + storage update + event log write; `buildSchedulePlan`-driven auto-reschedule with reassignment fallback when original assignee out of capacity; owner-only `POST /api/recgon/tasks/[id]/snooze` route with day-count body validation.
 - Plan 03.6-04: UI surfacing + telemetry (`fb3205a`). Tiered overdue chip on `/tasks` cards, calendar cards, and project Calendar tab; owner-only tier badge on owner board surfaces; `SnoozeControl` in task detail (owner-only, day picker); `/tasks` overdue filter + empty state; logger counters wired (`overdue.nudged`, `overdue.escalated`, `overdue.auto_rescheduled`, `overdue.snoozed`). Phase 3.6 complete.
+- Plan 04-02: viewer-discriminated description (`1369dc3`, `43fc7c2`). `mapTask` now maps `personalized_description` + `personalized_description_for_user_id` from row to AgentTask (snake→camel boundary). API route `/api/recgon/tasks/[id]` adds `shouldServePersonalized` gate (assignee + non-empty personalized text + userId match) and explicit destructure+overwrite (NEVER spread the task — T-04-02-01 mitigation). FRAME-04 read-boundary race shield: stale mid-reassignment rows refuse to serve to a userId that doesn't match the column. notifications.ts picks personalized when bound; escapeHtml now wraps the description in the email body (T-04-02-03 defense in depth). TaskDetailPanel already read task.description directly — zero client change needed; the API is the single source of truth post-Plan-02. 14 new tests, 402/6 suite, tsc clean, build clean. Manual UAT auto-approved (orchestrator auto-mode) — relying on automated test surface. FRAME-03 + FRAME-05 closed.
 
 ### Pending Todos
 
@@ -126,8 +128,8 @@ Items acknowledged and carried forward (from REQUIREMENTS.md v3):
 
 ## Session Continuity
 
-Last session: 2026-05-20T00:00:00.000Z
-Stopped at: Phase 3.6 (Overdue Task Pressure) complete, all 4 plans shipped (commits 69fb566 → b457394 → 72f6995 → fb3205a). Phase 3 effectively complete too (Plan 03-07 descoped 2026-05-15; API half shipped, UI half intentionally dropped). Phase 4 (Personalized Task Framing) is the next milestone phase.
+Last session: 2026-05-20T17:30:00.000Z
+Stopped at: Phase 4 Plan 02 complete. Viewer-discriminated description shipped end-to-end — API route at `/api/recgon/tasks/[id]` serves personalized text only when (a) viewer is the assignee, (b) personalizedDescription is non-empty, (c) personalized_description_for_user_id matches session.user.id; raw personalized fields stripped via destructure+overwrite (T-04-02-01 mitigation; FRAME-04 read-boundary race shield). Assignment email picks personalized when bound to assignee; escapeHtml now wraps the description (T-04-02-03 defense in depth). TaskDetailPanel already reads task.description directly — no client change needed. 14 new tests (8 route + 6 notifications), 402 passed / 6 skipped, tsc clean, build succeeds. Manual UAT (Task 2.3) auto-approved per orchestrator (relying on automated test surface + privacy regression suite). Plan 04-03 (reassignment invalidation + 12 FRAME-06 + 8 FRAME-07 golden fixtures) is next.
 Resume file: None
 Resume command: `/gsd-plan-phase 4` to begin planning Phase 4 (Personalized Task Framing). Phase 4 docs to read first: `.planning/ROADMAP.md` (Phase 4 success criteria + 3-plan hint) and `.planning/REQUIREMENTS.md` (FRAME-01..07).
 User action pending:
