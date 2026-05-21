@@ -132,3 +132,25 @@ The cost of NOT doing these is low for SC-1, SC-2, SC-4 (those are fully locked 
 
 _Verified: 2026-05-20T18:40Z_
 _Verifier: Claude (gsd-verifier, opus 4.7)_
+
+---
+
+## Follow-up Resolutions (2026-05-21)
+
+Four code-only fixes that closed the honest-gap concerns surfaced after the
+initial verification. The original `status: human_needed` stands — the
+live-UAT items above are still pending — but the gaps below are now closed.
+See `04-followup-SUMMARY.md` for full detail and commit SHAs.
+
+| # | Concern | Fix | Commit |
+|---|---------|-----|--------|
+| 1 | Assignment email sent BEFORE reframe job ran → emails always carried the original description (FRAME-05 contract breach). | Worker is now the SOLE owner of `notifyTeammateAssigned`. Dispatcher only enqueues; worker reloads fresh state after writing personalized text and sends the email itself. Reassignment-race path skips the email (new reframe job will send). `columns_missing`, `thin_profile`, and `reframe_failed_all_retries` paths send the email with the original description. | `ab946cf` |
+| 2 | No production telemetry — silent LLM misbehavior would be invisible until a user reported it. | Structured logger calls at every terminal outcome (`reframe_success` / `reframe_skipped` / `reframe_rejected` / `reframe_failed_all_retries` / `reframe_email_sent` / `reframe_email_send_failed`). `taskId` + `teamId` always present. | `ab946cf` |
+| 3 | Thin-profile assignees burned ~7.5h of retry backoff at LLM cost for guaranteed grounding-reject. | Pre-LLM signal-density check skips the LLM call when assignee has zero declared signals + no recent state. Sends email with original. | `ab946cf` |
+| 4 | `FORBIDDEN_FLATTERY_WORDS` covered 8 words; 8 common alternates bypassed. ASCII regex was vulnerable to compatibility-form bypass. | Extended regex with `stellar`/`incredible`/`outstanding(ly)`/`exceptional(ly)`/`terrific(ally)`/`superb(ly)`/`marvelous(ly)`/`wonderful(ly)`. NFKC normalization on input to all three tone-regex checks (catches full-width / ligature / presentation-form bypasses). Cross-script confusables (Cyrillic 'а' etc.) explicitly out of scope; documented in code. | `ac0e989` |
+
+**Test delta:** 454 → 467 passing (+13). Zero TypeScript errors. `npm run build` passes.
+
+**Files touched:** `src/lib/llm/workers.ts`, `src/lib/recgon/dispatcher.ts`, `src/lib/recgon/reframe.ts`, `src/__tests__/reframe.worker.test.ts`, `src/__tests__/reframe.tone-bounds.golden.test.ts`, `.planning/codebase/ARCHITECTURE.md`.
+
+**Behavior change for users:** Assignment emails arrive ~30s-2min after dispatch (was: immediately) in exchange for actually carrying the personalized text.
