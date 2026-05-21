@@ -347,6 +347,137 @@ const REJECT_FIXTURES: ReadonlyArray<Fixture> = [
       cited_signals: ['TypeScript', 'src/auth.ts'],
     },
   },
+  // Phase 4 follow-up (Fix 4) — newly added flattery vocabulary. The base
+  // regex covered great/amazing/perfect/brilliant/love/fantastic/excellent
+  // /awesome only; these 8 words bypassed the gate entirely.
+  {
+    id: 24,
+    label: 'flattery: stellar',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'A stellar match for your auth depth — start in src/auth.ts to wire the new login route.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['auth', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 25,
+    label: 'flattery: incredible',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'An incredible fit for your TypeScript skill — src/auth.ts is the file to start the work in.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 26,
+    label: 'flattery: outstanding',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'An outstanding chance to apply your Postgres depth — supabase/migrations is the entry point.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['Postgres', 'supabase/migrations'],
+    },
+  },
+  {
+    id: 27,
+    label: 'flattery: exceptional',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        "You're an exceptional match for this React work in src/components — start there to keep it tight.",
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['React', 'src/components'],
+    },
+  },
+  {
+    id: 28,
+    label: 'flattery: terrific',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'A terrific spot to apply your TypeScript depth — src/auth.ts is the entry point file to start.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 29,
+    label: 'flattery: superb',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'A superb match for your auth skill set — start at src/auth.ts to wire the new login route cleanly.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['auth', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 30,
+    label: 'flattery: marvelous',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'A marvelous chance to apply your TypeScript depth — src/auth.ts is the right entry point file.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
+  {
+    id: 31,
+    label: 'flattery: wonderful',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'A wonderful overlap with your Postgres skill — supabase/migrations is the right entry point.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['Postgres', 'supabase/migrations'],
+    },
+  },
+  // Inflected new word — pins the (?:ly)? branch on the additions.
+  {
+    id: 32,
+    label: 'flattery: outstandingly (inflected new word)',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        'Outstandingly aligned with your TypeScript depth — src/auth.ts is the entry point file to start.',
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
+  // NFKC bypass attempt — full-width "ｇｒｅａｔ" (each letter U+FF47..U+FF54).
+  // Before Fix 4: the regex (ASCII-only \b boundaries + Latin letters) lets
+  // this through. After Fix 4: sentence.normalize('NFKC') collapses each
+  // full-width letter to its plain ASCII counterpart, so "great" matches.
+  // This is the case NFKC DOES catch (compatibility decomposition).
+  // Cross-script confusables (Cyrillic 'а' etc.) are explicitly out of
+  // scope — see the comment near the normalize() call in reframe.ts.
+  {
+    id: 33,
+    label: 'flattery: full-width "ｇｒｅａｔ" (NFKC compatibility-form bypass)',
+    reason: 'flattery',
+    expectedKind: 'tone_reject',
+    payload: {
+      sentence:
+        "You're ｇｒｅａｔ at TypeScript — this auth route in src/auth.ts is the entry point to start.",
+      cited_moves: ['fit_acknowledgement', 'start_location'],
+      cited_signals: ['TypeScript', 'src/auth.ts'],
+    },
+  },
 ];
 
 // ── Negative controls (2) — clean sentences that MUST be accepted ───────────
@@ -469,6 +600,37 @@ describe('FRAME-06 tone validator — golden rejects (12 cases)', () => {
   });
   it(`fixture 23: flattery 'greatly' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
     await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[20].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  // Phase 4 follow-up (Fix 4) — kind: 'tone_reject' for each newly added word.
+  it(`fixture 24: flattery 'stellar' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[21].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 25: flattery 'incredible' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[22].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 26: flattery 'outstanding' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[23].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 27: flattery 'exceptional' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[24].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 28: flattery 'terrific' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[25].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 29: flattery 'superb' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[26].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 30: flattery 'marvelous' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[27].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 31: flattery 'wonderful' → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[28].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 32: flattery 'outstandingly' (inflected) → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[29].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
+  });
+  it(`fixture 33: flattery 'full-width ｇｒｅａｔ' (NFKC compatibility-form bypass) → rejects.toMatchObject kind: 'tone_reject'`, async () => {
+    await expect(runReframe(buildBaseInputs(), { chat: makeChatAdapter(REJECT_FIXTURES[30].payload) })).rejects.toMatchObject({ kind: 'tone_reject' });
   });
 });
 

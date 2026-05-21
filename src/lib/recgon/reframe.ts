@@ -77,9 +77,13 @@ export { enqueueReframeJob } from './reframeEnqueue';
  * accidentally rejecting a benign use of "love" is preferable to letting
  * "you're going to love this" through. False positives surface as job
  * retries, not user-visible failures (worker fails-soft after max_attempts).
+ *
+ * Alphabetized for readability. Phase 4 follow-up (Fix 4) added: stellar,
+ * incredible, outstanding(ly), exceptional(ly), terrific(ally), superb(ly),
+ * marvelous(ly), wonderful(ly).
  */
 export const FORBIDDEN_FLATTERY_WORDS =
-  /\b(great(?:ly)?|amazing(?:ly)?|perfect(?:ly)?|brilliant(?:ly)?|lov(?:e|ed|es|ing|ely)|fantastic(?:ally)?|excellent(?:ly)?|awesome(?:ly)?)\b/i;
+  /\b(amazing(?:ly)?|awesome(?:ly)?|brilliant(?:ly)?|exceptional(?:ly)?|excellent(?:ly)?|fantastic(?:ally)?|great(?:ly)?|incredible|lov(?:e|ed|es|ing|ely)|marvelous(?:ly)?|outstanding(?:ly)?|perfect(?:ly)?|stellar|superb(?:ly)?|terrific(?:ally)?|wonderful(?:ly)?)\b/i;
 
 /**
  * Forbidden shared-history / false-familiarity phrases. Case-insensitive.
@@ -272,19 +276,31 @@ export async function runReframe(
   }
 
   // 5. Post-hoc TONE validator (FRAME-06).
-  if (PRONOUN_DENY.test(sentence)) {
+  // Normalize via NFKC before regex match. This catches compatibility-form
+  // bypass attempts: full-width chars (ｇｒｅａｔ), ligatures (ﬁ), presentation
+  // forms, super/subscripts, etc. — all collapse to their canonical letters.
+  //
+  // What NFKC does NOT catch: cross-script confusables like Cyrillic 'а'
+  // (U+0430) → Latin 'a' (U+0061). Those are distinct characters in
+  // different scripts, even though they look identical, and Unicode's
+  // confusables mapping (UTS #39) lives in a separate table that we
+  // deliberately do not pull in for v3 (overkill for the threat model).
+  // A determined adversary can still construct a Cyrillic-letter bypass;
+  // accepted limit, documented here.
+  const normalizedSentence = sentence.normalize('NFKC');
+  if (PRONOUN_DENY.test(normalizedSentence)) {
     throw new ReframeError(
       'tone_reject',
       `sentence contains a pronoun: '${sentence}'`,
     );
   }
-  if (FORBIDDEN_FLATTERY_WORDS.test(sentence)) {
+  if (FORBIDDEN_FLATTERY_WORDS.test(normalizedSentence)) {
     throw new ReframeError(
       'tone_reject',
       `sentence contains forbidden flattery vocabulary: '${sentence}'`,
     );
   }
-  if (FORBIDDEN_FAMILIARITY_PHRASES.test(sentence)) {
+  if (FORBIDDEN_FAMILIARITY_PHRASES.test(normalizedSentence)) {
     throw new ReframeError(
       'tone_reject',
       `sentence contains forbidden shared-history phrase: '${sentence}'`,
