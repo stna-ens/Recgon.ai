@@ -114,23 +114,87 @@ vi.mock('@/lib/supabase', () => ({
 
 // ── Mocks for getProfile + runReframe ───────────────────────────────────────
 
+const getProfileMock = vi.fn(async () => ({
+  id: 'profile-1',
+  teamId: 'team-1',
+  userId: 'user-1',
+  skillsRaw: ['typescript'],
+  strengthsRaw: [],
+  interestsRaw: [],
+  skillsCanonical: ['typescript', 'supabase'],
+  strengthsCanonical: [],
+  interestsCanonical: ['developer experience'],
+  weeklyCapacityHours: 10,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+  githubMiningConsentAt: null,
+  lastScanAt: null,
+}));
+(globalThis as GlobalWithStub & {
+  __reframeWorkerGetProfileMock?: unknown;
+}).__reframeWorkerGetProfileMock = getProfileMock;
 vi.mock('@/lib/recgon/profileStorage', () => ({
-  getProfile: vi.fn(async () => ({
-    id: 'profile-1',
-    teamId: 'team-1',
-    userId: 'user-1',
-    skillsRaw: ['typescript'],
-    strengthsRaw: [],
-    interestsRaw: [],
-    skillsCanonical: ['typescript', 'supabase'],
-    strengthsCanonical: [],
-    interestsCanonical: ['developer experience'],
-    weeklyCapacityHours: 10,
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    githubMiningConsentAt: null,
-    lastScanAt: null,
-  })),
+  getProfile: (...args: unknown[]) => {
+    const m = (globalThis as GlobalWithStub & {
+      __reframeWorkerGetProfileMock?: (...a: unknown[]) => unknown;
+    }).__reframeWorkerGetProfileMock;
+    return m ? m(...args) : Promise.resolve(null);
+  },
+}));
+
+// FRAME-05 follow-up: the worker now owns the assignment email. Mock the
+// notifications module + the storage helpers that sendAssignmentEmail uses
+// to reload fresh state (getTask / getTeammate / getTeam). Each mock is
+// attached to globalThis so per-test reconfiguration survives vi.resetAllMocks.
+
+const notifyMock = vi.fn(async (_args: unknown) => undefined);
+(globalThis as GlobalWithStub & {
+  __reframeWorkerNotifyMock?: unknown;
+}).__reframeWorkerNotifyMock = notifyMock;
+vi.mock('@/lib/notifications', () => ({
+  notifyTeammateAssigned: (...args: unknown[]) => {
+    const m = (globalThis as GlobalWithStub & {
+      __reframeWorkerNotifyMock?: (...a: unknown[]) => unknown;
+    }).__reframeWorkerNotifyMock;
+    return m ? m(...args) : Promise.resolve(undefined);
+  },
+}));
+
+const getTaskMock = vi.fn(async () => null as unknown);
+const getTeammateMock = vi.fn(async () => null as unknown);
+(globalThis as GlobalWithStub & {
+  __reframeWorkerGetTaskMock?: unknown;
+  __reframeWorkerGetTeammateMock?: unknown;
+}).__reframeWorkerGetTaskMock = getTaskMock;
+(globalThis as GlobalWithStub & {
+  __reframeWorkerGetTeammateMock?: unknown;
+}).__reframeWorkerGetTeammateMock = getTeammateMock;
+vi.mock('@/lib/recgon/storage', () => ({
+  getTask: (...args: unknown[]) => {
+    const m = (globalThis as GlobalWithStub & {
+      __reframeWorkerGetTaskMock?: (...a: unknown[]) => unknown;
+    }).__reframeWorkerGetTaskMock;
+    return m ? m(...args) : Promise.resolve(null);
+  },
+  getTeammate: (...args: unknown[]) => {
+    const m = (globalThis as GlobalWithStub & {
+      __reframeWorkerGetTeammateMock?: (...a: unknown[]) => unknown;
+    }).__reframeWorkerGetTeammateMock;
+    return m ? m(...args) : Promise.resolve(null);
+  },
+}));
+
+const getTeamMock = vi.fn(async () => null as unknown);
+(globalThis as GlobalWithStub & {
+  __reframeWorkerGetTeamMock?: unknown;
+}).__reframeWorkerGetTeamMock = getTeamMock;
+vi.mock('@/lib/teamStorage', () => ({
+  getTeam: (...args: unknown[]) => {
+    const m = (globalThis as GlobalWithStub & {
+      __reframeWorkerGetTeamMock?: (...a: unknown[]) => unknown;
+    }).__reframeWorkerGetTeamMock;
+    return m ? m(...args) : Promise.resolve(null);
+  },
 }));
 
 const runReframeMock = vi.fn(async () => ({
@@ -181,15 +245,42 @@ function makeJob(): LLMJob {
   };
 }
 
+// Reusable fixture for sendAssignmentEmail's fresh-reload path: returns a
+// task/teammate/team that look like the canonical assigned shape.
+function setEmailReloadHappyPath(opts: { description?: string; personalized?: string | null } = {}): void {
+  getTaskMock.mockResolvedValue({
+    id: 'task-1',
+    teamId: 'team-1',
+    assignedTo: 'teammate-1',
+    title: 'Wire login endpoint to Supabase',
+    description: opts.description ?? 'Add the new POST /api/auth/login route to src/lib/auth.ts',
+    personalizedDescription: opts.personalized ?? null,
+    personalizedDescriptionForUserId: opts.personalized ? 'user-1' : null,
+    assignmentReasoning: null,
+  } as unknown);
+  getTeammateMock.mockResolvedValue({
+    id: 'teammate-1',
+    teamId: 'team-1',
+    userId: 'user-1',
+    displayName: 'Alex',
+  } as unknown);
+  getTeamMock.mockResolvedValue({ id: 'team-1', name: 'Recgon Test Team' } as unknown);
+}
+
 beforeEach(() => {
   resetSupabaseStub();
   runReframeMock.mockClear();
+  notifyMock.mockClear();
+  getTaskMock.mockReset();
+  getTeammateMock.mockReset();
+  getTeamMock.mockReset();
+  getProfileMock.mockClear();
 });
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('runTaskReframe — happy path', () => {
-  it('writes personalized_description + personalized_description_for_user_id to agent_tasks', async () => {
+  it('writes personalized_description + personalized_description_for_user_id to agent_tasks AND sends email with personalized text (FRAME-05)', async () => {
     setRead('agent_tasks', {
       kind: 'single',
       result: {
@@ -214,6 +305,12 @@ describe('runTaskReframe — happy path', () => {
       },
     });
     setWrite('agent_tasks', { result: { error: null } });
+    // After the worker writes personalized_description, sendAssignmentEmail
+    // reloads fresh task state — that reload returns the personalized text.
+    setEmailReloadHappyPath({
+      personalized:
+        'Your typescript background fits this one — start at src/lib/auth.ts to wire the login endpoint cleanly.',
+    });
 
     const result = await runTaskReframe(makeJob());
 
@@ -225,6 +322,15 @@ describe('runTaskReframe — happy path', () => {
       personalized_description_for_user_id: 'user-1',
     });
     expect(runReframeMock).toHaveBeenCalledTimes(1);
+    // FRAME-05: the worker MUST send the assignment email with the
+    // personalized text loaded from fresh state (not from the job payload).
+    expect(notifyMock).toHaveBeenCalledTimes(1);
+    const notifyArgs = notifyMock.mock.calls[0]?.[0] as unknown as {
+      task: { personalizedDescription: string | null };
+      teamName: string;
+    };
+    expect(notifyArgs.task.personalizedDescription).toContain('typescript');
+    expect(notifyArgs.teamName).toBe('Recgon Test Team');
   });
 });
 
@@ -265,6 +371,10 @@ describe('runTaskReframe — columns_missing fail-soft', () => {
         },
       },
     });
+    // FRAME-05: columns_missing is a fail-soft path — the assignee still
+    // needs to be told about the assignment. Email goes out with the
+    // ORIGINAL description (personalizedDescription is null in the reload).
+    setEmailReloadHappyPath({ personalized: null });
 
     const result = await runTaskReframe(makeJob());
 
@@ -272,6 +382,12 @@ describe('runTaskReframe — columns_missing fail-soft', () => {
     // The update was attempted (we want to verify it actually tried the write
     // path; columns_missing is detected from the response, not pre-checked).
     expect(writeCalls).toHaveLength(1);
+    // Email IS sent in the columns_missing fail-soft path.
+    expect(notifyMock).toHaveBeenCalledTimes(1);
+    const notifyArgs = notifyMock.mock.calls[0]?.[0] as unknown as {
+      task: { personalizedDescription: string | null };
+    };
+    expect(notifyArgs.task.personalizedDescription).toBeNull();
   });
 
   // WR-02: a future Postgres release (or locale change) might rewrite the
@@ -321,7 +437,7 @@ describe('runTaskReframe — columns_missing fail-soft', () => {
 });
 
 describe('runTaskReframe — reassignment race shield', () => {
-  it('returns { skipped: true, reason: "reassigned" } when current assignee_user_id differs from payload', async () => {
+  it('returns { skipped: true, reason: "reassigned" } AND does NOT send email (the new reframe job for the new assignee will send)', async () => {
     setRead('agent_tasks', {
       kind: 'single',
       result: {
@@ -352,6 +468,161 @@ describe('runTaskReframe — reassignment race shield', () => {
     // No write happened — race shield short-circuits before runReframe.
     expect(writeCalls).toHaveLength(0);
     expect(runReframeMock).not.toHaveBeenCalled();
+    // FRAME-05: NO email sent. The new reframe job (enqueued by
+    // reassignTask) sends the new assignee's email — sending here would
+    // notify the previous assignee about a task they no longer own.
+    expect(notifyMock).not.toHaveBeenCalled();
+  });
+});
+
+// FRAME-05 follow-up: thin profile + final-attempt fallback + mid-retry behavior.
+
+describe('runTaskReframe — thin profile guard (Fix 3)', () => {
+  it('skips LLM call and sends email with original description when assignee has zero declared signals', async () => {
+    // Profile with NO skills, NO interests, AND no project_id → no recent
+    // task titles → signalCount === 0.
+    getProfileMock.mockResolvedValueOnce({
+      id: 'profile-empty',
+      teamId: 'team-1',
+      userId: 'user-1',
+      skillsRaw: [],
+      strengthsRaw: [],
+      interestsRaw: [],
+      skillsCanonical: [],
+      strengthsCanonical: [],
+      interestsCanonical: [],
+      weeklyCapacityHours: 10,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      githubMiningConsentAt: null,
+      lastScanAt: null,
+    });
+    setRead('agent_tasks', {
+      kind: 'single',
+      result: {
+        data: {
+          id: 'task-1',
+          team_id: 'team-1',
+          project_id: null, // no project → no recentTaskTitles fetch
+          title: 'Wire login endpoint to Supabase',
+          description: 'Add the new POST /api/auth/login route to src/lib/auth.ts',
+          kind: 'dev_prompt',
+          assigned_to: 'teammate-1',
+          assignment_reasoning: null,
+        },
+        error: null,
+      },
+    });
+    setRead('teammates', {
+      kind: 'single',
+      result: {
+        data: { id: 'teammate-1', user_id: 'user-1', status: 'active' },
+        error: null,
+      },
+    });
+    setEmailReloadHappyPath({ personalized: null });
+
+    const result = await runTaskReframe(makeJob());
+
+    expect(result).toMatchObject({ skipped: true, reason: 'thin_profile' });
+    // LLM was NOT called — that's the whole point of the guard.
+    expect(runReframeMock).not.toHaveBeenCalled();
+    // No DB write either.
+    expect(writeCalls).toHaveLength(0);
+    // Email IS sent with the original description.
+    expect(notifyMock).toHaveBeenCalledTimes(1);
+    const notifyArgs = notifyMock.mock.calls[0]?.[0] as unknown as {
+      task: { personalizedDescription: string | null };
+    };
+    expect(notifyArgs.task.personalizedDescription).toBeNull();
+  });
+});
+
+describe('runTaskReframe — final-attempt fallback (FRAME-05)', () => {
+  it('catches LLM failure on FINAL attempt + sends email with original + returns skipped:reframe_failed_all_retries', async () => {
+    setRead('agent_tasks', {
+      kind: 'single',
+      result: {
+        data: {
+          id: 'task-1',
+          team_id: 'team-1',
+          project_id: 'proj-1',
+          title: 'Wire login endpoint to Supabase',
+          description: 'Add the new POST /api/auth/login route to src/lib/auth.ts',
+          kind: 'dev_prompt',
+          assigned_to: 'teammate-1',
+          assignment_reasoning: null,
+        },
+        error: null,
+      },
+    });
+    setRead('teammates', {
+      kind: 'single',
+      result: {
+        data: { id: 'teammate-1', user_id: 'user-1', status: 'active' },
+        error: null,
+      },
+    });
+    // Pretend the LLM rejected (e.g. tone_reject) on every attempt.
+    runReframeMock.mockRejectedValueOnce(
+      Object.assign(new Error('tone_reject'), { kind: 'tone_reject' }),
+    );
+    setEmailReloadHappyPath({ personalized: null });
+
+    // Final attempt: attempts === max_attempts - 1 (e.g. 4 of 5).
+    const job = makeJob();
+    job.attempts = job.max_attempts - 1;
+
+    const result = await runTaskReframe(job);
+
+    expect(result).toMatchObject({ skipped: true, reason: 'reframe_failed_all_retries' });
+    // Email IS sent with the original description as a final fallback.
+    expect(notifyMock).toHaveBeenCalledTimes(1);
+    const notifyArgs = notifyMock.mock.calls[0]?.[0] as unknown as {
+      task: { personalizedDescription: string | null };
+    };
+    expect(notifyArgs.task.personalizedDescription).toBeNull();
+    // No DB write — runReframe never returned a sentence.
+    expect(writeCalls).toHaveLength(0);
+  });
+
+  it('mid-retry failure: LLM throws, NOT final attempt → re-throws AND does NOT send email', async () => {
+    setRead('agent_tasks', {
+      kind: 'single',
+      result: {
+        data: {
+          id: 'task-1',
+          team_id: 'team-1',
+          project_id: 'proj-1',
+          title: 'Wire login endpoint to Supabase',
+          description: 'Add the new POST /api/auth/login route to src/lib/auth.ts',
+          kind: 'dev_prompt',
+          assigned_to: 'teammate-1',
+          assignment_reasoning: null,
+        },
+        error: null,
+      },
+    });
+    setRead('teammates', {
+      kind: 'single',
+      result: {
+        data: { id: 'teammate-1', user_id: 'user-1', status: 'active' },
+        error: null,
+      },
+    });
+    runReframeMock.mockRejectedValueOnce(
+      Object.assign(new Error('schema_reject'), { kind: 'schema_reject' }),
+    );
+
+    // Mid-retry: attempts well below max_attempts - 1.
+    const job = makeJob();
+    job.attempts = 0;
+
+    await expect(runTaskReframe(job)).rejects.toThrow();
+    // No email sent — the queue will retry, and the next attempt may succeed
+    // and send the personalized email itself.
+    expect(notifyMock).not.toHaveBeenCalled();
+    expect(writeCalls).toHaveLength(0);
   });
 });
 

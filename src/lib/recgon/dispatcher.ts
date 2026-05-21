@@ -19,7 +19,6 @@
 import { logger } from '../logger';
 import { supabase } from '../supabase';
 import { chatViaProviders } from '../llm/providers';
-import { notifyTeammateAssigned } from '../notifications';
 import { readUnifiedBrain } from './brain';
 import { mintTasksFromBrain } from './taskMint';
 import {
@@ -64,7 +63,6 @@ import {
   saveBrainSnapshot,
   logEvent,
   getTask,
-  getTeammate,
   updateTaskRequiredSkills,
   markTaskForTriage,
   deferTaskScheduledDate,
@@ -156,11 +154,6 @@ async function ensureFreshSkills(task: AgentTask): Promise<AgentTask> {
     });
     return task;
   }
-}
-
-async function getTeamName(teamId: string): Promise<string> {
-  const { data } = await supabase.from('teams').select('name').eq('id', teamId).maybeSingle();
-  return (data?.name as string) ?? 'your team';
 }
 
 type ScheduledMatch = {
@@ -954,8 +947,13 @@ async function dispatchSingleTaskWithReasoning(
       );
       await assignScheduledTask(task, ownerTeammate.id, 'recgon', ownerPlan, reasoning);
       // Phase 4 / Plan 01 — FRAME-01 fire-and-forget reframe enqueue.
-      // Runs AFTER assignTask succeeded (above) and BEFORE notifyTeammateAssigned
-      // (below) so the job is queued by the time the email goes out.
+      // FRAME-05 follow-up: the reframe worker is now the sole owner of
+      // the assignment email. It runs AFTER `runReframe()` succeeds (or
+      // skips fail-soft) and sends the email using the personalized text
+      // when available. The dispatcher no longer calls
+      // notifyTeammateAssigned directly — doing so used to send the email
+      // BEFORE the reframe job ran, so the email almost always carried
+      // the original description instead of the personalized one.
       enqueueReframeJob(task.id, ownerTeammate.id, teamId).catch((err) => {
         logger.warn('task_reframe enqueue helper threw (unexpected)', {
           taskId: task.id,
@@ -976,23 +974,6 @@ async function dispatchSingleTaskWithReasoning(
           scheduleNote: ownerPlan.scheduleNote,
         },
       });
-      const [teamName, full] = await Promise.all([
-        getTeamName(teamId),
-        getTeammate(ownerTeammate.id),
-      ]);
-      if (full) {
-        notifyTeammateAssigned({
-          teammate: full,
-          task: withPlan(task, ownerPlan),
-          teamName,
-          reasoning,
-        }).catch((err) => {
-          logger.warn('notify owner-fallback failed', {
-            taskId: task.id,
-            err: err instanceof Error ? err.message : String(err),
-          });
-        });
-      }
       await appendAssignmentLog(teamId, {
         taskId: task.id,
         taskTitle: task.title,
@@ -1036,9 +1017,9 @@ async function dispatchSingleTaskWithReasoning(
 
   await assignScheduledTask(task, best.match.teammate.id, 'recgon', best.plan, reasoning);
   // Phase 4 / Plan 01 — FRAME-01 fire-and-forget reframe enqueue.
-  // Runs AFTER assignTask succeeded and BEFORE notifyTeammateAssigned so
-  // the job is queued by the time the email goes out (Plan 02 will switch
-  // the email body to read personalized_description when populated).
+  // FRAME-05 follow-up: the reframe worker is now the sole owner of the
+  // assignment email (see comment in the owner-fallback path above).
+  // Dispatcher's job is now: assignTask → enqueueReframeJob → DONE.
   enqueueReframeJob(task.id, best.match.teammate.id, teamId).catch((err) => {
     logger.warn('task_reframe enqueue helper threw (unexpected)', {
       taskId: task.id,
@@ -1063,25 +1044,6 @@ async function dispatchSingleTaskWithReasoning(
       scheduleNote: best.plan.scheduleNote,
     },
   });
-
-  // Email + in-app notification for the assignee.
-  const [teamName, full] = await Promise.all([
-    getTeamName(teamId),
-    getTeammate(best.match.teammate.id),
-  ]);
-  if (full) {
-    notifyTeammateAssigned({
-      teammate: full,
-      task: withPlan(task, best.plan),
-      teamName,
-      reasoning,
-    }).catch((err) => {
-      logger.warn('notify teammate failed', {
-        taskId: task.id,
-        err: err instanceof Error ? err.message : String(err),
-      });
-    });
-  }
 
   const logEntry: AssignmentLogEntry = {
     taskId: task.id,
@@ -1188,15 +1150,6 @@ async function assignScheduledTask(
 // cycle (storage → dispatcher → storage). Single source of truth lives in
 // `./reframeEnqueue`; both dispatch paths and reassignTask import from
 // there. Re-exported from `./reframe` for grep-discoverability.
-
-function withPlan(task: AgentTask, plan: SchedulePlan): AgentTask {
-  return {
-    ...task,
-    deadline: plan.deadline,
-    scheduledDate: plan.scheduledDate,
-    scheduleNote: plan.scheduleNote,
-  };
-}
 
 async function logNoFit(teamId: string, task: AgentTask, reason: string): Promise<void> {
   await logEvent({

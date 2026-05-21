@@ -27,6 +27,9 @@ import { runScan } from '../recgon/githubSkills';
 import { supabase } from '../supabase';
 import { logger } from '../logger';
 import { buildProjectAppContext } from '../appContext';
+import { notifyTeammateAssigned } from '../notifications';
+import { getTask, getTeammate } from '../recgon/storage';
+import { getTeam } from '../teamStorage';
 import type { JobKind, LLMJob } from './jobQueue';
 
 export type WorkerResult = Record<string, unknown>;
@@ -251,23 +254,90 @@ async function runCommitSummary(job: LLMJob): Promise<WorkerResult> {
 // declared profile, calls `runReframe()` (pure, adapter-injected), and
 // persists the resulting sentence to `agent_tasks.personalized_description`.
 //
+// FRAME-05 (Phase 4 follow-up): this worker is the SOLE owner of the
+// assignment email. The dispatcher used to call `notifyTeammateAssigned`
+// immediately after `assignTask`, which sent the email BEFORE the reframe
+// job ran — so the email always carried the original description. Moving
+// the send into the worker delays the email by ~30s-2min in exchange for
+// the email actually carrying the personalized text. Email send is
+// fail-soft (try/catch around the call) — a Resend outage MUST NOT cause
+// the LLM call to be repeated by the retry loop.
+//
 // Skip paths (return `{ skipped: true, reason: ... }` without throwing — the
 // queue treats these as success and does NOT retry):
-//   - `'reassigned'`       → assignee changed between enqueue and run.
+//   - `'reassigned'`       → assignee changed between enqueue and run. The
+//                            reframe job that was enqueued by reassignTask
+//                            will send the new assignee's email — we do NOT
+//                            send here (would double-notify the old user).
 //   - `'columns_missing'`  → migration not applied (FRAME-02 fail-soft).
+//                            Email IS sent with the original description.
+//   - `'thin_profile'`     → assignee has zero declared signals AND no
+//                            recentProjectState. LLM would have nothing to
+//                            ground on and would 12x-retry to dead. Email
+//                            IS sent with the original description.
 //   - `'no_assignee'`      → task has no assigned_to (legacy or unassigned).
 //   - `'no_teammate'`      → assigned_to teammate row was retired/deleted.
 //   - `'no_user'`          → teammate.user_id is null (non-user teammate).
 //   - `'no_profile'`       → assignee has no teammate_profiles row yet.
+//   - `'reframe_failed_all_retries'` → final attempt threw; we catch and
+//                            send the email with the original description
+//                            so the assignee still hears about the task.
 //
 // Throw paths (jobQueue's exponential backoff retries; max_attempts caps):
-//   - `ReframeError` of any kind → surfaced as a thrown Error for retry.
+//   - `ReframeError` of any kind on a non-final attempt → re-thrown for retry.
 
 export type TaskReframePayload = {
   taskId: string;
   assigneeUserId: string;
   teamId: string;
 };
+
+/**
+ * Fail-soft assignment-email helper. Reloads task + teammate + team from
+ * fresh state (NOT what was in the job payload — `runTaskReframe` may have
+ * just written `personalized_description` and the notifier needs to see it).
+ *
+ * Email-send failures are caught + logged. They MUST NOT bubble up: we
+ * don't want the LLM call repeated by the retry loop because Resend was
+ * temporarily down (the LLM call is much more expensive than the email).
+ */
+async function sendAssignmentEmail(
+  teamId: string,
+  taskId: string,
+  reason:
+    | 'reframe_success'
+    | 'columns_missing'
+    | 'thin_profile'
+    | 'reframe_failed_all_retries',
+): Promise<void> {
+  try {
+    const task = await getTask(taskId);
+    if (!task || !task.assignedTo) return;
+    const teammate = await getTeammate(task.assignedTo);
+    if (!teammate) return;
+    const team = await getTeam(teamId);
+    if (!team) return;
+    await notifyTeammateAssigned({
+      teammate,
+      task,
+      teamName: team.name,
+      reasoning: task.assignmentReasoning ?? null,
+    });
+    logger.info('reframe_email_sent', {
+      taskId,
+      teamId,
+      reason,
+      teammateId: teammate.id,
+    });
+  } catch (err) {
+    logger.warn('reframe_email_send_failed', {
+      taskId,
+      teamId,
+      reason,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
 
 export async function runTaskReframe(job: LLMJob): Promise<WorkerResult> {
   const payload = job.payload as Partial<TaskReframePayload>;
@@ -328,8 +398,17 @@ export async function runTaskReframe(job: LLMJob): Promise<WorkerResult> {
   }
   if (teammate.user_id !== payload.assigneeUserId) {
     // Reassignment race — task moved to a different teammate after the job
-    // was enqueued. Plan 04-03 will hook reassignment to invalidate +
-    // re-enqueue; for now we silently skip.
+    // was enqueued. reassignTask enqueues a fresh reframe job for the new
+    // assignee; THAT job will send the new assignment email. We send NO
+    // email here (sending now would notify the old assignee about a task
+    // they no longer own).
+    logger.warn('reframe_skipped', {
+      taskId: payload.taskId,
+      teamId: payload.teamId,
+      reason: 'reassigned',
+      expectedAssigneeUserId: payload.assigneeUserId,
+      actualAssigneeUserId: teammate.user_id,
+    });
     return { skipped: true, reason: 'reassigned' };
   }
 
@@ -363,25 +442,87 @@ export async function runTaskReframe(job: LLMJob): Promise<WorkerResult> {
     });
   }
 
-  // 5. Build inputs + run the pure module. ReframeError → re-throw for retry.
+  // 4.5. Thin-profile guard (Phase 4 follow-up, Fix 3). If the assignee
+  //      has zero declared signals AND no recent project state, the
+  //      grounding validator will reject any LLM output — the job would
+  //      then 12x-retry through ~7.5h before dying. Skip the LLM call
+  //      entirely, send the assignment email with the original
+  //      description, and treat as a successful no-op skip.
+  const declaredSkills = profile.skillsCanonical ?? [];
+  const declaredInterests = profile.interestsCanonical ?? [];
+  const signalCount =
+    declaredSkills.length +
+    declaredInterests.length +
+    (recentProjectState?.recentTaskTitles?.length ?? 0) +
+    (recentProjectState?.recentCommitFiles?.length ?? 0) +
+    (recentProjectState?.recentAnalyticsChange ? 1 : 0);
+  if (signalCount === 0) {
+    logger.warn('reframe_skipped', {
+      taskId: payload.taskId,
+      teamId: payload.teamId,
+      reason: 'thin_profile',
+    });
+    await sendAssignmentEmail(payload.teamId, payload.taskId, 'thin_profile');
+    return { skipped: true, reason: 'thin_profile' };
+  }
+
+  // 5. Build inputs + run the pure module. ReframeError → re-throw for retry
+  //    UNLESS this is the final attempt, in which case we catch + fall
+  //    through to "send email with original description" so the assignee
+  //    always hears about the task eventually.
   const { runReframe } = await import('../recgon/reframe');
-  const result = await runReframe({
-    task: {
-      id: task.id,
-      title: task.title,
-      description: task.description ?? '',
-      kind: task.kind,
-    },
-    assignee: {
-      userId: payload.assigneeUserId,
-      declaredSkills: profile.skillsCanonical ?? [],
-      declaredInterests: profile.interestsCanonical ?? [],
-    },
-    assignmentReasoning:
-      (task.assignment_reasoning as import('../recgon/types').AssignmentReasoning | null) ??
-      null,
-    recentProjectState,
-  });
+  let result: Awaited<ReturnType<typeof runReframe>>;
+  try {
+    result = await runReframe({
+      task: {
+        id: task.id,
+        title: task.title,
+        description: task.description ?? '',
+        kind: task.kind,
+      },
+      assignee: {
+        userId: payload.assigneeUserId,
+        declaredSkills,
+        declaredInterests,
+      },
+      assignmentReasoning:
+        (task.assignment_reasoning as import('../recgon/types').AssignmentReasoning | null) ??
+        null,
+      recentProjectState,
+    });
+  } catch (err) {
+    // FRAME-05 final-attempt fallback. ReframeError or any throw on the
+    // last retry: send the email with the original description so the
+    // assignee still gets notified, then return success-skip so the queue
+    // marks the job done (not dead).
+    const isFinalAttempt = job.attempts >= job.max_attempts - 1;
+    const kind =
+      err && typeof err === 'object' && 'kind' in err
+        ? (err as { kind?: string }).kind ?? 'unknown'
+        : 'unknown';
+    if (isFinalAttempt) {
+      logger.error('reframe_failed_all_retries', {
+        taskId: payload.taskId,
+        teamId: payload.teamId,
+        attempts: job.attempts,
+        kind,
+      });
+      await sendAssignmentEmail(
+        payload.teamId,
+        payload.taskId,
+        'reframe_failed_all_retries',
+      );
+      return { skipped: true, reason: 'reframe_failed_all_retries' };
+    }
+    // Non-final attempt: log the rejection and re-throw so the queue retries.
+    logger.warn('reframe_rejected', {
+      taskId: payload.taskId,
+      teamId: payload.teamId,
+      kind,
+      attempt: job.attempts,
+    });
+    throw err;
+  }
 
   // 6. Persist — fail-soft if the migration hasn't run in this env.
   const updateRes = await supabase
@@ -406,12 +547,28 @@ export async function runTaskReframe(job: LLMJob): Promise<WorkerResult> {
         taskId: payload.taskId,
         err: updateRes.error.message,
       });
+      logger.warn('reframe_skipped', {
+        taskId: payload.taskId,
+        teamId: payload.teamId,
+        reason: 'columns_missing',
+      });
+      await sendAssignmentEmail(payload.teamId, payload.taskId, 'columns_missing');
       return { skipped: true, reason: 'columns_missing' };
     }
     throw new Error(
       `task_reframe: failed to persist personalized_description for ${payload.taskId}: ${updateRes.error.message}`,
     );
   }
+
+  // 7. Success — log telemetry and send the personalized assignment email.
+  logger.info('reframe_success', {
+    taskId: payload.taskId,
+    teamId: payload.teamId,
+    assigneeUserId: payload.assigneeUserId,
+    sentenceLength: result.sentence.length,
+    citedMoves: result.citedMoves,
+  });
+  await sendAssignmentEmail(payload.teamId, payload.taskId, 'reframe_success');
 
   return {
     success: true,
