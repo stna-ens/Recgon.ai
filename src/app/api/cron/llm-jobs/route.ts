@@ -1,10 +1,12 @@
 // Vercel cron endpoint — drains the llm_jobs queue.
 //
-// Invoked every minute by the Vercel cron config in vercel.json. Claims up
-// to MAX_BATCH pending jobs atomically (FOR UPDATE SKIP LOCKED), runs them
-// in parallel, and records the result on each row. Crashed / timed-out
-// jobs are released back to pending via releaseStuckJobs() at the start of
-// each tick.
+// Invoked daily at 00:00 UTC by the Vercel cron config in vercel.json
+// (schedule "0 0 * * *"). Sub-daily crons require Vercel Pro; on Hobby
+// the queue therefore drains once per day, meaning queued jobs can sit
+// pending for up to 24h. Claims up to MAX_BATCH pending jobs atomically
+// (FOR UPDATE SKIP LOCKED), runs them in parallel, and records the
+// result on each row. Crashed / timed-out jobs are released back to
+// pending via releaseStuckJobs() at the start of each tick.
 //
 // Security: Vercel signs cron invocations with a `CRON_SECRET` header. In
 // local dev the check is skipped.

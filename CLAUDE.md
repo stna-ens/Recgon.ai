@@ -62,7 +62,7 @@ Next.js 15 (App Router) + TypeScript + Tailwind. AI via multi-provider chain: Ge
 - `analytics/oauth/` + `analytics/oauth/callback/` — Google OAuth flow
 - `chat/` — terminal chatbot (streaming, persists history) — backs `/v2/terminal` (formerly `/v2/mentor`, 307 redirect in `next.config.js`)
 - `llm/jobs/[id]/` — GET status of a queued LLM job (team-access-checked)
-- `cron/llm-jobs/` — Vercel cron (every minute) draining `llm_jobs`; `CRON_SECRET` bearer auth
+- `cron/llm-jobs/` — Vercel cron draining `llm_jobs`; `CRON_SECRET` bearer auth. Schedule is `0 0 * * *` (daily at 00:00 UTC) because the project is on the Vercel Hobby plan, which disallows sub-daily crons. Implication: every queued job (task_reframe, commit_summary, teammate_task) can sit pending for up to 24h. Phase 4 personalized task descriptions therefore appear up to a day after assignment — accepted limitation, not a bug. Reconsider if/when the project moves to Vercel Pro.
 
 ### Pages (`src/app/`)
 `page.tsx` (dashboard) · `landing/` · `login/` · `register/` · `account/` · `projects/[id]/` + `export/` · `marketing/` · `analytics/` · `teams/` · `teams/setup/` · `teams/[id]/` · `teams/invite/[token]/`

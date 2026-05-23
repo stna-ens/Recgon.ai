@@ -16,7 +16,7 @@
 // boundary the cap may be EXCEEDED by up to N-1 (both ticks read 50,
 // both refuse; correct refusal, but mathematically the cap is loose by
 // the concurrency factor). Acceptable per RESEARCH Q4 note 2: cap is a
-// SAFETY rail, not a hard quota; cron is 1/minute and typical N=1, so
+// SAFETY rail, not a hard quota; cron is 1/day on Hobby and typical N=1, so
 // this is functionally zero. A future fix would replace the read-then-
 // upsert with an atomic Postgres `INSERT ... ON CONFLICT ... DO UPDATE
 // SET judgment_calls = team_llm_usage.judgment_calls + 1 RETURNING
