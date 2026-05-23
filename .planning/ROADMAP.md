@@ -77,22 +77,24 @@ Recgon v3 evolves the dispatcher from pure math into an explainable, manager-fee
 
 > **Plan progress (Phase 3):** 7 plans total. Plans 01-06 complete. Plan 03-07 (TASKS-page triage view) is the last remaining Phase 3 plan.
 
-### Phase 3.5: Owner Task Board
-**Goal:** A team owner opens a single page (PROJECTS landing) and immediately understands the team's task picture: who is doing what, when each task is scheduled, why each assignee was picked, and which tasks are flagged for triage or deferred. The page replaces the long list view with a workload swim-lane grid (rows = teammates, columns = days) plus a pinned triage dock above. Triage + deferred items (from Phase 3 dispatcher) are first-class, not buried in detail pages. Owner can act inline (manual-assign, reschedule, dismiss, drag-drop reassign).
+### Phase 3.5: Owner Task Board — REVERSED 2026-05-16
+**Status:** REVERSED. Implemented across 20 commits, then rolled back same day via commit `b724fb1` after the direction was judged wrong. Planning artifacts retained as a learning record; treat this phase as DONE (will-not-do), not pending.
+**What was learned:** The "owner-facing structured grid" framing produced a working build, but the owner UX it gave (separate board at /projects + clarified /tasks personal view) didn't actually solve the picture-comprehension problem the success criteria were chasing. Re-attempt requires a fresh premise, not iteration on this plan.
+**Goal (original):** A team owner opens a single page (PROJECTS landing) and immediately understands the team's task picture: who is doing what, when each task is scheduled, why each assignee was picked, and which tasks are flagged for triage or deferred. The page replaces the long list view with a workload swim-lane grid (rows = teammates, columns = days) plus a pinned triage dock above. Triage + deferred items (from Phase 3 dispatcher) are first-class, not buried in detail pages. Owner can act inline (manual-assign, reschedule, dismiss, drag-drop reassign).
 **Mode:** mvp
 **Depends on:** Phase 3 (consumes triage_note, deferred scheduledDate, assignment_reasoning, manually-assign endpoint)
 **Requirements:** SUCCESS-1, SUCCESS-2, SUCCESS-3, SUCCESS-4, SUCCESS-5 (treat ROADMAP success criteria as REQs — no separate REQUIREMENTS.md entries for this phase)
-**Success Criteria** (what must be TRUE):
+**Success Criteria (original — N/A because reversed):**
   1. A team owner opens a single URL and sees every team task in a structured grid with columns surfacing assignee, scheduled date, kind, status, why-you sentence, and triage/defer state — no scrolling through 40+ list rows to find one task.
   2. Triaged tasks (`triage_note IS NOT NULL`) and deferred tasks (`scheduled_date > today`) are visible as first-class row states, not hidden in detail pop-ups. Owner can act on them inline (assign manually, dismiss, or bump scheduled date) without leaving the page.
   3. The board can be sorted by assignee (each teammate's plate in one view), by week (next week's load at a glance), or by state (all triage + defer items together). Filter by assignee, kind, or priority.
   4. The `/tasks` page is clarified: it stays the personal-assignee view (only your own tasks), separate from the owner board. No team-wide info on `/tasks`.
   5. Members and viewers either see a stripped-down version (only their own tasks in the grid) or are routed to `/tasks` — the owner board is owner-scoped by default.
-**Plans:** 4 plans
-- [ ] `03.5-01-PLAN.md` — Wave 0 (install `@dnd-kit/core@^6.3.1` + `utilities` + `accessibility`, test scaffold, SwimLane `dragMode` prop). Refactor `/projects/page.tsx` as server-side role router. Ship empty `OwnerWorkloadBoard` shell rendering 14-day grid + teammate rows, NO chips. Owner → empty board; member → existing tiles.
-- [ ] `03.5-02-PLAN.md` — Read tasks via owner-board GET, render chips on grid via reused EventChip, render per-week per-teammate capacity bar (green/yellow/signature). Triage dock renders triaged + deferred tasks (read-only — no actions yet). Privacy filter: bulk path strips `assignment_reasoning`. Owner sees the picture; can read but not act.
-- [ ] `03.5-03-PLAN.md` — Wire inline actions: manual-assign from dock, reschedule via REUSED `/api/teams/[id]/tasks/[taskId]/schedule`, dismiss-from-dock with per-user persistence (new `owner_dock_dismissals` table), drag-drop reassign + reschedule via @dnd-kit/core with optimistic UI + rollback. Owner can ACT.
-- [ ] `03.5-04-PLAN.md` — (a) Workload/Table view toggle (D-08 — sortable 6-col mono table with row-click → TaskDetailPanel + kebab actions reusing pickers from 03.5-03), (b) `/tasks` header strip clarifying "personal tasks — owner board lives at /projects" with owner-only signature-pink link. NO `/tasks` redesign (deferred).
+**Plans (all reversed, see 03.5-XX-SUMMARY.md for revert records):**
+- [x] `03.5-01-PLAN.md` — REVERSED. Wave 0 (install `@dnd-kit/core@^6.3.1` + `utilities` + `accessibility`, test scaffold, SwimLane `dragMode` prop). Refactor `/projects/page.tsx` as server-side role router. Ship empty `OwnerWorkloadBoard` shell rendering 14-day grid + teammate rows, NO chips. Owner → empty board; member → existing tiles.
+- [x] `03.5-02-PLAN.md` — REVERSED. Read tasks via owner-board GET, render chips on grid via reused EventChip, render per-week per-teammate capacity bar (green/yellow/signature). Triage dock renders triaged + deferred tasks (read-only — no actions yet). Privacy filter: bulk path strips `assignment_reasoning`. Owner sees the picture; can read but not act.
+- [x] `03.5-03-PLAN.md` — REVERSED. Wire inline actions: manual-assign from dock, reschedule via REUSED `/api/teams/[id]/tasks/[taskId]/schedule`, dismiss-from-dock with per-user persistence (new `owner_dock_dismissals` table), drag-drop reassign + reschedule via @dnd-kit/core with optimistic UI + rollback. Owner can ACT.
+- [x] `03.5-04-PLAN.md` — REVERSED. (a) Workload/Table view toggle (D-08 — sortable 6-col mono table with row-click → TaskDetailPanel + kebab actions reusing pickers from 03.5-03), (b) `/tasks` header strip clarifying "personal tasks — owner board lives at /projects" with owner-only signature-pink link. NO `/tasks` redesign (deferred).
 **Research recommended:** light — design discussion is the main work; the data layer is already in place from Phase 3.
 
 ### Phase 3.6: Overdue Task Pressure (INSERTED 2026-05-19)
