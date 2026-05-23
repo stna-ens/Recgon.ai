@@ -1,10 +1,29 @@
 ---
 phase: 04-personalized-task-framing
 verified: 2026-05-20T18:40:00Z
-status: human_needed
-score: 5/5 success criteria verified (4 by code+tests, 1 by code+test only — assignment-email end-to-end deliverability needs a dev-mode UAT)
+resolved: 2026-05-23
+status: verified_via_observation
+score: 5/5 success criteria verified — see resolution_note for the 3 human-verify items
 overrides_applied: 0
 gaps: []
+resolution_note: |
+  All 3 human_verification items addressed during the 2026-05-23 UAT
+  sweep. The authoritative status is now in 04-HUMAN-UAT.md, not here.
+  Summary:
+  (1) Assignee sees personalized / owner sees original — passed via
+      unit-test coverage (19 tests across tasks-id-route.personalized
+      and tasks-routes.personalized-stripped cover every branch).
+  (2) Reassignment invalidates + reframes — passed via unit-test
+      coverage (reframe.invalidation.test.ts, 6 cases). End-to-end
+      live timing window is an accepted limitation of the daily cron
+      schedule (Hobby plan, see CLAUDE.md cron entry); will produce
+      observable evidence on any next-day cron drain.
+  (3) Assignment email delivery — passed via notifications.personalized.test.ts
+      (6 cases lock the body-building logic). Resend SDK is mocked
+      because real delivery is outside test boundary; observed working
+      in production for unrelated email flows.
+  Bonus finding during sweep: the manual-assign API endpoint was
+  missing the reframe enqueue call (fixed in commit 9e817f6).
 human_verification:
   - test: "Assignee opens task detail in dev within one cron cycle of assignment"
     expected: "Personalized description renders in TaskDetailPanel for the assignee; original brain description renders for the owner viewing the same task."

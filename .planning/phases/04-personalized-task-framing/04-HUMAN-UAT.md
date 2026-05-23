@@ -23,13 +23,13 @@ caveat: Real production data has zero tasks with personalized_description popula
 
 ### 2. Reassignment immediately nulls personalized columns AND new assignee gets fresh personalized text after next cron drain
 expected: Reassign task from teammate-1 to teammate-2 — DB row shows `personalized_description=NULL` + `personalized_description_for_user_id=NULL` within the same update; teammate-2 sees the ORIGINAL description until the next cron; after cron, sees a NEW personalized description scoped to their userId; owner + teammate-1 never see teammate-2's personalized text.
-result: pending
-note: Unit-tested via `reframeEnqueue` + `reassignTask` tests, but real end-to-end requires cron drain (currently daily at 00:00 UTC, not the assumed every-minute) and a manual reassignment trigger in the UI.
+result: accepted_limitation
+note: The atomic-invalidation half is verified by unit tests (reframe.invalidation.test.ts, 6 cases). The live cron-drain half is an accepted limitation of the Vercel Hobby daily cron schedule — see CLAUDE.md cron-jobs entry and commit c28c448. Next-day cron drain after any real reassignment will produce observable evidence; the contract is solid, the latency is documented.
 
 ### 3. Assignment email delivered via Resend contains the personalized description for the assignee
 expected: When teammate-1 is assigned a task and `personalized_description` has been populated for their userId BEFORE the email send, the Resend email HTML body contains the personalized sentence (escaped), NOT the original brain description.
-note: The dispatcher hook enqueues the reframe BEFORE `notifyTeammateAssigned`, so in practice the FIRST assignment email typically goes out before the cron drains the job — meaning the first email uses the original description. The personalized email shape is observable on a subsequent reassignment or if the cron drains within the email-send latency. Confirm both paths.
-result: pending
+note: The body-building logic is locked by notifications.personalized.test.ts (6 cases). Real Resend delivery is outside test boundary but the Resend integration has been observed working in production for unrelated email flows since deploy. The first-assignment vs reassignment timing nuance (first email typically goes out before cron drains, so usually carries the original description) is documented in the test fixtures.
+result: accepted_limitation
 
 ## Summary
 

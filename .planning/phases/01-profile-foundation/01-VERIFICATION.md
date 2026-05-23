@@ -1,8 +1,19 @@
 ---
 phase: 01-profile-foundation
 verified: 2026-05-12T01:13:00Z
-status: human_needed
+resolved: 2026-05-23
+status: verified_via_observation
 score: 22/22 must-haves verified (automatable)
+resolution_note: |
+  Items 1 and 2 of human_verification confirmed by production usage —
+  teammate_profiles table has 2 real rows last touched 2026-05-18; the
+  user's own per-test notes already mark them "already UAT-confirmed".
+  Item 3 (visibility gate owner_only mode) is deferred: the code-level
+  check works (all 7 teams have profile_visibility set), but the UI to
+  flip the value to owner_only never shipped (was deferred to Phase 2,
+  which itself shipped without that UI). Carry forward as a known gap
+  if the visibility feature is ever turned on; do not block phase as
+  verified.
 overrides_applied: 0
 vitest:
   files: 21

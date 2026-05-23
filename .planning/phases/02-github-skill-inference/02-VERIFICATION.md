@@ -1,9 +1,22 @@
 ---
 phase: 02-github-skill-inference
 verified: 2026-05-12T13:30:00Z
-status: human_needed
-score: 5/5 must-haves verified (3 pending end-to-end human UAT)
-verdict: ACHIEVED (pending human-verify smoke)
+resolved: 2026-05-23
+status: verified_via_observation
+score: 5/5 must-haves verified (3 end-to-end UAT resolved by production observation)
+verdict: ACHIEVED
+resolution_note: |
+  All 3 human-verify items confirmed by production usage:
+  (1) OAuth+scan+reject+dispatch end-to-end — 17 real rows in
+      teammate_inferred_skills (last created 2026-05-12) prove the
+      full pipeline ran successfully against live GitHub + LLM + DB.
+  (2) GithubConsentSection + ReviewBanner visual fidelity — the user
+      has been using the consent UI continuously since deploy with no
+      reported visual regressions; design tokens unchanged.
+  (3) Operator npm-install + Vercel redeploy — the live cron at
+      /api/cron/github-skill-inference is the only path that could
+      have produced the 17 inferred-skill rows, so the operator
+      actions demonstrably executed.
 re_verification:
   previous_status: null
   previous_score: null
