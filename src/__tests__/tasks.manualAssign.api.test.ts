@@ -46,6 +46,11 @@ vi.mock('@/lib/recgon/storage', () => ({
   logEvent: (...args: unknown[]) => mockLogEvent(...args),
 }));
 
+const mockEnqueueReframeJob = vi.fn();
+vi.mock('@/lib/recgon/reframeEnqueue', () => ({
+  enqueueReframeJob: (...args: unknown[]) => mockEnqueueReframeJob(...args),
+}));
+
 const mockVerifyTeamAccess = vi.fn();
 vi.mock('@/lib/teamStorage', () => ({
   verifyTeamAccess: (...args: unknown[]) => mockVerifyTeamAccess(...args),
@@ -83,6 +88,7 @@ beforeEach(() => {
   mockAssignTask.mockResolvedValue(undefined);
   mockClearTriageNote.mockResolvedValue(undefined);
   mockLogEvent.mockResolvedValue(undefined);
+  mockEnqueueReframeJob.mockResolvedValue(undefined);
 });
 
 async function callPOST(body: unknown, id = taskId) {
@@ -179,6 +185,12 @@ describe('POST /api/recgon/tasks/[id]/assign — manual-assign endpoint', () => 
     expect(mockClearTriageNote).toHaveBeenCalledTimes(1);
     expect(mockClearTriageNote).toHaveBeenCalledWith(taskId);
 
+    // Phase 4 follow-up — reframe enqueue fires for the new assignee.
+    // Without this the assignee never sees personalized text for a
+    // manually-assigned task.
+    expect(mockEnqueueReframeJob).toHaveBeenCalledTimes(1);
+    expect(mockEnqueueReframeJob).toHaveBeenCalledWith(taskId, 'tm-2', teamId);
+
     // logEvent called with manually_assigned + audit payload
     expect(mockLogEvent).toHaveBeenCalledTimes(1);
     const evt = mockLogEvent.mock.calls[0][0];
@@ -191,6 +203,26 @@ describe('POST /api/recgon/tasks/[id]/assign — manual-assign endpoint', () => 
       assignee_id: 'tm-2',
       prior_triage_note: 'no_clear_fit',
     });
+  });
+
+  it('reframe enqueue failure does NOT roll back the assignment (fire-and-forget contract)', async () => {
+    // Phase 4 follow-up — FRAME-01 contract: a failed reframe enqueue must
+    // NEVER fail the assignment. The owner's manual override is the source-
+    // of-truth action; personalization is a best-effort enrichment.
+    mockAuth.mockResolvedValue({ user: { id: ownerUserId } });
+    mockGetTask.mockResolvedValue(unassignedTaskFixture);
+    mockVerifyTeamAccess.mockResolvedValue('owner');
+    mockEnqueueReframeJob.mockRejectedValue(new Error('LLM queue offline'));
+
+    const res = await callPOST({ assigneeId: 'tm-2' });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ ok: true, taskId, assigneeId: 'tm-2' });
+
+    // Assignment + audit still happened.
+    expect(mockAssignTask).toHaveBeenCalledTimes(1);
+    expect(mockClearTriageNote).toHaveBeenCalledTimes(1);
+    expect(mockLogEvent).toHaveBeenCalledTimes(1);
   });
 
   it('owner-success audit: AssignmentReasoning is math_only with zero math and the exact sentence', async () => {

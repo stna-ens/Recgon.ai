@@ -35,7 +35,9 @@ import {
   clearTriageNote,
   logEvent,
 } from '@/lib/recgon/storage';
+import { enqueueReframeJob } from '@/lib/recgon/reframeEnqueue';
 import { verifyTeamAccess } from '@/lib/teamStorage';
+import { logger } from '@/lib/logger';
 import type { AssignmentReasoning } from '@/lib/recgon/types';
 
 const MANUAL_ASSIGN_SENTENCE = 'Owner manually assigned — no automatic fit found.';
@@ -130,6 +132,18 @@ export async function POST(
       { scheduleNote: 'Manually assigned by owner.' },
       reasoning,
     );
+    // Phase 4 follow-up — fire-and-forget reframe enqueue, mirrors the
+    // dispatcher's success path (dispatcher.ts:1023). Without this, an owner's
+    // manual override skips Phase 4 entirely and the assignee never sees
+    // personalized text. Errors are swallowed inside enqueueReframeJob; the
+    // outer .catch is defense-in-depth.
+    enqueueReframeJob(taskId, assigneeId, task.teamId).catch((err) => {
+      logger.warn('task_reframe enqueue helper threw (unexpected)', {
+        taskId,
+        assigneeTeammateId: assigneeId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    });
     await clearTriageNote(taskId);
   } catch (err) {
     return NextResponse.json(
