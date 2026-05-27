@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
@@ -137,8 +138,6 @@ function V2TasksInner() {
   const projects = useMemo(() => teamProjects ?? [], [teamProjects]);
   const { addToast } = useToast();
 
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   // Phase 3.6 / Plan 04 — when true, only render tasks the policy considers
   // overdue today. Empty state copy switches accordingly.
@@ -162,25 +161,33 @@ function V2TasksInner() {
   // the raw assignment_reasoning JSONB never travels via /api/inbox.
   const [whyYouMap, setWhyYouMap] = useState<Record<string, string>>({});
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch('/api/inbox', { cache: 'no-store' });
-      if (res.ok) {
-        const { tasks: inboxTasks } = await res.json();
-        const list: TaskItem[] = Array.isArray(inboxTasks) ? inboxTasks : [];
-        const LIVE = new Set(['unassigned', 'assigned', 'accepted', 'in_progress', 'awaiting_review']);
-        setTasks(list.filter((t) => LIVE.has(t.status)));
-      }
-    } catch { /* swallowed */ }
-    setLoading(false);
-  }, []);
+  // Inbox tasks come from SWR — cached across navigations, so returning to the
+  // Tasks tab paints the last board instantly and revalidates in the
+  // background (no skeleton). While a verification is mid-flight we poll every
+  // 1.5s via a dynamic refreshInterval (same cadence as the old manual timer);
+  // otherwise polling is off. Focus revalidation is handled by SWRConfig.
+  const { data: inboxData, mutate: mutateInbox } = useSWR<{ tasks?: TaskItem[] }>(
+    '/api/inbox',
+    {
+      refreshInterval: (latest) => {
+        const list = Array.isArray(latest?.tasks) ? (latest!.tasks as TaskItem[]) : [];
+        const verifying = list.some(
+          (t) => t.verification_status === 'auto_running' || t.verification_status === 'proof_evaluating',
+        );
+        return verifying ? 1500 : 0;
+      },
+    },
+  );
 
-  useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => {
-    const onFocus = () => refresh();
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [refresh]);
+  const tasks = useMemo<TaskItem[]>(() => {
+    const list = Array.isArray(inboxData?.tasks) ? (inboxData!.tasks as TaskItem[]) : [];
+    const LIVE = new Set(['unassigned', 'assigned', 'accepted', 'in_progress', 'awaiting_review']);
+    return list.filter((t) => LIVE.has(t.status));
+  }, [inboxData]);
+  const loading = inboxData === undefined;
+
+  // Re-pull the inbox after a mutation (accept / complete / proof / reschedule).
+  const refresh = useCallback(() => mutateInbox(), [mutateInbox]);
 
   // Mark tasks as "seen" once the user lands here so the nav badge dot
   // clears. Re-stamps on focus too in case a new task arrives while the
@@ -194,32 +201,6 @@ function V2TasksInner() {
     window.addEventListener('focus', stamp);
     return () => window.removeEventListener('focus', stamp);
   }, []);
-
-  // Poll while a verification is in progress so the card updates without a
-  // manual refresh — same 1.5s cadence as v1 inbox. Pause the timer entirely
-  // when the tab is hidden (browsers throttle hidden timers, but we'd rather
-  // own the lifecycle ourselves than wake-and-no-op).
-  useEffect(() => {
-    const verifying = tasks.some(
-      (t) => t.verification_status === 'auto_running' || t.verification_status === 'proof_evaluating',
-    );
-    if (!verifying) return;
-    let id: ReturnType<typeof setInterval> | null = null;
-    const start = () => {
-      if (id != null) return;
-      id = setInterval(() => { refresh(); }, 1500);
-    };
-    const stop = () => {
-      if (id != null) { clearInterval(id); id = null; }
-    };
-    const onVis = () => { document.hidden ? stop() : start(); };
-    if (!document.hidden) start();
-    document.addEventListener('visibilitychange', onVis);
-    return () => {
-      stop();
-      document.removeEventListener('visibilitychange', onVis);
-    };
-  }, [tasks, refresh]);
 
   // Clear stale optimistic entries once the server state catches up. Once a
   // task's real column matches the predicted one (or the task is gone), we

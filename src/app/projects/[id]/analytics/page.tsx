@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 import { useTeam } from '@/components/TeamProvider';
@@ -51,7 +52,12 @@ export default function V2ProjectAnalyticsPage() {
   const [setupSaving, setSetupSaving] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
 
-  const [propertyConfig, setPropertyConfig] = useState<PropertyConfig | null>(null);
+  // Property config — tells us whether the team has credentials and the auth
+  // method. Cheap + read-only, so it lives in SWR (cached across navigations).
+  // The heavy GA data fetch below stays a hand-rolled abortable effect.
+  const configKey = teamId ? `/api/analytics/property?scope=team&teamId=${teamId}` : null;
+  const { data: propertyConfigData, mutate: mutateConfig } = useSWR<PropertyConfig>(configKey);
+  const propertyConfig = propertyConfigData ?? null;
   const [linkedPropertyId, setLinkedPropertyId] = useState<string | null>(null);
 
   const [availableProperties, setAvailableProperties] = useState<GAProperty[]>([]);
@@ -76,19 +82,14 @@ export default function V2ProjectAnalyticsPage() {
     } catch { /* ignore */ }
   }, [insightsKey]);
 
-  // Property config — tells us whether the team has credentials and the auth method.
+  // Connect / disconnect / transfer / link handlers bump `reloadKey` to force a
+  // refetch. SWR owns propertyConfig now, so mirror those bumps into a revalidate.
+  // Skip the first run — the initial fetch is already triggered by the SWR key.
+  const didMountConfig = useRef(false);
   useEffect(() => {
-    if (!teamId) return;
-    let cancelled = false;
-    fetch(`/api/analytics/property?scope=team&teamId=${teamId}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j: PropertyConfig | null) => {
-        if (cancelled || !j) return;
-        setPropertyConfig(j);
-      })
-      .catch(() => { /* best-effort */ });
-    return () => { cancelled = true; };
-  }, [teamId, reloadKey]);
+    if (!didMountConfig.current) { didMountConfig.current = true; return; }
+    mutateConfig();
+  }, [reloadKey, mutateConfig]);
 
   const fetchProperties = useCallback(async () => {
     if (!teamId) return;

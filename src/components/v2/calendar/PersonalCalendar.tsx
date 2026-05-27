@@ -1,6 +1,7 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import type { AgentTask } from '@/lib/recgon/types';
 import { WeekHeader } from './WeekHeader';
 import { PersonalLane } from './PersonalLane';
@@ -29,9 +30,15 @@ function fmtEditorial(start: Date, end: Date): { primary: string; year: string }
 
 export function PersonalCalendar() {
   const [weekRange, setWeekRange] = useState<WeekRange>(() => getWeekRange(new Date()));
-  const [data, setData] = useState<ServerData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const fromKey = localDateKey(weekRange.start);
+  const toKey = localDateKey(weekRange.end);
+  // SWR keyed by the visible week range — returning to a week you've already
+  // viewed paints instantly from cache; only a never-seen range shows the
+  // skeleton. Background revalidation (incl. on focus, via SWRConfig) surfaces
+  // the small nav spinner instead of the full skeleton.
+  const { data, isValidating } = useSWR<ServerData>(`/api/calendar?from=${fromKey}&to=${toKey}`);
+  const loading = data === undefined;
+  const refreshing = isValidating && data !== undefined;
   const [activeDayIndex, setActiveDayIndex] = useState<number | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
@@ -63,26 +70,6 @@ export function PersonalCalendar() {
       setSelectedTeamId(null);
     }
   }, [data, selectedTeamId]);
-
-  const fetch_ = useCallback(async (opts: { initial?: boolean } = {}) => {
-    if (opts.initial) setLoading(true); else setRefreshing(true);
-    try {
-      const from = localDateKey(weekRange.start);
-      const to = localDateKey(weekRange.end);
-      const res = await fetch(`/api/calendar?from=${from}&to=${to}`, { cache: 'no-store' });
-      if (res.ok) setData(await res.json());
-    } catch { /* swallowed */ }
-    setLoading(false);
-    setRefreshing(false);
-  }, [weekRange]);
-
-  useEffect(() => { fetch_({ initial: true }); }, [fetch_]);
-
-  useEffect(() => {
-    const onFocus = () => fetch_();
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [fetch_]);
 
   // Single-day mode on narrow screens.
   useEffect(() => {

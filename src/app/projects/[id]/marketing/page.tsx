@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { useTeam } from '@/components/TeamProvider';
 
@@ -33,8 +34,17 @@ export default function V2ProjectMarketingPage() {
   const selectedProjectId = params?.id ?? '';
   const { currentTeam } = useTeam();
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
+  // Projects come from SWR — cached across navigations, so returning to the
+  // Marketing tab paints instantly and revalidates in the background. Focus
+  // revalidation is handled by SWRConfig (replaces the old visibilitychange
+  // refetch listener).
+  const projectsKey = currentTeam ? `/api/projects?teamId=${currentTeam.id}` : null;
+  const { data: projectsData, mutate: mutateProjects } = useSWR<Project[]>(projectsKey);
+  const projects = useMemo<Project[]>(
+    () => (Array.isArray(projectsData) ? projectsData.filter((p) => p.analysis) : []),
+    [projectsData],
+  );
+  const hasLoadedProjects = projectsData !== undefined;
   const [campaignType, setCampaignType] = useState<CampaignType | null>(null);
   const [campaignGoal, setCampaignGoal] = useState('');
   const [duration, setDuration] = useState('1 month');
@@ -48,35 +58,6 @@ export default function V2ProjectMarketingPage() {
   const [generatedContents, setGeneratedContents] = useState<Record<string, GeneratedContentEntry>>({});
   const [contentErrors, setContentErrors] = useState<Record<string, string>>({});
   const [previewEntry, setPreviewEntry] = useState<GeneratedContentEntry | null>(null);
-
-  const loadProjects = useCallback(() => {
-    if (!currentTeam) return;
-    fetch(`/api/projects?teamId=${currentTeam.id}`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((ps: Project[]) => {
-        const analyzed = ps.filter((p) => p.analysis);
-        setProjects(analyzed);
-        setHasLoadedProjects(true);
-      })
-      .catch(() => {
-        setProjects([]);
-        setHasLoadedProjects(true);
-      });
-  }, [currentTeam]);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-  // Refetch when the tab regains visibility so a teammate's campaigns appear
-  // without a hard reload.
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') loadProjects();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [loadProjects]);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
   const campaigns = selectedProject?.campaigns ?? [];
@@ -117,7 +98,7 @@ export default function V2ProjectMarketingPage() {
       setActiveTab('overview');
       setGeneratedContents({});
       setContentErrors({});
-      loadProjects();
+      mutateProjects();
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : 'Campaign planning failed');
     } finally {
@@ -153,7 +134,7 @@ export default function V2ProjectMarketingPage() {
         ...prev,
         [itemKey]: { content: data.content, platform },
       }));
-      loadProjects();
+      mutateProjects();
     } catch (err) {
       setContentErrors((prev) => ({
         ...prev,

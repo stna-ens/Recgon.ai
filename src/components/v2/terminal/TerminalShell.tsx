@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
@@ -84,17 +85,16 @@ export default function TerminalShell() {
   const searchParams = useSearchParams();
 
   // ── Projects (for slash command project picker + greeting stats) ───
-  const [projects, setProjects] = useState<ProjectLite[]>([]);
-  const refreshTerminalProjects = useCallback(() => {
-    if (!teamId) return;
-    fetch(`/api/projects?teamId=${teamId}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setProjects(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  }, [teamId]);
-  useEffect(() => {
-    refreshTerminalProjects();
-  }, [refreshTerminalProjects]);
+  // SWR-cached so switching to the Terminal tab doesn't re-fetch from scratch.
+  const { data: projectsData, mutate: mutateProjects } = useSWR<ProjectLite[]>(
+    teamId ? `/api/projects?teamId=${teamId}` : null,
+  );
+  const projects = useMemo<ProjectLite[]>(
+    () => (Array.isArray(projectsData) ? projectsData : []),
+    [projectsData],
+  );
+  // Imperative revalidate used by the send / conversation handlers below.
+  const refreshTerminalProjects = mutateProjects;
 
   // ── Personalized suggestions ──────────────────────────────────────
   // Fetched from GET /api/chat — the server runs generateSuggestions()
@@ -102,41 +102,31 @@ export default function TerminalShell() {
   // pricing, GTM) and yields up to 6 specific prompts. v1 mentor used the
   // exact same flow. Re-fetch when the project list size changes so adding
   // a project mid-session refreshes the suggestions.
-  const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS);
-  useEffect(() => {
-    if (!teamId) return;
-    let cancelled = false;
-    fetch(`/api/chat?teamId=${teamId}&_t=${Date.now()}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        if (Array.isArray(data?.suggestions) && data.suggestions.length > 0) {
-          setSuggestions(data.suggestions);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [teamId, projects.length]);
+  // SWR keyed by team + project count, so adding a project mid-session refreshes
+  // the suggestions while revisiting the terminal serves them from cache instead
+  // of re-hitting the LLM-backed endpoint. (Cache-buster removed — SWR owns
+  // freshness now.)
+  const { data: chatMeta } = useSWR<{ suggestions?: string[] }>(
+    teamId ? (['/api/chat', teamId, projects.length] as const) : null,
+    ([, tid]) => fetch(`/api/chat?teamId=${tid}`).then((r) => (r.ok ? r.json() : null)),
+  );
+  const suggestions = useMemo<string[]>(() => {
+    const list = chatMeta?.suggestions;
+    return Array.isArray(list) && list.length > 0 ? list : DEFAULT_SUGGESTIONS;
+  }, [chatMeta]);
 
   // ── Conversations ─────────────────────────────────────────────────
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  // SWR-cached so the conversation list is instant on return; handlers call
+  // loadConversations() (→ revalidate) after creating/renaming/deleting.
+  const { data: convData, mutate: mutateConversations } = useSWR<{ conversations?: Conversation[] }>(
+    '/api/chat/conversations',
+  );
+  const conversations = useMemo<Conversation[]>(
+    () => (Array.isArray(convData?.conversations) ? (convData!.conversations as Conversation[]) : []),
+    [convData],
+  );
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const loadConversations = useCallback(async () => {
-    try {
-      const r = await fetch('/api/chat/conversations');
-      if (r.ok) {
-        const { conversations } = await r.json();
-        setConversations(Array.isArray(conversations) ? conversations : []);
-      }
-    } catch {
-      /* swallowed */
-    }
-  }, []);
-  useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
+  const loadConversations = useCallback(() => mutateConversations(), [mutateConversations]);
 
   // Deep-link from / home: ?c=<convId>&projectId=<id>
   const deepLinkConvId = searchParams?.get('c') ?? null;
@@ -166,7 +156,7 @@ export default function TerminalShell() {
     let cancelled = false;
     setHistoryLoading(true);
     fetch(
-      `/api/chat?teamId=${teamId}&conversationId=${activeConvId}&_t=${Date.now()}`,
+      `/api/chat?teamId=${teamId}&conversationId=${activeConvId}`,
       { cache: 'no-store' },
     )
       .then((r) => (r.ok ? r.json() : null))

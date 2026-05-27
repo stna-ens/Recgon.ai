@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { useSession } from 'next-auth/react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
@@ -50,13 +51,6 @@ export default function V2ProjectsListPage() {
   //   <teamId>   → only projects shared in that team (isShared !== false)
   const [scope, setScope] = useState<'all' | 'personal' | string>('all');
 
-  // Cross-team aggregated data. We fetch /api/overview + /api/projects per
-  // team and merge so the visibility filter can show personal vs each team
-  // independently.
-  const [portfolio, setPortfolio] = useState<PortfolioRow[]>([]);
-  const [portfolioMeta, setPortfolioMeta] = useState<Record<string, RowMeta>>({});
-  const [portfolioLoading, setPortfolioLoading] = useState(true);
-
   // Modals
   const [showManual, setShowManual] = useState(false);
   const [showGithub, setShowGithub] = useState(false);
@@ -76,71 +70,68 @@ export default function V2ProjectsListPage() {
   const [importing, setImporting] = useState<string | null>(null);
 
   // Cross-team data load: pull /api/overview (triage rows) and /api/projects
-  // (full project records w/ createdBy + isShared) for every team the user
-  // is a member of. Aggregate, dedupe, and attach visibility metadata.
+  // (full project records w/ createdBy + isShared) for every team the user is
+  // a member of, then aggregate + dedupe. SWR caches the whole aggregate keyed
+  // by the team set + user identity, so returning to this tab paints instantly
+  // and revalidates silently in the background.
   const teamsKey = teams.map((t) => t.id).join(',');
-  const loadPortfolio = useCallback((opts: { showSkeleton?: boolean } = {}) => {
-    if (!teams.length) return;
-    if (opts.showSkeleton) setPortfolioLoading(true);
-    Promise.all(
+  const portfolioKey = teams.length ? (['portfolio', teamsKey, currentUserId] as const) : null;
+
+  const { data: portfolioData, mutate: mutatePortfolio } = useSWR(portfolioKey, async () => {
+    const results = await Promise.all(
       teams.map((t) =>
         Promise.all([
-          fetch(`/api/overview?teamId=${t.id}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
-          fetch(`/api/projects?teamId=${t.id}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+          fetch(`/api/overview?teamId=${t.id}`).then((r) => (r.ok ? r.json() : null)),
+          fetch(`/api/projects?teamId=${t.id}`).then((r) => (r.ok ? r.json() : [])),
         ]),
       ),
-    )
-      .then((results) => {
-        const cards: Record<string, PortfolioRow> = {};
-        const meta: Record<string, RowMeta> = {};
-        for (let i = 0; i < teams.length; i++) {
-          const team = teams[i];
-          const [overview, projects] = results[i] as [OverviewResponse | null, Array<{ id: string; createdBy?: string; isShared?: boolean; sourceType?: 'codebase' | 'github' | 'description' }>];
-          for (const card of overview?.projectCards ?? []) {
-            // First write wins — a project lives in exactly one team.
-            if (!cards[card.id]) cards[card.id] = card;
-          }
-          for (const p of projects ?? []) {
-            const isPrivate = p.isShared === false;
-            const visibility: 'personal' | 'team-shared' = isPrivate ? 'personal' : 'team-shared';
-            let ownership: Ownership = 'mine';
-            if (currentUserId && p.createdBy && p.createdBy !== currentUserId) {
-              ownership = 'from-team';
-            } else if (!isPrivate) {
-              ownership = 'shared-by-me';
-            }
-            meta[p.id] = {
-              sourceType: p.sourceType,
-              hasUpdate: projectUpdateStatuses?.[p.id] ?? false,
-              ownership,
-              visibility,
-              teamId: team.id,
-              teamName: team.name,
-            };
-          }
-        }
-        setPortfolio(Object.values(cards));
-        setPortfolioMeta(meta);
-        setPortfolioLoading(false);
-      })
-      .catch(() => setPortfolioLoading(false));
-  }, [teamsKey, currentUserId, projectUpdateStatuses]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Initial load + when teams or user identity change.
-  useEffect(() => { loadPortfolio({ showSkeleton: true }); }, [loadPortfolio]);
-  useEffect(() => { refreshProjects?.(); }, [refreshProjects]);
-
-  // Refresh on tab regain
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        refreshProjects?.();
-        loadPortfolio();
+    );
+    const cards: Record<string, PortfolioRow> = {};
+    const meta: Record<string, Omit<RowMeta, 'hasUpdate'>> = {};
+    for (let i = 0; i < teams.length; i++) {
+      const team = teams[i];
+      const [overview, projects] = results[i] as [OverviewResponse | null, Array<{ id: string; createdBy?: string; isShared?: boolean; sourceType?: 'codebase' | 'github' | 'description' }>];
+      for (const card of overview?.projectCards ?? []) {
+        // First write wins — a project lives in exactly one team.
+        if (!cards[card.id]) cards[card.id] = card;
       }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [refreshProjects, loadPortfolio]);
+      for (const p of projects ?? []) {
+        const isPrivate = p.isShared === false;
+        const visibility: 'personal' | 'team-shared' = isPrivate ? 'personal' : 'team-shared';
+        let ownership: Ownership = 'mine';
+        if (currentUserId && p.createdBy && p.createdBy !== currentUserId) {
+          ownership = 'from-team';
+        } else if (!isPrivate) {
+          ownership = 'shared-by-me';
+        }
+        meta[p.id] = {
+          sourceType: p.sourceType,
+          ownership,
+          visibility,
+          teamId: team.id,
+          teamName: team.name,
+        };
+      }
+    }
+    return { cards: Object.values(cards), meta };
+  });
+
+  const portfolio = useMemo(() => portfolioData?.cards ?? [], [portfolioData]);
+  // Merge the live GitHub update-status map (fetched separately by TeamProvider)
+  // onto the cached meta during render, so update badges stay reactive without
+  // refetching the whole portfolio.
+  const portfolioMeta = useMemo<Record<string, RowMeta>>(() => {
+    const base = portfolioData?.meta ?? {};
+    const out: Record<string, RowMeta> = {};
+    for (const [id, m] of Object.entries(base)) {
+      out[id] = { ...m, hasUpdate: projectUpdateStatuses?.[id] ?? false };
+    }
+    return out;
+  }, [portfolioData, projectUpdateStatuses]);
+  const portfolioLoading = portfolioKey != null && portfolioData === undefined;
+
+  // Populate GitHub update statuses (TeamProvider caches these in sessionStorage).
+  useEffect(() => { refreshProjects?.(); }, [refreshProjects]);
 
   // Esc closes any open modal
   useEffect(() => {
@@ -222,13 +213,13 @@ export default function V2ProjectsListPage() {
       addToast('project created', 'success');
       setShowManual(false);
       refreshProjects?.();
-      loadPortfolio();
+      mutatePortfolio();
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'failed to create', 'error');
     } finally {
       setCreating(false);
     }
-  }, [name, description, creating, currentTeam, addToast, refreshProjects, loadPortfolio]);
+  }, [name, description, creating, currentTeam, addToast, refreshProjects, mutatePortfolio]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -265,13 +256,13 @@ export default function V2ProjectsListPage() {
       addToast(`${repo.name} imported`, 'success');
       setShowGithub(false);
       refreshProjects?.();
-      loadPortfolio();
+      mutatePortfolio();
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'import failed', 'error');
     } finally {
       setImporting(null);
     }
-  }, [currentTeam, addToast, refreshProjects, loadPortfolio]);
+  }, [currentTeam, addToast, refreshProjects, mutatePortfolio]);
 
   const filteredRepos = useMemo(() => {
     const q = repoSearch.toLowerCase();

@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -97,9 +98,19 @@ export default function V2ProjectSettingsPage() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? null;
 
-  const [project, setProject] = useState<ProjectFull | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [members, setMembers] = useState<TeamMemberLite[]>([]);
+  // project + members come from SWR — cached across navigations, so returning
+  // to Settings paints instantly and revalidates in the background (no
+  // skeleton). Focus revalidation is handled by SWRConfig.
+  const projectKey = (teamId && projectId) ? `/api/projects/${projectId}?teamId=${teamId}` : null;
+  const { data: projectData, error: projectError, mutate: mutateProject } = useSWR<ProjectFull>(projectKey);
+  const project = projectData ?? null;
+  const membersKey = teamId ? `/api/teams/${teamId}/members` : null;
+  const { data: membersData } = useSWR<TeamMemberLite[]>(membersKey);
+  const members = useMemo<TeamMemberLite[]>(
+    () => (Array.isArray(membersData) ? membersData : []),
+    [membersData],
+  );
+  const loading = projectKey != null && projectData === undefined && !projectError;
 
   // Single edit-state machine — only one row open at a time, like a printed form.
   const [editing, setEditing] = useState<EditKey>(null);
@@ -129,36 +140,6 @@ export default function V2ProjectSettingsPage() {
   // Active TOC entry — driven by IntersectionObserver
   const [activeSection, setActiveSection] = useState<string>('sect-identity');
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
-
-  // ── Data ────────────────────────────────────────────
-  const fetchProject = useCallback(async () => {
-    if (!teamId || !projectId) return;
-    try {
-      const r = await fetch(`/api/projects/${projectId}?teamId=${teamId}`, { cache: 'no-store' });
-      if (r.ok) {
-        const data: ProjectFull = await r.json();
-        setProject(data);
-      }
-    } catch { /* swallowed */ }
-  }, [teamId, projectId]);
-
-  const fetchMembers = useCallback(async () => {
-    if (!teamId) return;
-    try {
-      const r = await fetch(`/api/teams/${teamId}/members`, { cache: 'no-store' });
-      if (r.ok) {
-        const data = await r.json();
-        const list = Array.isArray(data) ? data as TeamMemberLite[] : [];
-        setMembers(list);
-      }
-    } catch { /* swallowed */ }
-  }, [teamId]);
-
-  useEffect(() => {
-    if (!teamId || !projectId) return;
-    setLoading(true);
-    Promise.all([fetchProject(), fetchMembers()]).finally(() => setLoading(false));
-  }, [teamId, projectId, fetchProject, fetchMembers]);
 
   // TOC scroll-spy
   useEffect(() => {
@@ -212,7 +193,7 @@ export default function V2ProjectSettingsPage() {
     setSavingName(true);
     try {
       await patch({ name });
-      setProject((p) => p ? { ...p, name } : p);
+      mutateProject((p) => p ? { ...p, name } : p, { revalidate: false });
       closeEditor();
       addToast('name updated', 'success');
       refreshProjects?.();
@@ -221,7 +202,7 @@ export default function V2ProjectSettingsPage() {
     } finally {
       setSavingName(false);
     }
-  }, [nameDraft, savingName, patch, addToast, refreshProjects, closeEditor]);
+  }, [nameDraft, savingName, patch, addToast, refreshProjects, closeEditor, mutateProject]);
 
   const openDesc = useCallback(() => {
     setDescDraft(project?.description ?? '');
@@ -234,7 +215,7 @@ export default function V2ProjectSettingsPage() {
     setSavingDesc(true);
     try {
       await patch({ description: desc });
-      setProject((p) => p ? { ...p, description: desc } : p);
+      mutateProject((p) => p ? { ...p, description: desc } : p, { revalidate: false });
       closeEditor();
       addToast('description updated', 'success');
       refreshProjects?.();
@@ -243,7 +224,7 @@ export default function V2ProjectSettingsPage() {
     } finally {
       setSavingDesc(false);
     }
-  }, [descDraft, savingDesc, patch, addToast, refreshProjects, closeEditor]);
+  }, [descDraft, savingDesc, patch, addToast, refreshProjects, closeEditor, mutateProject]);
 
   const openLogo = useCallback(() => {
     setLogoDraft(project?.logoUrl ?? '');
@@ -255,7 +236,7 @@ export default function V2ProjectSettingsPage() {
     setSavingLogo(true);
     try {
       await patch({ logoUrl: logoDraft.trim() || null });
-      setProject((p) => p ? { ...p, logoUrl: logoDraft.trim() || undefined } : p);
+      mutateProject((p) => p ? { ...p, logoUrl: logoDraft.trim() || undefined } : p, { revalidate: false });
       closeEditor();
       addToast(logoDraft.trim() ? 'logo updated' : 'logo cleared', 'success');
       refreshProjects?.();
@@ -264,7 +245,7 @@ export default function V2ProjectSettingsPage() {
     } finally {
       setSavingLogo(false);
     }
-  }, [logoDraft, savingLogo, patch, addToast, refreshProjects, closeEditor]);
+  }, [logoDraft, savingLogo, patch, addToast, refreshProjects, closeEditor, mutateProject]);
 
   const handleAutoDetectLogo = useCallback(async () => {
     if (!projectId || autoDetecting) return;
@@ -277,7 +258,7 @@ export default function V2ProjectSettingsPage() {
       }
       const data = await res.json();
       if (data.logoUrl) {
-        setProject((p) => p ? { ...p, logoUrl: data.logoUrl } : p);
+        mutateProject((p) => p ? { ...p, logoUrl: data.logoUrl } : p, { revalidate: false });
         setLogoDraft(data.logoUrl);
         addToast('logo auto-detected', 'success');
         refreshProjects?.();
@@ -289,7 +270,7 @@ export default function V2ProjectSettingsPage() {
     } finally {
       setAutoDetecting(false);
     }
-  }, [projectId, autoDetecting, addToast, refreshProjects]);
+  }, [projectId, autoDetecting, addToast, refreshProjects, mutateProject]);
 
   // ── Sources ─────────────────────────────────────────
   const openGithub = useCallback(() => {
@@ -307,7 +288,7 @@ export default function V2ProjectSettingsPage() {
     setSavingPath(true);
     try {
       await patch({ path });
-      setProject((p) => p ? { ...p, path, githubUrl: path, isGithub: true, sourceType: 'github' } : p);
+      mutateProject((p) => p ? { ...p, path, githubUrl: path, isGithub: true, sourceType: 'github' } : p, { revalidate: false });
       closeEditor();
       addToast(project?.githubUrl ? 'github repo swapped' : 'github repo connected', 'success');
       refreshProjects?.();
@@ -316,7 +297,7 @@ export default function V2ProjectSettingsPage() {
     } finally {
       setSavingPath(false);
     }
-  }, [pathDraft, savingPath, patch, addToast, refreshProjects, project?.githubUrl, closeEditor]);
+  }, [pathDraft, savingPath, patch, addToast, refreshProjects, project?.githubUrl, closeEditor, mutateProject]);
 
   const openGa4 = useCallback(() => {
     setGa4Draft(project?.analyticsPropertyId ?? '');
@@ -341,7 +322,7 @@ export default function V2ProjectSettingsPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || 'failed to save property');
       }
-      setProject((p) => p ? { ...p, analyticsPropertyId: trimmed || undefined } : p);
+      mutateProject((p) => p ? { ...p, analyticsPropertyId: trimmed || undefined } : p, { revalidate: false });
       closeEditor();
       addToast(trimmed ? 'GA4 property linked' : 'GA4 property cleared', 'success');
     } catch (err) {
@@ -349,7 +330,7 @@ export default function V2ProjectSettingsPage() {
     } finally {
       setSavingGa4(false);
     }
-  }, [projectId, ga4Draft, savingGa4, addToast, closeEditor]);
+  }, [projectId, ga4Draft, savingGa4, addToast, closeEditor, mutateProject]);
 
   // ── Access ──────────────────────────────────────────
   const handleToggleShared = useCallback(async () => {
@@ -359,7 +340,7 @@ export default function V2ProjectSettingsPage() {
     setTogglingShared(true);
     try {
       await patch({ isShared: next });
-      setProject({ ...project, isShared: next });
+      mutateProject({ ...project, isShared: next }, { revalidate: false });
       addToast(next ? 'shared with team' : 'set to private', 'success');
       refreshProjects?.();
     } catch (err) {
@@ -367,7 +348,7 @@ export default function V2ProjectSettingsPage() {
     } finally {
       setTogglingShared(false);
     }
-  }, [project, togglingShared, patch, addToast, refreshProjects, currentUserId]);
+  }, [project, togglingShared, patch, addToast, refreshProjects, currentUserId, mutateProject]);
 
   // ── Destroy ─────────────────────────────────────────
   const handleDelete = useCallback(async () => {

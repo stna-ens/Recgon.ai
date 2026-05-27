@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import ErrorBoundary from './ErrorBoundary';
 import TeamProvider from './TeamProvider';
 import WorkspaceShell from './WorkspaceShell';
+import SwrProvider from './SwrProvider';
 
 const AUTH_PATHS = ['/login', '/register', '/landing'];
 const TEAM_SETUP_PATHS = ['/teams/setup'];
@@ -24,9 +25,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <TeamProvider>
-      <ErrorBoundary>
-        <WorkspaceShell>{children}</WorkspaceShell>
-      </ErrorBoundary>
+      <SwrProvider>
+        <ErrorBoundary>
+          <WorkspaceShell>{children}</WorkspaceShell>
+        </ErrorBoundary>
+      </SwrProvider>
     </TeamProvider>
   );
 }

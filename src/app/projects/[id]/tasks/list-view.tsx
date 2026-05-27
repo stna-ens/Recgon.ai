@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
@@ -113,34 +114,43 @@ export function ProjectTasksListView() {
   const teamId = currentTeam?.id ?? null;
   const { addToast } = useToast();
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [teammates, setTeammates] = useState<Teammate[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [working, setWorking] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    if (!teamId || !projectId) return;
-    try {
-      const [tr, mr] = await Promise.all([
-        fetch(`/api/teams/${teamId}/tasks?projectId=${projectId}`, { cache: 'no-store' }),
-        fetch(`/api/teams/${teamId}/teammates`, { cache: 'no-store' }),
-      ]);
-      if (tr.ok) {
-        const data = await tr.json();
-        const all: Task[] = Array.isArray(data?.tasks) ? data.tasks : [];
-        // Defensive — server already filters by projectId, but keep a guard.
-        setTasks(all.filter((t) => t.projectId === projectId));
-      }
-      if (mr.ok) {
-        const m = await mr.json();
-        setTeammates(Array.isArray(m?.teammates) ? m.teammates : []);
-      }
-    } catch { /* swallowed */ }
-    setLoading(false);
-  }, [teamId, projectId]);
+  // Project tasks + teammates come from SWR — cached across navigations, so
+  // returning to this tab paints the last list instantly and revalidates in
+  // the background (no skeleton). While a verification is mid-flight the task
+  // hook polls every 1.5s via a dynamic refreshInterval (same cadence as the
+  // old manual timer); otherwise polling is off. Focus revalidation is handled
+  // by SWRConfig.
+  const tasksKey = (teamId && projectId) ? `/api/teams/${teamId}/tasks?projectId=${projectId}` : null;
+  const { data: tasksData, error: tasksError, mutate: mutateTasks } = useSWR<{ tasks?: Task[] }>(
+    tasksKey,
+    {
+      refreshInterval: (latest) => {
+        const list = Array.isArray(latest?.tasks) ? (latest!.tasks as Task[]) : [];
+        const verifying = list.some(
+          (t) => t.verificationStatus === 'auto_running' || t.verificationStatus === 'proof_evaluating',
+        );
+        return verifying ? 1500 : 0;
+      },
+    },
+  );
+  const teammatesKey = teamId ? `/api/teams/${teamId}/teammates` : null;
+  const { data: teammatesData, mutate: mutateTeammates } = useSWR<{ teammates?: Teammate[] }>(teammatesKey);
+
+  const tasks = useMemo<Task[]>(() => {
+    const all: Task[] = Array.isArray(tasksData?.tasks) ? (tasksData!.tasks as Task[]) : [];
+    // Defensive — server already filters by projectId, but keep a guard.
+    return all.filter((t) => t.projectId === projectId);
+  }, [tasksData, projectId]);
+  const teammates = useMemo<Teammate[]>(
+    () => (Array.isArray(teammatesData?.teammates) ? (teammatesData!.teammates as Teammate[]) : []),
+    [teammatesData],
+  );
+  const loading = tasksKey != null && tasksData === undefined && !tasksError;
 
   // teammateId → teammate. Used by the row to render the assignee chip.
   const teammateById = useMemo(() => {
@@ -149,38 +159,10 @@ export function ProjectTasksListView() {
     return map;
   }, [teammates]);
 
-  useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => {
-    const onFocus = () => refresh();
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [refresh]);
-
-  // Poll while a verification is in flight so the row updates without reload.
-  // Mirrors the inbox cadence (1.5s). Cancel the timer when the tab hides
-  // and re-create on show — saves spurious wake-ups on a hidden tab.
-  const verifyingRef = useRef(false);
-  useEffect(() => {
-    verifyingRef.current = tasks.some(
-      (t) => t.verificationStatus === 'auto_running' || t.verificationStatus === 'proof_evaluating',
-    );
-    if (!verifyingRef.current) return;
-    let id: ReturnType<typeof setInterval> | null = null;
-    const start = () => {
-      if (id != null) return;
-      id = setInterval(() => { refresh(); }, 1500);
-    };
-    const stop = () => {
-      if (id != null) { clearInterval(id); id = null; }
-    };
-    const onVis = () => { document.hidden ? stop() : start(); };
-    if (!document.hidden) start();
-    document.addEventListener('visibilitychange', onVis);
-    return () => {
-      stop();
-      document.removeEventListener('visibilitychange', onVis);
-    };
-  }, [tasks, refresh]);
+  // Re-pull tasks + teammates after a mutation (override / reassign / cancel).
+  const refresh = useCallback(async () => {
+    await Promise.all([mutateTasks(), mutateTeammates()]);
+  }, [mutateTasks, mutateTeammates]);
 
   const counts = useMemo(() => ({
     all:         tasks.filter((t) => LIVE.has(t.status)).length,

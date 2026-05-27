@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -34,8 +35,9 @@ export default function V2ProjectOverviewPage() {
   const { addToast } = useToast();
   const { data: session } = useSession();
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
+  const projectKey = (teamId && projectId) ? `/api/projects/${projectId}?teamId=${teamId}` : null;
+  const { data: project, error: projectError, mutate: mutateProject } = useSWR<Project>(projectKey);
+  const loading = projectKey != null && project === undefined && !projectError;
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [hasUpdates, setHasUpdates] = useState(false);
@@ -55,23 +57,6 @@ export default function V2ProjectOverviewPage() {
   const [actedExpanded, setActedExpanded] = useState(false);
   const [featuresExpanded, setFeaturesExpanded] = useState(false);
   const [uspsExpanded, setUspsExpanded] = useState(false);
-
-  const fetchProject = useCallback(async () => {
-    if (!teamId || !projectId) return;
-    try {
-      const r = await fetch(`/api/projects/${projectId}?teamId=${teamId}`, { cache: 'no-store' });
-      if (r.ok) {
-        const data = await r.json();
-        setProject(data);
-      }
-    } catch { /* swallowed */ }
-  }, [teamId, projectId]);
-
-  useEffect(() => {
-    if (!teamId || !projectId) return;
-    setLoading(true);
-    fetchProject().finally(() => setLoading(false));
-  }, [teamId, projectId, fetchProject]);
 
   // Check for repo updates (only relevant for github-connected projects)
   useEffect(() => {
@@ -131,7 +116,7 @@ export default function V2ProjectOverviewPage() {
             const event = JSON.parse(dataLine);
             if (event.type === 'progress') setProgress(event.message);
             else if (event.type === 'done') {
-              setProject(event.project);
+              mutateProject(event.project, { revalidate: false });
               setHasUpdates(false);
               setLatestCommit(null);
               refreshProjects?.();
@@ -152,7 +137,7 @@ export default function V2ProjectOverviewPage() {
       setAnalyzing(false);
       setProgress(null);
     }
-  }, [projectId, teamId, analyzing, refreshProjects, addToast, quotaBlocked, quota?.reason]);
+  }, [projectId, teamId, analyzing, refreshProjects, addToast, quotaBlocked, quota?.reason, mutateProject]);
 
   const handleDelete = useCallback(async () => {
     if (!projectId || !teamId || deleting) return;
@@ -184,7 +169,7 @@ export default function V2ProjectOverviewPage() {
         body: JSON.stringify({ isShared: next }),
       });
       if (res.ok) {
-        setProject({ ...project, isShared: next });
+        mutateProject({ ...project, isShared: next }, { revalidate: false });
         refreshProjects?.();
         addToast(next ? 'project shared with team' : 'project set to private', 'success');
       } else {
@@ -196,7 +181,7 @@ export default function V2ProjectOverviewPage() {
     } finally {
       setTogglingShared(false);
     }
-  }, [project, teamId, togglingShared, refreshProjects, addToast]);
+  }, [project, teamId, togglingShared, refreshProjects, addToast, mutateProject]);
 
   const handleSaveDescription = useCallback(async () => {
     if (!draftDescription.trim() || !project || !teamId || savingDescription) return;
@@ -211,7 +196,7 @@ export default function V2ProjectOverviewPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'failed to save description');
       }
-      setProject({ ...project, description: draftDescription });
+      mutateProject({ ...project, description: draftDescription }, { revalidate: false });
       setEditingDescription(false);
       addToast('description saved · re-analyzing…', 'success');
       handleAnalyze();
@@ -220,7 +205,7 @@ export default function V2ProjectOverviewPage() {
     } finally {
       setSavingDescription(false);
     }
-  }, [draftDescription, project, teamId, savingDescription, addToast, handleAnalyze]);
+  }, [draftDescription, project, teamId, savingDescription, addToast, handleAnalyze, mutateProject]);
 
   const handleConnectCodebase = useCallback(async () => {
     if (!codebasePath.trim() || !project || !teamId || connectLoading) return;
@@ -236,7 +221,7 @@ export default function V2ProjectOverviewPage() {
         throw new Error(data.error || 'failed to connect codebase');
       }
       const isGithub = codebasePath.startsWith('https://github.com/');
-      setProject({ ...project, path: codebasePath, sourceType: isGithub ? 'github' : 'description', isGithub });
+      mutateProject({ ...project, path: codebasePath, sourceType: isGithub ? 'github' : 'description', isGithub }, { revalidate: false });
       setConnectingCodebase(false);
       setCodebasePath('');
       addToast('codebase connected · re-analyzing…', 'success');
@@ -246,7 +231,7 @@ export default function V2ProjectOverviewPage() {
     } finally {
       setConnectLoading(false);
     }
-  }, [codebasePath, project, teamId, connectLoading, addToast, handleAnalyze]);
+  }, [codebasePath, project, teamId, connectLoading, addToast, handleAnalyze, mutateProject]);
 
   // Esc closes modals
   useEffect(() => {

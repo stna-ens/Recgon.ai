@@ -90,15 +90,15 @@ describe('unified brain wiring', () => {
   });
 
   it('keeps cross-surface project fetches fresh after terminal tool runs', () => {
-    const files = [
-      'src/components/TeamProvider.tsx',
-      'src/app/page.tsx',
-    ];
+    // TeamProvider still bypasses the browser cache for its project list.
+    const teamProvider = readFileSync(path.join(root, 'src/components/TeamProvider.tsx'), 'utf8');
+    expect(teamProvider).toContain("cache: 'no-store'");
 
-    for (const file of files) {
-      const source = readFileSync(path.join(root, file), 'utf8');
-      expect(source).toContain("cache: 'no-store'");
-    }
+    // The dashboard now keeps data fresh via SWR (stale-while-revalidate +
+    // revalidate-on-focus) instead of a per-fetch no-store + manual reload —
+    // so returning to a tab is instant rather than flashing a skeleton.
+    const overviewPage = readFileSync(path.join(root, 'src/app/page.tsx'), 'utf8');
+    expect(overviewPage).toContain('useSWR');
   });
 
   it('keeps overview surfaces user-scoped and refreshable', () => {
@@ -112,8 +112,13 @@ describe('unified brain wiring', () => {
     }
 
     const overviewPage = readFileSync(path.join(root, 'src/app/page.tsx'), 'utf8');
-    expect(overviewPage).toContain("fetch(`/api/overview?teamId=${teamId}`, { cache: 'no-store' })");
-    expect(overviewPage).toContain("window.addEventListener('focus'");
+    expect(overviewPage).toContain('`/api/overview?teamId=${teamId}`');
+    expect(overviewPage).toContain('useSWR');
+
+    // Refresh-on-focus moved from a per-page listener to the global SWR config,
+    // so every cached surface revalidates silently when the tab regains focus.
+    const swrProvider = readFileSync(path.join(root, 'src/components/SwrProvider.tsx'), 'utf8');
+    expect(swrProvider).toContain('revalidateOnFocus: true');
   });
 
   it('uses text ids in analytics insight migration to match the existing schema', () => {

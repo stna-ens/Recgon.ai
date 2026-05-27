@@ -1,6 +1,7 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTeam } from '@/components/TeamProvider';
@@ -62,50 +63,31 @@ function V2HomeInner() {
   const teamId = currentTeam?.id ?? null;
   const searchParams = useSearchParams();
 
-  const [overview, setOverview] = useState<OverviewPayload>(EMPTY_OVERVIEW);
-  const [loading, setLoading] = useState(true);
+  // Two parallel cached fetches — overview is the slow one (LLM-dependent paths
+  // around updates/wins), team-pulse is fast (pure SQL aggregates). SWR keeps
+  // each keyed by teamId, so returning to this tab paints the last-known data
+  // instantly and revalidates silently in the background. The skeleton shows
+  // only on the genuine first load (no cached data yet).
+  const { data: overviewData } = useSWR<OverviewPayload | null>(
+    teamId ? `/api/overview?teamId=${teamId}` : null,
+  );
+  const { data: pulseData } = useSWR<BoardTeamPulse | null>(
+    teamId ? `/api/overview/team-pulse?teamId=${teamId}` : null,
+  );
 
-  const load = useCallback((opts: { showSkeleton?: boolean } = {}) => {
-    if (!teamId) return;
-    if (opts.showSkeleton) setLoading(true);
-    // Two parallel fetches — overview is the slow one (LLM-dependent paths
-    // around updates/wins), team-pulse is fast (pure SQL aggregates). We
-    // merge them so the cockpit doesn't block on either.
-    Promise.all([
-      fetch(`/api/overview?teamId=${teamId}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/overview/team-pulse?teamId=${teamId}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
-    ])
-      .then(([data, pulse]) => {
-        if (data) {
-          setOverview({
-            totalProjects: data.totalProjects ?? 0,
-            todayFocus: data.todayFocus ?? null,
-            decisionDeck: data.decisionDeck ?? EMPTY_DECISIONS,
-            updates: Array.isArray(data.updates) ? data.updates : [],
-            projectCards: Array.isArray(data.projectCards) ? data.projectCards : [],
-            teamPulse: pulse ?? null,
-          });
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [teamId]);
+  const loading = teamId != null && overviewData === undefined;
 
-  // Initial fetch: show skeleton. Subsequent team switches also show it.
-  useEffect(() => { load({ showSkeleton: true }); }, [load]);
-
-  // Refresh on focus / when tab becomes visible — silent background refresh.
-  useEffect(() => {
-    if (!teamId) return;
-    const onFocus = () => load();
-    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisible);
+  const overview: OverviewPayload = useMemo(() => {
+    if (!overviewData) return EMPTY_OVERVIEW;
+    return {
+      totalProjects: overviewData.totalProjects ?? 0,
+      todayFocus: overviewData.todayFocus ?? null,
+      decisionDeck: overviewData.decisionDeck ?? EMPTY_DECISIONS,
+      updates: Array.isArray(overviewData.updates) ? overviewData.updates : [],
+      projectCards: Array.isArray(overviewData.projectCards) ? overviewData.projectCards : [],
+      teamPulse: pulseData ?? null,
     };
-  }, [load, teamId]);
+  }, [overviewData, pulseData]);
 
   const showEmpty = !loading && overview.totalProjects === 0;
   const homeParam = searchParams.get('home');
