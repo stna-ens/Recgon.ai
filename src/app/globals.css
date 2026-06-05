@@ -2928,6 +2928,37 @@ html {
    One source of truth; components reference these classes.
    ============================================================ */
 
+/* --- Global keyboard-focus baseline ---
+   Any focusable element that doesn't define its own :focus-visible gets the
+   token-driven pink halo (--focus-ring), in both themes. Component primitives
+   (.ui-btn, .ui-modal-x, .ui-input-toggle, .nav-link, .theme-toggle, …) already
+   define their own :focus-visible and win by class-specificity, so they are not
+   double-ringed. Inputs/textareas/selects keep their dedicated rule above; the
+   .ui-input :focus style is left untouched, so .ui-input is excluded here to
+   avoid showing two ring styles while typing. .chat-bare-textarea opts out too. */
+a:focus-visible,
+button:not(.ui-btn):not(.ui-modal-x):not(.ui-input-toggle):not(.nav-link):not(.theme-toggle):not(.team-switcher-team-row):not(.team-switcher-manage-link):focus-visible,
+[role="button"]:not(.team-switcher-team-row):not(.team-switcher-manage-link):focus-visible,
+[tabindex]:not(.team-switcher-team-row):not(.team-switcher-manage-link):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Unbutton reset — strip native <button> chrome so a semantic <button> can
+   carry arbitrary layout classes (used when converting clickable divs to real
+   buttons for keyboard access). Keeps the global focus ring above. */
+.ui-unbutton {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
 /* --- Button (.ui-btn) — visual base inherited from .cal-panel-btn --- */
 .ui-btn {
   display: inline-flex;
