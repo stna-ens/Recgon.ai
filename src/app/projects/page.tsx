@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
+import { Modal, Button } from '@/components/ui';
 import SectionIndex from '@/components/v2/SectionIndex';
 import FeaturedNeedsAttention, { pickFeatured } from '@/components/v2/projects/FeaturedNeedsAttention';
 import PortfolioRows, { type RowMeta, type Ownership } from '@/components/v2/projects/PortfolioRows';
@@ -378,81 +379,78 @@ export default function V2ProjectsListPage() {
       )}
 
       {/* Manual create modal */}
-      {showManual && (
-        <div className="v2-modal-overlay" onClick={() => setShowManual(false)} role="dialog" aria-modal="true">
-          <div className="glass-card is-static v2-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="v2-modal-head">
-              <span className="recgon-label v2-block-eye">{t('list.manualModal.eyebrow')}</span>
-              <button type="button" className="v2-modal-x" onClick={() => setShowManual(false)} aria-label={tCommon('close')}>×</button>
-            </div>
-            <h3 className="v2-modal-heading">{t('list.manualModal.heading')}</h3>
-            <p className="v2-modal-hint">
-              {t('list.manualModal.hintBefore')}<strong>{t('list.manualModal.hintImport')}</strong>{t('list.manualModal.hintAfter')}
-            </p>
-
-            <label className="v2-field">
-              <span className="v2-field-label">{t('list.manualModal.nameLabel')}</span>
+      <Modal
+        open={showManual}
+        onOpenChange={setShowManual}
+        title={t('list.manualModal.heading')}
+        size="md"
+        footer={
+          <div className="v2-modal-actions">
+            <label className="v2-btn v2-btn-ghost v2-btn-file" title={t('list.manualModal.uploadTitle')}>
+              {extracting ? <><span className="v2-spinner" /> {t('list.manualModal.extracting')}</> : t('list.manualModal.uploadFile')}
               <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('list.manualModal.namePlaceholder')}
-                className="v2-input"
-                autoFocus
+                type="file"
+                accept=".pdf,.docx"
+                onChange={handleFileUpload}
+                disabled={extracting}
+                hidden
               />
             </label>
-
-            <label className="v2-field">
-              <span className="v2-field-label">{t('list.manualModal.descriptionLabel')}</span>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={8}
-                placeholder={t('list.manualModal.descriptionPlaceholder')}
-                className="v2-input v2-textarea"
-              />
-              {uploadedFilename && (
-                <span className="v2-field-hint">{t('list.manualModal.extractedFrom', { filename: uploadedFilename })}</span>
-              )}
-            </label>
-
-            <div className="v2-modal-actions">
-              <label className="v2-btn v2-btn-ghost v2-btn-file" title={t('list.manualModal.uploadTitle')}>
-                {extracting ? <><span className="v2-spinner" /> {t('list.manualModal.extracting')}</> : t('list.manualModal.uploadFile')}
-                <input
-                  type="file"
-                  accept=".pdf,.docx"
-                  onChange={handleFileUpload}
-                  disabled={extracting}
-                  hidden
-                />
-              </label>
-              <div className="v2-modal-spacer" />
-              <button type="button" className="v2-btn v2-btn-ghost" onClick={() => setShowManual(false)}>
-                {tCommon('cancel')}
-              </button>
-              <button
-                type="button"
-                className="v2-btn v2-btn-primary"
-                onClick={handleCreate}
-                disabled={creating || !name.trim() || !description.trim()}
-              >
-                {creating ? <><span className="v2-spinner" /> {t('list.manualModal.creating')}</> : tCommon('create')}
-              </button>
-            </div>
+            <div className="v2-modal-spacer" />
+            <Button variant="ghost" onClick={() => setShowManual(false)}>
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreate}
+              loading={creating}
+              disabled={!name.trim() || !description.trim()}
+            >
+              {tCommon('create')}
+            </Button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <span className="recgon-label v2-block-eye">{t('list.manualModal.eyebrow')}</span>
+        <p className="v2-modal-hint">
+          {t('list.manualModal.hintBefore')}<strong>{t('list.manualModal.hintImport')}</strong>{t('list.manualModal.hintAfter')}
+        </p>
+
+        <label className="v2-field">
+          <span className="v2-field-label">{t('list.manualModal.nameLabel')}</span>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('list.manualModal.namePlaceholder')}
+            className="v2-input"
+            autoFocus
+          />
+        </label>
+
+        <label className="v2-field">
+          <span className="v2-field-label">{t('list.manualModal.descriptionLabel')}</span>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={8}
+            placeholder={t('list.manualModal.descriptionPlaceholder')}
+            className="v2-input v2-textarea"
+          />
+          {uploadedFilename && (
+            <span className="v2-field-hint">{t('list.manualModal.extractedFrom', { filename: uploadedFilename })}</span>
+          )}
+        </label>
+      </Modal>
 
       {/* GitHub picker modal */}
-      {showGithub && (
-        <div className="v2-modal-overlay" onClick={() => setShowGithub(false)} role="dialog" aria-modal="true">
-          <div className="glass-card is-static v2-modal v2-modal-tall" onClick={(e) => e.stopPropagation()}>
-            <div className="v2-modal-head">
-              <span className="recgon-label v2-block-eye">{t('list.githubModal.eyebrow')}</span>
-              <button type="button" className="v2-modal-x" onClick={() => setShowGithub(false)} aria-label={tCommon('close')}>×</button>
-            </div>
-
+      <Modal
+        open={showGithub}
+        onOpenChange={setShowGithub}
+        title={t('list.githubModal.eyebrow')}
+        size="lg"
+      >
+        <>
             {reposError === 'NOT_CONNECTED' ? (
               <div className="v2-gh-empty">
                 <div className="v2-gh-empty-mark">
@@ -517,9 +515,8 @@ export default function V2ProjectsListPage() {
                 )}
               </>
             )}
-          </div>
-        </div>
-      )}
+        </>
+      </Modal>
 
       <style>{`
         .v2-projects-page {
@@ -751,64 +748,8 @@ export default function V2ProjectsListPage() {
         }
         .v2-empty-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 
-        /* Modal */
-        .v2-modal-overlay {
-          position: fixed; inset: 0;
-          z-index: 200;
-          background: rgba(0,0,0,0.55);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 24px;
-          animation: v2modalFade 180ms ease-out;
-        }
-        @keyframes v2modalFade {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        .v2-modal {
-          width: min(560px, 100%);
-          max-height: calc(100vh - 80px);
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          animation: v2modalSlide 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
-          overflow: hidden;
-        }
-        .v2-modal-tall { width: min(680px, 100%); }
-        @keyframes v2modalSlide {
-          from { opacity: 0; transform: translateY(8px) scale(0.985); }
-          to   { opacity: 1; transform: none; }
-        }
-        .v2-modal-head {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
+        /* Modal body */
         .v2-block-eye { display: block; margin: 0; }
-        .v2-modal-x {
-          background: transparent;
-          border: 1px solid var(--rule);
-          color: var(--txt-faint);
-          width: 28px; height: 28px;
-          border-radius: 50%;
-          font-size: 16px;
-          line-height: 1;
-          cursor: pointer;
-          transition: color 180ms ease, border-color 180ms ease;
-        }
-        .v2-modal-x:hover {
-          color: var(--txt-pure);
-          border-color: var(--rule-strong);
-        }
-        .v2-modal-heading {
-          font-size: 18px;
-          font-weight: 600;
-          letter-spacing: -0.012em;
-          color: var(--txt-pure);
-          margin: 0;
-        }
         .v2-modal-hint {
           font-size: 13.5px;
           color: var(--txt-muted);
@@ -920,7 +861,7 @@ export default function V2ProjectsListPage() {
         .v2-repo-list {
           list-style: none;
           padding: 0;
-          margin: 0 -28px -28px;
+          margin: 0 calc(-1 * var(--card-pad-lg)) calc(-1 * var(--card-pad-lg));
           overflow-y: auto;
           max-height: 50vh;
           border-top: 1px solid var(--rule);

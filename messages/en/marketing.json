@@ -105,6 +105,7 @@
     "budgetGuidance": "budget_guidance"
   },
   "preview": {
+    "title": "preview",
     "close": "close"
   },
   "errors": {
