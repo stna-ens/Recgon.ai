@@ -1,24 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import RecgonLogo from '@/components/RecgonLogo';
 import { useTeam } from '@/components/TeamProvider';
+import { Button, FormField } from '@/components/ui';
+
+const NAME_MIN = 2;
 
 export default function TeamSetupPage() {
   const t = useTranslations('teams');
+  const tv = useTranslations('auth');
   const router = useRouter();
   const { refreshTeams } = useTeam();
   const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose');
   const [teamName, setTeamName] = useState('');
   const [inviteToken, setInviteToken] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [tokenError, setTokenError] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  const tokenRef = useRef<HTMLInputElement>(null);
+
+  function validateName(): string {
+    if (teamName.trim().length < NAME_MIN) return tv('validation.teamNameMin', { min: NAME_MIN });
+    return '';
+  }
+  function validateToken(): string {
+    if (!inviteToken.trim()) return tv('validation.tokenRequired');
+    return '';
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    const nErr = validateName();
+    setNameError(nErr);
+    if (nErr) { nameRef.current?.focus(); return; }
     setLoading(true);
 
     try {
@@ -43,6 +64,9 @@ export default function TeamSetupPage() {
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    const tErr = validateToken();
+    setTokenError(tErr);
+    if (tErr) { tokenRef.current?.focus(); return; }
     setLoading(true);
 
     try {
@@ -69,100 +93,150 @@ export default function TeamSetupPage() {
     }
   }
 
-  const labelStyle: React.CSSProperties = {
-    display: 'block', fontSize: '0.78rem', fontWeight: 500,
-    color: 'var(--txt-muted)', marginBottom: '0.35rem',
-    textTransform: 'uppercase', letterSpacing: '0.05em',
-  };
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '0.65rem 0.875rem',
-    background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)',
-    borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem',
-    outline: 'none', boxSizing: 'border-box',
-  };
-  const btnPrimary: React.CSSProperties = {
-    padding: '0.7rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
-    border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem',
-    cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, width: '100%',
-  };
-  const btnSecondary: React.CSSProperties = {
-    padding: '0.7rem', background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)',
-    border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)',
-    fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', width: '100%',
-  };
-
   return (
-    <div style={{ width: '100vw', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: '380px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '2rem' }}>
+    <div className="ts-page">
+      <div className="ts-col">
+        <div className="ts-brand">
           <RecgonLogo size={28} uid="logo-team-setup" />
-          <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--signature)', letterSpacing: '-0.3px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>Recgon</span>
+          <span className="ts-brand-name">Recgon</span>
         </div>
 
         {mode === 'choose' && (
           <>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('setup.choose.title')}</h1>
-            <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>
+            <h1 className="ts-title">{t('setup.choose.title')}</h1>
+            <p className="ts-sub">
               {t('setup.choose.subtitle')}
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <button onClick={() => setMode('create')} style={btnPrimary}>
+            <div className="ts-choices">
+              <Button variant="primary" className="ts-full" onClick={() => setMode('create')}>
                 {t('setup.choose.createButton')}
-              </button>
-              <button onClick={() => setMode('join')} style={btnSecondary}>
+              </Button>
+              <Button variant="secondary" className="ts-full" onClick={() => setMode('join')}>
                 {t('setup.choose.joinButton')}
-              </button>
+              </Button>
             </div>
           </>
         )}
 
         {mode === 'create' && (
           <>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('setup.create.title')}</h1>
-            <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>
+            <h1 className="ts-title">{t('setup.create.title')}</h1>
+            <p className="ts-sub">
               {t('setup.create.subtitle')}
             </p>
 
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={labelStyle}>{t('setup.create.nameLabel')}</label>
-                <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder={t('setup.create.namePlaceholder')} required minLength={2} style={inputStyle} />
-              </div>
-              {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
-              <button type="submit" disabled={loading} style={btnPrimary}>
+            <form onSubmit={handleCreate} className="ts-form" noValidate>
+              <FormField label={t('setup.create.nameLabel')} htmlFor="ts-name" error={nameError || undefined} required>
+                <input
+                  ref={nameRef}
+                  className="ui-input"
+                  type="text"
+                  autoFocus
+                  value={teamName}
+                  onChange={(e) => { setTeamName(e.target.value); if (nameError) setNameError(''); }}
+                  onBlur={() => setNameError(validateName())}
+                  placeholder={t('setup.create.namePlaceholder')}
+                />
+              </FormField>
+              {error && <div role="alert" className="ts-alert">{error}</div>}
+              <Button type="submit" variant="primary" loading={loading} className="ts-full">
                 {loading ? t('setup.create.creating') : t('setup.create.submit')}
-              </button>
-              <button type="button" onClick={() => { setMode('choose'); setError(''); }} style={{ ...btnSecondary, marginTop: '-0.25rem' }}>
+              </Button>
+              <Button type="button" variant="secondary" className="ts-full" onClick={() => { setMode('choose'); setError(''); }}>
                 {t('setup.back')}
-              </button>
+              </Button>
             </form>
           </>
         )}
 
         {mode === 'join' && (
           <>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('setup.join.title')}</h1>
-            <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>
+            <h1 className="ts-title">{t('setup.join.title')}</h1>
+            <p className="ts-sub">
               {t('setup.join.subtitle')}
             </p>
 
-            <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={labelStyle}>{t('setup.join.tokenLabel')}</label>
-                <input type="text" value={inviteToken} onChange={(e) => setInviteToken(e.target.value)} placeholder={t('setup.join.tokenPlaceholder')} required style={inputStyle} />
-              </div>
-              {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
-              <button type="submit" disabled={loading} style={btnPrimary}>
+            <form onSubmit={handleJoin} className="ts-form" noValidate>
+              <FormField label={t('setup.join.tokenLabel')} htmlFor="ts-token" error={tokenError || undefined} required>
+                <input
+                  ref={tokenRef}
+                  className="ui-input"
+                  type="text"
+                  autoFocus
+                  value={inviteToken}
+                  onChange={(e) => { setInviteToken(e.target.value); if (tokenError) setTokenError(''); }}
+                  onBlur={() => setTokenError(validateToken())}
+                  placeholder={t('setup.join.tokenPlaceholder')}
+                />
+              </FormField>
+              {error && <div role="alert" className="ts-alert">{error}</div>}
+              <Button type="submit" variant="primary" loading={loading} className="ts-full">
                 {loading ? t('setup.join.joining') : t('setup.join.submit')}
-              </button>
-              <button type="button" onClick={() => { setMode('choose'); setError(''); }} style={{ ...btnSecondary, marginTop: '-0.25rem' }}>
+              </Button>
+              <Button type="button" variant="secondary" className="ts-full" onClick={() => { setMode('choose'); setError(''); }}>
                 {t('setup.back')}
-              </button>
+              </Button>
             </form>
           </>
         )}
       </div>
+      <style>{teamSetupStyles}</style>
     </div>
   );
 }
+
+const teamSetupStyles = `
+  .ts-page {
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .ts-col { width: min(400px, 100%); }
+  .ts-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 2rem;
+  }
+  .ts-brand-name {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--signature);
+    letter-spacing: -0.3px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .ts-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--txt-pure);
+    margin: 0 0 0.3rem;
+    letter-spacing: -0.3px;
+  }
+  .ts-sub {
+    color: var(--txt-muted);
+    margin: 0 0 2rem;
+    font-size: 0.875rem;
+  }
+  .ts-choices,
+  .ts-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .ts-form { gap: 1rem; }
+  .ts-full { width: 100%; }
+  .ts-alert {
+    padding: 0.6rem 0.75rem;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--r-sm);
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+`;

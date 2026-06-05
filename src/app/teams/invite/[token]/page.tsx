@@ -4,8 +4,10 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import RecgonLogo from '@/components/RecgonLogo';
 import { useTeam } from '@/components/TeamProvider';
+import { Button } from '@/components/ui';
 
 interface InviteInfo {
   teamName: string;
@@ -70,74 +72,124 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
   const encodedCallback = encodeURIComponent(inviteCallback);
 
   return (
-    <div style={{ width: '100vw', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: '380px', textAlign: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', marginBottom: '2rem' }}>
+    <div className="iv-page">
+      <div className="iv-col">
+        <div className="iv-brand">
           <RecgonLogo size={28} uid="logo-invite" />
-          <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--signature)', letterSpacing: '-0.3px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>Recgon</span>
+          <span className="iv-brand-name">Recgon</span>
         </div>
 
-        {loading && <p style={{ color: 'var(--txt-muted)' }}>{t('invite.loading')}</p>}
+        {loading && <p className="iv-muted">{t('invite.loading')}</p>}
 
         {!loading && error && !invite && (
-          <p style={{ color: 'var(--danger)', fontSize: '0.95rem' }}>{error}</p>
+          <p role="alert" className="iv-error">{error}</p>
         )}
 
         {!loading && invite && !invite.expired && (
           <>
-            <h1 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.5rem' }}>
+            <h1 className="iv-title">
               {t('invite.invitedToJoin')}
             </h1>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--signature)', margin: '0 0 0.5rem' }}>
+            <p className="iv-team">
               {invite.teamName}
             </p>
-            <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: '0 0 2rem' }}>
+            <p className="iv-role">
               {t.rich('invite.asRole', { role: t(`roles.${invite.role}`), strong: (chunks) => <strong style={{ color: 'var(--txt-pure)' }}>{chunks}</strong> })}
             </p>
-            {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: '0 0 1rem' }}>{error}</p>}
+            {error && <p role="alert" className="iv-error iv-error-inline">{error}</p>}
             {session?.user ? (
-              <button onClick={handleAccept} disabled={accepting} style={{
-                padding: '0.75rem 2rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
-                border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '1rem',
-                cursor: accepting ? 'not-allowed' : 'pointer', opacity: accepting ? 0.7 : 1,
-              }}>
+              <Button variant="primary" loading={accepting} className="iv-cta" onClick={handleAccept}>
                 {accepting ? t('invite.joining') : t('invite.accept')}
-              </button>
+              </Button>
             ) : status === 'unauthenticated' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', margin: '0 0 0.25rem' }}>
+              <div className="iv-actions">
+                <p className="iv-prompt">
                   {t('invite.signInPrompt')}
                 </p>
-                <a
-                  href={`/login?callbackUrl=${encodedCallback}`}
-                  style={{
-                    padding: '0.7rem 1.5rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)',
-                    borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem',
-                    textDecoration: 'none', textAlign: 'center',
-                  }}
-                >
-                  {t('invite.signIn')}
-                </a>
-                <a
-                  href={`/register?callbackUrl=${encodedCallback}`}
-                  style={{
-                    padding: '0.7rem 1.5rem', background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)',
-                    border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)',
-                    fontWeight: 600, fontSize: '0.95rem',
-                    textDecoration: 'none', textAlign: 'center',
-                  }}
-                >
-                  {t('invite.createAccount')}
-                </a>
+                <Button asChild variant="primary" className="iv-cta">
+                  <Link href={`/login?callbackUrl=${encodedCallback}`}>
+                    {t('invite.signIn')}
+                  </Link>
+                </Button>
+                <Button asChild variant="secondary" className="iv-cta">
+                  <Link href={`/register?callbackUrl=${encodedCallback}`}>
+                    {t('invite.createAccount')}
+                  </Link>
+                </Button>
               </div>
             ) : null}
           </>
         )}
 
         {!loading && invite?.expired && (
-          <p style={{ color: 'var(--danger)', fontSize: '0.95rem' }}>{t('invite.expired')}</p>
+          <p role="alert" className="iv-error">{t('invite.expired')}</p>
         )}
       </div>
+      <style>{inviteStyles}</style>
     </div>
   );
 }
+
+const inviteStyles = `
+  .iv-page {
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .iv-col {
+    width: min(400px, 100%);
+    text-align: center;
+  }
+  .iv-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-bottom: 2rem;
+  }
+  .iv-brand-name {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--signature);
+    letter-spacing: -0.3px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .iv-muted { color: var(--txt-muted); }
+  .iv-error { color: var(--danger); font-size: 0.95rem; }
+  .iv-error-inline { font-size: 0.85rem; margin: 0 0 1rem; }
+  .iv-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--txt-pure);
+    margin: 0 0 0.5rem;
+  }
+  .iv-team {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--signature);
+    margin: 0 0 0.5rem;
+  }
+  .iv-role {
+    color: var(--txt-muted);
+    font-size: 0.875rem;
+    margin: 0 0 2rem;
+  }
+  .iv-cta {
+    width: 100%;
+    justify-content: center;
+  }
+  .iv-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .iv-prompt {
+    color: var(--txt-muted);
+    font-size: 0.85rem;
+    margin: 0 0 0.25rem;
+  }
+`;

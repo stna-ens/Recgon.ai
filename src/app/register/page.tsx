@@ -1,11 +1,17 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import RecgonLogo from '@/components/RecgonLogo';
+import { Button, FormField, PasswordInput } from '@/components/ui';
+import { authStyles } from '@/app/login/page';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_MIN = 8;
+const NICKNAME_MIN = 2;
 
 function RegisterPageContent() {
   const t = useTranslations('auth');
@@ -57,6 +63,12 @@ function RegisterPageContent() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
 
+  // Field-level validation errors
+  const [nicknameError, setNicknameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+
   // OTP step
   const [otp, setOtp] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -65,14 +77,45 @@ function RegisterPageContent() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const nicknameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLInputElement>(null);
+
+  function validateNickname(): string {
+    if (nickname.trim().length < NICKNAME_MIN) return t('validation.nicknameMin', { min: NICKNAME_MIN });
+    return '';
+  }
+  function validateEmail(): string {
+    if (!email.trim()) return t('validation.emailRequired');
+    if (!EMAIL_RE.test(email.trim())) return t('validation.emailInvalid');
+    return '';
+  }
+  function validatePassword(): string {
+    if (password.length < PASSWORD_MIN) return t('validation.passwordMin', { min: PASSWORD_MIN });
+    return '';
+  }
+  function validateConfirm(): string {
+    if (confirm !== password) return t('register.errors.passwordMismatch');
+    return '';
+  }
+
   async function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
-    if (password !== confirm) {
-      setError(t('register.errors.passwordMismatch'));
-      return;
-    }
+    const nErr = validateNickname();
+    const eErr = validateEmail();
+    const pErr = validatePassword();
+    const cErr = validateConfirm();
+    setNicknameError(nErr);
+    setEmailError(eErr);
+    setPasswordError(pErr);
+    setConfirmError(cErr);
+    if (nErr) { nicknameRef.current?.focus(); return; }
+    if (eErr) { emailRef.current?.focus(); return; }
+    if (pErr) { passwordRef.current?.focus(); return; }
+    if (cErr) { confirmRef.current?.focus(); return; }
 
     setLoading(true);
     const res = await fetch('/api/auth/send-otp', {
@@ -151,51 +194,80 @@ function RegisterPageContent() {
   }
 
   return (
-    <div style={{ width: '100vw', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10rem' }}>
+    <div className="auth-page">
+      <div className="auth-wrap">
 
         {/* Left panel: form or verify step */}
-        <div style={{ width: '340px' }}>
+        <div className="auth-col">
           {step === 'form' ? (
             <>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('register.title')}</h1>
-              <p style={{ color: 'var(--txt-muted)', margin: '0 0 0.5rem', fontSize: '0.875rem' }}>{t('register.subtitle')}</p>
-              <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.8rem', lineHeight: 1.55 }}>
+              <h1 className="auth-title">{t('register.title')}</h1>
+              <p className="auth-sub" style={{ marginBottom: '0.5rem' }}>{t('register.subtitle')}</p>
+              <p className="auth-sub" style={{ fontSize: '0.8rem', lineHeight: 1.55 }}>
                 {t('register.waitlistNote')}
               </p>
 
-              <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('register.nicknameLabel')}</label>
-                  <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder={t('register.nicknamePlaceholder')} required minLength={2} style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('register.emailLabel')}</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('register.passwordLabel')}</label>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('register.passwordPlaceholder')} required minLength={8} style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('register.confirmPasswordLabel')}</label>
-                  <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
-                <button type="submit" disabled={loading} style={{ padding: '0.7rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: '0.25rem' }}>
+              <form onSubmit={handleFormSubmit} className="auth-form" noValidate>
+                <FormField label={t('register.nicknameLabel')} htmlFor="reg-nickname" error={nicknameError || undefined} required>
+                  <input
+                    ref={nicknameRef}
+                    className="ui-input"
+                    type="text"
+                    autoComplete="nickname"
+                    autoFocus
+                    value={nickname}
+                    onChange={(e) => { setNickname(e.target.value); if (nicknameError) setNicknameError(''); }}
+                    onBlur={() => setNicknameError(validateNickname())}
+                    placeholder={t('register.nicknamePlaceholder')}
+                  />
+                </FormField>
+                <FormField label={t('register.emailLabel')} htmlFor="reg-email" error={emailError || undefined} required>
+                  <input
+                    ref={emailRef}
+                    className="ui-input"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(''); }}
+                    onBlur={() => setEmailError(validateEmail())}
+                    placeholder={t('placeholders.email')}
+                  />
+                </FormField>
+                <FormField label={t('register.passwordLabel')} htmlFor="reg-password" error={passwordError || undefined} required>
+                  <PasswordInput
+                    ref={passwordRef}
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); if (passwordError) setPasswordError(''); }}
+                    onBlur={() => setPasswordError(validatePassword())}
+                    placeholder={t('register.passwordPlaceholder')}
+                  />
+                </FormField>
+                <FormField label={t('register.confirmPasswordLabel')} htmlFor="reg-confirm" error={confirmError || undefined} required>
+                  <PasswordInput
+                    ref={confirmRef}
+                    autoComplete="new-password"
+                    value={confirm}
+                    onChange={(e) => { setConfirm(e.target.value); if (confirmError) setConfirmError(''); }}
+                    onBlur={() => setConfirmError(validateConfirm())}
+                    placeholder={t('placeholders.password')}
+                  />
+                </FormField>
+                {error && <div role="alert" className="auth-alert">{error}</div>}
+                <Button type="submit" variant="primary" loading={loading} className="auth-submit">
                   {loading ? t('register.sendingCode') : t('register.continue')}
-                </button>
+                </Button>
               </form>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0 0' }}>
-                <div style={{ flex: 1, height: '1px', background: 'var(--btn-secondary-border)' }} />
-                <span style={{ fontSize: '0.78rem', color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('register.or')}</span>
-                <div style={{ flex: 1, height: '1px', background: 'var(--btn-secondary-border)' }} />
+              <div className="auth-divider">
+                <span className="auth-divider-line" />
+                <span className="auth-divider-text">{t('register.or')}</span>
+                <span className="auth-divider-line" />
               </div>
               <button
                 type="button"
+                className="auth-oauth"
                 onClick={() => signIn('github', { callbackUrl: callbackUrl || '/' })}
-                style={{ width: '100%', padding: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', marginTop: '0.75rem' }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
@@ -203,17 +275,17 @@ function RegisterPageContent() {
                 {t('register.continueWithGithub')}
               </button>
 
-              <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--txt-muted)', marginBottom: 0 }}>
+              <p className="auth-foot">
                 {t('register.haveAccount')}{' '}
-                <Link href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'} style={{ color: 'var(--txt-pure)', fontWeight: 500, textDecoration: 'none' }}>{t('register.signIn')}</Link>
+                <Link href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'} className="auth-foot-link">{t('register.signIn')}</Link>
               </p>
             </>
           ) : step === 'verify' ? (
             <>
               <button
                 type="button"
+                className="auth-back"
                 onClick={() => { setStep('form'); setError(''); setOtp(''); }}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', color: 'var(--txt-muted)', fontSize: '0.85rem', cursor: 'pointer', padding: 0, marginBottom: '1.5rem' }}
               >
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -221,40 +293,40 @@ function RegisterPageContent() {
                 {t('register.back')}
               </button>
 
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('register.verify.title')}</h1>
-              <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem', lineHeight: 1.5 }}>
+              <h1 className="auth-title">{t('register.verify.title')}</h1>
+              <p className="auth-sub" style={{ lineHeight: 1.5 }}>
                 {t.rich('register.verify.sentTo', { email, strong: (chunks) => <strong style={{ color: 'var(--txt-pure)' }}>{chunks}</strong> })}
               </p>
 
-              <form onSubmit={handleVerifySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('register.verify.codeLabel')}</label>
+              <form onSubmit={handleVerifySubmit} className="auth-form" noValidate>
+                <FormField label={t('register.verify.codeLabel')} htmlFor="reg-otp" required>
                   <input
+                    className="ui-input auth-otp"
                     type="text"
                     inputMode="numeric"
+                    autoComplete="one-time-code"
                     pattern="\d{6}"
                     maxLength={6}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="000000"
-                    required
+                    placeholder={t('placeholders.otp')}
                     autoFocus
-                    style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '1.5rem', fontFamily: 'monospace', letterSpacing: '0.4rem', outline: 'none', boxSizing: 'border-box', textAlign: 'center' }}
                   />
-                </div>
-                {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
-                <button type="submit" disabled={loading || otp.length !== 6} style={{ padding: '0.7rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: (loading || otp.length !== 6) ? 'not-allowed' : 'pointer', opacity: (loading || otp.length !== 6) ? 0.7 : 1, marginTop: '0.25rem' }}>
+                </FormField>
+                {error && <div role="alert" className="auth-alert">{error}</div>}
+                <Button type="submit" variant="primary" loading={loading} disabled={otp.length !== 6} className="auth-submit">
                   {loading ? t('register.verify.creatingAccount') : t('register.verify.createAccount')}
-                </button>
+                </Button>
               </form>
 
-              <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.875rem', color: 'var(--txt-muted)', marginBottom: 0 }}>
+              <p className="auth-foot">
                 {t('register.verify.didntReceive')}{' '}
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={resendCooldown > 0 || loading}
-                  style={{ background: 'none', border: 'none', color: resendCooldown > 0 ? 'var(--txt-muted)' : 'var(--txt-pure)', fontWeight: 500, fontSize: '0.875rem', cursor: resendCooldown > 0 ? 'default' : 'pointer', padding: 0 }}
+                  className="auth-link-btn"
+                  style={{ color: resendCooldown > 0 ? 'var(--txt-muted)' : 'var(--txt-pure)', cursor: resendCooldown > 0 ? 'default' : 'pointer' }}
                 >
                   {resendCooldown > 0 ? t('register.verify.resendIn', { seconds: resendCooldown }) : t('register.verify.resendCode')}
                 </button>
@@ -264,8 +336,8 @@ function RegisterPageContent() {
             <>
               <button
                 type="button"
+                className="auth-back"
                 onClick={() => { setStep('form'); setError(''); setWaitlistMessage(''); }}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', color: 'var(--txt-muted)', fontSize: '0.85rem', cursor: 'pointer', padding: 0, marginBottom: '1.5rem' }}
               >
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -273,58 +345,53 @@ function RegisterPageContent() {
                 {t('register.back')}
               </button>
 
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('register.waitlist.title')}</h1>
-              <p style={{ color: 'var(--txt-muted)', margin: '0 0 1.25rem', fontSize: '0.875rem', lineHeight: 1.6 }}>
+              <h1 className="auth-title">{t('register.waitlist.title')}</h1>
+              <p className="auth-sub" style={{ lineHeight: 1.6, marginBottom: '1.25rem' }}>
                 {waitlistMessage}
               </p>
-              <div style={{
-                padding: '1rem',
-                borderRadius: 'var(--r-sm)',
-                border: '1px solid var(--btn-secondary-border)',
-                background: 'var(--btn-secondary-bg)',
-                marginBottom: '1.25rem',
-              }}>
-                <p style={{ margin: '0 0 0.45rem', color: 'var(--txt-pure)', fontSize: '0.88rem', fontWeight: 600 }}>
+              <div className="auth-waitlist-card">
+                <p className="auth-waitlist-email">
                   {email}
                 </p>
-                <p style={{ margin: 0, color: 'var(--txt-muted)', fontSize: '0.8rem', lineHeight: 1.55 }}>
+                <p className="auth-waitlist-note">
                   {t('register.waitlist.onceApproved')}
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                className="auth-submit"
                 onClick={() => { setStep('form'); setWaitlistMessage(''); }}
-                style={{ padding: '0.7rem', width: '100%', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer' }}
               >
                 {t('register.waitlist.useDifferentEmail')}
-              </button>
+              </Button>
             </>
           )}
         </div>
 
         {/* Feature panel */}
-        <div style={{ width: '360px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '3.5rem' }}>
+        <div className="auth-feature">
+          <div className="auth-brand">
             <RecgonLogo size={28} uid="logo-register" />
-            <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--signature)', letterSpacing: '-0.3px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>Recgon</span>
+            <span className="auth-brand-name">Recgon</span>
           </div>
 
-          <h2 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--txt-pure)', lineHeight: 1.2, margin: '0 0 0.75rem', letterSpacing: '-0.5px' }}>
+          <h2 className="auth-hero">
             {t.rich('register.heroHeadline', { br: () => <br /> })}
           </h2>
-          <p style={{ color: 'var(--txt-muted)', fontSize: '0.95rem', margin: '0 0 3rem', lineHeight: 1.6 }}>
+          <p className="auth-hero-sub">
             {t('register.heroSub')}
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="auth-feature-list">
             {FEATURES.map((f) => (
-              <div key={f.title} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <div style={{ flexShrink: 0, width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(var(--signature-rgb), 0.07)', border: '1px solid rgba(var(--signature-rgb), 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--signature)' }}>
+              <div key={f.title} className="auth-feature-row">
+                <div className="auth-feature-icon">
                   {f.icon}
                 </div>
                 <div>
-                  <p style={{ margin: '0 0 0.2rem', fontWeight: 600, fontSize: '0.9rem', color: 'var(--txt-pure)' }}>{f.title}</p>
-                  <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--txt-muted)', lineHeight: 1.5 }}>{f.desc}</p>
+                  <p className="auth-feature-title">{f.title}</p>
+                  <p className="auth-feature-desc">{f.desc}</p>
                 </div>
               </div>
             ))}
@@ -332,9 +399,40 @@ function RegisterPageContent() {
         </div>
 
       </div>
+      <style>{authStyles + registerExtraStyles}</style>
     </div>
   );
 }
+
+const registerExtraStyles = `
+  .auth-link-btn {
+    background: none;
+    border: none;
+    font-weight: 500;
+    font-size: 0.875rem;
+    padding: 0;
+  }
+  .auth-link-btn:disabled { cursor: default; }
+  .auth-waitlist-card {
+    padding: 1rem;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--btn-secondary-border);
+    background: var(--btn-secondary-bg);
+    margin-bottom: 1.25rem;
+  }
+  .auth-waitlist-email {
+    margin: 0 0 0.45rem;
+    color: var(--txt-pure);
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  .auth-waitlist-note {
+    margin: 0;
+    color: var(--txt-muted);
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+`;
 
 export default function RegisterPage() {
   return (

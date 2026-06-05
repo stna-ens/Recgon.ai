@@ -1,11 +1,14 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import RecgonLogo from '@/components/RecgonLogo';
+import { Button, FormField, PasswordInput } from '@/components/ui';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function LoginPageContent() {
   const t = useTranslations('auth');
@@ -53,12 +56,31 @@ function LoginPageContent() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [error, setError] = useState(URL_ERRORS[searchParams.get('error') ?? ''] ?? '');
   const [loading, setLoading] = useState(false);
+
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  function validateEmail(): string {
+    if (!email.trim()) return t('validation.emailRequired');
+    if (!EMAIL_RE.test(email.trim())) return t('validation.emailInvalid');
+    return '';
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    const eErr = validateEmail();
+    const pErr = password ? '' : t('validation.passwordRequired');
+    setEmailError(eErr);
+    setPasswordError(pErr);
+    if (eErr) { emailRef.current?.focus(); return; }
+    if (pErr) { passwordRef.current?.focus(); return; }
+
     setLoading(true);
     try {
       const result = await signIn('credentials', { email, password, redirect: false });
@@ -71,6 +93,7 @@ function LoginPageContent() {
       if (result?.error || urlError) {
         const code = result?.error ?? urlError ?? '';
         setError(URL_ERRORS[code] ?? t('login.errors.invalidCredentials'));
+        emailRef.current?.focus();
         return;
       }
       const raw = searchParams.get('callbackUrl') ?? '';
@@ -85,46 +108,60 @@ function LoginPageContent() {
   }
 
   return (
-    <div style={{ width: '100vw', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10rem' }}>
+    <div className="auth-page">
+      <div className="auth-wrap">
 
       {/* Login form */}
-      <div style={{ width: '340px' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('login.title')}</h1>
-        <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>{t('login.subtitle')}</p>
+      <div className="auth-col">
+        <h1 className="auth-title">{t('login.title')}</h1>
+        <p className="auth-sub">{t('login.subtitle')}</p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('login.emailLabel')}</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--txt-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('login.passwordLabel')}</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required style={{ width: '100%', padding: '0.65rem 0.875rem', background: 'var(--btn-secondary-bg)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', color: 'var(--txt-pure)', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' }} />
-          </div>
+        <form onSubmit={handleSubmit} className="auth-form" noValidate>
+          <FormField label={t('login.emailLabel')} htmlFor="login-email" error={emailError || undefined} required>
+            <input
+              ref={emailRef}
+              className="ui-input"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(''); }}
+              onBlur={() => setEmailError(validateEmail())}
+              placeholder={t('placeholders.email')}
+            />
+          </FormField>
+          <FormField label={t('login.passwordLabel')} htmlFor="login-password" error={passwordError || undefined} required>
+            <PasswordInput
+              ref={passwordRef}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); if (passwordError) setPasswordError(''); }}
+              placeholder={t('placeholders.password')}
+            />
+          </FormField>
           {error && (
-            <div role="alert" style={{ padding: '0.6rem 0.75rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 'var(--r-sm)', color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>
+            <div role="alert" className="auth-alert">
               {error}
             </div>
           )}
-          <button type="submit" disabled={loading} style={{ padding: '0.7rem', background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-txt)', border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: '0.25rem' }}>
+          <Button type="submit" variant="primary" loading={loading} className="auth-submit">
             {loading ? t('login.signingIn') : t('login.signIn')}
-          </button>
+          </Button>
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0 0' }}>
-          <div style={{ flex: 1, height: '1px', background: 'var(--btn-secondary-border)' }} />
-          <span style={{ fontSize: '0.78rem', color: 'var(--txt-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('login.or')}</span>
-          <div style={{ flex: 1, height: '1px', background: 'var(--btn-secondary-border)' }} />
+        <div className="auth-divider">
+          <span className="auth-divider-line" />
+          <span className="auth-divider-text">{t('login.or')}</span>
+          <span className="auth-divider-line" />
         </div>
         <button
           type="button"
+          className="auth-oauth"
           onClick={() => {
             const raw = searchParams.get('callbackUrl') ?? '';
             const dest = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
             signIn('github', { callbackUrl: dest });
           }}
-          style={{ width: '100%', padding: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', background: 'var(--btn-secondary-bg)', color: 'var(--txt-pure)', border: '1px solid var(--btn-secondary-border)', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', marginTop: '0.75rem' }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
@@ -132,7 +169,7 @@ function LoginPageContent() {
           {t('login.continueWithGithub')}
         </button>
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--txt-muted)', marginBottom: 0 }}>
+        <p className="auth-foot">
           {t('login.noAccount')}{' '}
           <Link
             href={(() => {
@@ -140,34 +177,34 @@ function LoginPageContent() {
               const dest = raw.startsWith('/') && !raw.startsWith('//') ? raw : '';
               return dest ? `/register?callbackUrl=${encodeURIComponent(dest)}` : '/register';
             })()}
-            style={{ color: 'var(--txt-pure)', fontWeight: 500, textDecoration: 'none' }}
+            className="auth-foot-link"
           >{t('login.createOne')}</Link>
         </p>
       </div>
 
       {/* Feature panel */}
-      <div style={{ width: '360px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '3.5rem' }}>
+      <div className="auth-feature">
+        <div className="auth-brand">
           <RecgonLogo size={28} uid="logo-login" />
-          <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--signature)', letterSpacing: '-0.3px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>Recgon</span>
+          <span className="auth-brand-name">Recgon</span>
         </div>
 
-        <h2 style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--txt-pure)', lineHeight: 1.2, margin: '0 0 0.75rem', letterSpacing: '-0.5px' }}>
+        <h2 className="auth-hero">
           {t.rich('login.heroHeadline', { br: () => <br /> })}
         </h2>
-        <p style={{ color: 'var(--txt-muted)', fontSize: '0.95rem', margin: '0 0 3rem', lineHeight: 1.6 }}>
+        <p className="auth-hero-sub">
           {t('login.heroSub')}
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="auth-feature-list">
           {FEATURES.map((f) => (
-            <div key={f.title} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{ flexShrink: 0, width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(var(--signature-rgb), 0.07)', border: '1px solid rgba(var(--signature-rgb), 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--signature)' }}>
+            <div key={f.title} className="auth-feature-row">
+              <div className="auth-feature-icon">
                 {f.icon}
               </div>
               <div>
-                <p style={{ margin: '0 0 0.2rem', fontWeight: 600, fontSize: '0.9rem', color: 'var(--txt-pure)' }}>{f.title}</p>
-                <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--txt-muted)', lineHeight: 1.5 }}>{f.desc}</p>
+                <p className="auth-feature-title">{f.title}</p>
+                <p className="auth-feature-desc">{f.desc}</p>
               </div>
             </div>
           ))}
@@ -175,6 +212,7 @@ function LoginPageContent() {
       </div>
 
       </div>
+      <style>{authStyles}</style>
     </div>
   );
 }
@@ -186,3 +224,188 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+
+export const authStyles = `
+  .auth-page {
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .auth-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10rem;
+  }
+  .auth-col {
+    width: min(400px, 100%);
+  }
+  .auth-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--txt-pure);
+    margin: 0 0 0.3rem;
+    letter-spacing: -0.3px;
+  }
+  .auth-sub {
+    color: var(--txt-muted);
+    margin: 0 0 2rem;
+    font-size: 0.875rem;
+  }
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .auth-submit {
+    width: 100%;
+    margin-top: 0.25rem;
+  }
+  .auth-alert {
+    padding: 0.6rem 0.75rem;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--r-sm);
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+  .auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.25rem 0 0;
+  }
+  .auth-divider-line {
+    flex: 1;
+    height: 1px;
+    background: var(--btn-secondary-border);
+  }
+  .auth-divider-text {
+    font-size: 0.78rem;
+    color: var(--txt-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .auth-oauth {
+    width: 100%;
+    padding: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    background: var(--btn-secondary-bg);
+    color: var(--txt-pure);
+    border: 1px solid var(--btn-secondary-border);
+    border-radius: var(--r-sm);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    margin-top: 0.75rem;
+  }
+  .auth-oauth:hover { border-color: var(--rule-strong); }
+  .auth-oauth:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .auth-foot {
+    text-align: center;
+    margin: 1.5rem 0 0;
+    font-size: 0.875rem;
+    color: var(--txt-muted);
+  }
+  .auth-foot-link {
+    color: var(--txt-pure);
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .auth-foot-link:hover { text-decoration: underline; }
+  .auth-back {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    border: none;
+    color: var(--txt-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 1.5rem;
+  }
+  .auth-back:hover { color: var(--txt-pure); }
+  .auth-otp {
+    text-align: center;
+    font-size: 1.5rem;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    letter-spacing: 0.4rem;
+  }
+
+  /* Feature panel */
+  .auth-feature { width: 360px; }
+  .auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 3.5rem;
+  }
+  .auth-brand-name {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--signature);
+    letter-spacing: -0.3px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .auth-hero {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--txt-pure);
+    line-height: 1.2;
+    margin: 0 0 0.75rem;
+    letter-spacing: -0.5px;
+  }
+  .auth-hero-sub {
+    color: var(--txt-muted);
+    font-size: 0.95rem;
+    margin: 0 0 3rem;
+    line-height: 1.6;
+  }
+  .auth-feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .auth-feature-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  .auth-feature-icon {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(var(--signature-rgb), 0.07);
+    border: 1px solid rgba(var(--signature-rgb), 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--signature);
+  }
+  .auth-feature-title {
+    margin: 0 0 0.2rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--txt-pure);
+  }
+  .auth-feature-desc {
+    margin: 0;
+    font-size: 0.825rem;
+    color: var(--txt-muted);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 880px) {
+    .auth-wrap { gap: 0; }
+    .auth-feature { display: none; }
+  }
+`;
