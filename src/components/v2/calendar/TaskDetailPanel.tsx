@@ -6,7 +6,7 @@ import { ProofDropZone } from '@/components/ProofDropZone';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { AgentTask } from '@/lib/recgon/types';
 import { useToast } from '@/components/Toast';
-import { useConfirm } from '@/components/ui';
+import { useConfirm, Button } from '@/components/ui';
 import { daysOverdue, isOverdue } from '@/lib/recgon/overduePolicy';
 import { OverdueChip } from './OverdueChip';
 
@@ -114,34 +114,26 @@ function SnoozeControl({
         {t('panel.snoozeNote')}
       </p>
       <div className="cal-panel-actions">
-        <button
-          type="button"
-          className="cal-panel-btn"
+        <Button
           onClick={() => submit(1)}
           disabled={working}
           data-snooze="1"
-        >{t('panel.snooze1Day')}</button>
-        <button
-          type="button"
-          className="cal-panel-btn"
+        >{t('panel.snooze1Day')}</Button>
+        <Button
           onClick={() => submit(3)}
           disabled={working}
           data-snooze="3"
-        >{t('panel.snooze3Days')}</button>
-        <button
-          type="button"
-          className="cal-panel-btn"
+        >{t('panel.snooze3Days')}</Button>
+        <Button
           onClick={() => submit(7)}
           disabled={working}
           data-snooze="7"
-        >{t('panel.snooze7Days')}</button>
-        <button
-          type="button"
-          className="cal-panel-btn"
+        >{t('panel.snooze7Days')}</Button>
+        <Button
           onClick={() => setCustomOpen((v) => !v)}
           disabled={working}
           data-snooze="custom"
-        >{t('panel.snoozeCustom')}</button>
+        >{t('panel.snoozeCustom')}</Button>
       </div>
       {customOpen && (
         <div className="cal-panel-reschedule-form">
@@ -160,13 +152,12 @@ function SnoozeControl({
             />
           </label>
           <div className="cal-panel-actions cal-panel-actions-right">
-            <button
-              type="button"
-              className="cal-panel-btn is-primary"
+            <Button
+              variant="primary"
               onClick={submitCustom}
               disabled={working}
               data-snooze-submit="true"
-            >{working ? t('panel.snoozing') : t('panel.snoozeAction')}</button>
+            >{working ? t('panel.snoozing') : t('panel.snoozeAction')}</Button>
           </div>
         </div>
       )}
@@ -480,18 +471,18 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
               <section className="cal-panel-actions">
                 {isAssigned && (
                   <>
-                    <button type="button" className="cal-panel-btn is-primary" onClick={() => act('accept')} disabled={working}>
-                      {working ? <><span className="cal-panel-spin" aria-hidden="true" />{t('actions.working')}</> : t('actions.accept')}
-                    </button>
-                    <button type="button" className="cal-panel-btn" onClick={() => act('decline')} disabled={working}>{t('actions.decline')}</button>
+                    <Button variant="primary" onClick={() => act('accept')} loading={working}>
+                      {working ? t('actions.working') : t('actions.accept')}
+                    </Button>
+                    <Button onClick={() => act('decline')} disabled={working}>{t('actions.decline')}</Button>
                   </>
                 )}
                 {isInFlight && !needsProof && (
                   <>
-                    <button type="button" className="cal-panel-btn is-primary" onClick={() => act('complete')} disabled={working}>
-                      {working ? <><span className="cal-panel-spin" aria-hidden="true" />{t('actions.working')}</> : t('actions.markDone')}
-                    </button>
-                    <button type="button" className="cal-panel-btn" onClick={() => act('decline')} disabled={working}>{t('actions.handBack')}</button>
+                    <Button variant="primary" onClick={() => act('complete')} loading={working}>
+                      {working ? t('actions.working') : t('actions.markDone')}
+                    </Button>
+                    <Button onClick={() => act('decline')} disabled={working}>{t('actions.handBack')}</Button>
                   </>
                 )}
               </section>
@@ -505,18 +496,18 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                 </p>
                 <div className="cal-panel-actions">
                   {canVerify && (
-                    <button type="button" className="cal-panel-btn is-primary" onClick={overrideTask} disabled={working}>
-                      {working ? <><span className="cal-panel-spin" aria-hidden="true" />{t('actions.working')}</> : t('actions.verify')}
-                    </button>
+                    <Button variant="primary" onClick={overrideTask} loading={working}>
+                      {working ? t('actions.working') : t('actions.verify')}
+                    </Button>
                   )}
                   {task.assignedTo && (
-                    <button type="button" className="cal-panel-btn" onClick={reassignTask} disabled={working}>
+                    <Button onClick={reassignTask} disabled={working}>
                       {t('actions.reassign')}
-                    </button>
+                    </Button>
                   )}
-                  <button type="button" className="cal-panel-btn" onClick={cancelTask} disabled={working}>
+                  <Button onClick={cancelTask} disabled={working}>
                     {t('actions.cancelTask')}
-                  </button>
+                  </Button>
                 </div>
               </section>
             )}
@@ -524,14 +515,13 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
             {canRequestReschedule && (
               <section className="cal-panel-section">
                 <div className="cal-panel-actions">
-                  <button
-                    type="button"
-                    className={`cal-panel-btn ${hasPendingReschedule ? 'is-primary' : ''}`}
+                  <Button
+                    variant={hasPendingReschedule ? 'primary' : 'secondary'}
                     onClick={() => setRequestOpen((v) => !v)}
                     disabled={working}
                   >
                     {hasPendingReschedule ? t('actions.updateReschedule') : t('actions.requestReschedule')}
-                  </button>
+                  </Button>
                 </div>
 
                 {requestOpen && (
@@ -555,14 +545,13 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                       rows={3}
                     />
                     <div className="cal-panel-actions cal-panel-actions-right">
-                      <button
-                        type="button"
-                        className="cal-panel-btn is-primary"
+                      <Button
+                        variant="primary"
                         onClick={submitRescheduleRequest}
                         disabled={working}
                       >
                         {working ? t('actions.sending') : t('actions.sendRequest')}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -595,9 +584,9 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                 />
                 <p className="cal-panel-section-foot">{t('panel.proofFoot')}</p>
                 <div className="cal-panel-actions cal-panel-actions-right">
-                  <button type="button" className="cal-panel-btn is-warn" onClick={submitProof} disabled={working}>
+                  <Button variant="warn" onClick={submitProof} disabled={working}>
                     {working ? t('actions.sending') : t('actions.submitProof')}
-                  </button>
+                  </Button>
                 </div>
               </section>
             )}
@@ -762,59 +751,6 @@ const css = `
   padding-top: 6px;
 }
 .cal-panel-actions-right { justify-content: flex-end; padding-top: 4px; }
-
-.cal-panel-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 16px;
-  background: transparent;
-  border: 1px solid var(--rule);
-  border-radius: 2px;
-  cursor: pointer;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: var(--txt-muted);
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
-}
-.cal-panel-btn:hover:not(:disabled) {
-  color: var(--txt-pure);
-  border-color: var(--rule-strong);
-}
-.cal-panel-btn:focus-visible {
-  outline: 2px solid var(--signature);
-  outline-offset: 2px;
-}
-.cal-panel-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.cal-panel-btn.is-primary {
-  color: var(--signature);
-  border-color: rgba(var(--signature-rgb), 0.35);
-  background: rgba(var(--signature-rgb), 0.06);
-}
-.cal-panel-btn.is-primary:hover:not(:disabled) {
-  background: rgba(var(--signature-rgb), 0.12);
-  border-color: var(--signature);
-}
-.cal-panel-btn.is-warn {
-  color: var(--warning);
-  border-color: rgba(255,159,10,0.35);
-  background: rgba(255,159,10,0.06);
-}
-.cal-panel-btn.is-warn:hover:not(:disabled) {
-  background: rgba(255,159,10,0.12);
-  border-color: var(--warning);
-}
-.cal-panel-spin {
-  width: 9px; height: 9px; border-radius: 50%;
-  border: 1.5px solid currentColor;
-  border-top-color: transparent;
-  animation: calPanelSpin 700ms linear infinite;
-  display: inline-block;
-}
-@keyframes calPanelSpin { to { transform: rotate(360deg); } }
 
 .cal-panel-input {
   width: 100%;
