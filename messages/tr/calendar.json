@@ -115,8 +115,12 @@
     "submitProof": "kanıt gönder"
   },
   "confirm": {
-    "override": "Bu görevi tamamlandı olarak işaretleyip doğrulamayı atla?",
-    "cancel": "Bu görev iptal edilsin mi? İptal edildi olarak işaretlenir ama geçmiş için saklanır."
+    "overrideTitle": "Doğrulama olmadan tamamlansın mı?",
+    "overrideBody": "Bu, Recgon'un doğrulamasını atlar ve kesindir.",
+    "cancelTitle": "Bu görev iptal edilsin mi?",
+    "cancelBody": "İptal edildi olarak işaretlenir ama geçmiş için saklanır.",
+    "cancelConfirmLabel": "görevi iptal et",
+    "keepTask": "vazgeç"
   },
   "toast": {
     "rescheduled": "görev yeniden planlandı",

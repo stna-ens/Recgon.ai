@@ -87,7 +87,8 @@
     "mcpInstruction": "bunu terminaline yapıştır, tarayıcı açıldığında giriş yap",
     "copied": "kopyalandı",
     "copy": "kopyala",
-    "copyFailed": "kopyalanamadı"
+    "copyFailed": "kopyalanamadı",
+    "githubDisconnectBody": "Yeniden bağlanana kadar repo içe aktarmaları ve commit tabanlı özellikler çalışmaz."
   },
   "admin": {
     "label": "yönetim",

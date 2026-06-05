@@ -5,6 +5,8 @@ import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
+import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/ui';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { Teammate, VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
 
@@ -113,6 +115,9 @@ export function ProjectTasksListView() {
   const { currentTeam } = useTeam();
   const teamId = currentTeam?.id ?? null;
   const { addToast } = useToast();
+  // Same override/cancel flows as the calendar's TaskDetailPanel — reuse its strings.
+  const tConfirm = useTranslations('calendar.confirm');
+  const confirmDialog = useConfirm();
 
   const [filter, setFilter] = useState<FilterKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -229,7 +234,11 @@ export function ProjectTasksListView() {
   // skips the audit trail the verifier would normally produce.
   const overrideTask = useCallback(async (task: Task) => {
     if (working) return;
-    if (!confirm('Mark this task complete and bypass verification?')) return;
+    if (!(await confirmDialog({
+      title: tConfirm('overrideTitle'),
+      description: tConfirm('overrideBody'),
+      destructive: true,
+    }))) return;
     setWorking(task.id);
     try {
       const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}/override`, {
@@ -248,7 +257,7 @@ export function ProjectTasksListView() {
     } finally {
       setWorking(null);
     }
-  }, [working, addToast, refresh]);
+  }, [working, addToast, confirmDialog, tConfirm, refresh]);
 
   // Owner reassign — uses the /decline endpoint which unassigns and
   // re-dispatches via Recgon's matcher. Equivalent owner-side action.
@@ -285,7 +294,13 @@ export function ProjectTasksListView() {
   // Owner cancel — keeps the task in history but stops execution.
   const cancelTask = useCallback(async (task: Task) => {
     if (working) return;
-    if (!confirm('Cancel this task? It will be marked cancelled but kept for history.')) return;
+    if (!(await confirmDialog({
+      title: tConfirm('cancelTitle'),
+      description: tConfirm('cancelBody'),
+      confirmLabel: tConfirm('cancelConfirmLabel'),
+      cancelLabel: tConfirm('keepTask'),
+      destructive: true,
+    }))) return;
     setWorking(task.id);
     try {
       const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}`, {
@@ -304,7 +319,7 @@ export function ProjectTasksListView() {
     } finally {
       setWorking(null);
     }
-  }, [working, addToast, refresh]);
+  }, [working, addToast, confirmDialog, tConfirm, refresh]);
 
   // Render a single task as a 2-line dossier: title + muted meta on the left,
   // assignee chip + owner action on the right edge. The owner does NOT act

@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ui';
 
 type Language = 'en' | 'tr';
 
@@ -68,6 +69,7 @@ function V2SettingsPageInner() {
   const { theme, setTheme } = useTheme();
   const t = useTranslations('settings');
   const { addToast } = useToast();
+  const confirmDialog = useConfirm();
   const [mounted, setMounted] = useState(false);
   const [langSaving, setLangSaving] = useState(false);
 
@@ -338,7 +340,11 @@ function V2SettingsPageInner() {
 
   // ── Connections ─────────────────────────────────────
   const handleGithubDisconnect = useCallback(async () => {
-    if (!confirm(t('connections.githubDisconnectConfirm'))) return;
+    if (!(await confirmDialog({
+      title: t('connections.githubDisconnectConfirm'),
+      description: t('connections.githubDisconnectBody'),
+      destructive: true,
+    }))) return;
     setGithubDisconnecting(true);
     try {
       const res = await fetch('/api/github/connect', { method: 'DELETE' });
@@ -350,7 +356,7 @@ function V2SettingsPageInner() {
     } finally {
       setGithubDisconnecting(false);
     }
-  }, [addToast, t]);
+  }, [addToast, confirmDialog, t]);
 
   const handleMcpCopy = useCallback(async () => {
     try {

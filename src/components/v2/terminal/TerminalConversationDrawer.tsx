@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useConfirm } from '@/components/ui';
 
 interface Conversation {
   id: string;
@@ -54,6 +55,8 @@ export default function TerminalConversationDrawer({
   onAssignProject,
 }: Props) {
   const t = useTranslations('terminal');
+  const tCommon = useTranslations('common');
+  const confirmDialog = useConfirm();
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -149,7 +152,12 @@ export default function TerminalConversationDrawer({
   };
 
   const handleDelete = async (conv: Conversation) => {
-    if (!confirm(t('drawer.confirmDelete', { title: conv.title || t('drawer.untitled') }))) return;
+    if (!(await confirmDialog({
+      title: t('drawer.confirmDelete', { title: conv.title || t('drawer.untitled') }),
+      description: t('drawer.confirmDeleteBody'),
+      confirmLabel: tCommon('delete'),
+      destructive: true,
+    }))) return;
     await onDelete(conv.id);
   };
 

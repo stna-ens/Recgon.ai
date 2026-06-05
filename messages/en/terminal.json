@@ -91,6 +91,7 @@
     "noProjectsYet": "no projects yet",
     "footHint": "↑↓ navigate · ↵ open · e rename · d delete · a assign · esc close",
     "new": "+ new",
-    "confirmDelete": "Delete \"{title}\"?"
+    "confirmDelete": "Delete \"{title}\"?",
+    "confirmDeleteBody": "This conversation and its history will be permanently removed."
   }
 }

@@ -6,6 +6,7 @@ import { ProofDropZone } from '@/components/ProofDropZone';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { AgentTask } from '@/lib/recgon/types';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ui';
 import { daysOverdue, isOverdue } from '@/lib/recgon/overduePolicy';
 import { OverdueChip } from './OverdueChip';
 
@@ -190,6 +191,7 @@ type Props = {
 export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onClose, onRefresh }: Props) {
   const t = useTranslations('calendar');
   const { addToast } = useToast();
+  const confirm = useConfirm();
   const [working, setWorking] = useState(false);
   const [proofText, setProofText] = useState('');
   const [proofLinks, setProofLinks] = useState('');
@@ -274,7 +276,11 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
   // task is awaiting review or stuck on proof and the owner wants to clear it.
   const overrideTask = useCallback(async () => {
     if (!task || working) return;
-    if (!confirm(t('confirm.override'))) return;
+    if (!(await confirm({
+      title: t('confirm.overrideTitle'),
+      description: t('confirm.overrideBody'),
+      destructive: true,
+    }))) return;
     setWorking(true);
     try {
       const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}/override`, {
@@ -286,7 +292,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
     } catch (err) {
       addToast(err instanceof Error ? err.message : t('toast.overrideFailed'), 'error');
     } finally { setWorking(false); }
-  }, [task, working, addToast, onRefresh, t]);
+  }, [task, working, addToast, confirm, onRefresh, t]);
 
   // Owner reassign — uses the /decline endpoint which unassigns and
   // re-dispatches via Recgon's matcher.
@@ -314,7 +320,13 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
   // Owner cancel — keeps the task in history but stops execution.
   const cancelTask = useCallback(async () => {
     if (!task || working) return;
-    if (!confirm(t('confirm.cancel'))) return;
+    if (!(await confirm({
+      title: t('confirm.cancelTitle'),
+      description: t('confirm.cancelBody'),
+      confirmLabel: t('confirm.cancelConfirmLabel'),
+      cancelLabel: t('confirm.keepTask'),
+      destructive: true,
+    }))) return;
     setWorking(true);
     try {
       const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}`, {
@@ -328,7 +340,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
     } catch (err) {
       addToast(err instanceof Error ? err.message : t('toast.cancelFailed'), 'error');
     } finally { setWorking(false); }
-  }, [task, working, addToast, onRefresh, onClose, t]);
+  }, [task, working, addToast, confirm, onRefresh, onClose, t]);
 
   const submitRescheduleRequest = useCallback(async () => {
     if (!task || working) return;

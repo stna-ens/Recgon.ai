@@ -91,6 +91,7 @@
     "noProjectsYet": "henüz proje yok",
     "footHint": "↑↓ gezin · ↵ aç · e yeniden adlandır · d sil · a ata · esc kapat",
     "new": "+ yeni",
-    "confirmDelete": "\"{title}\" silinsin mi?"
+    "confirmDelete": "\"{title}\" silinsin mi?",
+    "confirmDeleteBody": "Bu konuşma ve geçmişi kalıcı olarak silinecek."
   }
 }

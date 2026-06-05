@@ -115,8 +115,12 @@
     "submitProof": "submit proof"
   },
   "confirm": {
-    "override": "Mark this task complete and bypass verification?",
-    "cancel": "Cancel this task? It will be marked cancelled but kept for history."
+    "overrideTitle": "Complete without verification?",
+    "overrideBody": "This bypasses Recgon's verification and is final.",
+    "cancelTitle": "Cancel this task?",
+    "cancelBody": "It will be marked cancelled but kept for history.",
+    "cancelConfirmLabel": "cancel task",
+    "keepTask": "keep task"
   },
   "toast": {
     "rescheduled": "task rescheduled",

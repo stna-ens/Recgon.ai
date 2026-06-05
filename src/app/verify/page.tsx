@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { ArrowLeft, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, ShieldCheck, UploadCloud, XCircle } from 'lucide-react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ui';
 import { ProofDropZone } from '@/components/ProofDropZone';
 import type { ProofPayload, VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
 
@@ -145,6 +146,7 @@ function V2VerifyInner() {
   const { currentTeam } = useTeam();
   const teamId = currentTeam?.id ?? null;
   const { addToast } = useToast();
+  const confirmDialog = useConfirm();
   const searchParams = useSearchParams();
 
   const [data, setData] = useState<VerifyResponse | null>(null);
@@ -304,7 +306,11 @@ function V2VerifyInner() {
 
   const overrideTask = useCallback(async (task: VerifyTask) => {
     if (working === task.id) return;
-    if (!confirm(t('verify.confirm.override', { title: task.title }))) return;
+    if (!(await confirmDialog({
+      title: t('verify.confirm.overrideTitle', { title: task.title }),
+      description: t('verify.confirm.overrideBody'),
+      destructive: true,
+    }))) return;
     setWorking(task.id);
     try {
       const res = await fetch(`/api/teams/${task.team_id}/tasks/${task.id}/override`, {
@@ -323,11 +329,15 @@ function V2VerifyInner() {
     } finally {
       setWorking(null);
     }
-  }, [working, addToast, refresh, t]);
+  }, [working, addToast, confirmDialog, refresh, t]);
 
   const declineTask = useCallback(async (task: VerifyTask) => {
     if (working === task.id) return;
-    if (!confirm(t('verify.confirm.decline', { title: task.title }))) return;
+    if (!(await confirmDialog({
+      title: t('verify.confirm.declineTitle', { title: task.title }),
+      description: t('verify.confirm.declineBody'),
+      destructive: true,
+    }))) return;
     setWorking(task.id);
     try {
       const res = await fetch(`/api/teams/${task.team_id}/tasks/${task.id}/decline`, {
@@ -345,7 +355,7 @@ function V2VerifyInner() {
     } finally {
       setWorking(null);
     }
-  }, [working, addToast, refresh, t]);
+  }, [working, addToast, confirmDialog, refresh, t]);
 
   return (
     <div className="v2-vf">

@@ -87,7 +87,8 @@
     "mcpInstruction": "paste this in your terminal, then sign in when the browser opens",
     "copied": "copied",
     "copy": "copy",
-    "copyFailed": "failed to copy"
+    "copyFailed": "failed to copy",
+    "githubDisconnectBody": "Repo imports and commit-based features stop working until you reconnect."
   },
   "admin": {
     "label": "admin",
