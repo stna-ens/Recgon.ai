@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import AppShell from '@/components/AppShell';
 import { SessionProvider } from 'next-auth/react';
 import { ToastProvider } from '@/components/Toast';
+import { ConfirmProvider } from '@/components/ui';
 import { Analytics } from '@vercel/analytics/next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale } from 'next-intl/server';
@@ -75,7 +76,9 @@ export default async function RootLayout({
                 <div className="mesh-blob mesh-blob-3"></div>
               </div>
               <ToastProvider>
-                <AppShell>{children}</AppShell>
+                <ConfirmProvider>
+                  <AppShell>{children}</AppShell>
+                </ConfirmProvider>
               </ToastProvider>
             </ThemeProvider>
           </NextIntlClientProvider>

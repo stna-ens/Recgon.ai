@@ -74,6 +74,45 @@
   --dur-base: 0.22s;
   --dur-slow: 0.4s;
   --dur-page: 0.6s;
+
+  /* Spacing scale (4px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+
+  /* Type scale — captures the sizes already in use across the app */
+  --fs-2xs: 10.5px;
+  --fs-xs: 11.5px;
+  --fs-sm: 13px;
+  --fs-base: 15px;
+  --fs-md: 17px;
+  --fs-lg: 21px;
+  --fs-xl: 28px;
+  --lh-tight: 1.2;
+  --lh-normal: 1.5;
+
+  /* Card padding */
+  --card-pad: 20px;
+  --card-pad-lg: 24px;
+
+  /* Hairline rules — hoisted from WorkspaceShell so shared ui/ primitives
+     also work outside the v2 shell (auth pages, landing). The shell's
+     scoped definitions still win inside it (same values). */
+  --rule: rgba(0, 0, 0, 0.10);
+  --rule-strong: rgba(0, 0, 0, 0.20);
+
+  /* Modal scrim + skeleton shimmer stops (mode-dependent) */
+  --scrim: rgba(20, 20, 22, 0.28);
+  --skel-a: rgba(0, 0, 0, 0.05);
+  --skel-b: rgba(0, 0, 0, 0.10);
+
+  /* Keyboard focus ring (box-shadow form) */
+  --focus-ring: 0 0 0 2px var(--bg-deep), 0 0 0 4px rgba(var(--signature-rgb), 0.6);
 }
 
 /* === LIGHT MODE OVERRIDE (for demo shell — forces light vars even inside html.dark) === */
@@ -117,6 +156,12 @@
   --r-md: 24px;
   --r-lg: 32px;
   --r-pill: 999px;
+  --rule: rgba(0, 0, 0, 0.10);
+  --rule-strong: rgba(0, 0, 0, 0.20);
+  --scrim: rgba(20, 20, 22, 0.28);
+  --skel-a: rgba(0, 0, 0, 0.05);
+  --skel-b: rgba(0, 0, 0, 0.10);
+  --focus-ring: 0 0 0 2px var(--bg-deep), 0 0 0 4px rgba(var(--signature-rgb), 0.6);
 }
 
 /* === DARK MODE === */
@@ -132,6 +177,14 @@
   /* Dot field — keep the soft signature pink in dark mode (matches today). */
   --dot-rgb: 240, 184, 208;
   --dot-base-a: 0.26;
+
+  /* Hairline rules + scrim + skeleton stops (dark) */
+  --rule: rgba(255, 255, 255, 0.06);
+  --rule-strong: rgba(255, 255, 255, 0.12);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --skel-a: rgba(255, 255, 255, 0.05);
+  --skel-b: rgba(255, 255, 255, 0.10);
+  --focus-ring: 0 0 0 2px var(--bg-deep), 0 0 0 4px rgba(var(--signature-rgb), 0.6);
 
   /* Liquid Glass (Dark) */
   --glass-substrate: rgba(20, 20, 22, 0.6);
@@ -2869,3 +2922,319 @@ html {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ============================================================
+   SHARED UI PRIMITIVES — styles for src/components/ui/
+   One source of truth; components reference these classes.
+   ============================================================ */
+
+/* --- Button (.ui-btn) — visual base inherited from .cal-panel-btn --- */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--txt-muted);
+  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ui-btn--md { padding: 9px 16px; font-size: var(--fs-2xs); letter-spacing: 1.4px; }
+.ui-btn--sm { padding: 6px 12px; font-size: 10px; letter-spacing: 1.2px; }
+.ui-btn:hover:not(:disabled) {
+  color: var(--txt-pure);
+  border-color: var(--rule-strong);
+}
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.ui-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ui-btn--primary {
+  color: var(--signature);
+  border-color: rgba(var(--signature-rgb), 0.35);
+  background: rgba(var(--signature-rgb), 0.06);
+}
+.ui-btn--primary:hover:not(:disabled) {
+  color: var(--signature);
+  background: rgba(var(--signature-rgb), 0.12);
+  border-color: var(--signature);
+}
+.ui-btn--ghost { border-color: transparent; }
+.ui-btn--ghost:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--btn-secondary-bg);
+}
+.ui-btn--danger {
+  color: var(--danger);
+  border-color: rgba(255, 59, 48, 0.35);
+  background: rgba(255, 59, 48, 0.06);
+}
+.ui-btn--danger:hover:not(:disabled) {
+  color: var(--danger);
+  background: rgba(255, 59, 48, 0.12);
+  border-color: var(--danger);
+}
+.ui-btn--danger-ghost { color: var(--danger); border-color: transparent; }
+.ui-btn--danger-ghost:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: transparent;
+  background: rgba(255, 59, 48, 0.08);
+}
+.ui-btn--warn {
+  color: var(--warning);
+  border-color: rgba(255, 159, 10, 0.35);
+  background: rgba(255, 159, 10, 0.06);
+}
+.ui-btn--warn:hover:not(:disabled) {
+  color: var(--warning);
+  background: rgba(255, 159, 10, 0.12);
+  border-color: var(--warning);
+}
+.ui-btn-spin {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  animation: recgon-spin 700ms linear infinite;
+}
+
+/* --- Skeleton (.ui-skeleton) — single shimmer for the whole app --- */
+.ui-skeleton {
+  display: block;
+  background: linear-gradient(90deg, var(--skel-a) 25%, var(--skel-b) 50%, var(--skel-a) 75%);
+  background-size: 200% 100%;
+  animation: recgon-shimmer 1.6s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+/* --- EmptyState (.ui-empty) --- */
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--sp-2);
+  padding: var(--sp-8) var(--sp-6);
+}
+.ui-empty--compact { padding: var(--sp-5) var(--sp-4); gap: 6px; }
+.ui-empty-icon {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 18px;
+  color: rgba(var(--signature-rgb), 0.55);
+  line-height: 1;
+}
+.ui-empty-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--txt-pure);
+}
+.ui-empty--compact .ui-empty-title { font-size: var(--fs-xs); }
+.ui-empty-desc {
+  font-size: var(--fs-xs);
+  color: var(--txt-muted);
+  line-height: var(--lh-normal);
+  max-width: 340px;
+}
+.ui-empty-action { margin-top: var(--sp-2); }
+
+/* --- Modal / ConfirmDialog (.ui-modal) --- */
+.ui-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--scrim);
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  animation: ui-fade-in var(--dur-fast) ease;
+}
+.ui-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 101;
+  background: var(--modal-bg);
+  backdrop-filter: blur(40px) saturate(160%);
+  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-deep);
+  padding: var(--card-pad-lg);
+  width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  animation: ui-modal-in var(--dur-base) var(--ease-out);
+}
+.ui-modal--sm { max-width: 400px; }
+.ui-modal--md { max-width: 520px; }
+.ui-modal--lg { max-width: 680px; }
+.ui-modal:focus-visible { outline: none; }
+@keyframes ui-modal-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes ui-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.ui-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.ui-modal-title {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--txt-pure);
+  line-height: var(--lh-tight);
+}
+.ui-modal-desc {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--txt-muted);
+  line-height: var(--lh-normal);
+}
+.ui-modal-body { margin-top: var(--sp-4); }
+.ui-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: var(--sp-6);
+}
+.ui-modal-x {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: -4px -6px 0 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--txt-faint);
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+.ui-modal-x:hover { color: var(--txt-pure); background: var(--btn-secondary-bg); }
+.ui-modal-x:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* --- FormField (.ui-field) + inputs (.ui-input) --- */
+.ui-field { display: flex; flex-direction: column; gap: 6px; }
+.ui-field-label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--txt-muted);
+}
+.ui-field-req { color: var(--signature); }
+.ui-field-error { font-size: var(--fs-xs); color: var(--danger); line-height: var(--lh-normal); }
+.ui-field-hint { font-size: var(--fs-xs); color: var(--txt-faint); line-height: var(--lh-normal); }
+.ui-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: var(--btn-secondary-bg);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  color: var(--txt-pure);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.ui-input::placeholder { color: var(--txt-faint); }
+.ui-input:focus {
+  outline: none;
+  border-color: rgba(var(--signature-rgb), 0.55);
+  box-shadow: 0 0 0 3px rgba(var(--signature-rgb), 0.12);
+}
+.ui-input[aria-invalid='true'] { border-color: rgba(255, 59, 48, 0.55); }
+.ui-input[aria-invalid='true']:focus { box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.10); }
+.ui-input-wrap { position: relative; }
+.ui-input-wrap .ui-input { padding-right: 40px; }
+.ui-input-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--txt-faint);
+  transition: color var(--dur-fast) ease;
+}
+.ui-input-toggle:hover { color: var(--txt-pure); }
+.ui-input-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* --- PageHeader (.ui-page-header) --- */
+.ui-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+.ui-page-eyebrow {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--signature);
+  margin-bottom: var(--sp-1);
+}
+.ui-page-title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--txt-pure);
+  line-height: var(--lh-tight);
+}
+.ui-page-desc {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--txt-muted);
+  line-height: var(--lh-normal);
+}
+.ui-page-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.ui-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: var(--fs-2xs);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+  margin-bottom: var(--sp-2);
+}
+.ui-breadcrumbs a { color: var(--txt-faint); text-decoration: none; transition: color var(--dur-fast) ease; }
+.ui-breadcrumbs a:hover { color: var(--txt-pure); }
+.ui-breadcrumbs .ui-crumb-sep { color: var(--rule-strong); }
+.ui-breadcrumbs .ui-crumb-current { color: var(--txt-muted); }
