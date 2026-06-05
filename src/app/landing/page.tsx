@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
+import { getTranslations } from 'next-intl/server';
 import LandingV2Shell from '@/components/landing/LandingV2Shell';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://recgon.app';
@@ -143,7 +144,8 @@ const jsonLd = {
   ],
 };
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const t = await getTranslations('landing.seo');
   return (
     <>
       <Script
@@ -163,29 +165,25 @@ export default function LandingPage() {
           whiteSpace: 'nowrap',
         }}
       >
-        <h1>Recgon — The AI Product Manager for small teams</h1>
-        <p>
-          One brain for the whole team. Recgon reads your codebase, GA4 analytics, and team activity, then decides what to ship next and assigns each task to the best-fit teammate by skill match and calendar availability.
-        </p>
-        <h2>What Recgon does</h2>
+        <h1>{t('h1')}</h1>
+        <p>{t('intro')}</p>
+        <h2>{t('whatHeading')}</h2>
         <ul>
-          <li>Reads your GitHub codebase and produces stage, SWOT, top risks, growth levers, and a ranked next-step list per project</li>
-          <li>Ingests GA4 analytics and summarizes traffic, channels, and funnel signals</li>
-          <li>Mints tasks from this unified signal (next_step, dev_prompt, marketing, analytics, research)</li>
-          <li>Auto-assigns each task to the best-fit teammate using skill scores and calendar availability</li>
-          <li>Verifies completed work against acceptance criteria</li>
-          <li>Surfaces a daily cockpit: today&apos;s focus, decision deck, team pulse, and what shipped</li>
+          <li>{t('what.item1')}</li>
+          <li>{t('what.item2')}</li>
+          <li>{t('what.item3')}</li>
+          <li>{t('what.item4')}</li>
+          <li>{t('what.item5')}</li>
+          <li>{t('what.item6')}</li>
         </ul>
-        <h2>How it works</h2>
+        <h2>{t('howHeading')}</h2>
         <ol>
-          <li>Connect a GitHub repo, a GA4 property, and your teammates</li>
-          <li>Recgon analyzes and produces a running product snapshot</li>
-          <li>Tasks land on the right teammate&apos;s calendar; you see what to ship today</li>
+          <li>{t('how.step1')}</li>
+          <li>{t('how.step2')}</li>
+          <li>{t('how.step3')}</li>
         </ol>
-        <h2>Who it&apos;s for</h2>
-        <p>
-          Small teams (2-10) with a founder running product. Indie hackers, early-stage startups, and side-project teams that need a PM&apos;s strategic loop and a project manager&apos;s assignment discipline — without the headcount.
-        </p>
+        <h2>{t('whoHeading')}</h2>
+        <p>{t('who')}</p>
       </div>
       <LandingV2Shell />
     </>

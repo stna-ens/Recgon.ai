@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { PageData } from './types';
 import { PINK_SPECTRUM, fmtNumber } from './utils';
 
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function TopPagesList({ pages }: Props) {
+  const t = useTranslations('analytics');
   const [hovered, setHovered] = useState<number | null>(null);
   if (pages.length === 0) return null;
   const slice = pages.slice(0, 8);
@@ -17,8 +19,8 @@ export default function TopPagesList({ pages }: Props) {
   return (
     <div className="glass-card is-static v2-an-list-card">
       <div className="v2-an-chart-head">
-        <span className="recgon-label v2-block-eye">› top pages</span>
-        <span className="v2-an-chart-meta">top {slice.length}</span>
+        <span className="recgon-label v2-block-eye">{t('topPages.heading')}</span>
+        <span className="v2-an-chart-meta">{t('topPages.top', { count: slice.length })}</span>
       </div>
       <ol className="v2-an-toppages">
         {slice.map((page, i) => {

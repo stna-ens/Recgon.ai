@@ -1,16 +1,18 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { ProductAnalysis } from './types';
 import { splitHeadline } from './utils';
 
 export default function GrowSection({ analysis }: { analysis: ProductAnalysis }) {
+  const t = useTranslations('projects');
   const a = analysis;
   if (!a.businessModel && !a.gtmStrategy) return null;
 
   return (
     <section className="v2-section">
       <div className="v2-section-head">
-        <span className="recgon-label v2-eyebrow">› making it grow</span>
+        <span className="recgon-label v2-eyebrow">{t('grow.eyebrow')}</span>
       </div>
 
       <div className="v2-grow">
@@ -19,14 +21,14 @@ export default function GrowSection({ analysis }: { analysis: ProductAnalysis })
           return (
             <div className="glass-card is-static is-roomy v2-grow-rev">
               <div className="v2-grow-rev-head">
-                <span className="recgon-label v2-block-eye">revenue model</span>
+                <span className="recgon-label v2-block-eye">{t('grow.revenueModel')}</span>
               </div>
               <p className="v2-grow-headline">{split.headline}</p>
               {split.rest && <p className="v2-grow-body">{split.rest}</p>}
 
               {a.revenueStreams && a.revenueStreams.length > 0 && (
                 <div className="v2-grow-streams">
-                  <span className="recgon-label v2-block-eye">revenue streams</span>
+                  <span className="recgon-label v2-block-eye">{t('grow.revenueStreams')}</span>
                   <div className="v2-grow-stream-flow">
                     {a.revenueStreams.map((s, i) => (
                       <div key={s} className="v2-grow-stream">
@@ -40,7 +42,7 @@ export default function GrowSection({ analysis }: { analysis: ProductAnalysis })
 
               {a.pricingSuggestion && (
                 <div className="v2-grow-pricing">
-                  <span className="recgon-label v2-block-eye">pricing</span>
+                  <span className="recgon-label v2-block-eye">{t('grow.pricing')}</span>
                   <div className="v2-grow-price-card">
                     <span className="v2-grow-price-glyph" aria-hidden="true">$</span>
                     <p className="v2-grow-price-text">{a.pricingSuggestion}</p>
@@ -56,7 +58,7 @@ export default function GrowSection({ analysis }: { analysis: ProductAnalysis })
           return (
             <div className="glass-card is-static is-roomy v2-grow-gtm">
               <div className="v2-grow-rev-head">
-                <span className="recgon-label v2-block-eye">go-to-market</span>
+                <span className="recgon-label v2-block-eye">{t('grow.goToMarket')}</span>
               </div>
               <p className="v2-grow-headline">{split.headline}</p>
               {split.rest && <p className="v2-grow-body">{split.rest}</p>}
@@ -64,8 +66,8 @@ export default function GrowSection({ analysis }: { analysis: ProductAnalysis })
               {a.earlyAdopterChannels && a.earlyAdopterChannels.length > 0 && (
                 <div className="v2-grow-channels">
                   <div className="v2-grow-sub-head">
-                    <span className="recgon-label v2-block-eye">adoption funnel</span>
-                    <span className="v2-grow-sub-meta">{a.earlyAdopterChannels.length} channels</span>
+                    <span className="recgon-label v2-block-eye">{t('grow.adoptionFunnel')}</span>
+                    <span className="v2-grow-sub-meta">{t('grow.channels', { count: a.earlyAdopterChannels.length })}</span>
                   </div>
                   <ol className="v2-funnel">
                     {a.earlyAdopterChannels.map((c, i) => {
@@ -90,8 +92,8 @@ export default function GrowSection({ analysis }: { analysis: ProductAnalysis })
       {a.growthMetrics && a.growthMetrics.length > 0 && (
         <div className="glass-card is-static is-roomy v2-kpi-card">
           <div className="v2-grow-sub-head">
-            <span className="recgon-label v2-block-eye">growth metrics</span>
-            <span className="v2-grow-sub-meta">{a.growthMetrics.length} kpi{a.growthMetrics.length === 1 ? '' : 's'}</span>
+            <span className="recgon-label v2-block-eye">{t('grow.growthMetrics')}</span>
+            <span className="v2-grow-sub-meta">{t('grow.kpis', { count: a.growthMetrics.length })}</span>
           </div>
           <div className="v2-kpi-grid">
             {a.growthMetrics.map((m, i) => (

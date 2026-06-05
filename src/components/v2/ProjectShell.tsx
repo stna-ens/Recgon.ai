@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 
 interface Tab {
   key: string;
-  label: string;
   href: (id: string) => string;
   isActive: (path: string, id: string) => boolean;
   ownerOnly?: boolean;
@@ -16,32 +16,27 @@ interface Tab {
 const TABS: Tab[] = [
   {
     key: 'overview',
-    label: 'Overview',
     href: (id) => `/projects/${id}`,
     isActive: (path, id) => path === `/projects/${id}`,
   },
   {
     key: 'tasks',
-    label: 'Calendar',
     href: (id) => `/projects/${id}/tasks`,
     isActive: (path, id) => path.startsWith(`/projects/${id}/tasks`),
     ownerOnly: true,
   },
   {
     key: 'analytics',
-    label: 'Analytics',
     href: (id) => `/projects/${id}/analytics`,
     isActive: (path, id) => path.startsWith(`/projects/${id}/analytics`),
   },
   {
     key: 'marketing',
-    label: 'Marketing',
     href: (id) => `/projects/${id}/marketing`,
     isActive: (path, id) => path.startsWith(`/projects/${id}/marketing`),
   },
   {
     key: 'settings',
-    label: 'Settings',
     href: (id) => `/projects/${id}/settings`,
     isActive: (path, id) => path.startsWith(`/projects/${id}/settings`),
   },
@@ -51,6 +46,7 @@ interface Props { projectId: string }
 
 export default function ProjectShell({ projectId }: Props) {
   const pathname = usePathname();
+  const t = useTranslations('projects');
   const ctx = useTeam();
   const projects = useMemo(() => ctx.projects ?? [], [ctx.projects]);
   const role = ctx.currentTeam?.role;
@@ -72,11 +68,11 @@ export default function ProjectShell({ projectId }: Props) {
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          projects
+          {t('shell.crumb')}
         </Link>
       </div>
 
-      <nav className="v2-pshell-tabs" aria-label="Project sections">
+      <nav className="v2-pshell-tabs" aria-label={t('shell.tabsAria')}>
         {visibleTabs.map((tab) => {
           const active = tab.isActive(pathname, projectId);
           return (
@@ -86,7 +82,7 @@ export default function ProjectShell({ projectId }: Props) {
               className={`v2-pshell-tab ${active ? 'is-active' : ''}`}
               aria-current={active ? 'page' : undefined}
             >
-              {tab.label}
+              {t(`shell.tabs.${tab.key}`)}
             </Link>
           );
         })}

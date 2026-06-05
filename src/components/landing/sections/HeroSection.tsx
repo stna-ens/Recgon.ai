@@ -1,21 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import DecryptedText from '../DecryptedText';
 import LandingDotField from '../LandingDotField';
 
-const AUDIENCE = [
-  'small teams',
-  'early-stage startups',
-  'indie hackers',
-  'founding teams',
-  'side projects',
-  'solo founders',
-  'product teams',
-];
+const AUDIENCE_KEYS = [
+  'smallTeams',
+  'earlyStartups',
+  'indieHackers',
+  'foundingTeams',
+  'sideProjects',
+  'soloFounders',
+  'productTeams',
+] as const;
 
 export default function HeroSection() {
+  const t = useTranslations('landing.hero');
+  const AUDIENCE = useMemo(
+    () => AUDIENCE_KEYS.map((k) => t(`audience.${k}`)),
+    [t],
+  );
   const [done, setDone] = useState(false);
   const [audReady, setAudReady] = useState(false);
   const [audIdx, setAudIdx] = useState(0);
@@ -30,7 +36,7 @@ export default function HeroSection() {
   useEffect(() => {
     if (!audReady) return;
     const id = setInterval(() => {
-      setAudIdx((i) => (i + 1) % AUDIENCE.length);
+      setAudIdx((i) => (i + 1) % AUDIENCE_KEYS.length);
       setAudKey((k) => k + 1);
     }, 2600);
     return () => clearInterval(id);
@@ -48,9 +54,9 @@ export default function HeroSection() {
       <div className="lnd-hero-inner">
         <span
           className="recgon-label lnd-hero-label"
-          aria-label="for small teams, early-stage startups, indie hackers, founding teams, side projects, solo founders, and product teams"
+          aria-label={t('audienceAria')}
         >
-          for {audReady ? (
+          {t('forPrefix')} {audReady ? (
             <DecryptedText
               key={`aud-${audKey}`}
               text={aud}
@@ -61,13 +67,13 @@ export default function HeroSection() {
               className="lnd-aud-decoded"
               encryptedClassName="lnd-aud-encoded"
             />
-          ) : 'small teams'}
+          ) : AUDIENCE[0]}
         </span>
 
         <h1 className="lnd-hero-title">
           {!done ? (
             <DecryptedText
-              text="One brain for small teams."
+              text={t('titleStatic')}
               animateOn="view"
               sequential
               speed={36}
@@ -78,7 +84,7 @@ export default function HeroSection() {
             />
           ) : (
             <>
-              One brain for{' '}
+              {t('titlePrefix')}{' '}
               <span className="lnd-hero-accent lnd-hero-aud" aria-live="polite">
                 <DecryptedText
                   key={`h1-${audKey}`}
@@ -96,13 +102,12 @@ export default function HeroSection() {
         </h1>
 
         <p className="lnd-hero-sub">
-          Recgon reads your codebase, analytics, and team —
-          then decides what to ship next and who should ship it.
+          {t('subtitle')}
         </p>
 
         <div className="lnd-hero-cta">
           <Link href="/register" className="lnd-btn-primary">
-            Get started
+            {t('getStarted')}
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
               <line x1="5" y1="12" x2="19" y2="12" />
               <polyline points="12 5 19 12 12 19" />
@@ -110,9 +115,9 @@ export default function HeroSection() {
           </Link>
         </div>
 
-        <a href="#how-it-works" className="lnd-hero-pill" aria-label="See how Recgon works">
-          <span className="lnd-hero-pill-tag">{'// 3 steps'}</span>
-          <span className="lnd-hero-pill-text">See how it works</span>
+        <a href="#how-it-works" className="lnd-hero-pill" aria-label={t('seeHowAria')}>
+          <span className="lnd-hero-pill-tag">{t('stepsTag')}</span>
+          <span className="lnd-hero-pill-text">{t('seeHow')}</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" className="lnd-hero-pill-arrow">
             <polyline points="6 9 12 15 18 9" />
           </svg>

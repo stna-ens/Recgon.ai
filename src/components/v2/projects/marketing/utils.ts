@@ -1,22 +1,27 @@
 import type { Campaign, CampaignType, Platform } from './types';
 
+// `id` maps to the LLM-facing campaign type (unchanged). `labelKey` /
+// `descKey` index into the `marketing.campaignTypes` namespace so the visible
+// label + description are localized at render time.
 export const CAMPAIGN_TYPES: Array<{
   id: CampaignType;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
 }> = [
-  { id: 'product-launch', label: 'Product Launch', description: 'Announce and drive adoption of a new product or feature' },
-  { id: 'brand-awareness', label: 'Brand Awareness', description: 'Build recognition and trust in your target market' },
-  { id: 'lead-generation', label: 'Lead Generation', description: 'Capture qualified leads and grow your pipeline' },
-  { id: 'community-growth', label: 'Community Growth', description: 'Build and engage a loyal community around your product' },
-  { id: 're-engagement', label: 'Re-engagement', description: 'Win back churned users or reactivate dormant leads' },
-  { id: 'content-marketing', label: 'Content Marketing', description: 'Establish thought leadership and drive organic growth' },
+  { id: 'product-launch', labelKey: 'campaignTypes.productLaunch.label', descKey: 'campaignTypes.productLaunch.description' },
+  { id: 'brand-awareness', labelKey: 'campaignTypes.brandAwareness.label', descKey: 'campaignTypes.brandAwareness.description' },
+  { id: 'lead-generation', labelKey: 'campaignTypes.leadGeneration.label', descKey: 'campaignTypes.leadGeneration.description' },
+  { id: 'community-growth', labelKey: 'campaignTypes.communityGrowth.label', descKey: 'campaignTypes.communityGrowth.description' },
+  { id: 're-engagement', labelKey: 'campaignTypes.reEngagement.label', descKey: 'campaignTypes.reEngagement.description' },
+  { id: 'content-marketing', labelKey: 'campaignTypes.contentMarketing.label', descKey: 'campaignTypes.contentMarketing.description' },
 ];
 
+// `value` is the LLM-facing duration string (unchanged). `labelKey` indexes
+// into `marketing.durations` for the localized pill label.
 export const DURATIONS = [
-  { value: '2 weeks', label: '2 Weeks' },
-  { value: '1 month', label: '1 Month' },
-  { value: '3 months', label: '3 Months' },
+  { value: '2 weeks', labelKey: 'durations.twoWeeks' },
+  { value: '1 month', labelKey: 'durations.oneMonth' },
+  { value: '3 months', labelKey: 'durations.threeMonths' },
 ];
 
 export function getPlatformKey(name: string): Platform | null {
@@ -40,6 +45,15 @@ export function platformBadgeColor(name: string): string {
   return '#6b7280';
 }
 
+// Localization-friendly hero descriptor. Instead of returning baked English
+// strings, buildMarketingHero now returns a discriminated `state` plus the
+// data each state needs; MarketingHeader resolves it through useTranslations.
+export type MarketingHeroState =
+  | { state: 'planning' }
+  | { state: 'active'; campaignName: string; typeId: string; duration: string; count: number }
+  | { state: 'hasCampaigns'; count: number; typeId: CampaignType | null; duration: string }
+  | { state: 'first' };
+
 // Hero headline state machine. Mirrors analytics' buildHeroHeadline shape:
 // interpretation-led lead text + a soft sub-line. The header surfaces the
 // state the user is in without forcing the page to render different titles.
@@ -55,34 +69,19 @@ export function buildMarketingHero({
   isPlanning: boolean;
   campaignType: CampaignType | null;
   duration: string;
-}): { lead: string; sub?: string } {
-  if (isPlanning) {
-    return {
-      lead: 'drafting your plan…',
-      sub: 'recgon is sketching the strategy — this takes ~20s.',
-    };
-  }
+}): MarketingHeroState {
+  if (isPlanning) return { state: 'planning' };
   if (activeCampaign) {
-    const ct = CAMPAIGN_TYPES.find((t) => t.id === activeCampaign.type) ?? CAMPAIGN_TYPES[0];
-    const count = activeCampaign.plan.contentCalendar.length;
     return {
-      lead: activeCampaign.plan.campaignName,
-      sub: `${ct.label.toLowerCase()} · ${activeCampaign.duration} · ${count} content items`,
+      state: 'active',
+      campaignName: activeCampaign.plan.campaignName,
+      typeId: activeCampaign.type,
+      duration: activeCampaign.duration,
+      count: activeCampaign.plan.contentCalendar.length,
     };
   }
   if (campaigns.length > 0) {
-    const typeLabel = campaignType
-      ? (CAMPAIGN_TYPES.find((t) => t.id === campaignType)?.label.toLowerCase() ?? 'campaign')
-      : 'campaign';
-    return {
-      lead: `${campaigns.length} ${campaigns.length === 1 ? 'campaign' : 'campaigns'} planned.`,
-      sub: campaignType
-        ? `drafting a new ${typeLabel} · ${duration}`
-        : 'pick one from the switcher or start a new plan.',
-    };
+    return { state: 'hasCampaigns', count: campaigns.length, typeId: campaignType, duration };
   }
-  return {
-    lead: 'plan your first campaign.',
-    sub: 'recgon drafts strategy, channels, calendar — you execute.',
-  };
+  return { state: 'first' };
 }

@@ -9,6 +9,18 @@ import { wrapUntrusted } from '@/lib/llm/utils';
 // WR-07 — shared band thresholds (prompts.ts + whyYou.ts can't drift).
 import { bandFor, PROMPT_BAND_THRESHOLDS } from '@/lib/recgon/bandThresholds';
 
+// ── Output language ──────────────────────────────────────────────────────────
+// Recgon's UI and AI output are localizable (en | tr). UI strings live in
+// messages/*.json; the AI output language is steered by appending this directive
+// to a system prompt. We never translate JSON keys (they are the Zod schema
+// contract) — only the human-readable string VALUES.
+export type OutputLanguage = 'en' | 'tr';
+
+export function localeDirective(lang?: OutputLanguage | null): string {
+  if (lang !== 'tr') return '';
+  return `\n\nOUTPUT LANGUAGE:\n- Write ALL human-readable text in fluent, natural Turkish (Türkçe).\n- If the output is JSON, keep EVERY key EXACTLY as specified in English; translate ONLY the string values.\n- Keep code, identifiers, URLs, file paths, brand names, and technology names (e.g. React, Next.js) in their original form.`;
+}
+
 // ── Codebase analysis ────────────────────────────────────────────────────────
 
 const STRUCTURED_QUALITY_RULES = `

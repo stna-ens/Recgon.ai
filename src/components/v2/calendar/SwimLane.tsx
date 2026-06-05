@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import { EventChip } from './EventChip';
 import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
 import type { CalendarCard } from './calendarTypes';
@@ -74,6 +75,7 @@ export function SwimLane({
   onTaskResize,
   ownerView = false,
 }: Props) {
+  const t = useTranslations('calendar');
   const [expandedCells, setExpandedCells] = useState<Set<number>>(new Set());
   const [dropDayIndex, setDropDayIndex] = useState<number | null>(null);
   const [resize, setResize] = useState<{
@@ -343,7 +345,7 @@ export function SwimLane({
                 ))}
                 {(overflow > 0 || (isExpanded && cellSingles.length > VISIBLE_CAP)) && (
                   <button type="button" className="cal-day-more" onClick={() => toggleCell(di)}>
-                    {isExpanded ? '− less' : `+ ${overflow} more`}
+                    {isExpanded ? t('lane.less') : t('lane.more', { count: overflow })}
                   </button>
                 )}
               </div>

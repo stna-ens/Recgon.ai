@@ -1,0 +1,469 @@
+{
+  "shell": {
+    "crumb": "projeler",
+    "tabsAria": "Proje bölümleri",
+    "tabs": {
+      "overview": "Genel Bakış",
+      "tasks": "Takvim",
+      "analytics": "Analitik",
+      "marketing": "Pazarlama",
+      "settings": "Ayarlar"
+    }
+  },
+  "list": {
+    "title": "projeler",
+    "importGithub": "github'dan içe aktar",
+    "importGithubTitle": "GitHub'dan bir depo içe aktar",
+    "newProject": "yeni proje",
+    "newProjectTitle": "Bir fikir anlat — kod gerekmez",
+    "scopeAria": "Proje kapsamı",
+    "scopeAll": "Tümü",
+    "scopePersonal": "Kişisel",
+    "scopeTeamTitle": "{team} ekibinde paylaşılan projeleri göster",
+    "needsYouNow": "şimdi seni bekliyor",
+    "needsYouNowSub": "{count, plural, one {# proje seni bekliyor} other {# proje seni bekliyor}}",
+    "allClear": "her şey yolunda",
+    "portfolio": "portföy",
+    "portfolioMore": "{count} tane daha",
+    "portfolioTotal": "toplam {count}",
+    "empty": {
+      "titlePrefix": "Henüz",
+      "titleRest": "proje yok.",
+      "text": "Bir GitHub deposu içe aktar ya da fikrini anlat — gerisini Recgon halleder.",
+      "addFirst": "+ ilk projeni ekle",
+      "importGithub": "github'dan içe aktar"
+    },
+    "toast": {
+      "created": "proje oluşturuldu",
+      "createFailed": "oluşturulamadı",
+      "createProjectFailed": "proje oluşturulamadı",
+      "textExtracted": "metin çıkarıldı",
+      "extractFailed": "metin çıkarılamadı",
+      "imported": "{name} içe aktarıldı",
+      "importFailed": "içe aktarılamadı"
+    },
+    "manualModal": {
+      "eyebrow": "yeni proje",
+      "heading": "fikrini anlat",
+      "hintBefore": "Henüz kod yok mu? Sorun değil. Ne geliştirdiğini anlat, Recgon bunu bir ürün yöneticisi gibi analiz etsin. Gerçek kodu analiz etmek için ",
+      "hintImport": "GitHub'dan İçe Aktar",
+      "hintAfter": " seçeneğini kullan.",
+      "nameLabel": "proje adı",
+      "namePlaceholder": "harika uygulamam",
+      "descriptionLabel": "fikir açıklaması",
+      "descriptionPlaceholder": "Fikrini anlat...\n\nHangi sorunu çözüyor? Kime yönelik? Onu farklı kılan ne?",
+      "extractedFrom": "{filename} dosyasından çıkarıldı",
+      "uploadFile": ".pdf veya .docx yükle",
+      "uploadTitle": "Açıklamayı otomatik doldurmak için PDF veya DOCX yükle",
+      "extracting": "çıkarılıyor…",
+      "creating": "oluşturuluyor…"
+    },
+    "githubModal": {
+      "eyebrow": "github'dan içe aktar",
+      "notConnectedTitle": "GitHub bağlı değil",
+      "notConnectedText": "Depoları Recgon'a aktarmak için GitHub hesabını bağla.",
+      "connect": "github'a bağlan →",
+      "loadFailed": "GitHub depoları yüklenemedi. Lütfen tekrar dene.",
+      "networkError": "Ağ hatası — lütfen tekrar dene.",
+      "searchPlaceholder": "depolarında ara…",
+      "loading": "depolar yükleniyor…",
+      "noMatch": "Aramanla eşleşen depo yok.",
+      "private": "özel",
+      "updated": "güncellendi {time}",
+      "import": "içe aktar →",
+      "importing": "içe aktarılıyor…"
+    },
+    "timeAgo": {
+      "today": "bugün",
+      "days": "{n} gün önce",
+      "weeks": "{n} hafta önce",
+      "months": "{n} ay önce"
+    }
+  },
+  "featured": {
+    "skeletonAria": "öne çıkan projeler yükleniyor",
+    "allHealthy": "Tüm projeler iyi durumda. Şu an senden bir karar bekleyen yok.",
+    "own": {
+      "private": "özel",
+      "shared": "paylaşıldı",
+      "sharedTeam": "paylaşıldı · {team}",
+      "fromTeam": "{team} ekibinden",
+      "fromTeamGeneric": "ekipten"
+    },
+    "riskLabel": "Risk.",
+    "riskFallback": "Riski ortaya çıkarmak için analiz bekleniyor.",
+    "nextLabel": "Sonraki.",
+    "nextFallback": "Sonraki adımı belirlemek için projeyi aç.",
+    "analyzedAgo": "{time} önce analiz edildi",
+    "neverAnalyzed": "hiç analiz edilmedi"
+  },
+  "portfolio": {
+    "filterAria": "Projeleri filtrele",
+    "filters": {
+      "all": "Tümü",
+      "drifting": "Savruluyor",
+      "stuck": "Tıkandı",
+      "shipping": "Yayınlanıyor",
+      "converging": "Yaklaşıyor",
+      "idle": "Boşta"
+    },
+    "source": {
+      "codebase": "kod tabanı",
+      "github": "github",
+      "description": "fikir"
+    },
+    "own": {
+      "private": "özel",
+      "shared": "paylaşıldı",
+      "sharedTeam": "paylaşıldı · {team}",
+      "fromTeam": "{team} ekibinden",
+      "fromTeamGeneric": "ekipten"
+    },
+    "emptyOther": "Gösterilecek başka proje yok.",
+    "emptyStatus": "Bu durumda proje yok.",
+    "newCommits": "! yeni commit'ler",
+    "newCommitsTitle": "Son analizden bu yana yeni commit'ler var",
+    "agoSuffix": "{time} önce",
+    "never": "hiç"
+  },
+  "detail": {
+    "notFound": "Proje bulunamadı.",
+    "noAnalysis": {
+      "titlePrefix": "Henüz",
+      "titleRest": "analiz yok.",
+      "text": "{name} üzerinde yapay zeka mentörünü çalıştır ve tam bir ürün özeti al: özellikler, pazar, SWOT, önceliklendirilmiş sonraki adımlar, pazara açılma planı.",
+      "analyzing": "analiz ediliyor…",
+      "analyze": "projeyi analiz et →"
+    },
+    "progress": {
+      "starting": "analiz başlatılıyor…"
+    },
+    "toast": {
+      "quotaReached": "analiz kotası doldu",
+      "analysisFailed": "analiz başarısız oldu",
+      "analysisComplete": "analiz tamamlandı",
+      "deleteFailed": "silinemedi",
+      "deleteProjectFailed": "proje silinemedi",
+      "deleted": "proje silindi",
+      "sharedWithTeam": "proje ekiple paylaşıldı",
+      "setToPrivate": "proje özel yapıldı",
+      "updateSharingFailed": "paylaşım güncellenemedi",
+      "saveFailed": "kaydedilemedi",
+      "saveDescriptionFailed": "açıklama kaydedilemedi",
+      "descriptionSaved": "açıklama kaydedildi · yeniden analiz ediliyor…",
+      "connectFailed": "bağlanılamadı",
+      "connectCodebaseFailed": "kod tabanı bağlanamadı",
+      "codebaseConnected": "kod tabanı bağlandı · yeniden analiz ediliyor…"
+    },
+    "banner": {
+      "newCommits": "son analizden bu yana yeni commit'ler",
+      "reAnalyzing": "yeniden analiz ediliyor…",
+      "seeWhatChanged": "neler değiştiğine bak",
+      "reAnalyzeTitle": "Mentör analizini en son commit üzerinde yeniden çalıştır",
+      "remaining": "{limit} analizden {remaining} tanesi kaldı",
+      "nextFreeAnalysis": "sonraki ücretsiz analiz · {date}"
+    },
+    "overview": {
+      "eyebrow": "› ürün genel bakışı",
+      "newCommitsChip": "! yeni commit'ler",
+      "newCommitsChipTitle": "Son analizden bu yana yeni commit'ler var",
+      "analyzedAgo": "{time} analiz edildi",
+      "repo": "depo",
+      "repoTitle": "Depoyu GitHub'da aç",
+      "analyzing": "analiz ediliyor…",
+      "reAnalyze": "yeniden analiz et",
+      "reAnalyzeTitle": "Mentör analizini yeniden çalıştır",
+      "export": "dışa aktar",
+      "exportTitle": "PDF özet indir",
+      "sharePrivateTitle": "Özel — bu projeyi yalnızca sen görebilirsin. Ekibinle paylaşmak için tıkla.",
+      "shareSharedTitle": "Paylaşıldı — bu projeyi tüm ekip üyeleri görebilir. Özel yapmak için tıkla.",
+      "shareAria": "Ekiple paylaş",
+      "makePrivateAria": "Özel yap",
+      "deleteTitle": "Projeyi sil",
+      "deleteAria": "Projeyi sil"
+    },
+    "hero": {
+      "project": "proje",
+      "editDescriptionTitle": "Fikir açıklamasını düzenle",
+      "editDescriptionAria": "Fikir açıklamasını düzenle",
+      "connectCodebaseTitle": "Bu projeye bir kod tabanı bağla",
+      "connectCodebaseAria": "Bu projeye bir kod tabanı bağla",
+      "saveReAnalyze": "kaydet ve yeniden analiz et",
+      "saving": "kaydediliyor…"
+    },
+    "stats": {
+      "stage": "aşama",
+      "stackSize": "yığın boyutu",
+      "technology": "teknoloji",
+      "technologies": "teknoloji",
+      "features": "özellikler",
+      "shippedCapabilities": "yayınlanan yetenek",
+      "usps": "ayırt edici noktalar",
+      "uniqueAngles": "özgün açı",
+      "priorities": "öncelikler",
+      "nextSteps": "sonraki adım"
+    },
+    "diag": {
+      "aria": "Sorun ve hedef kitle teşhisi",
+      "problem": "sorun",
+      "symptoms": "› belirtiler",
+      "audience": "hedef kitle",
+      "personaTraits": "› persona özellikleri"
+    },
+    "inventory": {
+      "title": "yığın envanteri",
+      "techInCategories": "{count, plural, one {{cats} kategoride teknoloji} other {{cats} kategoride teknoloji}}",
+      "aria": "Kategoriye göre yığın bileşimi"
+    },
+    "capability": {
+      "eyebrow": "› neler yapıyor",
+      "shippedCapabilities": "yayınlanan yetenekler",
+      "uniqueAngles": "özgün açılar",
+      "depthAria": "8 üzerinden {depth} derinlik",
+      "showLess": "daha az göster",
+      "showMore": "{count} tane daha göster"
+    },
+    "doNext": {
+      "eyebrow": "› sırada ne var"
+    },
+    "actedOn": {
+      "eyebrow": "› yapılanlar",
+      "completeAria": "%{pct} tamamlandı",
+      "completion": "tamamlanma",
+      "of": "/",
+      "acted": "{count} yapıldı",
+      "pending": "{count} bekliyor",
+      "showLess": "daha az göster",
+      "showMore": "{count} tane daha göster"
+    },
+    "whatChanged": {
+      "eyebrow": "› neler değişti"
+    }
+  },
+  "swotMatrix": {
+    "eyebrow": "› swot matrisi",
+    "strengths": "güçlü yönler",
+    "weaknesses": "zayıf yönler",
+    "opportunities": "fırsatlar",
+    "threats": "tehditler"
+  },
+  "risks": {
+    "eyebrow": "› dikkat et",
+    "high": "yüksek",
+    "medium": "orta",
+    "low": "düşük",
+    "severityAria": "3 üzerinden {sev} önem derecesi"
+  },
+  "market": {
+    "eyebrow": "› pazar",
+    "opportunity": "pazar fırsatı",
+    "signalsDetected": "tespit edilen sinyaller",
+    "battlecards": "rekabet kartları",
+    "rivalsMapped": "{count, plural, one {# rakip haritalandı} other {# rakip haritalandı}}",
+    "competitors": "rakipler",
+    "mapped": "{count} haritalandı",
+    "visit": "ziyaret et ↗",
+    "tone": "ton · {tone}",
+    "theirStrengths": "güçlü yönleri",
+    "theirGaps": "açıkları",
+    "yourEdge": "senin avantajın",
+    "them": "onlar"
+  },
+  "grow": {
+    "eyebrow": "› büyümeyi sağlamak",
+    "revenueModel": "gelir modeli",
+    "revenueStreams": "gelir kaynakları",
+    "pricing": "fiyatlandırma",
+    "goToMarket": "pazara açılma",
+    "adoptionFunnel": "benimseme hunisi",
+    "channels": "{count} kanal",
+    "growthMetrics": "büyüme metrikleri",
+    "kpis": "{count, plural, one {# kpi} other {# kpi}}"
+  },
+  "connectCodebase": {
+    "eyebrow": "github deposunu bağla",
+    "closeAria": "Kapat",
+    "hint": "Bir GitHub deposu bağlayarak bu fikir projesini tam bir kod analizine yükselt. Mevcut fikir analizinin yerini bu alır.",
+    "urlLabel": "github adresi",
+    "urlPlaceholder": "https://github.com/kullanici/depo",
+    "connecting": "bağlanıyor…",
+    "connectAnalyze": "bağla ve analiz et"
+  },
+  "deleteModal": {
+    "eyebrow": "projeyi sil",
+    "closeAria": "Kapat",
+    "confirmBefore": "",
+    "confirmAfter": " silinsin mi? Bu işlem projeyi, analiz geçmişini ve üretilen pazarlama içeriğini kaldırır. Geri alınamaz.",
+    "deleting": "siliniyor…",
+    "deleteProject": "projeyi sil"
+  },
+  "export": {
+    "loading": "Yükleniyor…",
+    "noAnalysis": "Bu proje için analiz bulunamadı.",
+    "generating": "Oluşturuluyor…",
+    "downloaded": "İndirildi!",
+    "errorRetry": "Hata — tekrar dene",
+    "downloadPdf": "PDF İndir",
+    "back": "← Geri",
+    "brief": "Ürün Strateji Özeti",
+    "analyzed": "{date} tarihinde analiz edildi",
+    "productOverview": "Ürün Genel Bakışı",
+    "targetAudience": "Hedef Kitle",
+    "problemStatement": "Sorun Tanımı",
+    "techStack": "Teknoloji Yığını",
+    "featuresDifferentiators": "Özellikler ve Farklılaştırıcılar",
+    "keyFeatures": "Temel Özellikler",
+    "uniqueSellingPoints": "Özgün Satış Noktaları",
+    "marketOpportunity": "Pazar Fırsatı",
+    "competitiveLandscape": "Rekabet Ortamı",
+    "competitor": "Rakip",
+    "ourDifferentiator": "Bizim Farkımız",
+    "competitorIntelligence": "Rakip İstihbaratı",
+    "positioning": "Konumlandırma",
+    "weaknesses": "Zayıf Yönler",
+    "ourEdge": "AVANTAJIMIZ",
+    "businessModel": "İş Modeli",
+    "revenueStreams": "Gelir Kaynakları",
+    "pricingSuggestion": "Fiyatlandırma Önerisi",
+    "swotAnalysis": "SWOT Analizi",
+    "strengths": "Güçlü Yönler",
+    "opportunities": "Fırsatlar",
+    "threats": "Tehditler",
+    "actionPlan": "Eylem Planı",
+    "prioritizedNextSteps": "Önceliklendirilmiş Sonraki Adımlar",
+    "topRisks": "Başlıca Riskler",
+    "gtm": "Pazara Açılma Stratejisi",
+    "earlyAdopterChannels": "Erken Benimseyen Kanalları",
+    "growthMetrics": "Büyüme Metrikleri",
+    "recommendedImprovements": "Önerilen İyileştirmeler",
+    "executionProgress": "Uygulama İlerlemesi",
+    "generatedBy": "Recgon tarafından oluşturuldu"
+  },
+  "settings": {
+    "notFound": "Proje bulunamadı.",
+    "sourceLabel": {
+      "codebase": "kod tabanı",
+      "github": "github",
+      "description": "fikir"
+    },
+    "navAria": "proje gezinmesi",
+    "sectionsAria": "bölümler",
+    "sections": {
+      "identity": "kimlik",
+      "sources": "kaynaklar",
+      "access": "erişim",
+      "destroy": "yok et"
+    },
+    "band": {
+      "prefix": "ayarlar",
+      "created": "{time} önce oluşturuldu",
+      "analyzed": "{time} önce analiz edildi"
+    },
+    "idLabel": "kimlik",
+    "fallbackName": "proje",
+    "justNow": "az önce",
+    "toast": {
+      "nameTooLong": "ad en fazla 120 karakter olabilir",
+      "nameUpdated": "ad güncellendi",
+      "descriptionUpdated": "açıklama güncellendi",
+      "logoUpdated": "logo güncellendi",
+      "logoCleared": "logo temizlendi",
+      "logoDetected": "logo otomatik algılandı",
+      "noLogoFound": "depoda veya web sitesinde logo bulunamadı",
+      "detectionFailed": "algılama başarısız oldu",
+      "githubOnly": "Yalnızca https://github.com/ adresleri desteklenir",
+      "repoSwapped": "github deposu değiştirildi",
+      "repoConnected": "github deposu bağlandı",
+      "propertyNumeric": "Mülk Kimliği sayısal olmalı (örn. 123456789)",
+      "propertySaveFailed": "mülk kaydedilemedi",
+      "ga4Linked": "GA4 mülkü bağlandı",
+      "ga4Cleared": "GA4 mülkü temizlendi",
+      "sharedWithTeam": "ekiple paylaşıldı",
+      "setToPrivate": "özel yapıldı",
+      "deleted": "proje silindi",
+      "deleteFailed": "silme başarısız oldu",
+      "failed": "başarısız oldu",
+      "updateFailed": "güncelleme başarısız oldu",
+      "missingContext": "bağlam eksik"
+    },
+    "creator": {
+      "none": "—",
+      "you": "Sen",
+      "teammate": "bir ekip arkadaşı"
+    },
+    "identity": {
+      "title": "kimlik",
+      "hint": "Projenin yüzü.",
+      "logoLabel": "logo",
+      "logoHint": "Kartlarda ve kenar çubuğunda kullanılan kare görsel.",
+      "logoPlaceholder": "https://example.com/logo.png",
+      "autoDetect": "otomatik algıla",
+      "autoDetectTitleEnabled": "Logo için GitHub deposunu / web sitesini tara",
+      "autoDetectTitleDisabled": "Önce bir GitHub adresi bağla veya projeyi analiz et",
+      "clear": "temizle",
+      "cancel": "vazgeç",
+      "save": "kaydet",
+      "saving": "kaydediliyor",
+      "noLogoSet": "logo ayarlanmadı",
+      "nameLabel": "ad",
+      "nameHint": "Kısa ve akılda kalıcı. Kartlarda, kenar çubuğunda ve gezinmede görünür.",
+      "namePlaceholder": "proje adı",
+      "untitled": "adsız",
+      "descriptionLabel": "açıklama",
+      "descriptionHint": "Nedir? Kime yönelik? Hangi sorunu çözüyor?",
+      "descriptionPlaceholder": "Kısa ve dürüst bir açıklama. Henüz kod yokken model bunu kullanır.",
+      "cmdEnterSaves": "⌘ + enter kaydeder",
+      "noDescription": "henüz açıklama yok"
+    },
+    "sources": {
+      "title": "kaynaklar",
+      "hint": "Recgon'un projeni nereden okuduğu.",
+      "githubLabel": "github",
+      "githubHint": "Kod analizini ve commit takipli değişiklikleri açar. GitHub ayarlardan bağlandığında özel depolar da çalışır.",
+      "change": "değiştir",
+      "connect": "bağla",
+      "githubPlaceholder": "https://github.com/sen/depo",
+      "cloning": "klonlanıyor",
+      "save": "kaydet",
+      "cancel": "vazgeç",
+      "lastAnalyzed": "son analiz",
+      "agoSuffix": "· {time} önce",
+      "reAnalyze": "yeniden analiz et",
+      "noRepo": "Bağlı depo yok. Yalnızca fikir olması sorun değil — kod analizi istediğinde bir depo bağla.",
+      "websiteLabel": "web sitesi",
+      "websiteHint": "Analizden algılandı. Logo araması ve ürün bağlamı için kullanılır.",
+      "noWebsite": "Web sitesi algılanmadı. Analiz bunu deponun package ana sayfasından, README'den veya ortam değişkenlerinden alır.",
+      "analyticsLabel": "analitik",
+      "analyticsHint": "Canlı trafiği Recgon'da görmek için bir GA4 mülkü bağla.",
+      "edit": "düzenle",
+      "link": "bağla",
+      "ga4Placeholder": "ga4 mülk kimliği (örn. 123456789)",
+      "unlink": "bağlantıyı kaldır",
+      "findUnderGa4": "bunu GA4 yönetici → mülk ayarları altında bul",
+      "noGa4": "Bağlı GA4 mülkü yok. Bir tane bağlayana kadar analitik sekmesi boş kalır."
+    },
+    "access": {
+      "title": "erişim",
+      "hint": "Bu projeyi kimler görebilir.",
+      "visibilityLabel": "görünürlük",
+      "lockedHint": "Bunu yalnızca projeyi oluşturan kişi değiştirebilir.",
+      "sharedHint": "Ekibindeki herkes bu projeyi görebilir.",
+      "privateHint": "Bu projeyi yalnızca sen görebilirsin.",
+      "visibilityAria": "görünürlük",
+      "team": "ekip",
+      "private": "özel",
+      "createdByLabel": "oluşturan",
+      "createdByHint": "Bu projeyi ilk ekleyen ekip arkadaşı."
+    },
+    "destroy": {
+      "title": "yok et",
+      "hint": "Kalıcı. Geri alınamaz.",
+      "text": "Silmek, bu projeye bağlı tüm analizleri, pazarlama içeriğini ve görevleri kaldırır.",
+      "deleteProject": "projeyi sil",
+      "areYouSure": "emin misin?",
+      "cancel": "vazgeç",
+      "deleting": "siliniyor",
+      "confirmDestroy": "evet — kalıcı olarak yok et"
+    }
+  }
+}

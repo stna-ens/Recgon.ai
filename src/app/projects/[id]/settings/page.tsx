@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 
@@ -35,12 +36,6 @@ interface TeamMemberLite {
   email?: string | null;
 }
 
-const SOURCE_LABEL: Record<string, string> = {
-  codebase: 'codebase',
-  github: 'github',
-  description: 'idea',
-};
-
 type EditKey =
   | 'logo'
   | 'name'
@@ -49,12 +44,12 @@ type EditKey =
   | 'analytics'
   | null;
 
-function relativeTime(iso?: string): string {
+function relativeTime(iso?: string, justNow = 'just now'): string {
   if (!iso) return '';
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return '';
-  const diffSec = Math.floor((Date.now() - t) / 1000);
-  if (diffSec < 60) return 'just now';
+  const ms = new Date(iso).getTime();
+  if (Number.isNaN(ms)) return '';
+  const diffSec = Math.floor((Date.now() - ms) / 1000);
+  if (diffSec < 60) return justNow;
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m`;
   if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`;
   if (diffSec < 86400 * 30) return `${Math.floor(diffSec / 86400)}d`;
@@ -82,13 +77,15 @@ function hostOnly(url?: string): string {
 }
 
 const SECTIONS = [
-  { id: 'sect-identity', index: '00', label: 'identity' },
-  { id: 'sect-sources', index: '01', label: 'sources' },
-  { id: 'sect-access', index: '02', label: 'access' },
-  { id: 'sect-destroy', index: 'X', label: 'destroy' },
+  { id: 'sect-identity', index: '00', key: 'identity' },
+  { id: 'sect-sources', index: '01', key: 'sources' },
+  { id: 'sect-access', index: '02', key: 'access' },
+  { id: 'sect-destroy', index: 'X', key: 'destroy' },
 ] as const;
 
 export default function V2ProjectSettingsPage() {
+  const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
   const params = useParams<{ id: string }>();
   const projectId = params?.id;
   const router = useRouter();
@@ -162,7 +159,7 @@ export default function V2ProjectSettingsPage() {
 
   // ── Network ─────────────────────────────────────────
   const patch = useCallback(async (body: Record<string, unknown>) => {
-    if (!teamId || !projectId) throw new Error('missing context');
+    if (!teamId || !projectId) throw new Error(t('settings.toast.missingContext'));
     const res = await fetch(`/api/projects/${projectId}?teamId=${teamId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -170,10 +167,10 @@ export default function V2ProjectSettingsPage() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data?.error || 'update failed');
+      throw new Error(data?.error || t('settings.toast.updateFailed'));
     }
     return res.json();
-  }, [teamId, projectId]);
+  }, [teamId, projectId, t]);
 
   const closeEditor = useCallback(() => setEditing(null), []);
 
@@ -187,7 +184,7 @@ export default function V2ProjectSettingsPage() {
     const name = nameDraft.trim();
     if (!name || savingName) return;
     if (name.length > 120) {
-      addToast('name must be 120 characters or fewer', 'error');
+      addToast(t('settings.toast.nameTooLong'), 'error');
       return;
     }
     setSavingName(true);
@@ -195,14 +192,14 @@ export default function V2ProjectSettingsPage() {
       await patch({ name });
       mutateProject((p) => p ? { ...p, name } : p, { revalidate: false });
       closeEditor();
-      addToast('name updated', 'success');
+      addToast(t('settings.toast.nameUpdated'), 'success');
       refreshProjects?.();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('settings.toast.failed'), 'error');
     } finally {
       setSavingName(false);
     }
-  }, [nameDraft, savingName, patch, addToast, refreshProjects, closeEditor, mutateProject]);
+  }, [nameDraft, savingName, patch, addToast, refreshProjects, closeEditor, mutateProject, t]);
 
   const openDesc = useCallback(() => {
     setDescDraft(project?.description ?? '');
@@ -217,14 +214,14 @@ export default function V2ProjectSettingsPage() {
       await patch({ description: desc });
       mutateProject((p) => p ? { ...p, description: desc } : p, { revalidate: false });
       closeEditor();
-      addToast('description updated', 'success');
+      addToast(t('settings.toast.descriptionUpdated'), 'success');
       refreshProjects?.();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('settings.toast.failed'), 'error');
     } finally {
       setSavingDesc(false);
     }
-  }, [descDraft, savingDesc, patch, addToast, refreshProjects, closeEditor, mutateProject]);
+  }, [descDraft, savingDesc, patch, addToast, refreshProjects, closeEditor, mutateProject, t]);
 
   const openLogo = useCallback(() => {
     setLogoDraft(project?.logoUrl ?? '');
@@ -238,14 +235,14 @@ export default function V2ProjectSettingsPage() {
       await patch({ logoUrl: logoDraft.trim() || null });
       mutateProject((p) => p ? { ...p, logoUrl: logoDraft.trim() || undefined } : p, { revalidate: false });
       closeEditor();
-      addToast(logoDraft.trim() ? 'logo updated' : 'logo cleared', 'success');
+      addToast(logoDraft.trim() ? t('settings.toast.logoUpdated') : t('settings.toast.logoCleared'), 'success');
       refreshProjects?.();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('settings.toast.failed'), 'error');
     } finally {
       setSavingLogo(false);
     }
-  }, [logoDraft, savingLogo, patch, addToast, refreshProjects, closeEditor, mutateProject]);
+  }, [logoDraft, savingLogo, patch, addToast, refreshProjects, closeEditor, mutateProject, t]);
 
   const handleAutoDetectLogo = useCallback(async () => {
     if (!projectId || autoDetecting) return;
@@ -254,23 +251,23 @@ export default function V2ProjectSettingsPage() {
       const res = await fetch(`/api/projects/${projectId}/auto-detect-logo`, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'detection failed');
+        throw new Error(data?.error || t('settings.toast.detectionFailed'));
       }
       const data = await res.json();
       if (data.logoUrl) {
         mutateProject((p) => p ? { ...p, logoUrl: data.logoUrl } : p, { revalidate: false });
         setLogoDraft(data.logoUrl);
-        addToast('logo auto-detected', 'success');
+        addToast(t('settings.toast.logoDetected'), 'success');
         refreshProjects?.();
       } else {
-        addToast('no logo found in repo or website', 'error');
+        addToast(t('settings.toast.noLogoFound'), 'error');
       }
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'detection failed', 'error');
+      addToast(err instanceof Error ? err.message : t('settings.toast.detectionFailed'), 'error');
     } finally {
       setAutoDetecting(false);
     }
-  }, [projectId, autoDetecting, addToast, refreshProjects, mutateProject]);
+  }, [projectId, autoDetecting, addToast, refreshProjects, mutateProject, t]);
 
   // ── Sources ─────────────────────────────────────────
   const openGithub = useCallback(() => {
@@ -282,7 +279,7 @@ export default function V2ProjectSettingsPage() {
     const path = pathDraft.trim();
     if (!path || savingPath) return;
     if (!path.startsWith('https://github.com/')) {
-      addToast('Only https://github.com/ URLs are supported', 'error');
+      addToast(t('settings.toast.githubOnly'), 'error');
       return;
     }
     setSavingPath(true);
@@ -290,14 +287,14 @@ export default function V2ProjectSettingsPage() {
       await patch({ path });
       mutateProject((p) => p ? { ...p, path, githubUrl: path, isGithub: true, sourceType: 'github' } : p, { revalidate: false });
       closeEditor();
-      addToast(project?.githubUrl ? 'github repo swapped' : 'github repo connected', 'success');
+      addToast(project?.githubUrl ? t('settings.toast.repoSwapped') : t('settings.toast.repoConnected'), 'success');
       refreshProjects?.();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('settings.toast.failed'), 'error');
     } finally {
       setSavingPath(false);
     }
-  }, [pathDraft, savingPath, patch, addToast, refreshProjects, project?.githubUrl, closeEditor, mutateProject]);
+  }, [pathDraft, savingPath, patch, addToast, refreshProjects, project?.githubUrl, closeEditor, mutateProject, t]);
 
   const openGa4 = useCallback(() => {
     setGa4Draft(project?.analyticsPropertyId ?? '');
@@ -308,7 +305,7 @@ export default function V2ProjectSettingsPage() {
     if (!projectId || savingGa4) return;
     const trimmed = ga4Draft.trim();
     if (trimmed && !/^\d+$/.test(trimmed)) {
-      addToast('Property ID must be numeric (e.g. 123456789)', 'error');
+      addToast(t('settings.toast.propertyNumeric'), 'error');
       return;
     }
     setSavingGa4(true);
@@ -320,17 +317,17 @@ export default function V2ProjectSettingsPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'failed to save property');
+        throw new Error(data?.error || t('settings.toast.propertySaveFailed'));
       }
       mutateProject((p) => p ? { ...p, analyticsPropertyId: trimmed || undefined } : p, { revalidate: false });
       closeEditor();
-      addToast(trimmed ? 'GA4 property linked' : 'GA4 property cleared', 'success');
+      addToast(trimmed ? t('settings.toast.ga4Linked') : t('settings.toast.ga4Cleared'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('settings.toast.failed'), 'error');
     } finally {
       setSavingGa4(false);
     }
-  }, [projectId, ga4Draft, savingGa4, addToast, closeEditor, mutateProject]);
+  }, [projectId, ga4Draft, savingGa4, addToast, closeEditor, mutateProject, t]);
 
   // ── Access ──────────────────────────────────────────
   const handleToggleShared = useCallback(async () => {
@@ -341,14 +338,14 @@ export default function V2ProjectSettingsPage() {
     try {
       await patch({ isShared: next });
       mutateProject({ ...project, isShared: next }, { revalidate: false });
-      addToast(next ? 'shared with team' : 'set to private', 'success');
+      addToast(next ? t('settings.toast.sharedWithTeam') : t('settings.toast.setToPrivate'), 'success');
       refreshProjects?.();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('settings.toast.failed'), 'error');
     } finally {
       setTogglingShared(false);
     }
-  }, [project, togglingShared, patch, addToast, refreshProjects, currentUserId, mutateProject]);
+  }, [project, togglingShared, patch, addToast, refreshProjects, currentUserId, mutateProject, t]);
 
   // ── Destroy ─────────────────────────────────────────
   const handleDelete = useCallback(async () => {
@@ -358,36 +355,39 @@ export default function V2ProjectSettingsPage() {
       const res = await fetch(`/api/projects/${projectId}?teamId=${teamId}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'failed to delete');
+        throw new Error(data?.error || t('settings.toast.deleteFailed'));
       }
-      addToast('project deleted', 'success');
+      addToast(t('settings.toast.deleted'), 'success');
       refreshProjects?.();
       router.push('/projects');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'delete failed', 'error');
+      addToast(err instanceof Error ? err.message : t('settings.toast.deleteFailed'), 'error');
       setDeleting(false);
     }
-  }, [projectId, teamId, deleting, addToast, refreshProjects, router]);
+  }, [projectId, teamId, deleting, addToast, refreshProjects, router, t]);
 
   // ── Derived ─────────────────────────────────────────
   const isCreator = !!currentUserId && !!project?.createdBy && project.createdBy === currentUserId;
   const sharingLocked = !!project?.createdBy && !isCreator;
   const isShared = project?.isShared !== false;
-  const displayName = project?.name || project?.analysis?.name || 'project';
+  const displayName = project?.name || project?.analysis?.name || t('settings.fallbackName');
   const lastAnalyzedAt = project?.analysis?.analyzedAt;
   const lastAnalyzedSha = project?.lastAnalyzedCommitSha;
   const websiteUrl = project?.analysis?.websiteUrl;
   const canAutoDetect = !!(project?.githubUrl || project?.analysis?.websiteUrl);
-  const provisionedRel = project ? relativeTime(project.createdAt) : '';
-  const initial = (displayName?.[0] ?? '?').toUpperCase();
-  const sourceLabel = project?.sourceType ? (SOURCE_LABEL[project.sourceType] ?? project.sourceType) : '';
+  const justNow = t('settings.justNow');
+  const provisionedRel = project ? relativeTime(project.createdAt, justNow) : '';
+  const initial = (displayName?.[0] ?? '?').toLocaleUpperCase('tr-TR');
+  const sourceLabel = project?.sourceType && ['codebase', 'github', 'description'].includes(project.sourceType)
+    ? t(`settings.sourceLabel.${project.sourceType}`)
+    : (project?.sourceType ?? '');
 
   const creatorLabel = useMemo(() => {
-    if (!project?.createdBy) return '—';
-    if (project.createdBy === currentUserId) return 'You';
+    if (!project?.createdBy) return t('settings.creator.none');
+    if (project.createdBy === currentUserId) return t('settings.creator.you');
     const m = members.find((mb) => mb.userId === project.createdBy);
-    return m?.nickname || m?.email || 'a teammate';
-  }, [project?.createdBy, members, currentUserId]);
+    return m?.nickname || m?.email || t('settings.creator.teammate');
+  }, [project?.createdBy, members, currentUserId, t]);
 
   // ── Render ──────────────────────────────────────────
   return (
@@ -399,23 +399,23 @@ export default function V2ProjectSettingsPage() {
         <SpecSkeleton />
       ) : !project ? (
         <div className="glass-card is-static is-tight">
-          <p style={{ color: 'var(--txt-muted)', margin: 0 }}>Project not found.</p>
+          <p style={{ color: 'var(--txt-muted)', margin: 0 }}>{t('settings.notFound')}</p>
         </div>
       ) : (
         <>
           {/* ─── Top eyebrow band (full-width) ─── */}
           <div className="v2-pset-band">
-            <span className="recgon-label v2-pset-band-eye">settings · {sourceLabel}</span>
+            <span className="recgon-label v2-pset-band-eye">{t('settings.band.prefix')} · {sourceLabel}</span>
             <span className="v2-pset-band-rule" aria-hidden />
             <span className="v2-pset-band-meta">
-              <span>created {provisionedRel} ago</span>
-              {lastAnalyzedAt && <><span className="v2-pset-band-dot" aria-hidden>·</span><span>analyzed {relativeTime(lastAnalyzedAt)} ago</span></>}
+              <span>{t('settings.band.created', { time: provisionedRel })}</span>
+              {lastAnalyzedAt && <><span className="v2-pset-band-dot" aria-hidden>·</span><span>{t('settings.band.analyzed', { time: relativeTime(lastAnalyzedAt, justNow) })}</span></>}
             </span>
           </div>
 
           <div className="v2-pset-shell">
             {/* ─── Left rail: identity + table-of-contents ─── */}
-            <aside className="v2-pset-rail" aria-label="project navigation">
+            <aside className="v2-pset-rail" aria-label={t('settings.navAria')}>
               <div className="v2-pset-rail-stick">
                 <div className="v2-pset-id">
                   <h1 className="v2-pset-name">{displayName}</h1>
@@ -424,7 +424,7 @@ export default function V2ProjectSettingsPage() {
                   )}
                 </div>
 
-                <nav className="v2-pset-toc" aria-label="sections">
+                <nav className="v2-pset-toc" aria-label={t('settings.sectionsAria')}>
                   {SECTIONS.map((s) => (
                     <a
                       key={s.id}
@@ -440,13 +440,13 @@ export default function V2ProjectSettingsPage() {
                       className={`v2-pset-toc-item ${activeSection === s.id ? 'is-active' : ''} ${s.id === 'sect-destroy' ? 'is-danger' : ''}`}
                     >
                       <span className="v2-pset-toc-num">{s.index}</span>
-                      <span className="v2-pset-toc-label">{s.label}</span>
+                      <span className="v2-pset-toc-label">{t(`settings.sections.${s.key}`)}</span>
                     </a>
                   ))}
                 </nav>
 
                 <div className="v2-pset-rail-foot">
-                  <span className="v2-pset-rail-id">id&nbsp;&nbsp;{projectId?.slice(0, 8) ?? '—'}</span>
+                  <span className="v2-pset-rail-id">{t('settings.idLabel')}&nbsp;&nbsp;{projectId?.slice(0, 8) ?? '—'}</span>
                 </div>
               </div>
             </aside>
@@ -458,17 +458,18 @@ export default function V2ProjectSettingsPage() {
                 ref={(el) => { sectionRefs.current['sect-identity'] = el; }}
                 id="sect-identity"
                 index="00"
-                label="identity"
-                hint="The face of your project."
+                label={t('settings.identity.title')}
+                hint={t('settings.identity.hint')}
                 stagger={0}
               >
                 {/* Logo field */}
                 <Field
-                  label="logo"
-                  hint="Square image used on cards and the sidebar."
+                  label={t('settings.identity.logoLabel')}
+                  hint={t('settings.identity.logoHint')}
                   open={editing === 'logo'}
                   onOpen={openLogo}
                   onCancel={closeEditor}
+                  actionLabel={tCommon('edit')}
                 >
                   {editing === 'logo' ? (
                     <div className="v2-pset-edit">
@@ -488,7 +489,7 @@ export default function V2ProjectSettingsPage() {
                           type="url"
                           value={logoDraft}
                           onChange={(e) => setLogoDraft(e.target.value)}
-                          placeholder="https://example.com/logo.png"
+                          placeholder={t('settings.identity.logoPlaceholder')}
                           className="v2-pset-input"
                           autoFocus
                           onKeyDown={(e) => {
@@ -503,17 +504,17 @@ export default function V2ProjectSettingsPage() {
                           className="v2-pset-tiny"
                           onClick={handleAutoDetectLogo}
                           disabled={autoDetecting || !canAutoDetect}
-                          title={canAutoDetect ? 'Probe the GitHub repo / website for a logo' : 'Connect a GitHub URL or analyze the project first'}
+                          title={canAutoDetect ? t('settings.identity.autoDetectTitleEnabled') : t('settings.identity.autoDetectTitleDisabled')}
                         >
-                          {autoDetecting ? <><Spinner /> auto-detect</> : 'auto-detect'}
+                          {autoDetecting ? <><Spinner /> {t('settings.identity.autoDetect')}</> : t('settings.identity.autoDetect')}
                         </button>
                         <span style={{ flex: 1 }} />
                         {project.logoUrl && (
-                          <button type="button" className="v2-pset-btn v2-pset-btn-danger-ghost" onClick={() => setLogoDraft('')} disabled={savingLogo}>clear</button>
+                          <button type="button" className="v2-pset-btn v2-pset-btn-danger-ghost" onClick={() => setLogoDraft('')} disabled={savingLogo}>{t('settings.identity.clear')}</button>
                         )}
-                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingLogo}>cancel</button>
+                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingLogo}>{tCommon('cancel')}</button>
                         <button type="button" className="v2-pset-btn v2-pset-btn-primary" onClick={handleSaveLogo} disabled={savingLogo}>
-                          {savingLogo ? <><Spinner /> saving</> : 'save'}
+                          {savingLogo ? <><Spinner /> {t('settings.identity.saving')}</> : tCommon('save')}
                         </button>
                       </FieldActions>
                     </div>
@@ -527,18 +528,19 @@ export default function V2ProjectSettingsPage() {
                           <span>{initial}</span>
                         )}
                       </div>
-                      <span className="v2-pset-val-meta">{project.logoUrl ? hostOnly(project.logoUrl) : 'no logo set'}</span>
+                      <span className="v2-pset-val-meta">{project.logoUrl ? hostOnly(project.logoUrl) : t('settings.identity.noLogoSet')}</span>
                     </div>
                   )}
                 </Field>
 
                 {/* Name field */}
                 <Field
-                  label="name"
-                  hint="Short, memorable. Appears in cards, sidebar, and nav."
+                  label={t('settings.identity.nameLabel')}
+                  hint={t('settings.identity.nameHint')}
                   open={editing === 'name'}
                   onOpen={openName}
                   onCancel={closeEditor}
+                  actionLabel={tCommon('edit')}
                 >
                   {editing === 'name' ? (
                     <div className="v2-pset-edit">
@@ -547,7 +549,7 @@ export default function V2ProjectSettingsPage() {
                         value={nameDraft}
                         onChange={(e) => setNameDraft(e.target.value)}
                         className="v2-pset-input v2-pset-input-display"
-                        placeholder="project name"
+                        placeholder={t('settings.identity.namePlaceholder')}
                         maxLength={120}
                         autoFocus
                         onKeyDown={(e) => {
@@ -558,24 +560,25 @@ export default function V2ProjectSettingsPage() {
                       <FieldActions>
                         <span className="v2-pset-count">{nameDraft.length} / 120</span>
                         <span style={{ flex: 1 }} />
-                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingName}>cancel</button>
+                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingName}>{tCommon('cancel')}</button>
                         <button type="button" className="v2-pset-btn v2-pset-btn-primary" onClick={handleSaveName} disabled={savingName || !nameDraft.trim()}>
-                          {savingName ? <><Spinner /> saving</> : 'save'}
+                          {savingName ? <><Spinner /> {t('settings.identity.saving')}</> : tCommon('save')}
                         </button>
                       </FieldActions>
                     </div>
                   ) : (
-                    <p className="v2-pset-val v2-pset-val-display">{project.name || <Empty>untitled</Empty>}</p>
+                    <p className="v2-pset-val v2-pset-val-display">{project.name || <Empty>{t('settings.identity.untitled')}</Empty>}</p>
                   )}
                 </Field>
 
                 {/* Description field */}
                 <Field
-                  label="description"
-                  hint="What is it? Who's it for? What problem does it solve?"
+                  label={t('settings.identity.descriptionLabel')}
+                  hint={t('settings.identity.descriptionHint')}
                   open={editing === 'description'}
                   onOpen={openDesc}
                   onCancel={closeEditor}
+                  actionLabel={tCommon('edit')}
                 >
                   {editing === 'description' ? (
                     <div className="v2-pset-edit">
@@ -584,7 +587,7 @@ export default function V2ProjectSettingsPage() {
                         onChange={(e) => setDescDraft(e.target.value)}
                         rows={6}
                         className="v2-pset-input v2-pset-textarea"
-                        placeholder="A brief, honest description. The model uses this when there's no code yet."
+                        placeholder={t('settings.identity.descriptionPlaceholder')}
                         autoFocus
                         onKeyDown={(e) => {
                           if (e.key === 'Escape') closeEditor();
@@ -592,16 +595,16 @@ export default function V2ProjectSettingsPage() {
                         }}
                       />
                       <FieldActions>
-                        <span className="v2-pset-count">⌘ + enter saves</span>
+                        <span className="v2-pset-count">{t('settings.identity.cmdEnterSaves')}</span>
                         <span style={{ flex: 1 }} />
-                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingDesc}>cancel</button>
+                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingDesc}>{tCommon('cancel')}</button>
                         <button type="button" className="v2-pset-btn v2-pset-btn-primary" onClick={handleSaveDesc} disabled={savingDesc || !descDraft.trim()}>
-                          {savingDesc ? <><Spinner /> saving</> : 'save'}
+                          {savingDesc ? <><Spinner /> {t('settings.identity.saving')}</> : tCommon('save')}
                         </button>
                       </FieldActions>
                     </div>
                   ) : (
-                    <p className="v2-pset-val v2-pset-val-prose">{project.description || <Empty>no description yet</Empty>}</p>
+                    <p className="v2-pset-val v2-pset-val-prose">{project.description || <Empty>{t('settings.identity.noDescription')}</Empty>}</p>
                   )}
                 </Field>
               </Section>
@@ -611,18 +614,18 @@ export default function V2ProjectSettingsPage() {
                 ref={(el) => { sectionRefs.current['sect-sources'] = el; }}
                 id="sect-sources"
                 index="01"
-                label="sources"
-                hint="Where Recgon reads your project from."
+                label={t('settings.sources.title')}
+                hint={t('settings.sources.hint')}
                 stagger={1}
               >
                 {/* GitHub */}
                 <Field
-                  label="github"
-                  hint="Unlocks code analysis and commit-tracked deltas. Private repos work when GitHub is connected in settings."
+                  label={t('settings.sources.githubLabel')}
+                  hint={t('settings.sources.githubHint')}
                   open={editing === 'github'}
                   onOpen={openGithub}
                   onCancel={closeEditor}
-                  actionLabel={project.githubUrl ? 'change' : 'connect'}
+                  actionLabel={project.githubUrl ? t('settings.sources.change') : t('settings.sources.connect')}
                 >
                   {editing === 'github' ? (
                     <div className="v2-pset-edit">
@@ -630,7 +633,7 @@ export default function V2ProjectSettingsPage() {
                         type="url"
                         value={pathDraft}
                         onChange={(e) => setPathDraft(e.target.value)}
-                        placeholder="https://github.com/you/repo"
+                        placeholder={t('settings.sources.githubPlaceholder')}
                         className="v2-pset-input"
                         autoFocus
                         onKeyDown={(e) => {
@@ -640,9 +643,9 @@ export default function V2ProjectSettingsPage() {
                       />
                       <FieldActions>
                         <span style={{ flex: 1 }} />
-                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingPath}>cancel</button>
+                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingPath}>{tCommon('cancel')}</button>
                         <button type="button" className="v2-pset-btn v2-pset-btn-primary" onClick={handleSavePath} disabled={savingPath || !pathDraft.trim()}>
-                          {savingPath ? <><Spinner /> cloning</> : 'save'}
+                          {savingPath ? <><Spinner /> {t('settings.sources.cloning')}</> : tCommon('save')}
                         </button>
                       </FieldActions>
                     </div>
@@ -655,25 +658,25 @@ export default function V2ProjectSettingsPage() {
                       </a>
                       {lastAnalyzedSha && (
                         <div className="v2-pset-meta-row">
-                          <span className="v2-pset-meta-key">last analyzed</span>
+                          <span className="v2-pset-meta-key">{t('settings.sources.lastAnalyzed')}</span>
                           <code className="v2-pset-mono">{shortSha(lastAnalyzedSha)}</code>
-                          {lastAnalyzedAt && <span className="v2-pset-meta-key">· {relativeTime(lastAnalyzedAt)} ago</span>}
+                          {lastAnalyzedAt && <span className="v2-pset-meta-key">{t('settings.sources.agoSuffix', { time: relativeTime(lastAnalyzedAt, justNow) })}</span>}
                           <span style={{ flex: 1 }} />
                           <Link href={`/projects/${projectId}`} className="v2-pset-tiny v2-pset-tiny-link">
-                            re-analyze <span aria-hidden>→</span>
+                            {t('settings.sources.reAnalyze')} <span aria-hidden>→</span>
                           </Link>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <p className="v2-pset-val v2-pset-val-empty">No repo connected. Idea-only is fine — connect a repo when you want code analysis.</p>
+                    <p className="v2-pset-val v2-pset-val-empty">{t('settings.sources.noRepo')}</p>
                   )}
                 </Field>
 
                 {/* Website (read-only) */}
                 <Field
-                  label="website"
-                  hint="Detected from analysis. Used for logo lookup and product context."
+                  label={t('settings.sources.websiteLabel')}
+                  hint={t('settings.sources.websiteHint')}
                   open={false}
                   readOnly
                 >
@@ -684,18 +687,18 @@ export default function V2ProjectSettingsPage() {
                       <span className="v2-pset-arrow" aria-hidden>↗</span>
                     </a>
                   ) : (
-                    <p className="v2-pset-val v2-pset-val-empty">No website detected. Analysis pulls this from your repo&rsquo;s package homepage, README, or env vars.</p>
+                    <p className="v2-pset-val v2-pset-val-empty">{t('settings.sources.noWebsite')}</p>
                   )}
                 </Field>
 
                 {/* Analytics */}
                 <Field
-                  label="analytics"
-                  hint="Link a GA4 property to surface live traffic in Recgon."
+                  label={t('settings.sources.analyticsLabel')}
+                  hint={t('settings.sources.analyticsHint')}
                   open={editing === 'analytics'}
                   onOpen={openGa4}
                   onCancel={closeEditor}
-                  actionLabel={project.analyticsPropertyId ? 'edit' : 'link'}
+                  actionLabel={project.analyticsPropertyId ? t('settings.sources.edit') : t('settings.sources.link')}
                 >
                   {editing === 'analytics' ? (
                     <div className="v2-pset-edit">
@@ -705,7 +708,7 @@ export default function V2ProjectSettingsPage() {
                         pattern="[0-9]*"
                         value={ga4Draft}
                         onChange={(e) => setGa4Draft(e.target.value)}
-                        placeholder="ga4 property id (e.g. 123456789)"
+                        placeholder={t('settings.sources.ga4Placeholder')}
                         className="v2-pset-input"
                         autoFocus
                         onKeyDown={(e) => {
@@ -715,22 +718,22 @@ export default function V2ProjectSettingsPage() {
                       />
                       <FieldActions>
                         {project.analyticsPropertyId && (
-                          <button type="button" className="v2-pset-btn v2-pset-btn-danger-ghost" onClick={() => setGa4Draft('')} disabled={savingGa4}>unlink</button>
+                          <button type="button" className="v2-pset-btn v2-pset-btn-danger-ghost" onClick={() => setGa4Draft('')} disabled={savingGa4}>{t('settings.sources.unlink')}</button>
                         )}
                         <span style={{ flex: 1 }} />
-                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingGa4}>cancel</button>
+                        <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={closeEditor} disabled={savingGa4}>{tCommon('cancel')}</button>
                         <button type="button" className="v2-pset-btn v2-pset-btn-primary" onClick={handleSaveGa4} disabled={savingGa4}>
-                          {savingGa4 ? <><Spinner /> saving</> : 'save'}
+                          {savingGa4 ? <><Spinner /> {t('settings.identity.saving')}</> : tCommon('save')}
                         </button>
                       </FieldActions>
                     </div>
                   ) : project.analyticsPropertyId ? (
                     <div className="v2-pset-val v2-pset-val-stack">
                       <code className="v2-pset-mono v2-pset-mono-lg">{project.analyticsPropertyId}</code>
-                      <span className="v2-pset-meta-key">find this under GA4 admin → property settings</span>
+                      <span className="v2-pset-meta-key">{t('settings.sources.findUnderGa4')}</span>
                     </div>
                   ) : (
-                    <p className="v2-pset-val v2-pset-val-empty">No GA4 property linked. The analytics tab will stay empty until you connect one.</p>
+                    <p className="v2-pset-val v2-pset-val-empty">{t('settings.sources.noGa4')}</p>
                   )}
                 </Field>
               </Section>
@@ -740,19 +743,19 @@ export default function V2ProjectSettingsPage() {
                 ref={(el) => { sectionRefs.current['sect-access'] = el; }}
                 id="sect-access"
                 index="02"
-                label="access"
-                hint="Who can see this project."
+                label={t('settings.access.title')}
+                hint={t('settings.access.hint')}
                 stagger={2}
               >
                 <Field
-                  label="visibility"
-                  hint={sharingLocked ? 'Only the project creator can change this.' : (isShared ? 'Everyone in your team can see this project.' : 'Only you can see this project.')}
+                  label={t('settings.access.visibilityLabel')}
+                  hint={sharingLocked ? t('settings.access.lockedHint') : (isShared ? t('settings.access.sharedHint') : t('settings.access.privateHint'))}
                   open={false}
                   readOnly
                 >
                   <div
                     role="radiogroup"
-                    aria-label="visibility"
+                    aria-label={t('settings.access.visibilityAria')}
                     className={`v2-pset-toggle ${sharingLocked ? 'is-locked' : ''}`}
                   >
                     <button
@@ -764,7 +767,7 @@ export default function V2ProjectSettingsPage() {
                       disabled={togglingShared || sharingLocked}
                     >
                       <span className="v2-pset-toggle-dot" aria-hidden />
-                      <span>team</span>
+                      <span>{t('settings.access.team')}</span>
                     </button>
                     <button
                       type="button"
@@ -775,14 +778,14 @@ export default function V2ProjectSettingsPage() {
                       disabled={togglingShared || sharingLocked}
                     >
                       <span className="v2-pset-toggle-dot" aria-hidden />
-                      <span>private</span>
+                      <span>{t('settings.access.private')}</span>
                     </button>
                   </div>
                 </Field>
 
                 <Field
-                  label="created by"
-                  hint="The teammate who first added this project."
+                  label={t('settings.access.createdByLabel')}
+                  hint={t('settings.access.createdByHint')}
                   open={false}
                   readOnly
                 >
@@ -799,28 +802,28 @@ export default function V2ProjectSettingsPage() {
               >
                 <header className="v2-pset-section-head">
                   <span className="v2-pset-section-num">X</span>
-                  <span className="v2-pset-section-label">destroy</span>
+                  <span className="v2-pset-section-label">{t('settings.destroy.title')}</span>
                   <span className="v2-pset-section-rule" aria-hidden />
-                  <span className="v2-pset-section-hint">Permanent. No undo.</span>
+                  <span className="v2-pset-section-hint">{t('settings.destroy.hint')}</span>
                 </header>
                 <div className="v2-pset-section-body">
                   <p className="v2-pset-destroy-text">
-                    Deleting removes all analyses, marketing content, and tasks tied to this project.
+                    {t('settings.destroy.text')}
                   </p>
                   <div className="v2-pset-destroy-actions">
                     {!confirmDelete ? (
                       <button type="button" className="v2-pset-btn v2-pset-btn-danger-ghost" onClick={() => setConfirmDelete(true)}>
-                        delete project
+                        {t('settings.destroy.deleteProject')}
                       </button>
                     ) : (
                       <>
-                        <span className="v2-pset-destroy-confirm">are you sure?</span>
+                        <span className="v2-pset-destroy-confirm">{t('settings.destroy.areYouSure')}</span>
                         <span style={{ flex: 1 }} />
                         <button type="button" className="v2-pset-btn v2-pset-btn-ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>
-                          cancel
+                          {tCommon('cancel')}
                         </button>
                         <button type="button" className="v2-pset-btn v2-pset-btn-danger" onClick={handleDelete} disabled={deleting}>
-                          {deleting ? <><Spinner /> deleting</> : 'yes — destroy permanently'}
+                          {deleting ? <><Spinner /> {t('settings.destroy.deleting')}</> : t('settings.destroy.confirmDestroy')}
                         </button>
                       </>
                     )}

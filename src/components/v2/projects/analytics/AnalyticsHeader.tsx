@@ -1,7 +1,8 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { AnalyticsData, AnalyticsInsights, GAProperty, PropertyConfig } from './types';
-import { DAYS_OPTIONS, PERF_COLOR, PERF_LABEL, fmtTime, propIdOf } from './utils';
+import { DAYS_OPTIONS, PERF_COLOR, PERF_LABEL_KEY, fmtTime, propIdOf, type AnalyticsHeroDescriptor } from './utils';
 
 interface Props {
   data: AnalyticsData;
@@ -12,7 +13,7 @@ interface Props {
   currentTeamName?: string;
   propertyConfig: PropertyConfig | null;
   availableProperties: GAProperty[];
-  hero: { lead: string; metric?: string; deltaText?: string; deltaTone?: 'success' | 'danger' | 'faint' };
+  hero: AnalyticsHeroDescriptor;
   onChangeDays: (days: number) => void;
   onRefresh: () => void;
   onPickProperty: (propertyId: string) => void;
@@ -40,17 +41,42 @@ export default function AnalyticsHeader({
   onTransferConnection,
   onDisconnect,
 }: Props) {
+  const t = useTranslations('analytics');
   const propertyOptionsForSwitcher = availableProperties.filter((p) => propIdOf(p));
   const perf = insights?.overallPerformance;
+
+  // Resolve the hero descriptor into a lead line + optional delta chip.
+  const metric = hero.metricLabelKey ? t(hero.metricLabelKey) : '';
+  let heroLead = '';
+  let heroDelta = '';
+  switch (hero.kind) {
+    case 'sessions':
+      heroLead = t('hero.sessionsRange', { count: hero.sessions ?? '', range: hero.range ?? '' });
+      break;
+    case 'metricSteady':
+      heroLead = t('hero.metricSteady', { metric, range: hero.range ?? '' });
+      break;
+    case 'flatDown':
+      heroLead = t('hero.flatLeaningDown');
+      break;
+    case 'metricUp':
+      heroLead = t('hero.metricUp', { metric });
+      heroDelta = t('hero.delta', { arrow: hero.arrow ?? '', pct: hero.pct ?? '', compare: hero.compareKey ? t(hero.compareKey) : '' });
+      break;
+    case 'metricDown':
+      heroLead = t('hero.metricDown', { metric });
+      heroDelta = t('hero.delta', { arrow: hero.arrow ?? '', pct: hero.pct ?? '', compare: hero.compareKey ? t(hero.compareKey) : '' });
+      break;
+  }
 
   return (
     <header className="v2-an-head">
       <div>
-        <span className="recgon-label v2-eyebrow">› analytics</span>
+        <span className="recgon-label v2-eyebrow">{t('eyebrow')}</span>
         <h2 className="v2-an-hero">
-          <span>{hero.lead}</span>
-          {hero.deltaText && hero.deltaTone && (
-            <span className={`v2-an-hero-delta v2-an-hero-delta-${hero.deltaTone}`}>{hero.deltaText}</span>
+          <span>{heroLead}</span>
+          {heroDelta && hero.deltaTone && (
+            <span className={`v2-an-hero-delta v2-an-hero-delta-${hero.deltaTone}`}>{heroDelta}</span>
           )}
         </h2>
         <p className="v2-an-sub">
@@ -59,28 +85,28 @@ export default function AnalyticsHeader({
               className="v2-an-perf"
               style={{ color: PERF_COLOR[perf], borderColor: PERF_COLOR[perf] }}
             >
-              {PERF_LABEL[perf]}
+              {t(PERF_LABEL_KEY[perf])}
             </span>
           )}
-          <span className="v2-an-prop">property {data.propertyId}</span>
-          {data.fetchedAt && <span className="v2-an-prop">· fetched {fmtTime(data.fetchedAt)}</span>}
+          <span className="v2-an-prop">{t('header.property', { id: data.propertyId })}</span>
+          {data.fetchedAt && <span className="v2-an-prop">{t('header.fetchedAt', { time: fmtTime(data.fetchedAt) })}</span>}
           {propertyConfig?.ownerUserId && currentTeamName && !isOwner && (
-            <span className="v2-an-prop">· connected by team owner</span>
+            <span className="v2-an-prop">{t('header.connectedByOwner')}</span>
           )}
         </p>
       </div>
 
       <div className="v2-an-controls">
-        <div className="v2-an-range" role="group" aria-label="Date range">
+        <div className="v2-an-range" role="group" aria-label={t('header.dateRangeAria')}>
           {DAYS_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
               className={`v2-an-range-btn ${opt.value === days ? 'is-active' : ''}`}
               onClick={() => onChangeDays(opt.value)}
-              title={opt.longLabel}
+              title={t(opt.longLabelKey)}
             >
-              {opt.label}
+              {t(opt.labelKey)}
             </button>
           ))}
         </div>
@@ -90,7 +116,7 @@ export default function AnalyticsHeader({
           className="v2-btn-tiny"
           onClick={onRefresh}
           disabled={refreshing}
-          title="Refresh data"
+          title={t('header.refreshTitle')}
         >
           <svg
             width="11"
@@ -105,7 +131,7 @@ export default function AnalyticsHeader({
             <polyline points="1 4 1 10 7 10" />
             <path d="M3.51 15a9 9 0 1 0 .49-4.45" />
           </svg>
-          refresh
+          {t('header.refresh')}
         </button>
 
         {propertyOptionsForSwitcher.length > 1 && (
@@ -113,7 +139,7 @@ export default function AnalyticsHeader({
             className="v2-an-prop-select"
             defaultValue={data.propertyId}
             onChange={(e) => onPickProperty(e.target.value)}
-            aria-label="Switch GA4 property"
+            aria-label={t('header.propertyAria')}
           >
             {propertyOptionsForSwitcher.map((p) => {
               const id = propIdOf(p);
@@ -131,9 +157,9 @@ export default function AnalyticsHeader({
             type="button"
             className="v2-btn-tiny"
             onClick={onTransferConnection}
-            title={`Move this connection between team "${currentTeamName}" and personal`}
+            title={t('header.moveScopeTitle', { team: currentTeamName })}
           >
-            move scope
+            {t('header.moveScope')}
           </button>
         )}
 
@@ -142,9 +168,9 @@ export default function AnalyticsHeader({
             type="button"
             className="v2-btn-tiny v2-an-danger"
             onClick={onDisconnect}
-            title="Disconnect GA4 from this team"
+            title={t('header.disconnectTitle')}
           >
-            disconnect
+            {t('header.disconnect')}
           </button>
         )}
 
@@ -154,7 +180,7 @@ export default function AnalyticsHeader({
           rel="noopener noreferrer"
           className="v2-an-link"
         >
-          GA4 docs →
+          {t('docsLink')}
         </a>
       </div>
     </header>

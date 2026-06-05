@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 
@@ -30,6 +31,7 @@ function pad(n: number): string {
 }
 
 export default function V2TeamsIndexPage() {
+  const t = useTranslations('teams');
   const { teams, currentTeam, setCurrentTeam, refreshTeams } = useTeam();
   const router = useRouter();
   const { addToast } = useToast();
@@ -53,10 +55,10 @@ export default function V2TeamsIndexPage() {
       await refreshTeams();
       setShowCreate(false);
       setTeamName('');
-      addToast(`Team "${data.name}" created`, 'success');
+      addToast(t('index.created', { name: data.name }), 'success');
       router.push('/team');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create team';
+      const msg = err instanceof Error ? err.message : t('index.createFailed');
       setError(msg);
       addToast(msg, 'error');
     } finally {
@@ -478,12 +480,12 @@ export default function V2TeamsIndexPage() {
 
       <header className="v2t-header">
         <div style={{ minWidth: 0 }}>
-          <p className="v2t-eyebrow">workspace</p>
+          <p className="v2t-eyebrow">{t('index.eyebrow')}</p>
           <h2 className="v2t-title">
-            <span className="v2t-title-prompt">$</span>teams
+            <span className="v2t-title-prompt">$</span>{t('index.title')}
           </h2>
           <p className="v2t-subtitle">
-            {pad(teams.length)} active · {pad(ownedCount)} owned — each team is its own surface for projects, members, and agents.
+            {t('index.subtitle', { active: pad(teams.length), owned: pad(ownedCount) })}
           </p>
         </div>
         <button
@@ -496,14 +498,14 @@ export default function V2TeamsIndexPage() {
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
-              Cancel
+              {t('index.cancel')}
             </>
           ) : (
             <>
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              New team
+              {t('index.newTeam')}
             </>
           )}
         </button>
@@ -513,12 +515,12 @@ export default function V2TeamsIndexPage() {
         <form onSubmit={handleCreate} className="glass-card v2t-create-card">
           <div className="v2t-create-grid">
             <div className="v2t-input-wrap">
-              <label className="v2t-label">team name</label>
+              <label className="v2t-label">{t('index.teamNameLabel')}</label>
               <input
                 type="text"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
-                placeholder="e.g. Aurora Labs, Founders, Ops…"
+                placeholder={t('index.teamNamePlaceholder')}
                 required
                 minLength={2}
                 autoFocus
@@ -526,7 +528,7 @@ export default function V2TeamsIndexPage() {
               />
             </div>
             <button type="submit" disabled={loading} className="v2t-create-submit">
-              {loading ? 'Creating…' : 'Create →'}
+              {loading ? t('index.creating') : t('index.createArrow')}
             </button>
           </div>
         </form>
@@ -534,7 +536,7 @@ export default function V2TeamsIndexPage() {
 
       {error && <p className="v2t-error">{error}</p>}
 
-      {teams.length > 0 && <span className="v2t-section-label">all teams · {pad(teams.length)}</span>}
+      {teams.length > 0 && <span className="v2t-section-label">{t('index.allTeams', { count: pad(teams.length) })}</span>}
 
       <div className="v2t-grid">
         {teams.map((team, i) => {
@@ -563,7 +565,7 @@ export default function V2TeamsIndexPage() {
                   {isActive && (
                     <span className="v2t-active-pip">
                       <span className="dot" />
-                      active
+                      {t('index.active')}
                     </span>
                   )}
                 </p>
@@ -571,7 +573,7 @@ export default function V2TeamsIndexPage() {
                   {slug && <span className="v2t-row-slug">{slug}</span>}
                   <span className="v2t-role-pill" data-role={team.role}>
                     <span className="dot" />
-                    {team.role}
+                    {t(`roles.${team.role}`)}
                   </span>
                 </div>
               </div>
@@ -594,15 +596,15 @@ export default function V2TeamsIndexPage() {
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
             </div>
-            <h2 className="v2t-empty-title">No teams yet.</h2>
+            <h2 className="v2t-empty-title">{t('index.emptyTitle')}</h2>
             <p className="v2t-empty-copy">
-              Spin one up to start collaborating — invite people, run analyses, and wire up Recgon agents.
+              {t('index.emptyCopy')}
             </p>
             <button onClick={() => setShowCreate(true)} className="v2t-new-btn">
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              Create your first team
+              {t('index.createFirst')}
             </button>
           </div>
         )}

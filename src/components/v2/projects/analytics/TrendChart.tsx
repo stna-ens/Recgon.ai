@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AreaChart,
   Area,
@@ -24,17 +25,18 @@ interface Props {
 // preserved from the original v2 design — keeps the chart identity unified
 // instead of rainbow.
 export default function TrendChart({ trend, days }: Props) {
+  const t = useTranslations('analytics');
   const data = useMemo(() => trend.map((p) => ({ ...p, label: fmtDate(p.date) })), [trend]);
   if (data.length === 0) return null;
 
   return (
     <section className="glass-card is-static v2-an-chart-card">
       <div className="v2-an-chart-head">
-        <span className="recgon-label v2-block-eye">› sessions &amp; users — last {days} days</span>
+        <span className="recgon-label v2-block-eye">{t('trend.heading', { days })}</span>
         <div className="v2-an-chart-legend">
-          <span><span className="v2-an-tt-dot" style={{ background: SESSIONS_STROKE }} /> sessions</span>
-          <span><span className="v2-an-tt-dot" style={{ background: USERS_STROKE }} /> users</span>
-          <span><span className="v2-an-tt-dot" style={{ background: PAGEVIEWS_STROKE }} /> page views</span>
+          <span><span className="v2-an-tt-dot" style={{ background: SESSIONS_STROKE }} /> {t('trend.sessions')}</span>
+          <span><span className="v2-an-tt-dot" style={{ background: USERS_STROKE }} /> {t('trend.users')}</span>
+          <span><span className="v2-an-tt-dot" style={{ background: PAGEVIEWS_STROKE }} /> {t('trend.pageViews')}</span>
         </div>
       </div>
       <div className="v2-an-chart-wrap">
@@ -74,9 +76,9 @@ export default function TrendChart({ trend, days }: Props) {
             />
             <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'rgba(var(--signature-rgb), 0.4)', strokeWidth: 1, strokeDasharray: '3 3' }} />
             <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8, fontFamily: 'JetBrains Mono, monospace' }} iconType="circle" />
-            <Area type="monotone" dataKey="pageViews" name="page views" stroke={PAGEVIEWS_STROKE} strokeWidth={1.5} fill="url(#v2gradPageViews)" dot={false} />
-            <Area type="monotone" dataKey="users" name="users" stroke={USERS_STROKE} strokeWidth={1.5} fill="url(#v2gradUsers)" dot={false} />
-            <Area type="monotone" dataKey="sessions" name="sessions" stroke={SESSIONS_STROKE} strokeWidth={2} fill="url(#v2gradSessions)" dot={false} />
+            <Area type="monotone" dataKey="pageViews" name={t('trend.pageViews')} stroke={PAGEVIEWS_STROKE} strokeWidth={1.5} fill="url(#v2gradPageViews)" dot={false} />
+            <Area type="monotone" dataKey="users" name={t('trend.users')} stroke={USERS_STROKE} strokeWidth={1.5} fill="url(#v2gradUsers)" dot={false} />
+            <Area type="monotone" dataKey="sessions" name={t('trend.sessions')} stroke={SESSIONS_STROKE} strokeWidth={2} fill="url(#v2gradSessions)" dot={false} />
           </AreaChart>
         </ResponsiveContainer>
       </div>

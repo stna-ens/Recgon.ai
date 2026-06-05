@@ -10,6 +10,7 @@ import {
 } from 'react';
 import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import MarkdownLine, { cleanText } from '@/components/v2/MarkdownLine';
@@ -47,17 +48,6 @@ type SlashMode =
   | { kind: 'commands' }
   | { kind: 'projects'; command: SlashCommand };
 
-// Fallback only — used while the team's personalized suggestions are still
-// loading from `GET /api/chat`. Once `generateSuggestions()` returns its
-// project-aware list (top risk, multi-project bet, GTM, PMF, competitor,
-// pricing), we swap these out.
-const DEFAULT_SUGGESTIONS = [
-  'what should I focus on this week?',
-  'how do I find my first 100 users?',
-  'what risks am I underestimating?',
-  'plan a launch for my best project',
-];
-
 function formatTime(ms: number): string {
   return new Date(ms).toLocaleTimeString([], {
     hour: '2-digit',
@@ -78,6 +68,16 @@ function teamSlug(name: string | undefined): string {
 }
 
 export default function TerminalShell() {
+  const t = useTranslations('terminal');
+  const DEFAULT_SUGGESTIONS = useMemo(
+    () => [
+      t('suggestions.focusWeek'),
+      t('suggestions.first100'),
+      t('suggestions.risks'),
+      t('suggestions.launch'),
+    ],
+    [t],
+  );
   const { currentTeam, refreshProjects } = useTeam();
   const teamId = currentTeam?.id ?? null;
   const teamLabel = teamSlug(currentTeam?.name);
@@ -113,7 +113,7 @@ export default function TerminalShell() {
   const suggestions = useMemo<string[]>(() => {
     const list = chatMeta?.suggestions;
     return Array.isArray(list) && list.length > 0 ? list : DEFAULT_SUGGESTIONS;
-  }, [chatMeta]);
+  }, [chatMeta, DEFAULT_SUGGESTIONS]);
 
   // ── Conversations ─────────────────────────────────────────────────
   // SWR-cached so the conversation list is instant on return; handlers call
@@ -303,11 +303,11 @@ export default function TerminalShell() {
       setMessages([]);
       setActiveConvId(null);
       await loadConversations();
-      addToast('conversation cleared', 'success');
+      addToast(t('toast.conversationCleared'), 'success');
     } catch {
-      addToast('clear failed', 'error');
+      addToast(t('toast.clearFailed'), 'error');
     }
-  }, [streaming, activeConvId, loadConversations, addToast]);
+  }, [streaming, activeConvId, loadConversations, addToast, t]);
 
   const newConversation = useCallback(() => {
     if (streaming) return;
@@ -342,7 +342,7 @@ export default function TerminalShell() {
           ).join('\n');
           const helpMsg: Message = {
             role: 'assistant',
-            content: `**Terminal commands**\n${helpLines}\n\nFree-text input is sent to Recgon as a natural-language question.`,
+            content: `**${t('help.title')}**\n${helpLines}\n\n${t('help.freeText')}`,
             ts: Date.now(),
           };
           setMessages((prev) => [
@@ -387,7 +387,7 @@ export default function TerminalShell() {
             const updated = [...prev];
             updated[updated.length - 1] = {
               role: 'assistant',
-              content: 'connection failed. try again?',
+              content: t('stream.connectionFailed'),
               ts: Date.now(),
             };
             return updated;
@@ -427,7 +427,7 @@ export default function TerminalShell() {
             const updated = [...prev];
             updated[updated.length - 1] = {
               role: 'assistant',
-              content: 'connection lost mid-response. try again?',
+              content: t('stream.connectionLost'),
               ts: Date.now(),
             };
             return updated;
@@ -450,6 +450,7 @@ export default function TerminalShell() {
       refreshProjects,
       startTypewriter,
       stopTypewriter,
+      t,
     ],
   );
 
@@ -683,8 +684,8 @@ export default function TerminalShell() {
               type="button"
               className="terminal-banner-btn"
               onClick={() => setDrawerOpen(true)}
-              title="Open sessions (⌘P)"
-              aria-label="Open sessions"
+              title={t('banner.openSessions')}
+              aria-label={t('banner.openSessionsAria')}
             >
               <svg
                 width="13"
@@ -702,7 +703,7 @@ export default function TerminalShell() {
                 <path d="M12 7v5l4 2" />
               </svg>
               <span className="terminal-banner-btn-label">
-                {activeConv ? activeConv.title : 'sessions'}
+                {activeConv ? activeConv.title : t('banner.sessions')}
               </span>
               <span className="terminal-banner-kbd">⌘P</span>
             </button>
@@ -710,8 +711,8 @@ export default function TerminalShell() {
               type="button"
               className="terminal-banner-icon-btn"
               onClick={newConversation}
-              title="New session"
-              aria-label="New session"
+              title={t('banner.newSession')}
+              aria-label={t('banner.newSessionAria')}
             >
               <svg
                 width="13"
@@ -732,7 +733,7 @@ export default function TerminalShell() {
           {historyLoading ? (
             <div className="terminal-loading">
               <span className="terminal-loading-mark">›</span>
-              <span>loading conversation…</span>
+              <span>{t('loadingConversation')}</span>
             </div>
           ) : isFresh ? (
             <div className="terminal-empty">
@@ -740,28 +741,28 @@ export default function TerminalShell() {
                 <span className="terminal-prompt">{promptPrefix}</span>
                 <span className="terminal-empty-stats">
                   <strong>{stats.total}</strong>
-                  <span>projects</span>
+                  <span>{t('empty.projects')}</span>
                   <strong>{stats.analyzed}</strong>
-                  <span>analyzed</span>
+                  <span>{t('empty.analyzed')}</span>
                   <strong>{stats.campaigns}</strong>
-                  <span>campaigns</span>
+                  <span>{t('empty.campaigns')}</span>
                 </span>
               </div>
               <div className="terminal-line is-output">
                 <span className="terminal-prompt">→</span>
                 <span className="terminal-empty-greet">
-                  welcome. type{' '}
+                  {t('empty.greetPrefix')}{' '}
                   <span style={{ color: 'var(--signature)', fontWeight: 700 }}>
                     /help
                   </span>{' '}
-                  for commands, or just ask anything.
+                  {t('empty.greetSuffix')}
                 </span>
               </div>
 
               <div className="terminal-empty-hint">
                 {projects.length === 0
-                  ? '# try:'
-                  : '# tailored to your projects:'}
+                  ? t('empty.hintTry')
+                  : t('empty.hintTailored')}
               </div>
               <div className="terminal-suggestions">
                 {suggestions.map((s) => (
@@ -857,11 +858,11 @@ export default function TerminalShell() {
             >
               {streaming ? (
                 <span className="terminal-active-streaming">
-                  running… press{' '}
+                  {t('running.prefix')}{' '}
                   <span style={{ color: 'var(--signature)', fontWeight: 700 }}>
-                    esc
+                    {t('running.esc')}
                   </span>{' '}
-                  to stop
+                  {t('running.suffix')}
                 </span>
               ) : (
                 <textarea
@@ -873,13 +874,13 @@ export default function TerminalShell() {
                   onBlur={() => setKeyDown(false)}
                   placeholder={
                     teamId
-                      ? "type a command or a question  ·  '/' for commands"
-                      : 'loading team…'
+                      ? t('input.placeholder')
+                      : t('input.placeholderLoading')
                   }
                   disabled={!teamId}
                   rows={1}
                   className="terminal-textarea"
-                  aria-label="Terminal input"
+                  aria-label={t('input.aria')}
                   autoFocus
                   style={{
                     display: 'block',
@@ -904,12 +905,12 @@ export default function TerminalShell() {
               className="terminal-statusbar-stop"
               onClick={stop}
             >
-              esc to stop
+              {t('status.escToStop')}
             </button>
           ) : (
             <>
               <span className="terminal-statusbar-shortcut">
-                <span className="terminal-statusbar-key">↵</span> run
+                <span className="terminal-statusbar-key">↵</span> {t('status.run')}
               </span>
               <button
                 type="button"
@@ -919,17 +920,17 @@ export default function TerminalShell() {
                   setSlashMode({ kind: 'commands' });
                   textareaRef.current?.focus();
                 }}
-                title="Show slash commands"
+                title={t('status.showCommands')}
               >
-                <span className="terminal-statusbar-key">/</span> commands
+                <span className="terminal-statusbar-key">/</span> {t('status.commands')}
               </button>
               <button
                 type="button"
                 className="terminal-statusbar-shortcut terminal-statusbar-btn"
                 onClick={() => setDrawerOpen(true)}
-                title="Open sessions (⌘P)"
+                title={t('banner.openSessions')}
               >
-                <span className="terminal-statusbar-key">⌘P</span> history
+                <span className="terminal-statusbar-key">⌘P</span> {t('status.history')}
               </button>
             </>
           )}
@@ -939,9 +940,9 @@ export default function TerminalShell() {
         {slashMode.kind === 'commands' && slashCmdMatches.length > 0 && (
           <div className="terminal-slash" role="listbox">
             <div className="terminal-slash-head">
-              <span className="terminal-slash-head-label">commands</span>
+              <span className="terminal-slash-head-label">{t('slash.commands')}</span>
               <span className="terminal-slash-head-hint">
-                ↑↓ navigate · ⇥ complete · ↵ run · esc close
+                {t('slash.hint')}
               </span>
             </div>
             <ul className="terminal-slash-list">
@@ -980,16 +981,16 @@ export default function TerminalShell() {
           <div className="terminal-slash" role="listbox">
             <div className="terminal-slash-head">
               <span className="terminal-slash-head-label">
-                pick a project for {slashMode.command.name}
+                {t('slash.pickProject', { command: slashMode.command.name })}
               </span>
               <span className="terminal-slash-head-hint">
-                ↑↓ navigate · ⇥ complete · ↵ run · esc close
+                {t('slash.hint')}
               </span>
             </div>
             {slashProjectMatches.length === 0 ? (
               <div className="terminal-slash-empty">
-                no projects match.{' '}
-                {projects.length === 0 && 'create one from /projects.'}
+                {t('slash.noProjects')}{' '}
+                {projects.length === 0 && t('slash.createOne')}
               </div>
             ) : (
               <ul className="terminal-slash-list">
@@ -1011,7 +1012,7 @@ export default function TerminalShell() {
                         {p.name}
                       </span>
                       <span className="terminal-slash-project-meta">
-                        {p.analysis ? 'analyzed' : 'unanalyzed'}
+                        {p.analysis ? t('slash.analyzed') : t('slash.unanalyzed')}
                       </span>
                     </button>
                   </li>
@@ -1027,7 +1028,7 @@ export default function TerminalShell() {
             className="terminal-scroll-pill"
             onClick={() => scrollToBottom({ force: true })}
           >
-            ↓ latest
+            {t('scrollPill')}
           </button>
         )}
       </div>
@@ -1050,7 +1051,7 @@ export default function TerminalShell() {
             if (!res.ok) throw new Error('failed');
             await loadConversations();
           } catch {
-            addToast('rename failed', 'error');
+            addToast(t('toast.renameFailed'), 'error');
           }
         }}
         onDelete={async (id) => {
@@ -1063,10 +1064,10 @@ export default function TerminalShell() {
               setActiveConvId(null);
               setMessages([]);
             }
-            addToast('session deleted', 'success');
+            addToast(t('toast.sessionDeleted'), 'success');
             await loadConversations();
           } catch {
-            addToast('delete failed', 'error');
+            addToast(t('toast.deleteFailed'), 'error');
           }
         }}
         onAssignProject={async (id, projectId) => {
@@ -1079,11 +1080,11 @@ export default function TerminalShell() {
             if (!res.ok) throw new Error('failed');
             await loadConversations();
             addToast(
-              projectId ? 'assigned to project' : 'moved to general',
+              projectId ? t('toast.assignedToProject') : t('toast.movedToGeneral'),
               'success',
             );
           } catch {
-            addToast('assign failed', 'error');
+            addToast(t('toast.assignFailed'), 'error');
           }
         }}
       />

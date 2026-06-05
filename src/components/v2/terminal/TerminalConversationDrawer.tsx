@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Conversation {
   id: string;
@@ -30,10 +31,10 @@ interface Props {
   onAssignProject: (id: string, projectId: string | null) => Promise<void>;
 }
 
-function relTime(ms: number): string {
+function relTime(ms: number, justNow: string): string {
   const diff = Date.now() - ms;
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
+  if (mins < 1) return justNow;
   if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h`;
@@ -52,6 +53,7 @@ export default function TerminalConversationDrawer({
   onDelete,
   onAssignProject,
 }: Props) {
+  const t = useTranslations('terminal');
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export default function TerminalConversationDrawer({
         c.projectId && projectById.has(c.projectId) ? c.projectId : '__none__';
       if (!groups.has(key)) {
         groups.set(key, {
-          name: key === '__none__' ? 'general' : projectById.get(key)!,
+          name: key === '__none__' ? t('drawer.general') : projectById.get(key)!,
           convs: [],
         });
       }
@@ -92,7 +94,7 @@ export default function TerminalConversationDrawer({
         ...g.convs.map((c) => ({ kind: 'row' as const, conv: c })),
       ];
     });
-  }, [conversations, projects, query]);
+  }, [conversations, projects, query, t]);
 
   const rowItems = useMemo(
     () => flat.filter((f) => f.kind === 'row'),
@@ -147,7 +149,7 @@ export default function TerminalConversationDrawer({
   };
 
   const handleDelete = async (conv: Conversation) => {
-    if (!confirm(`Delete "${conv.title || 'Untitled'}"?`)) return;
+    if (!confirm(t('drawer.confirmDelete', { title: conv.title || t('drawer.untitled') }))) return;
     await onDelete(conv.id);
   };
 
@@ -206,7 +208,7 @@ export default function TerminalConversationDrawer({
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="terminal-drawer" role="dialog" aria-label="Conversations">
+      <div className="terminal-drawer" role="dialog" aria-label={t('drawer.dialogAria')}>
         <div className="terminal-drawer-head">
           <span style={{ color: 'var(--signature)', fontWeight: 700 }}>›</span>
           <input
@@ -215,9 +217,9 @@ export default function TerminalConversationDrawer({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="search sessions…"
+            placeholder={t('drawer.searchPlaceholder')}
             className="terminal-drawer-search"
-            aria-label="Search sessions"
+            aria-label={t('drawer.searchAria')}
           />
           <span
             style={{
@@ -229,7 +231,7 @@ export default function TerminalConversationDrawer({
               borderRadius: 4,
             }}
           >
-            esc
+            {t('drawer.esc')}
           </span>
         </div>
 
@@ -237,8 +239,8 @@ export default function TerminalConversationDrawer({
           {rowItems.length === 0 ? (
             <div className="terminal-drawer-empty">
               {conversations.length === 0
-                ? 'no sessions yet. type below to start one.'
-                : 'no matches.'}
+                ? t('drawer.emptyNoSessions')
+                : t('drawer.emptyNoMatches')}
             </div>
           ) : (
             flat.map((item, i) => {
@@ -278,9 +280,9 @@ export default function TerminalConversationDrawer({
                       }}
                       onBlur={() => void commitRename()}
                       className="terminal-drawer-rename-input"
-                      aria-label="Rename session"
+                      aria-label={t('drawer.renameAria')}
                     />
-                    <span className="terminal-drawer-row-time">↵ save · esc cancel</span>
+                    <span className="terminal-drawer-row-time">{t('drawer.renameHint')}</span>
                   </div>
                 );
               }
@@ -303,16 +305,16 @@ export default function TerminalConversationDrawer({
                       beginRename(item.conv);
                     }}
                     className="terminal-drawer-row-main"
-                    title={`open · double-click to rename`}
+                    title={t('drawer.openDoubleClick')}
                   >
                     <span className="terminal-drawer-row-title">
-                      {item.conv.title || 'Untitled'}
+                      {item.conv.title || t('drawer.untitled')}
                     </span>
                   </button>
 
                   <span className="terminal-drawer-row-actions">
                     {isCurrent && (
-                      <span className="terminal-drawer-row-current">current</span>
+                      <span className="terminal-drawer-row-current">{t('drawer.current')}</span>
                     )}
                     {isActive && !isCurrent && (
                       <>
@@ -325,8 +327,8 @@ export default function TerminalConversationDrawer({
                               assignOpenId === item.conv.id ? null : item.conv.id,
                             );
                           }}
-                          title="Assign to project (a)"
-                          aria-label="Assign to project"
+                          title={t('drawer.assignToProject')}
+                          aria-label={t('drawer.assignToProjectAria')}
                         >
                           ◈
                         </button>
@@ -337,8 +339,8 @@ export default function TerminalConversationDrawer({
                             e.stopPropagation();
                             beginRename(item.conv);
                           }}
-                          title="Rename (e)"
-                          aria-label="Rename"
+                          title={t('drawer.rename')}
+                          aria-label={t('drawer.renameAriaShort')}
                         >
                           ✎
                         </button>
@@ -349,15 +351,15 @@ export default function TerminalConversationDrawer({
                             e.stopPropagation();
                             void handleDelete(item.conv);
                           }}
-                          title="Delete (d)"
-                          aria-label="Delete"
+                          title={t('drawer.delete')}
+                          aria-label={t('drawer.deleteAriaShort')}
                         >
                           ×
                         </button>
                       </>
                     )}
                     <span className="terminal-drawer-row-time">
-                      {relTime(item.conv.updatedAt)}
+                      {relTime(item.conv.updatedAt, t('drawer.justNow'))}
                     </span>
                   </span>
 
@@ -368,7 +370,7 @@ export default function TerminalConversationDrawer({
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span className="terminal-drawer-assign-label">
-                        assign to
+                        {t('drawer.assignTo')}
                       </span>
                       <button
                         type="button"
@@ -383,11 +385,11 @@ export default function TerminalConversationDrawer({
                         <span className="terminal-drawer-assign-mark">
                           {item.conv.projectId == null ? '✓' : ' '}
                         </span>
-                        general
+                        {t('drawer.general')}
                       </button>
                       {projects.length === 0 ? (
                         <span className="terminal-drawer-assign-empty">
-                          no projects yet
+                          {t('drawer.noProjectsYet')}
                         </span>
                       ) : (
                         projects.map((p) => (
@@ -418,7 +420,7 @@ export default function TerminalConversationDrawer({
         </div>
 
         <div className="terminal-drawer-foot">
-          <span>↑↓ navigate · ↵ open · e rename · d delete · a assign · esc close</span>
+          <span>{t('drawer.footHint')}</span>
           <button
             type="button"
             className="terminal-drawer-new"
@@ -427,7 +429,7 @@ export default function TerminalConversationDrawer({
               onClose();
             }}
           >
-            + new
+            {t('drawer.new')}
           </button>
         </div>
       </div>

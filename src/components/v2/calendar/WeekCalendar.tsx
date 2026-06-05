@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import type { AgentTask, TeammateWithStats } from '@/lib/recgon/types';
@@ -24,6 +25,7 @@ type Props = {
 const TASK_DRAG_MIME = 'application/x-recgon-task';
 
 export function WeekCalendar({ projectId, onSwitchToList }: Props) {
+  const t = useTranslations('calendar');
   const { currentTeam } = useTeam();
   const { addToast } = useToast();
   const teamId = currentTeam?.id ?? null;
@@ -232,17 +234,17 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'reschedule failed');
+        throw new Error(j.error || t('toast.rescheduleFailed'));
       }
-      addToast('task rescheduled', 'success');
+      addToast(t('toast.rescheduled'), 'success');
       await fetch_();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'reschedule failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.rescheduleFailed'), 'error');
       await fetch_();
     } finally {
       clearDrag();
     }
-  }, [addToast, clearDrag, data, fetch_, isOwner, teamId]);
+  }, [addToast, clearDrag, data, fetch_, isOwner, teamId, t]);
 
   const handleTaskResize = useCallback(async (input: {
     taskId: string;
@@ -280,15 +282,15 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'resize failed');
+        throw new Error(j.error || t('toast.resizeFailed'));
       }
-      addToast(newUntil ? 'span updated' : 'span collapsed to one day', 'success');
+      addToast(newUntil ? t('toast.spanUpdated') : t('toast.spanCollapsed'), 'success');
       await fetch_();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'resize failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.resizeFailed'), 'error');
       await fetch_();
     }
-  }, [addToast, data, fetch_, isOwner, teamId]);
+  }, [addToast, data, fetch_, isOwner, teamId, t]);
 
   const activeTeammates = data?.teammates.filter((tm) => tm.status !== 'retired') ?? [];
 
@@ -324,7 +326,7 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
             ))}
           </div>
           <span className="week-cal-skel-shimmer" aria-hidden="true" />
-          <span className="week-cal-skel-loading-label">loading week</span>
+          <span className="week-cal-skel-loading-label">{t('loading')}</span>
         </div>
       ) : (
         <div className="week-cal-outer">
@@ -337,7 +339,7 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
 
               {activeTeammates.length === 0 ? (
                 <div className="week-cal-empty" style={{ gridColumn: `1 / ${(activeDayIndex !== null ? 1 : 7) + 2}` }}>
-                  No teammates in this team yet.
+                  {t('empty.noTeammates')}
                 </div>
               ) : (
                 activeTeammates.map((tm, idx) => (

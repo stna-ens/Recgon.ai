@@ -1,0 +1,106 @@
+{
+  "eyebrow": "› tasks",
+  "ownerLock": {
+    "eyebrow": "› owner-only",
+    "title": "This view is for the team owner.",
+    "body": "The full project task board is owner-only. Your assigned tasks live in your inbox."
+  },
+  "viewToggle": {
+    "calendar": "‹ calendar"
+  },
+  "search": {
+    "placeholder": "filter tasks…",
+    "aria": "Filter tasks",
+    "clear": "Clear search"
+  },
+  "filters": {
+    "overdue": "overdue"
+  },
+  "columns": {
+    "assigned": "assigned",
+    "wip": "in progress",
+    "review": "in review"
+  },
+  "kind": {
+    "next_step": "next step",
+    "dev_prompt": "dev",
+    "marketing": "marketing",
+    "analytics": "analytics",
+    "research": "research",
+    "custom": "task"
+  },
+  "priority": {
+    "urgent": "urgent",
+    "high": "high"
+  },
+  "relTime": {
+    "justNow": "just now",
+    "minutes": "{count}m ago",
+    "hours": "{count}h ago",
+    "days": "{count}d ago"
+  },
+  "schedule": {
+    "due": "due {date}"
+  },
+  "empty": {
+    "overdueClear": "nothing slipping — you're on top of it",
+    "assigned": "nothing waiting on you.",
+    "wip": "nothing in flight.",
+    "review": "nothing under review."
+  },
+  "flags": {
+    "proof": "proof",
+    "move": "move",
+    "moveRequested": "move requested"
+  },
+  "teamTitle": "Team: {name}",
+  "detail": {
+    "aria": "Task detail",
+    "close": "Close",
+    "whyYou": "why you",
+    "rescheduleRequested": "reschedule requested"
+  },
+  "actions": {
+    "working": "working…",
+    "accept": "accept",
+    "decline": "decline",
+    "markDone": "mark done",
+    "handBack": "hand back",
+    "openProject": "open project →",
+    "requestReschedule": "request reschedule",
+    "updateReschedule": "update reschedule"
+  },
+  "reschedule": {
+    "preferredDay": "preferred day",
+    "notePlaceholder": "why this needs to move",
+    "sending": "sending…",
+    "sendRequest": "send request"
+  },
+  "proof": {
+    "needed": "proof needed",
+    "hint": "Recgon couldn't auto-verify this. Drop a note, paste a link, or attach a file as evidence.",
+    "describePlaceholder": "describe what you did",
+    "linksPlaceholder": "proof links (separate with spaces)",
+    "foot": "Recgon will fetch any URL you paste and judge the page itself — not just your description.",
+    "sending": "sending…",
+    "submit": "submit proof"
+  },
+  "toast": {
+    "declinedOwner": "declined — sent to team owner to decide",
+    "declinedReassigned": "declined — recgon reassigned",
+    "declinedWillReassign": "declined — recgon will reassign",
+    "accepted": "accepted",
+    "markedComplete": "marked complete",
+    "actionFailed": "{action} failed",
+    "cantMove": "can't move {from} → {to}",
+    "filesAttached": "{count, plural, one {# file attached} other {# files attached}}",
+    "uploadFailed": "upload failed",
+    "proofMissing": "add a note, a link, or a file before submitting",
+    "proofSent": "proof sent — recgon is re-checking",
+    "proofSubmitFailed": "proof submit failed",
+    "failed": "failed",
+    "rescheduleSent": "reschedule request sent",
+    "rescheduleFailed": "reschedule request failed",
+    "requestFailed": "request failed"
+  }
+}

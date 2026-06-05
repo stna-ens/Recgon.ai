@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/Toast';
 import type {
   RecgonState,
@@ -9,15 +10,6 @@ import type {
   AgentTask,
   TaskKind,
 } from '@/lib/recgon/types';
-
-const KIND_LABEL: Record<TaskKind, string> = {
-  next_step: 'Next step',
-  dev_prompt: 'Dev prompt',
-  marketing: 'Marketing',
-  analytics: 'Analytics',
-  research: 'Research',
-  custom: 'Task',
-};
 
 const KIND_SHORT: Record<TaskKind, string> = {
   next_step: 'next_step',
@@ -32,13 +24,13 @@ function pad(n: number, w = 2): string {
   return n.toString().padStart(w, '0');
 }
 
-function relativeTime(iso: string | null): string {
-  if (!iso) return 'never';
+function relativeTime(iso: string | null, t: (key: string, values?: Record<string, string | number>) => string): string {
+  if (!iso) return t('recgonPanel.never');
   const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return 'just now';
-  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
-  if (ms < 86_400_000) return `${Math.round(ms / 3_600_000)}h ago`;
-  return `${Math.round(ms / 86_400_000)}d ago`;
+  if (ms < 60_000) return t('recgonPanel.justNow');
+  if (ms < 3_600_000) return t('recgonPanel.minutesAgo', { n: Math.round(ms / 60_000) });
+  if (ms < 86_400_000) return t('recgonPanel.hoursAgo', { n: Math.round(ms / 3_600_000) });
+  return t('recgonPanel.daysAgo', { n: Math.round(ms / 86_400_000) });
 }
 
 function initials(name: string): string {
@@ -54,9 +46,10 @@ function truncate(s: string, n: number): string {
 }
 
 function StarMeter({ value }: { value: number }) {
+  const t = useTranslations('shared');
   const pct = Math.max(0, Math.min(100, (value / 5) * 100));
   return (
-    <span className="rcg-star-meter" title={`${value.toFixed(1)} / 5`}>
+    <span className="rcg-star-meter" title={t('recgonPanel.starTitle', { value: value.toFixed(1) })}>
       <span className="rcg-star-track">
         <span className="rcg-star-fill" style={{ width: `${pct}%` }} />
       </span>
@@ -83,6 +76,7 @@ function RosterCard({
   teamId: string;
   index: number;
 }) {
+  const tr = useTranslations('shared');
   const color = t.avatarColor || '#6366f1';
   const cap = t.capacityHours ?? 0;
   const used = (t.inFlightCount ?? 0) * 1.5;
@@ -125,7 +119,7 @@ function RosterCard({
               t.title
             ) : (
               <span className="rcg-agent-title-empty">
-                no role yet · set on profile
+                {tr('recgonPanel.noRoleYet')}
               </span>
             )}
           </p>
@@ -137,10 +131,10 @@ function RosterCard({
         </div>
       </div>
 
-      <div className="rcg-agent-load" title={`${t.inFlightCount} in flight ≈ ${used.toFixed(1)}h of ${cap}h/wk`}>
+      <div className="rcg-agent-load" title={tr('recgonPanel.loadTitle', { count: t.inFlightCount, used: used.toFixed(1), cap })}>
         <div className="rcg-agent-load-row">
-          <span className="rcg-agent-load-key">load</span>
-          <span className="rcg-agent-load-val">{pad(t.inFlightCount)} in_flight · {loadPct}%</span>
+          <span className="rcg-agent-load-key">{tr('recgonPanel.load')}</span>
+          <span className="rcg-agent-load-val">{tr('recgonPanel.loadVal', { count: pad(t.inFlightCount), pct: loadPct })}</span>
         </div>
         <span className="rcg-agent-load-bar">
           <span
@@ -167,6 +161,7 @@ function RosterCard({
 
 export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
   const { addToast } = useToast();
+  const t = useTranslations('shared');
   const [state, setState] = useState<RecgonState | null>(null);
   const [teammates, setTeammates] = useState<TeammateWithStats[]>([]);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
@@ -200,12 +195,14 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
       const { result } = await res.json();
       const backfilled = typeof result.backfilled === 'number' ? result.backfilled : 0;
       addToast(
-        `Recgon dispatched — ${result.minted} new, ${result.assigned} assigned, ${result.noFit} no-fit${backfilled > 0 ? `, ${backfilled} rescheduled` : ''}`,
+        backfilled > 0
+          ? t('recgonPanel.dispatchResultRescheduled', { minted: result.minted, assigned: result.assigned, noFit: result.noFit, backfilled })
+          : t('recgonPanel.dispatchResult', { minted: result.minted, assigned: result.assigned, noFit: result.noFit }),
         'success',
       );
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'Dispatch failed', 'error');
+      addToast(err instanceof Error ? err.message : t('recgonPanel.dispatchFailed'), 'error');
     } finally {
       setDispatching(false);
     }
@@ -217,7 +214,7 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
         <span className="rcg-loading-dot" />
         <span className="rcg-loading-dot" />
         <span className="rcg-loading-dot" />
-        <span className="rcg-loading-text">booting recgon console</span>
+        <span className="rcg-loading-text">{t('recgonPanel.booting')}</span>
         <style>{rcgStyles}</style>
       </div>
     );
@@ -239,24 +236,24 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
       <style>{rcgStyles}</style>
 
       {/* ──────────────────── DISPATCH CONSOLE ──────────────────── */}
-      <section className="rcg-console" aria-label="Recgon dispatch console">
+      <section className="rcg-console" aria-label={t('recgonPanel.consoleAria')}>
         <div className="rcg-console-grid-bg" aria-hidden />
         <div className="rcg-console-pulse" aria-hidden />
 
         <header className="rcg-console-head">
           <div className="rcg-console-kicker">
             <span className="rcg-status-dot" data-active={dispatchActive ? '1' : '0'} />
-            recgon · dispatch console
+            {t('recgonPanel.kicker')}
           </div>
           <div className="rcg-console-meta">
             <span className="rcg-meta-cell">
-              <span className="rcg-meta-key">last_dispatch</span>
-              <span className="rcg-meta-val">{relativeTime(state?.lastDispatchAt ?? null)}</span>
+              <span className="rcg-meta-key">{t('recgonPanel.lastDispatch')}</span>
+              <span className="rcg-meta-val">{relativeTime(state?.lastDispatchAt ?? null, t)}</span>
             </span>
             <span className="rcg-meta-sep" aria-hidden />
             <span className="rcg-meta-cell">
-              <span className="rcg-meta-key">roster</span>
-              <span className="rcg-meta-val">{pad(teammates.length)} agents</span>
+              <span className="rcg-meta-key">{t('recgonPanel.roster')}</span>
+              <span className="rcg-meta-val">{pad(teammates.length)} {t('recgonPanel.agents')}</span>
             </span>
           </div>
         </header>
@@ -265,8 +262,8 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
           <div className="rcg-readout">
             <div className="rcg-readout-num">{pad(totalEntries)}</div>
             <div className="rcg-readout-label">
-              <span>open</span>
-              <span>items</span>
+              <span>{t('recgonPanel.open')}</span>
+              <span>{t('recgonPanel.items')}</span>
             </div>
           </div>
 
@@ -288,7 +285,7 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
               <span className="rcg-dispatch-btn-bg" aria-hidden />
               <span className="rcg-dispatch-btn-content">
                 <span className="rcg-dispatch-label">
-                  {dispatching ? 'dispatching' : 'run dispatch'}
+                  {dispatching ? t('recgonPanel.dispatching') : t('recgonPanel.runDispatch')}
                 </span>
                 <span className="rcg-dispatch-icon">
                   {dispatching ? (
@@ -305,7 +302,7 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
             </button>
             {!brain && (
               <p className="rcg-dispatch-hint">
-                No brain snapshot yet — run a dispatch to scan analyses, mint tasks, and assign agents.
+                {t('recgonPanel.noBrainHint')}
               </p>
             )}
           </div>
@@ -316,9 +313,9 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
       {recentLog.length > 0 && (
         <section className="rcg-ticker">
           <header className="rcg-block-head">
-            <span className="rcg-block-kicker">assignment ticker · {pad(recentLog.length)} recent</span>
+            <span className="rcg-block-kicker">{t('recgonPanel.assignmentTicker', { n: pad(recentLog.length) })}</span>
             <Link href={`/teams/${teamId}/tasks`} className="rcg-block-link">
-              view feed →
+              {t('recgonPanel.viewFeed')}
             </Link>
           </header>
           <div className="rcg-ticker-body">
@@ -340,7 +337,7 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
                     className="rcg-ticker-target"
                     data-nofit={!entry.teammateName ? '1' : undefined}
                   >
-                    {entry.teammateName ?? 'no fit'}
+                    {entry.teammateName ?? t('recgonPanel.noFit')}
                   </span>
                   <span className="rcg-ticker-score" data-nofit={!entry.teammateName ? '1' : undefined}>
                     <span className="rcg-ticker-score-bar">
@@ -364,16 +361,16 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
           <section className="rcg-roster-section">
             <header className="rcg-roster-head">
               <div className="rcg-roster-head-l">
-                <span className="rcg-block-kicker">roster</span>
+                <span className="rcg-block-kicker">{t('recgonPanel.roster')}</span>
                 <span className="rcg-roster-summary">
                   <span className="rcg-roster-summary-n">{pad(humans.length)}</span>
-                  <span className="rcg-roster-summary-k">teammates</span>
+                  <span className="rcg-roster-summary-k">{t('recgonPanel.rosterSummaryTeammates')}</span>
                   <span className="rcg-roster-summary-sep" aria-hidden />
                   <span className="rcg-roster-summary-n">{pad(totalInFlight)}</span>
-                  <span className="rcg-roster-summary-k">in_flight</span>
+                  <span className="rcg-roster-summary-k">{t('recgonPanel.rosterSummaryInFlight')}</span>
                   <span className="rcg-roster-summary-sep" aria-hidden />
                   <span className="rcg-roster-summary-n">{totalHours}</span>
-                  <span className="rcg-roster-summary-k">h/wk capacity</span>
+                  <span className="rcg-roster-summary-k">{t('recgonPanel.rosterSummaryCapacity')}</span>
                 </span>
               </div>
               <button
@@ -396,15 +393,15 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
                 }}
                 className="rcg-block-link rcg-block-link-btn"
               >
-                invite teammate
+                {t('recgonPanel.inviteTeammate')}
               </button>
             </header>
 
             {humans.length === 0 ? (
               <div className="rcg-roster-empty">
                 <span className="rcg-empty-glyph">⌬</span>
-                <p className="rcg-empty-title">No teammates on the roster.</p>
-                <p className="rcg-empty-copy">Invite a collaborator from the team page to start receiving dispatches.</p>
+                <p className="rcg-empty-title">{t('recgonPanel.rosterEmptyTitle')}</p>
+                <p className="rcg-empty-copy">{t('recgonPanel.rosterEmptyCopy')}</p>
               </div>
             ) : (
               <div className="rcg-roster-grid">
@@ -421,20 +418,20 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
       {(inFlightTasks.length > 0 || reviewTasks.length > 0) && (
         <section className="rcg-tasks">
           <header className="rcg-block-head">
-            <span className="rcg-block-kicker">queue · {pad(inFlightTasks.length + reviewTasks.length)} active</span>
-            <Link href={`/teams/${teamId}/tasks`} className="rcg-block-link">view all →</Link>
+            <span className="rcg-block-kicker">{t('recgonPanel.queueActive', { n: pad(inFlightTasks.length + reviewTasks.length) })}</span>
+            <Link href={`/teams/${teamId}/tasks`} className="rcg-block-link">{t('recgonPanel.viewAll')}</Link>
           </header>
           <div className="rcg-tasks-stats">
             <div className="rcg-tasks-stat">
               <span className="rcg-tasks-num">{pad(inFlightTasks.length)}</span>
-              <span className="rcg-tasks-key">in_flight</span>
+              <span className="rcg-tasks-key">{t('recgonPanel.inFlight')}</span>
             </div>
             <div className="rcg-tasks-divider" />
             <div className="rcg-tasks-stat">
               <span className="rcg-tasks-num" data-attention={reviewTasks.length > 0 ? '1' : undefined}>
                 {pad(reviewTasks.length)}
               </span>
-              <span className="rcg-tasks-key">awaiting_review</span>
+              <span className="rcg-tasks-key">{t('recgonPanel.awaitingReview')}</span>
             </div>
           </div>
           {reviewTasks.length > 0 && (

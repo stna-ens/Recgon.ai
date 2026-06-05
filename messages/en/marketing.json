@@ -1,0 +1,114 @@
+{
+  "eyebrow": "› marketing",
+  "hero": {
+    "loadingLead": "loading…",
+    "draftingLead": "drafting your plan…",
+    "draftingSub": "recgon is sketching the strategy — this takes ~20s.",
+    "firstLead": "plan your first campaign.",
+    "firstSub": "recgon drafts strategy, channels, calendar — you execute.",
+    "plannedLead": "{count, plural, one {# campaign planned.} other {# campaigns planned.}}",
+    "plannedSubDrafting": "drafting a new {type} · {duration}",
+    "plannedSubPick": "pick one from the switcher or start a new plan.",
+    "activeSub": "{type} · {duration} · {count} content items",
+    "campaignFallback": "campaign"
+  },
+  "header": {
+    "switcherAria": "Switch active campaign",
+    "switcherCount": "{count, plural, one {# campaign} other {# campaigns}}",
+    "newCampaign": "new",
+    "newCampaignTitle": "Start a new campaign"
+  },
+  "empty": {
+    "heroLead": "this project isn't analyzed yet.",
+    "heroSub": "analyze the project to unlock campaign planning, channel strategy, and content generation.",
+    "title": "analyze first.",
+    "body": "Recgon needs to read the codebase + project signals before it can draft strategy. Once the analysis is in, this page unlocks: campaign types, audience inference, channel plan, weekly content calendar, and KPI targets."
+  },
+  "setup": {
+    "typeLabel": "campaign type",
+    "goalLabel": "campaign goal",
+    "goalPlaceholder": "e.g. Get 500 signups in the first month, reach 1000 Instagram followers, generate 50 qualified leads…",
+    "websiteLabel": "website url",
+    "websiteHelp": "optional — crawls your site for richer AI context",
+    "websitePlaceholder": "https://yourproduct.com",
+    "durationLabel": "duration",
+    "goalRequired": "A campaign goal is required. What do you want this campaign to achieve?",
+    "planning": "planning campaign…",
+    "selectType": "select a campaign type",
+    "planCta": "plan {type} campaign"
+  },
+  "campaignTypes": {
+    "productLaunch": {
+      "label": "Product Launch",
+      "description": "Announce and drive adoption of a new product or feature"
+    },
+    "brandAwareness": {
+      "label": "Brand Awareness",
+      "description": "Build recognition and trust in your target market"
+    },
+    "leadGeneration": {
+      "label": "Lead Generation",
+      "description": "Capture qualified leads and grow your pipeline"
+    },
+    "communityGrowth": {
+      "label": "Community Growth",
+      "description": "Build and engage a loyal community around your product"
+    },
+    "reEngagement": {
+      "label": "Re-engagement",
+      "description": "Win back churned users or reactivate dormant leads"
+    },
+    "contentMarketing": {
+      "label": "Content Marketing",
+      "description": "Establish thought leadership and drive organic growth"
+    }
+  },
+  "durations": {
+    "twoWeeks": "2 Weeks",
+    "oneMonth": "1 Month",
+    "threeMonths": "3 Months"
+  },
+  "tabs": {
+    "sectionsAria": "Campaign sections",
+    "overview": "overview",
+    "channels": "channels",
+    "calendar": "content calendar",
+    "metrics": "metrics & budget"
+  },
+  "overview": {
+    "targetAudience": "target_audience",
+    "painPoints": "pain_points",
+    "motivations": "motivations",
+    "keyMessages": "key_messages",
+    "quickWins": "quick_wins < 48h"
+  },
+  "channels": {
+    "phases": "campaign_phases",
+    "tactics": "tactics",
+    "deliverables": "deliverables"
+  },
+  "calendar": {
+    "week": "week_{week}",
+    "ctaLabel": "cta:",
+    "preview": "preview",
+    "generate": "generate",
+    "generating": "generating…",
+    "regenerate": "regenerate",
+    "manual": "manual"
+  },
+  "metrics": {
+    "kpis": "kpis",
+    "kpiMetric": "metric",
+    "kpiTarget": "target",
+    "kpiPlatform": "platform",
+    "kpiTimeframe": "timeframe",
+    "budgetGuidance": "budget_guidance"
+  },
+  "preview": {
+    "close": "close"
+  },
+  "errors": {
+    "campaignPlanning": "Campaign planning failed",
+    "contentGeneration": "Content generation failed"
+  }
+}

@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import RecgonLogo from '@/components/RecgonLogo';
 import { useTeam } from '@/components/TeamProvider';
 
 export default function TeamSetupPage() {
+  const t = useTranslations('teams');
   const router = useRouter();
   const { refreshTeams } = useTeam();
   const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose');
@@ -32,7 +34,7 @@ export default function TeamSetupPage() {
       router.push('/');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create team');
+      setError(err instanceof Error ? err.message : t('setup.createFailed'));
     } finally {
       setLoading(false);
     }
@@ -61,7 +63,7 @@ export default function TeamSetupPage() {
       router.push('/');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to join team');
+      setError(err instanceof Error ? err.message : t('setup.joinFailed'));
     } finally {
       setLoading(false);
     }
@@ -99,17 +101,17 @@ export default function TeamSetupPage() {
 
         {mode === 'choose' && (
           <>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>Set up your team</h1>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('setup.choose.title')}</h1>
             <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>
-              Create a new team or join an existing one to get started.
+              {t('setup.choose.subtitle')}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <button onClick={() => setMode('create')} style={btnPrimary}>
-                Create a Team
+                {t('setup.choose.createButton')}
               </button>
               <button onClick={() => setMode('join')} style={btnSecondary}>
-                Join with Invite Link
+                {t('setup.choose.joinButton')}
               </button>
             </div>
           </>
@@ -117,22 +119,22 @@ export default function TeamSetupPage() {
 
         {mode === 'create' && (
           <>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>Create a team</h1>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('setup.create.title')}</h1>
             <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>
-              Give your team a name. You can invite members after.
+              {t('setup.create.subtitle')}
             </p>
 
             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label style={labelStyle}>Team Name</label>
-                <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="My awesome team" required minLength={2} style={inputStyle} />
+                <label style={labelStyle}>{t('setup.create.nameLabel')}</label>
+                <input type="text" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder={t('setup.create.namePlaceholder')} required minLength={2} style={inputStyle} />
               </div>
               {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
               <button type="submit" disabled={loading} style={btnPrimary}>
-                {loading ? 'Creating...' : 'Create Team'}
+                {loading ? t('setup.create.creating') : t('setup.create.submit')}
               </button>
               <button type="button" onClick={() => { setMode('choose'); setError(''); }} style={{ ...btnSecondary, marginTop: '-0.25rem' }}>
-                Back
+                {t('setup.back')}
               </button>
             </form>
           </>
@@ -140,22 +142,22 @@ export default function TeamSetupPage() {
 
         {mode === 'join' && (
           <>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>Join a team</h1>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.3rem', letterSpacing: '-0.3px' }}>{t('setup.join.title')}</h1>
             <p style={{ color: 'var(--txt-muted)', margin: '0 0 2rem', fontSize: '0.875rem' }}>
-              Paste the invitation link or token you received.
+              {t('setup.join.subtitle')}
             </p>
 
             <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label style={labelStyle}>Invite Link or Token</label>
-                <input type="text" value={inviteToken} onChange={(e) => setInviteToken(e.target.value)} placeholder="Paste invite link or token" required style={inputStyle} />
+                <label style={labelStyle}>{t('setup.join.tokenLabel')}</label>
+                <input type="text" value={inviteToken} onChange={(e) => setInviteToken(e.target.value)} placeholder={t('setup.join.tokenPlaceholder')} required style={inputStyle} />
               </div>
               {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{error}</p>}
               <button type="submit" disabled={loading} style={btnPrimary}>
-                {loading ? 'Joining...' : 'Join Team'}
+                {loading ? t('setup.join.joining') : t('setup.join.submit')}
               </button>
               <button type="button" onClick={() => { setMode('choose'); setError(''); }} style={{ ...btnSecondary, marginTop: '-0.25rem' }}>
-                Back
+                {t('setup.back')}
               </button>
             </form>
           </>

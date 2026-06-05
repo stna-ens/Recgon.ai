@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useTeam } from '@/components/TeamProvider';
@@ -71,23 +72,26 @@ const KIND_LABEL: Record<string, string> = {
   custom: 'task',
 };
 
-function relTime(iso: string | null): string {
-  if (!iso) return '';
+type RelTime = { unit: 'justNow' | 'minutes' | 'hours' | 'days'; count: number };
+function relTime(iso: string | null): RelTime | null {
+  if (!iso) return null;
   const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return 'just now';
-  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
-  if (ms < 86_400_000) return `${Math.round(ms / 3_600_000)}h ago`;
-  return `${Math.round(ms / 86_400_000)}d ago`;
+  if (ms < 60_000) return { unit: 'justNow', count: 0 };
+  if (ms < 3_600_000) return { unit: 'minutes', count: Math.round(ms / 60_000) };
+  if (ms < 86_400_000) return { unit: 'hours', count: Math.round(ms / 3_600_000) };
+  return { unit: 'days', count: Math.round(ms / 86_400_000) };
 }
 
-function fmtSchedule(t: Pick<TaskItem, 'scheduled_date' | 'deadline'>): string | null {
-  if (t.scheduled_date) {
-    const d = new Date(`${t.scheduled_date}T00:00:00`);
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+// Returns the localized date string plus whether it represents a deadline
+// (which the caller wraps in the "due {date}" message).
+function fmtSchedule(item: Pick<TaskItem, 'scheduled_date' | 'deadline'>): { date: string; isDeadline: boolean } | null {
+  if (item.scheduled_date) {
+    const d = new Date(`${item.scheduled_date}T00:00:00`);
+    return { date: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), isDeadline: false };
   }
-  if (!t.deadline) return null;
-  const due = new Date(t.deadline);
-  return `due ${due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`;
+  if (!item.deadline) return null;
+  const due = new Date(item.deadline);
+  return { date: due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), isDeadline: true };
 }
 
 function toDateInput(value: string | null | undefined): string {
@@ -103,9 +107,9 @@ function fmtRescheduleRequest(t: Pick<TaskItem, 'reschedule_requested_date'>): s
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function priorityChip(p: number): { label: string; color: string } | null {
-  if (p <= 0) return { label: 'urgent', color: 'var(--danger)' };
-  if (p === 1) return { label: 'high', color: 'var(--warning)' };
+function priorityChip(p: number): { labelKey: 'urgent' | 'high'; color: string } | null {
+  if (p <= 0) return { labelKey: 'urgent', color: 'var(--danger)' };
+  if (p === 1) return { labelKey: 'high', color: 'var(--warning)' };
   return null;
 }
 
@@ -134,6 +138,7 @@ function validDrop(from: ColumnKey, to: ColumnKey): 'accept' | 'complete' | null
 }
 
 function V2TasksInner() {
+  const t = useTranslations('tasks');
   const { projects: teamProjects } = useTeam();
   const projects = useMemo(() => teamProjects ?? [], [teamProjects]);
   const { addToast } = useToast();
@@ -280,10 +285,10 @@ function V2TasksInner() {
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      throw new Error(j.error || `${action} failed`);
+      throw new Error(j.error || t('toast.actionFailed', { action }));
     }
     return res;
-  }, []);
+  }, [t]);
 
   const act = useCallback(async (task: TaskItem, action: 'accept' | 'decline' | 'complete') => {
     if (working) return;
@@ -294,42 +299,42 @@ function V2TasksInner() {
         const { reassignedTo, ownerFallback } = await res.json().catch(() => ({}));
         addToast(
           ownerFallback
-            ? 'declined — sent to team owner to decide'
+            ? t('toast.declinedOwner')
             : reassignedTo
-              ? 'declined — recgon reassigned'
-              : 'declined — recgon will reassign',
+              ? t('toast.declinedReassigned')
+              : t('toast.declinedWillReassign'),
           'success',
         );
       } else {
-        addToast(action === 'accept' ? 'accepted' : 'marked complete', 'success');
+        addToast(action === 'accept' ? t('toast.accepted') : t('toast.markedComplete'), 'success');
       }
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : `${action} failed`, 'error');
+      addToast(err instanceof Error ? err.message : t('toast.actionFailed', { action }), 'error');
     } finally {
       setWorking(null);
     }
-  }, [working, callAction, addToast, refresh]);
+  }, [working, callAction, addToast, refresh, t]);
 
   const handleDrop = useCallback(async (task: TaskItem, target: ColumnKey) => {
     const from = columnFor(task);
     if (!from) return;
     const action = validDrop(from, target);
     if (!action) {
-      addToast(`can't move ${COLUMNS.find(c => c.key === from)?.label} → ${COLUMNS.find(c => c.key === target)?.label}`, 'error');
+      addToast(t('toast.cantMove', { from: t(`columns.${from}`), to: t(`columns.${target}`) }), 'error');
       return;
     }
     setOptimistic((p) => ({ ...p, [task.id]: target }));
     try {
       await callAction(task, action);
-      addToast(action === 'accept' ? 'accepted' : 'marked complete', 'success');
+      addToast(action === 'accept' ? t('toast.accepted') : t('toast.markedComplete'), 'success');
       await refresh();
     } catch (err) {
       // Rollback on failure.
       setOptimistic((p) => { const c = { ...p }; delete c[task.id]; return c; });
-      addToast(err instanceof Error ? err.message : `${action} failed`, 'error');
+      addToast(err instanceof Error ? err.message : t('toast.actionFailed', { action }), 'error');
     }
-  }, [callAction, addToast, refresh]);
+  }, [callAction, addToast, refresh, t]);
 
   const handleUploadProofFile = useCallback(async (task: TaskItem, files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -343,17 +348,17 @@ function V2TasksInner() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'upload failed');
+        throw new Error(j.error || t('toast.uploadFailed'));
       }
       const { attachments } = (await res.json()) as { attachments: Array<{ name: string; url: string }> };
       setProofAttachments((p) => [...p, ...attachments]);
-      addToast(`${attachments.length} file${attachments.length === 1 ? '' : 's'} attached`, 'success');
+      addToast(t('toast.filesAttached', { count: attachments.length }), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'upload failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.uploadFailed'), 'error');
     } finally {
       setUploadingFile(false);
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   const submitProof = useCallback(async (task: TaskItem) => {
     if (working === task.id) return;
@@ -361,7 +366,7 @@ function V2TasksInner() {
     const linksRaw = proofLinks.trim();
     const links = linksRaw ? linksRaw.split(/\s+/).filter(Boolean) : [];
     if (!text && links.length === 0 && proofAttachments.length === 0) {
-      addToast('add a note, a link, or a file before submitting', 'error');
+      addToast(t('toast.proofMissing'), 'error');
       return;
     }
     setWorking(task.id);
@@ -379,20 +384,20 @@ function V2TasksInner() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'proof submit failed');
+        throw new Error(j.error || t('toast.proofSubmitFailed'));
       }
-      addToast('proof sent — recgon is re-checking', 'success');
+      addToast(t('toast.proofSent'), 'success');
       setProofText('');
       setProofLinks('');
       setProofAttachments([]);
       setExpanded(null);
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.failed'), 'error');
     } finally {
       setWorking(null);
     }
-  }, [working, proofText, proofLinks, proofAttachments, addToast, refresh]);
+  }, [working, proofText, proofLinks, proofAttachments, addToast, refresh, t]);
 
   const submitRescheduleRequest = useCallback(async (task: TaskItem) => {
     if (working === task.id) return;
@@ -408,17 +413,17 @@ function V2TasksInner() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'reschedule request failed');
+        throw new Error(j.error || t('toast.rescheduleFailed'));
       }
-      addToast('reschedule request sent', 'success');
+      addToast(t('toast.rescheduleSent'), 'success');
       setRescheduleOpen(false);
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'request failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.requestFailed'), 'error');
     } finally {
       setWorking(null);
     }
-  }, [addToast, refresh, rescheduleDate, rescheduleNote, working]);
+  }, [addToast, refresh, rescheduleDate, rescheduleNote, working, t]);
 
   const expandedTask = useMemo(
     () => (expanded ? tasks.find((t) => t.id === expanded) ?? null : null),
@@ -597,7 +602,7 @@ function V2TasksInner() {
       </svg>
 
       <header className="v2-section-head">
-        <span className="recgon-label v2-eyebrow">› tasks</span>
+        <span className="recgon-label v2-eyebrow">{t('eyebrow')}</span>
 
         <div className="v2-tasks-search-wrap">
           <span className="v2-tasks-search-glyph" aria-hidden="true">›</span>
@@ -605,16 +610,16 @@ function V2TasksInner() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="filter tasks…"
+            placeholder={t('search.placeholder')}
             className="v2-tasks-search"
-            aria-label="Filter tasks"
+            aria-label={t('search.aria')}
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
               className="v2-tasks-search-clear"
-              aria-label="Clear search"
+              aria-label={t('search.clear')}
             >×</button>
           )}
         </div>
@@ -630,7 +635,7 @@ function V2TasksInner() {
           data-filter="overdue"
         >
           <span className="v2-tasks-filter-dot" aria-hidden="true" />
-          <span>overdue</span>
+          <span>{t('filters.overdue')}</span>
           {overdueCount > 0 && <span className="v2-tasks-filter-count">{overdueCount}</span>}
         </button>
       </header>
@@ -640,7 +645,7 @@ function V2TasksInner() {
           {COLUMNS.map((col) => (
             <div key={col.key} className="v2-tasks-col">
               <div className="v2-tasks-col-head">
-                <span className="v2-tasks-col-label" style={{ color: col.tone }}>{col.label}</span>
+                <span className="v2-tasks-col-label" style={{ color: col.tone }}>{t(`columns.${col.key}`)}</span>
               </div>
               <div className="v2-tasks-col-body">
                 {[1, 2].map((i) => (
@@ -684,89 +689,83 @@ function V2TasksInner() {
               >
                 <div className="v2-tasks-col-head">
                   <span className="v2-tasks-col-dot" style={{ background: col.tone }} aria-hidden="true" />
-                  <span className="v2-tasks-col-label" style={{ color: col.tone }}>{col.label}</span>
+                  <span className="v2-tasks-col-label" style={{ color: col.tone }}>{t(`columns.${col.key}`)}</span>
                   <span className="v2-tasks-col-count">{items.length}</span>
                 </div>
                 <div className="v2-tasks-col-body">
                   {items.length === 0 ? (
                     <div className="v2-tasks-col-empty">
                       {overdueOnly
-                        ? "nothing slipping — you're on top of it"
-                        : (
-                          <>
-                            {col.key === 'assigned' && 'nothing waiting on you.'}
-                            {col.key === 'wip' && 'nothing in flight.'}
-                            {col.key === 'review' && 'nothing under review.'}
-                          </>
-                        )}
+                        ? t('empty.overdueClear')
+                        : t(`empty.${col.key}`)}
                     </div>
                   ) : (
-                    items.map((t) => {
-                      const chip = priorityChip(t.priority);
-                      const projectName = t.project_id ? projectNameById.get(t.project_id) : null;
-                      const proof = needsProof(t);
-                      const reschedulePending = t.reschedule_request_status === 'pending';
-                      const isDragging = draggedId === t.id;
-                      const schedule = fmtSchedule(t);
+                    items.map((task) => {
+                      const chip = priorityChip(task.priority);
+                      const projectName = task.project_id ? projectNameById.get(task.project_id) : null;
+                      const proof = needsProof(task);
+                      const reschedulePending = task.reschedule_request_status === 'pending';
+                      const isDragging = draggedId === task.id;
+                      const schedule = fmtSchedule(task);
                       return (
                         <article
-                          key={t.id}
+                          key={task.id}
                           className={`v2-tasks-card ${proof ? 'is-attn' : ''} ${isDragging ? 'is-dragging' : ''}`}
                           draggable
                           onDragStart={(e) => {
-                            setDraggedId(t.id);
+                            setDraggedId(task.id);
                             e.dataTransfer.effectAllowed = 'move';
                             // Some browsers need data set to start a drag.
-                            try { e.dataTransfer.setData('text/plain', t.id); } catch { /* swallowed */ }
+                            try { e.dataTransfer.setData('text/plain', task.id); } catch { /* swallowed */ }
                           }}
                           onDragEnd={() => { setDraggedId(null); setHoverCol(null); }}
-                          onClick={() => setExpanded(t.id)}
+                          onClick={() => setExpanded(task.id)}
                           role="button"
                           tabIndex={0}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault();
-                              setExpanded(t.id);
+                              setExpanded(task.id);
                             }
                           }}
-                          title={cleanText(t.description || t.title)}
+                          title={cleanText(task.description || task.title)}
                         >
                           {/* Filter target — the SVG specular lighting is
                               applied to this opaque-white div so it doesn't
                               filter (and blur) the card's text content. */}
                           <div className="v2-tasks-card-bg" aria-hidden="true" />
                           <div className="v2-tasks-card-head">
-                            <span className="v2-tasks-card-kind">{KIND_LABEL[t.kind] ?? t.kind}</span>
+                            <span className="v2-tasks-card-kind">{KIND_LABEL[task.kind] ? t(`kind.${task.kind}`) : task.kind}</span>
                             {chip && (
                               <span className="v2-tasks-card-prio" style={{ color: chip.color, borderColor: chip.color }}>
-                                {chip.label}
+                                {t(`priority.${chip.labelKey}`)}
                               </span>
                             )}
-                            {proof && <span className="v2-tasks-card-flag">proof</span>}
-                            {reschedulePending && <span className="v2-tasks-card-flag is-reschedule">move</span>}
+                            {proof && <span className="v2-tasks-card-flag">{t('flags.proof')}</span>}
+                            {reschedulePending && <span className="v2-tasks-card-flag is-reschedule">{t('flags.move')}</span>}
                           </div>
-                          <h3 className="v2-tasks-card-title">{cleanText(t.title)}</h3>
+                          <h3 className="v2-tasks-card-title">{cleanText(task.title)}</h3>
                           <div className="v2-tasks-card-foot">
                             {projectName && <span className="v2-tasks-card-chip">{projectName}</span>}
-                            {!projectName && t.teamName && (
-                              <span className="v2-tasks-card-chip" title={`Team: ${t.teamName}`}>{t.teamName}</span>
+                            {!projectName && task.teamName && (
+                              <span className="v2-tasks-card-chip" title={t('teamTitle', { name: task.teamName })}>{task.teamName}</span>
                             )}
-                            {schedule && <span className="v2-tasks-card-schedule" title={t.schedule_note ?? undefined}>{schedule}</span>}
+                            {schedule && <span className="v2-tasks-card-schedule" title={task.schedule_note ?? undefined}>{schedule.isDeadline ? t('schedule.due', { date: schedule.date }) : schedule.date}</span>}
                             {(() => {
                               // Phase 3.6 / Plan 04 — overdue chip inline
                               // alongside schedule text. /tasks shows only
                               // the viewer's own tasks (assignee view), so
                               // ownerView stays false — uniform pink chip.
                               const today = new Date();
-                              const shape = taskItemToOverdueShape(t);
+                              const shape = taskItemToOverdueShape(task);
                               if (!isOverdue(shape, today)) return null;
-                              const endKey = t.scheduled_until_date ?? t.scheduled_date;
+                              const endKey = task.scheduled_until_date ?? task.scheduled_date;
                               if (!endKey) return null;
                               const days = Math.max(1, daysOverdue(endKey, today));
-                              const tier = ((t.overdue_tier ?? 0) as 0 | 1 | 2 | 3);
+                              const tier = ((task.overdue_tier ?? 0) as 0 | 1 | 2 | 3);
                               return <OverdueChip tier={tier} days={days} ownerView={false} />;
                             })()}
-                            <span className="v2-tasks-card-time">{relTime(t.assigned_at)}</span>
+                            <span className="v2-tasks-card-time">{(() => { const r = relTime(task.assigned_at); return r ? (r.unit === 'justNow' ? t('relTime.justNow') : t(`relTime.${r.unit}`, { count: r.count })) : ''; })()}</span>
                           </div>
                         </article>
                       );
@@ -780,74 +779,75 @@ function V2TasksInner() {
       )}
 
       {expandedTask && (() => {
-        const t = expandedTask;
-        const chip = priorityChip(t.priority);
-        const projectName = t.project_id ? projectNameById.get(t.project_id) : null;
-        const isWorking = working === t.id;
-        const proof = needsProof(t);
-        const isAssigned = t.status === 'assigned';
-        const isInFlight = t.status === 'accepted' || t.status === 'in_progress';
-        const schedule = fmtSchedule(t);
-        const reschedulePending = t.reschedule_request_status === 'pending';
-        const requestedWindow = fmtRescheduleRequest(t);
+        const task = expandedTask;
+        const chip = priorityChip(task.priority);
+        const projectName = task.project_id ? projectNameById.get(task.project_id) : null;
+        const isWorking = working === task.id;
+        const proof = needsProof(task);
+        const isAssigned = task.status === 'assigned';
+        const isInFlight = task.status === 'accepted' || task.status === 'in_progress';
+        const schedule = fmtSchedule(task);
+        const reschedulePending = task.reschedule_request_status === 'pending';
+        const requestedWindow = fmtRescheduleRequest(task);
+        const rel = relTime(task.assigned_at);
         return (
           <div className="v2-tasks-overlay" onClick={() => setExpanded(null)}>
             <aside
               className="v2-tasks-detail"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
-              aria-label="Task detail"
+              aria-label={t('detail.aria')}
             >
               <button
                 type="button"
                 className="v2-tasks-detail-close"
                 onClick={() => setExpanded(null)}
-                aria-label="Close"
+                aria-label={t('detail.close')}
               >×</button>
 
               <div className="v2-tasks-detail-head">
                 <div className="v2-tasks-detail-kindrow">
-                  <span className="recgon-label v2-tasks-detail-kind">{KIND_LABEL[t.kind] ?? t.kind}</span>
+                  <span className="recgon-label v2-tasks-detail-kind">{KIND_LABEL[task.kind] ? t(`kind.${task.kind}`) : task.kind}</span>
                   {chip && (
                     <span className="v2-tasks-card-prio" style={{ color: chip.color, borderColor: chip.color }}>
-                      {chip.label}
+                      {t(`priority.${chip.labelKey}`)}
                     </span>
                   )}
                 </div>
-                <h2 className="v2-tasks-detail-title">{cleanText(t.title)}</h2>
+                <h2 className="v2-tasks-detail-title">{cleanText(task.title)}</h2>
                 <div className="v2-tasks-detail-meta">
                   {projectName && <span className="v2-tasks-card-chip">{projectName}</span>}
-                  {!projectName && t.teamName && (
-                    <span className="v2-tasks-card-chip">{t.teamName}</span>
+                  {!projectName && task.teamName && (
+                    <span className="v2-tasks-card-chip">{task.teamName}</span>
                   )}
-                  {schedule && <span className="v2-tasks-card-schedule" title={t.schedule_note ?? undefined}>{schedule}</span>}
-                  {reschedulePending && <span className="v2-tasks-card-flag is-reschedule">move requested</span>}
-                  <span className="v2-tasks-card-time">{relTime(t.assigned_at)}</span>
+                  {schedule && <span className="v2-tasks-card-schedule" title={task.schedule_note ?? undefined}>{schedule.isDeadline ? t('schedule.due', { date: schedule.date }) : schedule.date}</span>}
+                  {reschedulePending && <span className="v2-tasks-card-flag is-reschedule">{t('flags.moveRequested')}</span>}
+                  <span className="v2-tasks-card-time">{rel ? (rel.unit === 'justNow' ? t('relTime.justNow') : t(`relTime.${rel.unit}`, { count: rel.count })) : ''}</span>
                 </div>
               </div>
 
               <div className="v2-tasks-detail-chiprow">
                 <TaskStatusChip
-                  status={t.status}
-                  verification={t.verification_status}
-                  evidence={t.verification_evidence ?? null}
+                  status={task.status}
+                  verification={task.verification_status}
+                  evidence={task.verification_evidence ?? null}
                 />
               </div>
 
-              {whyYouMap[t.id] && (
+              {whyYouMap[task.id] && (
                 <div className="v2-tasks-detail-whyyou">
-                  <span className="recgon-label v2-block-eye">why you</span>
-                  <p className="v2-tasks-detail-whyyou-sentence">{whyYouMap[t.id]}</p>
+                  <span className="recgon-label v2-block-eye">{t('detail.whyYou')}</span>
+                  <p className="v2-tasks-detail-whyyou-sentence">{whyYouMap[task.id]}</p>
                 </div>
               )}
 
-              {t.description && <p className="v2-tasks-detail-desc">{cleanText(t.description)}</p>}
+              {task.description && <p className="v2-tasks-detail-desc">{cleanText(task.description)}</p>}
 
               {reschedulePending && (
                 <div className="v2-tasks-reschedule-note">
-                  <span className="recgon-label v2-block-eye">reschedule requested</span>
+                  <span className="recgon-label v2-block-eye">{t('detail.rescheduleRequested')}</span>
                   {requestedWindow && <p className="v2-tasks-reschedule-window">{requestedWindow}</p>}
-                  {t.reschedule_request_note && <p className="v2-tasks-proof-hint">{t.reschedule_request_note}</p>}
+                  {task.reschedule_request_note && <p className="v2-tasks-proof-hint">{task.reschedule_request_note}</p>}
                 </div>
               )}
 
@@ -857,17 +857,17 @@ function V2TasksInner() {
                     <button
                       type="button"
                       className="v2-btn v2-btn-primary"
-                      onClick={() => act(t, 'accept')}
+                      onClick={() => act(task, 'accept')}
                       disabled={isWorking}
                     >
-                      {isWorking ? <><span className="v2-inline-spinner" aria-hidden="true" />working…</> : 'accept'}
+                      {isWorking ? <><span className="v2-inline-spinner" aria-hidden="true" />{t('actions.working')}</> : t('actions.accept')}
                     </button>
                     <button
                       type="button"
                       className="v2-btn v2-btn-ghost"
-                      onClick={() => act(t, 'decline')}
+                      onClick={() => act(task, 'decline')}
                       disabled={isWorking}
-                    >decline</button>
+                    >{t('actions.decline')}</button>
                   </>
                 )}
 
@@ -876,25 +876,25 @@ function V2TasksInner() {
                     <button
                       type="button"
                       className="v2-btn v2-btn-primary"
-                      onClick={() => act(t, 'complete')}
+                      onClick={() => act(task, 'complete')}
                       disabled={isWorking}
                     >
-                      {isWorking ? <><span className="v2-inline-spinner" aria-hidden="true" />working…</> : 'mark done'}
+                      {isWorking ? <><span className="v2-inline-spinner" aria-hidden="true" />{t('actions.working')}</> : t('actions.markDone')}
                     </button>
                     <button
                       type="button"
                       className="v2-btn v2-btn-ghost"
-                      onClick={() => act(t, 'decline')}
+                      onClick={() => act(task, 'decline')}
                       disabled={isWorking}
-                    >hand back</button>
+                    >{t('actions.handBack')}</button>
                   </>
                 )}
 
-                {t.project_id && (
+                {task.project_id && (
                   <Link
-                    href={`/projects/${t.project_id}/tasks`}
+                    href={`/projects/${task.project_id}/tasks`}
                     className="v2-btn v2-btn-ghost"
-                  >open project →</Link>
+                  >{t('actions.openProject')}</Link>
                 )}
 
                 <button
@@ -903,7 +903,7 @@ function V2TasksInner() {
                   onClick={() => setRescheduleOpen((v) => !v)}
                   disabled={isWorking}
                 >
-                  {reschedulePending ? 'update reschedule' : 'request reschedule'}
+                  {reschedulePending ? t('actions.updateReschedule') : t('actions.requestReschedule')}
                 </button>
               </div>
 
@@ -911,7 +911,7 @@ function V2TasksInner() {
                 <div className="v2-tasks-reschedule-form">
                   <div className="v2-tasks-reschedule-grid">
                     <label className="v2-tasks-reschedule-field">
-                      <span>preferred day</span>
+                      <span>{t('reschedule.preferredDay')}</span>
                       <input
                         type="date"
                         value={rescheduleDate}
@@ -923,7 +923,7 @@ function V2TasksInner() {
                   <textarea
                     value={rescheduleNote}
                     onChange={(e) => setRescheduleNote(e.target.value)}
-                    placeholder="why this needs to move"
+                    placeholder={t('reschedule.notePlaceholder')}
                     className="v2-tasks-proof-input"
                     rows={3}
                   />
@@ -931,10 +931,10 @@ function V2TasksInner() {
                     <button
                       type="button"
                       className="v2-btn v2-btn-primary"
-                      onClick={() => submitRescheduleRequest(t)}
+                      onClick={() => submitRescheduleRequest(task)}
                       disabled={isWorking}
                     >
-                      {isWorking ? 'sending…' : 'send request'}
+                      {isWorking ? t('reschedule.sending') : t('reschedule.sendRequest')}
                     </button>
                   </div>
                 </div>
@@ -942,14 +942,14 @@ function V2TasksInner() {
 
               {proof && (
                 <div className="v2-tasks-proof">
-                  <span className="recgon-label v2-block-eye" style={{ color: 'var(--warning)' }}>proof needed</span>
+                  <span className="recgon-label v2-block-eye" style={{ color: 'var(--warning)' }}>{t('proof.needed')}</span>
                   <p className="v2-tasks-proof-hint">
-                    Recgon couldn&apos;t auto-verify this. Drop a note, paste a link, or attach a file as evidence.
+                    {t('proof.hint')}
                   </p>
                   <textarea
                     value={proofText}
                     onChange={(e) => setProofText(e.target.value)}
-                    placeholder="describe what you did"
+                    placeholder={t('proof.describePlaceholder')}
                     className="v2-tasks-proof-input"
                     rows={3}
                   />
@@ -957,25 +957,25 @@ function V2TasksInner() {
                     type="text"
                     value={proofLinks}
                     onChange={(e) => setProofLinks(e.target.value)}
-                    placeholder="proof links (separate with spaces)"
+                    placeholder={t('proof.linksPlaceholder')}
                     className="v2-tasks-proof-input v2-tasks-proof-links"
                   />
                   <ProofDropZone
                     uploading={uploadingFile}
                     files={proofAttachments}
-                    onPick={(files) => handleUploadProofFile(t, files)}
+                    onPick={(files) => handleUploadProofFile(task, files)}
                     onRemove={(idx) => setProofAttachments((p) => p.filter((_, i) => i !== idx))}
                   />
                   <p className="v2-tasks-proof-foot">
-                    Recgon will fetch any URL you paste and judge the page itself — not just your description.
+                    {t('proof.foot')}
                   </p>
                   <div className="v2-tasks-proof-actions">
                     <button
                       type="button"
                       className="v2-btn v2-btn-warn"
-                      onClick={() => submitProof(t)}
+                      onClick={() => submitProof(task)}
                       disabled={isWorking}
-                    >{isWorking ? 'sending…' : 'submit proof'}</button>
+                    >{isWorking ? t('proof.sending') : t('proof.submit')}</button>
                   </div>
                 </div>
               )}

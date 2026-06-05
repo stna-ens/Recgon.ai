@@ -2,16 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/Toast';
 
 type Category = 'bug' | 'idea' | 'question' | 'other';
 
-const CATEGORY_OPTIONS: Array<{ value: Category; label: string; hint: string }> = [
-  { value: 'bug', label: 'Bug', hint: 'Something broke or behaved wrong' },
-  { value: 'idea', label: 'Idea', hint: 'Feature request or improvement' },
-  { value: 'question', label: 'Question', hint: 'Help getting something done' },
-  { value: 'other', label: 'Other', hint: 'Anything else' },
-];
+const CATEGORY_VALUES: Category[] = ['bug', 'idea', 'question', 'other'];
 
 const MAX_LEN = 4000;
 
@@ -23,6 +19,7 @@ export default function HelpFeedbackModal({
   onClose: () => void;
 }) {
   const { addToast } = useToast();
+  const t = useTranslations('shared');
   const [mounted, setMounted] = useState(false);
   const [category, setCategory] = useState<Category>('idea');
   const [message, setMessage] = useState('');
@@ -72,14 +69,27 @@ export default function HelpFeedbackModal({
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data?.error || `Request failed (${res.status})`);
+        throw new Error(data?.error || t('helpFeedback.requestFailed', { status: res.status }));
       }
-      addToast('Thanks — feedback received', 'success');
+      addToast(t('helpFeedback.received'), 'success');
       onClose();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'Could not send feedback', 'error');
+      addToast(err instanceof Error ? err.message : t('helpFeedback.sendError'), 'error');
       setSubmitting(false);
     }
+  };
+
+  const CATEGORY_LABEL: Record<Category, string> = {
+    bug: t('helpFeedback.catBugLabel'),
+    idea: t('helpFeedback.catIdeaLabel'),
+    question: t('helpFeedback.catQuestionLabel'),
+    other: t('helpFeedback.catOtherLabel'),
+  };
+  const CATEGORY_HINT: Record<Category, string> = {
+    bug: t('helpFeedback.catBugHint'),
+    idea: t('helpFeedback.catIdeaHint'),
+    question: t('helpFeedback.catQuestionHint'),
+    other: t('helpFeedback.catOtherHint'),
   };
 
   return createPortal(
@@ -88,10 +98,10 @@ export default function HelpFeedbackModal({
       <div className="v2-hf-card">
         <div className="v2-hf-head">
           <div>
-            <div id="v2-hf-title" className="v2-hf-title">Help & feedback</div>
-            <div className="v2-hf-sub">Goes straight to the team. Reply by email.</div>
+            <div id="v2-hf-title" className="v2-hf-title">{t('helpFeedback.title')}</div>
+            <div className="v2-hf-sub">{t('helpFeedback.subtitle')}</div>
           </div>
-          <button type="button" className="v2-hf-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="v2-hf-close" onClick={onClose} aria-label={t('helpFeedback.close')}>
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
             </svg>
@@ -99,18 +109,18 @@ export default function HelpFeedbackModal({
         </div>
 
         <div className="v2-hf-section">
-          <div className="v2-hf-label">Type</div>
+          <div className="v2-hf-label">{t('helpFeedback.typeLabel')}</div>
           <div className="v2-hf-cats">
-            {CATEGORY_OPTIONS.map((opt) => (
+            {CATEGORY_VALUES.map((value) => (
               <button
-                key={opt.value}
+                key={value}
                 type="button"
-                className={`v2-hf-cat${category === opt.value ? ' v2-hf-cat-active' : ''}`}
-                onClick={() => setCategory(opt.value)}
-                aria-pressed={category === opt.value}
+                className={`v2-hf-cat${category === value ? ' v2-hf-cat-active' : ''}`}
+                onClick={() => setCategory(value)}
+                aria-pressed={category === value}
               >
-                <span className="v2-hf-cat-label">{opt.label}</span>
-                <span className="v2-hf-cat-hint">{opt.hint}</span>
+                <span className="v2-hf-cat-label">{CATEGORY_LABEL[value]}</span>
+                <span className="v2-hf-cat-hint">{CATEGORY_HINT[value]}</span>
               </button>
             ))}
           </div>
@@ -118,7 +128,7 @@ export default function HelpFeedbackModal({
 
         <div className="v2-hf-section">
           <div className="v2-hf-label-row">
-            <span className="v2-hf-label">Message</span>
+            <span className="v2-hf-label">{t('helpFeedback.messageLabel')}</span>
             <span className="v2-hf-counter">{trimmed.length}/{MAX_LEN}</span>
           </div>
           <textarea
@@ -127,12 +137,12 @@ export default function HelpFeedbackModal({
             onChange={(e) => setMessage(e.target.value)}
             placeholder={
               category === 'bug'
-                ? 'What happened? What did you expect? Steps to reproduce help a lot.'
+                ? t('helpFeedback.placeholderBug')
                 : category === 'idea'
-                ? "What's missing or what would make this better?"
+                ? t('helpFeedback.placeholderIdea')
                 : category === 'question'
-                ? 'What are you trying to do?'
-                : 'Tell us what’s on your mind…'
+                ? t('helpFeedback.placeholderQuestion')
+                : t('helpFeedback.placeholderOther')
             }
             maxLength={MAX_LEN}
             autoFocus
@@ -141,7 +151,7 @@ export default function HelpFeedbackModal({
 
         <div className="v2-hf-foot">
           <button type="button" className="v2-hf-btn v2-hf-btn-ghost" onClick={onClose}>
-            Cancel
+            {t('helpFeedback.cancel')}
           </button>
           <button
             type="button"
@@ -149,7 +159,7 @@ export default function HelpFeedbackModal({
             onClick={handleSubmit}
             disabled={!canSubmit}
           >
-            {submitting ? 'Sending…' : 'Send feedback'}
+            {submitting ? t('helpFeedback.sending') : t('helpFeedback.send')}
           </button>
         </div>
       </div>

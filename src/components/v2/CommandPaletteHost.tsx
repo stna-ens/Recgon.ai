@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 
 type CommandKind = 'nav' | 'project';
@@ -21,13 +22,20 @@ interface ProjectLite {
   name: string;
 }
 
-const STATIC_NAV: Omit<Command, 'run'>[] = [
-  { id: 'nav-home', kind: 'nav', label: 'Home', hint: '/', group: 'Go to', keywords: ['overview', 'pulse', 'dashboard'] },
-  { id: 'nav-projects', kind: 'nav', label: 'Projects', hint: '/projects', group: 'Go to', keywords: ['list'] },
-  { id: 'nav-tasks', kind: 'nav', label: 'Tasks', hint: '/tasks', group: 'Go to', keywords: ['inbox', 'queue', 'kanban', 'board'] },
-  { id: 'nav-terminal', kind: 'nav', label: 'Terminal', hint: '/terminal', group: 'Go to', keywords: ['chat', 'mentor', 'cli', 'ask', 'console'] },
-  { id: 'nav-team', kind: 'nav', label: 'Team admin', hint: '/team', group: 'Go to', keywords: ['members', 'invites', 'admin'] },
-  { id: 'nav-settings', kind: 'nav', label: 'Settings', hint: '/settings', group: 'Go to', keywords: ['account', 'theme'] },
+type StaticNavItem = {
+  id: string;
+  labelKey: string;
+  hint: string;
+  keywords?: string[];
+};
+
+const STATIC_NAV: StaticNavItem[] = [
+  { id: 'nav-home', labelKey: 'navHome', hint: '/', keywords: ['overview', 'pulse', 'dashboard'] },
+  { id: 'nav-projects', labelKey: 'navProjects', hint: '/projects', keywords: ['list'] },
+  { id: 'nav-tasks', labelKey: 'navTasks', hint: '/tasks', keywords: ['inbox', 'queue', 'kanban', 'board'] },
+  { id: 'nav-terminal', labelKey: 'navTerminal', hint: '/terminal', keywords: ['chat', 'mentor', 'cli', 'ask', 'console'] },
+  { id: 'nav-team', labelKey: 'navTeam', hint: '/team', keywords: ['members', 'invites', 'admin'] },
+  { id: 'nav-settings', labelKey: 'navSettings', hint: '/settings', keywords: ['account', 'theme'] },
 ];
 
 function fuzzyScore(query: string, text: string): number {
@@ -45,6 +53,7 @@ function fuzzyScore(query: string, text: string): number {
 
 export default function CommandPaletteHost() {
   const router = useRouter();
+  const t = useTranslations('shared');
   const { currentTeam } = useTeam();
   const teamId = currentTeam?.id ?? null;
 
@@ -113,18 +122,23 @@ export default function CommandPaletteHost() {
 
   const allCommands = useMemo<Command[]>(() => {
     const navCommands: Command[] = STATIC_NAV.map((c) => ({
-      ...c,
+      id: c.id,
+      kind: 'nav',
+      label: t(`commandPalette.${c.labelKey}`),
+      hint: c.hint,
+      group: t('commandPalette.goTo'),
+      keywords: c.keywords,
       run: () => {
-        router.push(c.hint!);
+        router.push(c.hint);
         setOpen(false);
       },
     }));
     const projectCommands: Command[] = projects.map((p) => ({
       id: `proj-${p.id}`,
       kind: 'project',
-      label: `Open ${p.name}`,
+      label: t('commandPalette.openProject', { name: p.name }),
       hint: `/projects/${p.id}`,
-      group: 'Projects',
+      group: t('commandPalette.projects'),
       keywords: [p.name, 'project', 'open'],
       run: () => {
         router.push(`/projects/${p.id}`);
@@ -132,7 +146,7 @@ export default function CommandPaletteHost() {
       },
     }));
     return [...navCommands, ...projectCommands];
-  }, [projects, router]);
+  }, [projects, router, t]);
 
   const filtered = useMemo<Command[]>(() => {
     if (!query.trim()) return allCommands;
@@ -199,7 +213,7 @@ export default function CommandPaletteHost() {
       <div
         className="v2-cmd-panel"
         role="dialog"
-        aria-label="Command palette"
+        aria-label={t('commandPalette.dialogAria')}
         aria-modal="true"
         style={{ top: panelPos.top, right: panelPos.right }}
       >
@@ -213,16 +227,16 @@ export default function CommandPaletteHost() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search or jump to anywhere…"
+            placeholder={t('commandPalette.placeholder')}
             className="v2-cmd-input"
             autoFocus
           />
-          <span className="v2-cmd-esc">esc</span>
+          <span className="v2-cmd-esc">{t('commandPalette.esc')}</span>
         </div>
 
         <div ref={listRef} className="v2-cmd-list">
           {grouped.length === 0 ? (
-            <div className="v2-cmd-empty">No matches.</div>
+            <div className="v2-cmd-empty">{t('commandPalette.noMatches')}</div>
           ) : (
             grouped.map((group) => (
               <div key={group.name} className="v2-cmd-group">
@@ -249,9 +263,9 @@ export default function CommandPaletteHost() {
         </div>
 
         <div className="v2-cmd-footer">
-          <span><kbd>↑↓</kbd> navigate</span>
-          <span><kbd>↵</kbd> select</span>
-          <span><kbd>esc</kbd> close</span>
+          <span><kbd>↑↓</kbd> {t('commandPalette.navigate')}</span>
+          <span><kbd>↵</kbd> {t('commandPalette.select')}</span>
+          <span><kbd>esc</kbd> {t('commandPalette.close')}</span>
         </div>
       </div>
 

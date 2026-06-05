@@ -1,15 +1,18 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 // First-paint skeleton. Header eyebrow + loading hero, then a tall setup
 // placeholder. Mirrors AnalyticsSkeleton in shape and animation.
 export default function MarketingSkeleton() {
+  const t = useTranslations('marketing');
   return (
     <div className="v2-m">
       <header className="v2-m-head">
         <div>
-          <span className="recgon-label v2-m-eye">› marketing</span>
+          <span className="recgon-label v2-m-eye">{t('eyebrow')}</span>
           <h2 className="v2-m-hero">
-            <span>loading…</span>
+            <span>{t('hero.loadingLead')}</span>
           </h2>
         </div>
       </header>

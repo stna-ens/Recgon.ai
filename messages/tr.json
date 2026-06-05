@@ -1,0 +1,19 @@
+{
+  "nav": {
+    "home": "Ana Sayfa",
+    "projects": "Projeler",
+    "tasks": "Görevler",
+    "calendar": "Takvim",
+    "terminal": "Terminal"
+  },
+  "settings": {
+    "language": {
+      "label": "dil",
+      "hint": "Uygulama arayüzünü ve Recgon'un yazdığı dili belirler."
+    }
+  },
+  "common": {
+    "cancel": "vazgeç",
+    "save": "kaydet"
+  }
+}

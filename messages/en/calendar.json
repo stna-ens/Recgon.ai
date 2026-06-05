@@ -1,0 +1,151 @@
+{
+  "metaTitle": "Calendar — Recgon",
+  "nav": {
+    "week": "WEEK",
+    "yourWeek": "YOUR WEEK",
+    "today": "today",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "prev": "Previous",
+    "next": "Next",
+    "unscheduled": "unscheduled"
+  },
+  "months": {
+    "jan": "JAN", "feb": "FEB", "mar": "MAR", "apr": "APR",
+    "may": "MAY", "jun": "JUN", "jul": "JUL", "aug": "AUG",
+    "sep": "SEP", "oct": "OCT", "nov": "NOV", "dec": "DEC"
+  },
+  "view": {
+    "menuAria": "Calendar view",
+    "calendar": "calendar",
+    "list": "list"
+  },
+  "filter": {
+    "menuAria": "Team filter",
+    "allTeams": "all teams",
+    "team": "team"
+  },
+  "header": {
+    "date": "DATE",
+    "member": "MEMBER",
+    "project": "PROJECT"
+  },
+  "loading": "loading week",
+  "empty": {
+    "noTeammates": "No teammates in this team yet.",
+    "noScheduled": "No scheduled tasks this week."
+  },
+  "lane": {
+    "you": "YOU",
+    "project": "PROJECT",
+    "noProject": "no project",
+    "noProjectEyebrow": "—",
+    "less": "− less",
+    "more": "+ {count} more"
+  },
+  "overdue": {
+    "oneDayLate": "1 day late",
+    "daysLate": "{days} days late",
+    "resize": "Resize task"
+  },
+  "chip": {
+    "move": "move"
+  },
+  "unsched": {
+    "aria": "Unscheduled tasks",
+    "title": "UNSCHEDULED",
+    "allClear": "all clear",
+    "kind": {
+      "next_step": "next",
+      "dev_prompt": "dev",
+      "marketing": "mktg",
+      "analytics": "data",
+      "research": "rsch",
+      "custom": "task"
+    }
+  },
+  "kind": {
+    "next_step": "next step",
+    "dev_prompt": "dev",
+    "marketing": "marketing",
+    "analytics": "analytics",
+    "research": "research",
+    "custom": "task"
+  },
+  "panel": {
+    "aria": "Task detail",
+    "close": "Close",
+    "scheduled": "SCHEDULED",
+    "whyYou": "WHY YOU",
+    "snooze": "SNOOZE",
+    "snoozeNote": "Push this task forward without reassigning. Tier resets on snooze.",
+    "snooze1Day": "1 day",
+    "snooze3Days": "3 days",
+    "snooze7Days": "7 days",
+    "snoozeCustom": "custom",
+    "snoozeDaysLabel": "days (1-30)",
+    "snoozeDaysPlaceholder": "e.g. 5",
+    "snoozeDaysAria": "Custom snooze days",
+    "snoozing": "snoozing",
+    "snoozeAction": "snooze",
+    "rescheduleRequested": "RESCHEDULE REQUESTED",
+    "ownerActions": "OWNER ACTIONS",
+    "ownerActionsNote": "The assignee handles accept / decline / mark done in their own inbox. From here you can intervene without acting on their behalf.",
+    "proofNeeded": "PROOF NEEDED",
+    "proofNeededNote": "Recgon couldn't auto-verify this. Drop a note, paste a link, or attach a file.",
+    "proofFoot": "Recgon will fetch any URL you paste and judge the page itself.",
+    "preferredDay": "preferred day",
+    "notePlaceholder": "why this needs to move",
+    "describePlaceholder": "describe what you did",
+    "linksPlaceholder": "proof links (space-separated)"
+  },
+  "actions": {
+    "working": "working",
+    "accept": "accept",
+    "decline": "decline",
+    "markDone": "mark done",
+    "handBack": "hand back",
+    "verify": "verify",
+    "reassign": "reassign",
+    "cancelTask": "cancel task",
+    "requestReschedule": "request reschedule",
+    "updateReschedule": "update reschedule",
+    "sending": "sending",
+    "sendRequest": "send request",
+    "submitProof": "submit proof"
+  },
+  "confirm": {
+    "override": "Mark this task complete and bypass verification?",
+    "cancel": "Cancel this task? It will be marked cancelled but kept for history."
+  },
+  "toast": {
+    "rescheduled": "task rescheduled",
+    "rescheduleFailed": "reschedule failed",
+    "spanUpdated": "span updated",
+    "spanCollapsed": "span collapsed to one day",
+    "resizeFailed": "resize failed",
+    "sentToOwner": "sent to team owner",
+    "reassigned": "recgon reassigned",
+    "willReassign": "recgon will reassign",
+    "accepted": "accepted",
+    "sentForVerification": "sent for verification",
+    "actionFailed": "{action} failed",
+    "filesAttached": "{count, plural, one {# file attached} other {# files attached}}",
+    "uploadFailed": "upload failed",
+    "proofMissing": "add a note, a link, or a file before submitting",
+    "proofSent": "proof sent — recgon is re-checking",
+    "submitFailed": "submit failed",
+    "failed": "failed",
+    "overrideDone": "marked complete (override)",
+    "overrideFailed": "override failed",
+    "reassignNoMatch": "no other match — sent to you",
+    "reassignFailed": "reassign failed",
+    "cancelled": "task cancelled",
+    "cancelFailed": "cancel failed",
+    "snoozed": "snoozed",
+    "snoozeRange": "days must be an integer between 1 and 30",
+    "snoozeFailed": "snooze failed",
+    "requestSent": "reschedule request sent",
+    "requestFailed": "request failed"
+  }
+}

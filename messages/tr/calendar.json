@@ -1,0 +1,151 @@
+{
+  "metaTitle": "Takvim — Recgon",
+  "nav": {
+    "week": "HAFTA",
+    "yourWeek": "HAFTAN",
+    "today": "bugün",
+    "prevWeek": "Önceki hafta",
+    "nextWeek": "Sonraki hafta",
+    "prev": "Önceki",
+    "next": "Sonraki",
+    "unscheduled": "planlanmamış"
+  },
+  "months": {
+    "jan": "OCA", "feb": "ŞUB", "mar": "MAR", "apr": "NİS",
+    "may": "MAY", "jun": "HAZ", "jul": "TEM", "aug": "AĞU",
+    "sep": "EYL", "oct": "EKİ", "nov": "KAS", "dec": "ARA"
+  },
+  "view": {
+    "menuAria": "Takvim görünümü",
+    "calendar": "takvim",
+    "list": "liste"
+  },
+  "filter": {
+    "menuAria": "Takım filtresi",
+    "allTeams": "tüm takımlar",
+    "team": "takım"
+  },
+  "header": {
+    "date": "TARİH",
+    "member": "ÜYE",
+    "project": "PROJE"
+  },
+  "loading": "hafta yükleniyor",
+  "empty": {
+    "noTeammates": "Bu takımda henüz takım arkadaşı yok.",
+    "noScheduled": "Bu hafta planlanmış görev yok."
+  },
+  "lane": {
+    "you": "SEN",
+    "project": "PROJE",
+    "noProject": "proje yok",
+    "noProjectEyebrow": "—",
+    "less": "− daha az",
+    "more": "+ {count} daha"
+  },
+  "overdue": {
+    "oneDayLate": "1 gün gecikmiş",
+    "daysLate": "{days} gün gecikmiş",
+    "resize": "Görevi yeniden boyutlandır"
+  },
+  "chip": {
+    "move": "taşı"
+  },
+  "unsched": {
+    "aria": "Planlanmamış görevler",
+    "title": "PLANLANMAMIŞ",
+    "allClear": "her şey tamam",
+    "kind": {
+      "next_step": "sonr",
+      "dev_prompt": "gel",
+      "marketing": "pzr",
+      "analytics": "veri",
+      "research": "araş",
+      "custom": "görev"
+    }
+  },
+  "kind": {
+    "next_step": "sonraki adım",
+    "dev_prompt": "geliştirme",
+    "marketing": "pazarlama",
+    "analytics": "analiz",
+    "research": "araştırma",
+    "custom": "görev"
+  },
+  "panel": {
+    "aria": "Görev ayrıntısı",
+    "close": "Kapat",
+    "scheduled": "PLANLANDI",
+    "whyYou": "NEDEN SEN",
+    "snooze": "ERTELE",
+    "snoozeNote": "Bu görevi yeniden atamadan ileri taşı. Erteleyince kademe sıfırlanır.",
+    "snooze1Day": "1 gün",
+    "snooze3Days": "3 gün",
+    "snooze7Days": "7 gün",
+    "snoozeCustom": "özel",
+    "snoozeDaysLabel": "gün (1-30)",
+    "snoozeDaysPlaceholder": "örn. 5",
+    "snoozeDaysAria": "Özel erteleme günü",
+    "snoozing": "erteleniyor",
+    "snoozeAction": "ertele",
+    "rescheduleRequested": "YENİDEN PLANLAMA İSTENDİ",
+    "ownerActions": "SAHİP İŞLEMLERİ",
+    "ownerActionsNote": "Atanan kişi kabul / reddet / tamamlandı işlemlerini kendi gelen kutusunda yapar. Buradan, onun adına işlem yapmadan müdahale edebilirsin.",
+    "proofNeeded": "KANIT GEREKLİ",
+    "proofNeededNote": "Recgon bunu otomatik doğrulayamadı. Bir not bırak, bir bağlantı yapıştır veya bir dosya ekle.",
+    "proofFoot": "Recgon yapıştırdığın her bağlantıyı getirip sayfanın kendisini değerlendirir.",
+    "preferredDay": "tercih edilen gün",
+    "notePlaceholder": "neden taşınması gerekiyor",
+    "describePlaceholder": "ne yaptığını açıkla",
+    "linksPlaceholder": "kanıt bağlantıları (boşlukla ayrılmış)"
+  },
+  "actions": {
+    "working": "işleniyor",
+    "accept": "kabul et",
+    "decline": "reddet",
+    "markDone": "tamamlandı işaretle",
+    "handBack": "geri ver",
+    "verify": "doğrula",
+    "reassign": "yeniden ata",
+    "cancelTask": "görevi iptal et",
+    "requestReschedule": "yeniden planlama iste",
+    "updateReschedule": "planlamayı güncelle",
+    "sending": "gönderiliyor",
+    "sendRequest": "istek gönder",
+    "submitProof": "kanıt gönder"
+  },
+  "confirm": {
+    "override": "Bu görevi tamamlandı olarak işaretleyip doğrulamayı atla?",
+    "cancel": "Bu görev iptal edilsin mi? İptal edildi olarak işaretlenir ama geçmiş için saklanır."
+  },
+  "toast": {
+    "rescheduled": "görev yeniden planlandı",
+    "rescheduleFailed": "yeniden planlama başarısız oldu",
+    "spanUpdated": "süre güncellendi",
+    "spanCollapsed": "süre tek güne indirildi",
+    "resizeFailed": "yeniden boyutlandırma başarısız oldu",
+    "sentToOwner": "takım sahibine gönderildi",
+    "reassigned": "recgon yeniden atadı",
+    "willReassign": "recgon yeniden atayacak",
+    "accepted": "kabul edildi",
+    "sentForVerification": "doğrulamaya gönderildi",
+    "actionFailed": "{action} başarısız oldu",
+    "filesAttached": "{count, plural, one {# dosya eklendi} other {# dosya eklendi}}",
+    "uploadFailed": "yükleme başarısız oldu",
+    "proofMissing": "göndermeden önce bir not, bağlantı veya dosya ekle",
+    "proofSent": "kanıt gönderildi — recgon yeniden denetliyor",
+    "submitFailed": "gönderim başarısız oldu",
+    "failed": "başarısız oldu",
+    "overrideDone": "tamamlandı olarak işaretlendi (geçersiz kılma)",
+    "overrideFailed": "geçersiz kılma başarısız oldu",
+    "reassignNoMatch": "başka eşleşme yok — sana gönderildi",
+    "reassignFailed": "yeniden atama başarısız oldu",
+    "cancelled": "görev iptal edildi",
+    "cancelFailed": "iptal başarısız oldu",
+    "snoozed": "ertelendi",
+    "snoozeRange": "gün 1 ile 30 arasında bir tam sayı olmalı",
+    "snoozeFailed": "erteleme başarısız oldu",
+    "requestSent": "yeniden planlama isteği gönderildi",
+    "requestFailed": "istek başarısız oldu"
+  }
+}

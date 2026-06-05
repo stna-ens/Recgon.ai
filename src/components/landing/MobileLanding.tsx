@@ -1,59 +1,43 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Code, BarChart3, ListTodo, UserCheck, ShieldCheck, Terminal } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import RecgonLogo from '@/components/RecgonLogo';
 import DecryptedText from './DecryptedText';
 import LandingDotField from './LandingDotField';
 
 const Aurora = dynamic(() => import('./Aurora'), { ssr: false });
 
-const AUDIENCE = [
-  'small teams',
-  'early-stage startups',
-  'indie hackers',
-  'founding teams',
-  'side projects',
-  'solo founders',
-  'product teams',
-];
+const AUDIENCE_KEYS = [
+  'smallTeams',
+  'earlyStartups',
+  'indieHackers',
+  'foundingTeams',
+  'sideProjects',
+  'soloFounders',
+  'productTeams',
+] as const;
 
-const DEVICES = ['laptop.', 'desktop.', 'Mac.', 'PC.'];
+const DEVICE_KEYS = ['laptop', 'desktop', 'mac', 'pc'] as const;
 
-const CAPABILITIES = [
-  { Icon: Code,        title: 'Codebase analysis',  body: 'Paste a GitHub repo. Recgon reads it and ranks the next moves — stage, risks, growth levers.' },
-  { Icon: BarChart3,   title: 'Analytics pulse',    body: 'Connect GA4. Traffic, channels, and funnel signals get folded into your weekly brief.' },
-  { Icon: ListTodo,    title: 'Auto task minting',  body: 'Strategy, dev, marketing, analytics, research — tasks are written from your unified snapshot.' },
-  { Icon: UserCheck,   title: 'Skill-aware assign', body: 'Each task gets scored against every teammate by skill, load, and calendar — best fit wins.' },
-  { Icon: ShieldCheck, title: 'Task verification',  body: 'When a task is marked done, Recgon checks the evidence against the original acceptance criteria.' },
-  { Icon: Terminal,    title: 'Slash terminal',     body: '/analyze, /analytics, /content — every analysis and assignment is one slash away.' },
-];
+const CAPABILITY_KEYS = [
+  { Icon: Code, key: 'codebase' },
+  { Icon: BarChart3, key: 'analytics' },
+  { Icon: ListTodo, key: 'minting' },
+  { Icon: UserCheck, key: 'assign' },
+  { Icon: ShieldCheck, key: 'verification' },
+  { Icon: Terminal, key: 'terminal' },
+] as const;
 
-const STEPS = [
-  { num: '01', title: 'Connect.', body: 'Link your GitHub repo and GA4 property. Add your teammates with their roles.' },
-  { num: '02', title: 'Analyze.', body: 'Recgon reads the code and the traffic, then ranks the next steps per project.' },
-  { num: '03', title: 'Act.',     body: 'Tasks land on the right teammate’s calendar. You see what shipped and what slipped.' },
-];
+const STEP_KEYS = [
+  { num: '01', key: 'step1' },
+  { num: '02', key: 'step2' },
+  { num: '03', key: 'step3' },
+] as const;
 
-const FAQ = [
-  {
-    q: 'What is Recgon?',
-    a: 'An AI Product Manager for small teams. Reads your codebase, GA4 analytics, and team activity, then surfaces what to ship next and auto-assigns each task to the best-fit teammate.',
-  },
-  {
-    q: 'How does task assignment work?',
-    a: 'Each task is scored against every teammate by skill match, current workload, and open time on their calendar. The best fit gets assigned and pinged.',
-  },
-  {
-    q: 'Does Recgon do the work itself?',
-    a: 'No. Recgon plans, prioritizes, schedules, and verifies — your team ships.',
-  },
-  {
-    q: 'Is there a Claude Code integration?',
-    a: 'Yes. Recgon ships an MCP server so Claude Code can read your analysis, pick up a next step, implement it, and mark it complete.',
-  },
-];
+const FAQ_KEYS = ['q1', 'q2', 'q3', 'q4'] as const;
 
 function useReveal<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
@@ -92,15 +76,19 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 }
 
 type TermLine = { kind: 'cmd' | 'note' | 'out' | 'ok'; text: string };
-const TERM_SCRIPT: TermLine[] = [
-  { kind: 'cmd',  text: '/analyze acme/storefront' },
-  { kind: 'note', text: '# reading 384 files · 18.2k loc' },
-  { kind: 'out',  text: 'stage: growth · top risk: webhook retries' },
-  { kind: 'note', text: '# matching teammates by skill + calendar' },
-  { kind: 'ok',   text: '→ assigned 4 tasks · 3 owners' },
-];
 
 function TerminalDemo() {
+  const t = useTranslations('landing.mobile.terminal');
+  const TERM_SCRIPT: TermLine[] = useMemo(
+    () => [
+      { kind: 'cmd', text: '/analyze acme/storefront' },
+      { kind: 'note', text: t('script.note1') },
+      { kind: 'out', text: t('script.out1') },
+      { kind: 'note', text: t('script.note2') },
+      { kind: 'ok', text: t('script.ok') },
+    ],
+    [t],
+  );
   const { ref, visible } = useReveal<HTMLDivElement>();
   const [lineIdx, setLineIdx] = useState(0);
   const [charIdx, setCharIdx] = useState(0);
@@ -143,7 +131,7 @@ function TerminalDemo() {
     }
 
     return () => { if (timer) clearTimeout(timer); };
-  }, [visible, lineIdx, charIdx, cycle]);
+  }, [visible, lineIdx, charIdx, cycle, TERM_SCRIPT]);
 
   const lines = TERM_SCRIPT.map((l, i) => {
     if (i < lineIdx) return { ...l, text: l.text };
@@ -157,7 +145,7 @@ function TerminalDemo() {
         <span className="mlnd-term-dot" data-c="r" />
         <span className="mlnd-term-dot" data-c="y" />
         <span className="mlnd-term-dot" data-c="g" />
-        <span className="mlnd-term-bar-title">recgon — terminal</span>
+        <span className="mlnd-term-bar-title">{t('barTitle')}</span>
       </div>
       <div className="mlnd-term-body">
         {lines.map((l, i) => {
@@ -211,6 +199,16 @@ function RotatingWord({ word, decryptKey, started }: { word: string; decryptKey:
 }
 
 export default function MobileLanding() {
+  const t = useTranslations('landing.mobile');
+  const tHero = useTranslations('landing.hero');
+  const AUDIENCE = useMemo(
+    () => AUDIENCE_KEYS.map((k) => tHero(`audience.${k}`)),
+    [tHero],
+  );
+  const DEVICES = useMemo(
+    () => DEVICE_KEYS.map((k) => t(`final.device.${k}`)),
+    [t],
+  );
   const [heroDone, setHeroDone] = useState(false);
   const [audIdx, setAudIdx] = useState(0);
   const [audKey, setAudKey] = useState(0);
@@ -236,7 +234,7 @@ export default function MobileLanding() {
     if (!heroDone) return;
     const id = setInterval(() => {
       setAudStarted(true);
-      setAudIdx((i) => (i + 1) % AUDIENCE.length);
+      setAudIdx((i) => (i + 1) % AUDIENCE_KEYS.length);
       setAudKey((k) => k + 1);
     }, 2800);
     return () => clearInterval(id);
@@ -247,7 +245,7 @@ export default function MobileLanding() {
   useEffect(() => {
     const id = setInterval(() => {
       setDevStarted(true);
-      setDevIdx((i) => (i + 1) % DEVICES.length);
+      setDevIdx((i) => (i + 1) % DEVICE_KEYS.length);
       setDevKey((k) => k + 1);
     }, 2400);
     return () => clearInterval(id);
@@ -303,15 +301,15 @@ export default function MobileLanding() {
 
         <div className="mlnd-hero-stack">
           <div className="recgon-label mlnd-aud" aria-live="polite">
-            for {heroDone ? (
+            {t('hero.forPrefix')} {heroDone ? (
               <RotatingWord word={AUDIENCE[audIdx]} decryptKey={audKey} started={audStarted} />
-            ) : 'small teams'}
+            ) : AUDIENCE[0]}
           </div>
 
           <h1 className="mlnd-h1">
             {!heroDone ? (
               <DecryptedText
-                text="One brain for small teams."
+                text={t('hero.titleStatic')}
                 animateOn="view"
                 sequential
                 speed={36}
@@ -322,7 +320,7 @@ export default function MobileLanding() {
               />
             ) : (
               <>
-                One brain for{' '}
+                {t('hero.titlePrefix')}{' '}
                 <span className="mlnd-h1-accent">
                   <RotatingWord
                     word={`${AUDIENCE[audIdx]}.`}
@@ -335,7 +333,7 @@ export default function MobileLanding() {
           </h1>
 
           <p className="mlnd-sub">
-            Recgon reads your codebase, analytics, and team — then decides what to ship next and who should ship it.
+            {t('hero.subtitle')}
           </p>
 
           <a
@@ -343,7 +341,7 @@ export default function MobileLanding() {
             className={`mlnd-cta-ghost${diving ? ' is-diving' : ''}`}
             onClick={handleDive}
           >
-            See what you’ll get{' '}
+            {t('hero.seeWhat')}{' '}
             <span className="mlnd-cta-arrow" aria-hidden="true">↓</span>
           </a>
         </div>
@@ -353,24 +351,24 @@ export default function MobileLanding() {
       <section id="mlnd-features" className="mlnd-section mlnd-features">
         <div className="mlnd-section-inner">
           <Reveal>
-            <span className="recgon-label">capabilities · 06</span>
+            <span className="recgon-label">{t('features.label')}</span>
             <h2 className="mlnd-h2">
-              Everything you need,
+              {t('features.titleLine1')}
               <br />
-              <span className="mlnd-h2-soft">nothing you don’t.</span>
+              <span className="mlnd-h2-soft">{t('features.titleLine2')}</span>
             </h2>
           </Reveal>
 
           <div className="mlnd-cap-list">
-            {CAPABILITIES.map(({ Icon, title, body }, i) => (
-              <Reveal key={title} delay={i * 60}>
+            {CAPABILITY_KEYS.map(({ Icon, key }, i) => (
+              <Reveal key={key} delay={i * 60}>
                 <article className="glass-card mlnd-cap">
                   <div className="mlnd-cap-head">
                     <span className="mlnd-cap-num">[{String(i + 1).padStart(2, '0')}]</span>
                     <span className="mlnd-cap-icon"><Icon size={18} strokeWidth={2} /></span>
                   </div>
-                  <h3 className="mlnd-cap-title">{title}</h3>
-                  <p className="mlnd-cap-body">{body}</p>
+                  <h3 className="mlnd-cap-title">{t(`features.${key}.title`)}</h3>
+                  <p className="mlnd-cap-body">{t(`features.${key}.body`)}</p>
                 </article>
               </Reveal>
             ))}
@@ -381,23 +379,23 @@ export default function MobileLanding() {
       {/* ── How it works (vertical timeline) ───────────────────────────── */}
       <section className="mlnd-section mlnd-how">
         <Reveal>
-          <span className="recgon-label">workflow</span>
+          <span className="recgon-label">{t('workflow.label')}</span>
           <h2 className="mlnd-h2">
-            Three steps.
+            {t('workflow.titleLine1')}
             <br />
-            <span className="mlnd-h2-soft">Zero friction.</span>
+            <span className="mlnd-h2-soft">{t('workflow.titleLine2')}</span>
           </h2>
         </Reveal>
 
         <div className="mlnd-timeline">
           <div className="mlnd-timeline-rail" aria-hidden="true" />
-          {STEPS.map((s, i) => (
+          {STEP_KEYS.map((s, i) => (
             <Reveal key={s.num} delay={i * 100}>
-              <div className="mlnd-step" data-last={i === STEPS.length - 1 ? 'true' : 'false'}>
+              <div className="mlnd-step" data-last={i === STEP_KEYS.length - 1 ? 'true' : 'false'}>
                 <div className="mlnd-step-dot" aria-hidden="true" />
-                <span className="recgon-label mlnd-step-label">step {s.num}</span>
-                <h3 className="mlnd-step-title">{s.title}</h3>
-                <p className="mlnd-step-body">{s.body}</p>
+                <span className="recgon-label mlnd-step-label">{t('workflow.stepLabel', { num: s.num })}</span>
+                <h3 className="mlnd-step-title">{t(`workflow.${s.key}.title`)}</h3>
+                <p className="mlnd-step-body">{t(`workflow.${s.key}.body`)}</p>
               </div>
             </Reveal>
           ))}
@@ -407,14 +405,14 @@ export default function MobileLanding() {
       {/* ── Terminal (Claude / slash commands) ─────────────────────────── */}
       <section className="mlnd-section">
         <Reveal>
-          <span className="recgon-label">the terminal</span>
+          <span className="recgon-label">{t('terminal.label')}</span>
           <h2 className="mlnd-h2">
-            Same brain.
+            {t('terminal.titleLine1')}
             <br />
-            <span className="mlnd-h2-soft">Command-line interface.</span>
+            <span className="mlnd-h2-soft">{t('terminal.titleLine2')}</span>
           </h2>
           <p className="mlnd-lede">
-            Every analysis, every assignment, every report is one slash away.
+            {t('terminal.lede')}
           </p>
         </Reveal>
 
@@ -422,22 +420,22 @@ export default function MobileLanding() {
           <TerminalDemo />
         </Reveal>
 
-        <div className="mlnd-mcp-note">{'// claude code reads, acts, marks done — tracked here'}</div>
+        <div className="mlnd-mcp-note">{t('terminal.mcpNote')}</div>
       </section>
 
       {/* ── FAQ ────────────────────────────────────────────────────────── */}
       <section className="mlnd-section mlnd-faq">
         <div className="mlnd-section-inner">
           <Reveal>
-            <span className="recgon-label">faq</span>
-            <h2 className="mlnd-h2">Common questions.</h2>
+            <span className="recgon-label">{t('faq.label')}</span>
+            <h2 className="mlnd-h2">{t('faq.title')}</h2>
           </Reveal>
 
           <div className="mlnd-faq-list">
-            {FAQ.map(({ q, a }, i) => {
+            {FAQ_KEYS.map((key, i) => {
               const isOpen = openFaq === i;
               return (
-                <Reveal key={q} delay={i * 60}>
+                <Reveal key={key} delay={i * 60}>
                   <div className={`glass-card mlnd-faq-item ${isOpen ? 'is-open' : ''}`}>
                     <button
                       type="button"
@@ -445,12 +443,12 @@ export default function MobileLanding() {
                       onClick={() => setOpenFaq(isOpen ? null : i)}
                       aria-expanded={isOpen}
                     >
-                      <span>{q}</span>
+                      <span>{t(`faq.${key}.q`)}</span>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                         <polyline points="6 9 12 15 18 9" />
                       </svg>
                     </button>
-                    {isOpen && <p className="mlnd-faq-body">{a}</p>}
+                    {isOpen && <p className="mlnd-faq-body">{t(`faq.${key}.a`)}</p>}
                   </div>
                 </Reveal>
               );
@@ -467,20 +465,20 @@ export default function MobileLanding() {
         <div className="mlnd-final-veil" aria-hidden="true" />
         <div className="mlnd-final-inner">
           <Reveal>
-            <span className="recgon-label mlnd-final-tag">desktop only</span>
+            <span className="recgon-label mlnd-final-tag">{t('final.tag')}</span>
             <h2 className="mlnd-final-title">
-              Built for your
+              {t('final.titlePrefix')}
               <br />
               <span className="mlnd-final-accent">
                 <RotatingWord word={DEVICES[devIdx]} decryptKey={devKey} started={devStarted} />
               </span>
             </h2>
             <p className="mlnd-final-body">
-              Recgon’s a tool you use while you build. Open it on a laptop to sign up — mobile is on the way.
+              {t('final.body')}
             </p>
             <div className="mlnd-final-pill">
               <span className="mlnd-final-pill-glyph">$</span>
-              <span className="mlnd-final-pill-text">open recgon.app on desktop</span>
+              <span className="mlnd-final-pill-text">{t('final.pillText')}</span>
             </div>
           </Reveal>
         </div>
@@ -489,7 +487,7 @@ export default function MobileLanding() {
       {/* ── Footer ─────────────────────────────────────────────────────── */}
       <footer className="mlnd-foot">
         <span className="mlnd-foot-brand"><RecgonLogo size={22} uid="mlnd-logo-f" /></span>
-        <p className="mlnd-foot-line">recgon — built for builders</p>
+        <p className="mlnd-foot-line">{t('footer.tagline')}</p>
       </footer>
 
       <style>{`

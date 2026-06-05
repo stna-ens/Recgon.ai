@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { cleanText, relTimeShort } from './utils';
 import { TeammateAvatar } from './TeammateAvatar';
 
@@ -78,6 +79,7 @@ interface Props {
 // counter, severity-tinted dotted backplate, and items rendered as compact
 // briefing rows.
 export default function HomeBoard({ decisions, updates, teamPulse, loading, now = null, variant = 'classic' }: Props) {
+  const t = useTranslations('home');
   const totalDecisions = decisions.stuckTotal + decisions.failedTotal + decisions.driftTotal;
   const topFailed = decisions.failed[0];
   const topStuck = decisions.stuck[0];
@@ -134,7 +136,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                 <line x1="12" y1="9" x2="12" y2="14" />
                 <line x1="12" y1="17.5" x2="12" y2="17.5" />
               </svg>
-              <span>attention</span>
+              <span>{t('board.attention')}</span>
             </div>
             {!loading && (
               <div className="v2-bd-counter">
@@ -142,7 +144,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                   {totalDecisions.toString().padStart(2, '0')}
                 </span>
                 <span className="v2-bd-counter-lab">
-                  {variant === 'refined' ? 'needs your call' : 'things gone wrong'}
+                  {variant === 'refined' ? t('board.needsYourCall') : t('board.thingsGoneWrong')}
                 </span>
               </div>
             )}
@@ -151,7 +153,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
           {loading ? (
             <BoardColSkel />
           ) : totalDecisions === 0 ? (
-            <BoardClear text={variant === 'refined' ? 'Nothing needs your decision right now.' : "Nothing's gone wrong. Recgon is routing on its own."} />
+            <BoardClear text={variant === 'refined' ? t('board.clearRefined') : t('board.clearClassic')} />
           ) : (
             <div className="v2-bd-stack">
               {topFailed && (
@@ -159,7 +161,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                   href="/verify?filter=failed"
                   severity="crit"
                   count={decisions.failedTotal}
-                  label="failed verifications"
+                  label={t('board.failedVerifications')}
                   topTitle={cleanText(topFailed.title)}
                   topProject={topFailed.projectName}
                 />
@@ -169,7 +171,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                   href="/verify?filter=stuck"
                   severity="crit"
                   count={decisions.stuckTotal}
-                  label="stuck >24h"
+                  label={t('board.stuck24h')}
                   topTitle={cleanText(topStuck.title)}
                   topProject={topStuck.projectName}
                 />
@@ -181,7 +183,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                   href="/tasks?filter=drift"
                   severity="warn"
                   count={decisions.driftTotal}
-                  label="couldn't be routed"
+                  label={t('board.couldNotRoute')}
                   topTitle={cleanText(topDrift.title)}
                   topProject={topDrift.projectName}
                 />
@@ -190,8 +192,8 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
           )}
 
           {!loading && totalDecisions > 0 && (
-            <Link href="/verify" className="v2-bd-col-link" aria-label="Review queue">
-              <span>review queue</span>
+            <Link href="/verify" className="v2-bd-col-link" aria-label={t('board.reviewQueueAria')}>
+              <span>{t('board.reviewQueue')}</span>
               {/* list/queue glyph — opens the triage queue */}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <line x1="9" y1="6" x2="20" y2="6" />
@@ -219,14 +221,14 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                 <line x1="3" y1="12" x2="9" y2="12" />
                 <line x1="15" y1="12" x2="21" y2="12" />
               </svg>
-              <span>updates</span>
+              <span>{t('board.updates')}</span>
             </div>
             {!loading && (
               <div className="v2-bd-counter">
                 <span className="v2-bd-counter-num">
                   {safeUpdates.length.toString().padStart(2, '0')}
                 </span>
-                <span className="v2-bd-counter-lab">recent commits</span>
+                <span className="v2-bd-counter-lab">{t('board.recentCommits')}</span>
               </div>
             )}
           </header>
@@ -234,7 +236,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
           {loading ? (
             <BoardColSkel />
           ) : visibleUpdates.length === 0 ? (
-            <BoardClear text="No commits yet. Connect a GitHub repo to a project." />
+            <BoardClear text={t('board.noCommits')} />
           ) : (
             <ul className="v2-bd-updates">
               {visibleUpdates.map((u) => (
@@ -256,7 +258,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                           <>
                             <span className="v2-bd-update-pending" aria-hidden="true">
                               <span className="v2-bd-update-pending-dot" />
-                              recgon reading
+                              {t('board.recgonReading')}
                             </span>
                             <span className="v2-bd-update-sep">·</span>
                           </>
@@ -270,7 +272,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                           </>
                         )}
                         <span className="v2-bd-update-time">
-                          {u.committedAt ? `${relTimeShort(u.committedAt, now ?? Date.now())} ago` : 'recent'}
+                          {u.committedAt ? t('board.timeAgo', { time: relTimeShort(u.committedAt, now ?? Date.now()) }) : t('board.recent')}
                         </span>
                       </span>
                     </span>
@@ -282,8 +284,8 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
           )}
 
           {!loading && safeUpdates.length > visibleUpdates.length && (
-            <Link href="/projects" className="v2-bd-col-link" aria-label={`See all ${safeUpdates.length} updates`}>
-              <span>see all {safeUpdates.length} updates</span>
+            <Link href="/projects" className="v2-bd-col-link" aria-label={t('board.seeAllUpdatesAria', { count: safeUpdates.length })}>
+              <span>{t('board.seeAllUpdates', { count: safeUpdates.length })}</span>
               {/* git-branch glyph — represents commit / project history */}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="6" cy="6" r="2.4" />
@@ -310,14 +312,14 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                 {/* heart-pulse glyph */}
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
               </svg>
-              <span>team health</span>
+              <span>{t('board.teamHealth')}</span>
             </div>
             {!loading && (
               <div className="v2-bd-counter">
                 <span className="v2-bd-counter-num">
                   {teamPulse ? `${teamLoadAvg}%` : '··'}
                 </span>
-                <span className="v2-bd-counter-lab">avg team load</span>
+                <span className="v2-bd-counter-lab">{t('board.avgTeamLoad')}</span>
               </div>
             )}
           </header>
@@ -325,7 +327,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
           {loading ? (
             <BoardColSkel />
           ) : !teamPulse || teamPulse.members.length === 0 ? (
-            <BoardClear text="No teammates yet. Add a teammate or invite a human." />
+            <BoardClear text={t('board.noTeammates')} />
           ) : (
             <ul className="v2-bd-loads">
               {topLoaded.map((m) => (
@@ -345,7 +347,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                         m.loadPct >= 60 ? 'med' :
                         m.loadPct === 0 ? 'idle' : 'low'
                       }>
-                        {m.isIdle ? 'idle' : `${m.loadPct}%`}
+                        {m.isIdle ? t('board.idle') : `${m.loadPct}%`}
                       </span>
                     </span>
                     <span className="v2-bd-load-bar-track" aria-hidden="true">
@@ -367,7 +369,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
           {!loading && teamPulse && (
             <div className="v2-bd-load-foot">
               <span className="v2-bd-load-foot-cell">
-                {teamPulse.velocity.thisWeek} shipped{' '}
+                {t('board.shipped', { count: teamPulse.velocity.thisWeek })}{' '}
                 <span className="v2-bd-load-trend" data-trend={teamPulse.velocity.trend}>
                   {teamPulse.velocity.trend === 'up' ? '▲' : teamPulse.velocity.trend === 'down' ? '▼' : '·'}
                   {' '}
@@ -376,15 +378,15 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
               </span>
               <span className="v2-bd-load-foot-cell">
                 {teamPulse.idleCount > 0
-                  ? `${teamPulse.idleCount} of ${teamPulse.totalMembers} idle`
-                  : `${teamPulse.totalMembers} active`}
+                  ? t('board.someIdle', { idle: teamPulse.idleCount, total: teamPulse.totalMembers })
+                  : t('board.allActive', { total: teamPulse.totalMembers })}
               </span>
             </div>
           )}
 
           {!loading && (
-            <Link href="/team" className="v2-bd-col-link" aria-label="View team roster">
-              <span>view team roster</span>
+            <Link href="/team" className="v2-bd-col-link" aria-label={t('board.viewRosterAria')}>
+              <span>{t('board.viewRoster')}</span>
               {/* users glyph — represents team / roster */}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="9" cy="8" r="3.2" />

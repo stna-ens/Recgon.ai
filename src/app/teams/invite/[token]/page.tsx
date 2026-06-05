@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import RecgonLogo from '@/components/RecgonLogo';
 import { useTeam } from '@/components/TeamProvider';
 
@@ -15,6 +16,7 @@ interface InviteInfo {
 
 export default function AcceptInvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
+  const t = useTranslations('teams');
   const router = useRouter();
   const { data: session, status } = useSession();
   const { refreshTeams } = useTeam();
@@ -30,16 +32,16 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
         if (res.ok) {
           setInvite(await res.json());
         } else {
-          setError('This invitation is invalid or has expired.');
+          setError(t('invite.invalidOrExpired'));
         }
       } catch {
-        setError('Failed to load invitation.');
+        setError(t('invite.loadFailed'));
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, [token]);
+  }, [token, t]);
 
   async function handleAccept() {
     setAccepting(true);
@@ -58,7 +60,7 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
       router.push('/');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to accept invitation');
+      setError(err instanceof Error ? err.message : t('invite.acceptFailed'));
     } finally {
       setAccepting(false);
     }
@@ -75,7 +77,7 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
           <span style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--signature)', letterSpacing: '-0.3px', fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>Recgon</span>
         </div>
 
-        {loading && <p style={{ color: 'var(--txt-muted)' }}>Loading invitation...</p>}
+        {loading && <p style={{ color: 'var(--txt-muted)' }}>{t('invite.loading')}</p>}
 
         {!loading && error && !invite && (
           <p style={{ color: 'var(--danger)', fontSize: '0.95rem' }}>{error}</p>
@@ -84,13 +86,13 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
         {!loading && invite && !invite.expired && (
           <>
             <h1 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--txt-pure)', margin: '0 0 0.5rem' }}>
-              You&apos;re invited to join
+              {t('invite.invitedToJoin')}
             </h1>
             <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--signature)', margin: '0 0 0.5rem' }}>
               {invite.teamName}
             </p>
             <p style={{ color: 'var(--txt-muted)', fontSize: '0.875rem', margin: '0 0 2rem' }}>
-              as a <strong style={{ color: 'var(--txt-pure)' }}>{invite.role}</strong>
+              {t.rich('invite.asRole', { role: t(`roles.${invite.role}`), strong: (chunks) => <strong style={{ color: 'var(--txt-pure)' }}>{chunks}</strong> })}
             </p>
             {error && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: '0 0 1rem' }}>{error}</p>}
             {session?.user ? (
@@ -99,12 +101,12 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
                 border: 'none', borderRadius: 'var(--r-sm)', fontWeight: 600, fontSize: '1rem',
                 cursor: accepting ? 'not-allowed' : 'pointer', opacity: accepting ? 0.7 : 1,
               }}>
-                {accepting ? 'Joining...' : 'Accept Invitation'}
+                {accepting ? t('invite.joining') : t('invite.accept')}
               </button>
             ) : status === 'unauthenticated' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <p style={{ color: 'var(--txt-muted)', fontSize: '0.85rem', margin: '0 0 0.25rem' }}>
-                  Sign in or create an account to join — you&apos;ll come right back here.
+                  {t('invite.signInPrompt')}
                 </p>
                 <a
                   href={`/login?callbackUrl=${encodedCallback}`}
@@ -114,7 +116,7 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
                     textDecoration: 'none', textAlign: 'center',
                   }}
                 >
-                  Sign in
+                  {t('invite.signIn')}
                 </a>
                 <a
                   href={`/register?callbackUrl=${encodedCallback}`}
@@ -125,7 +127,7 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
                     textDecoration: 'none', textAlign: 'center',
                   }}
                 >
-                  Create account
+                  {t('invite.createAccount')}
                 </a>
               </div>
             ) : null}
@@ -133,7 +135,7 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
         )}
 
         {!loading && invite?.expired && (
-          <p style={{ color: 'var(--danger)', fontSize: '0.95rem' }}>This invitation has expired.</p>
+          <p style={{ color: 'var(--danger)', fontSize: '0.95rem' }}>{t('invite.expired')}</p>
         )}
       </div>
     </div>

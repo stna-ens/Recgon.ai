@@ -1,6 +1,7 @@
 'use client';
 
 import { BarChart3, Users } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 function GithubIcon({ size = 14 }: { size?: number; strokeWidth?: number }) {
   return (
@@ -10,39 +11,41 @@ function GithubIcon({ size = 14 }: { size?: number; strokeWidth?: number }) {
   );
 }
 
-const SOURCES = [
-  { icon: GithubIcon, name: 'GitHub', meta: 'recgon/recgon · synced 2m ago' },
-  { icon: BarChart3, name: 'GA4', meta: 'recgon.app · 1.2k users / 7d' },
-  { icon: Users, name: 'Team', meta: '4 teammates · 3 free now' },
-];
-
-const ANALYSIS_LINES = [
-  { label: 'swot analysis', status: 'ok' },
-  { label: 'top risks', status: '3 found' },
-  { label: 'growth levers', status: '5 found' },
-  { label: 'prioritized next steps', status: 'ranked' },
-  { label: 'dispatch', status: 'ready' },
-];
-
-const TASKS = [
-  { kind: 'next_step', title: 'Pick a 7-day GTM channel', owner: 'Maya', role: 'PM' },
-  { kind: 'dev_prompt', title: 'Add Stripe webhook retry logic', owner: 'Jin', role: 'Eng' },
-  { kind: 'marketing', title: 'Draft launch tweet thread', owner: 'Sara', role: 'Growth' },
-  { kind: 'analytics', title: 'Verify GA4 funnel events', owner: 'Ola', role: 'Data' },
-];
-
 function ownerInitials(name: string) {
   return name.slice(0, 1).toUpperCase();
 }
 
 export default function PipelineDiagram() {
+  const t = useTranslations('landing.pipeline');
+
+  const SOURCES = [
+    { icon: GithubIcon, name: 'GitHub', meta: t('source.githubMeta') },
+    { icon: BarChart3, name: 'GA4', meta: t('source.ga4Meta') },
+    { icon: Users, name: t('source.team'), meta: t('source.teamMeta') },
+  ];
+
+  const ANALYSIS_LINES = [
+    { label: t('analysis.swot'), status: t('analysis.swotStatus') },
+    { label: t('analysis.risks'), status: t('analysis.risksStatus') },
+    { label: t('analysis.levers'), status: t('analysis.leversStatus') },
+    { label: t('analysis.nextSteps'), status: t('analysis.nextStepsStatus') },
+    { label: t('analysis.dispatch'), status: t('analysis.dispatchStatus') },
+  ];
+
+  const TASKS = [
+    { kind: 'next_step', title: t('tasks.task1Title'), owner: 'Maya', role: 'PM' },
+    { kind: 'dev_prompt', title: t('tasks.task2Title'), owner: 'Jin', role: 'Eng' },
+    { kind: 'marketing', title: t('tasks.task3Title'), owner: 'Sara', role: 'Growth' },
+    { kind: 'analytics', title: t('tasks.task4Title'), owner: 'Ola', role: 'Data' },
+  ];
+
   return (
     <section id="pipeline" className="lnd-pipe">
       <div className="lnd-pipe-head">
-        <span className="recgon-label">the loop</span>
-        <h2 className="lnd-pipe-title">Read. Decide. Assign. Verify.</h2>
+        <span className="recgon-label">{t('label')}</span>
+        <h2 className="lnd-pipe-title">{t('title')}</h2>
         <p className="lnd-pipe-sub">
-          Every product surface in Recgon ties back to this loop — codebase + analytics + team flow in, prioritized tasks flow out, assigned to the right teammate.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -50,8 +53,8 @@ export default function PipelineDiagram() {
         {/* Column 1: reading */}
         <article className="glass-card lnd-pipe-col" data-col="read">
           <header className="lnd-pipe-col-head">
-            <span className="recgon-label">reading</span>
-            <span className="lnd-pipe-col-tag">sources</span>
+            <span className="recgon-label">{t('reading')}</span>
+            <span className="lnd-pipe-col-tag">{t('sources')}</span>
           </header>
           <ul className="lnd-pipe-list">
             {SOURCES.map(({ icon: Icon, name, meta }) => (
@@ -76,8 +79,8 @@ export default function PipelineDiagram() {
         {/* Column 2: thinking */}
         <article className="glass-card lnd-pipe-col" data-col="think">
           <header className="lnd-pipe-col-head">
-            <span className="recgon-label">thinking</span>
-            <span className="lnd-pipe-col-tag">recgon brain</span>
+            <span className="recgon-label">{t('thinking')}</span>
+            <span className="lnd-pipe-col-tag">{t('recgonBrain')}</span>
           </header>
           <ul className="lnd-pipe-analysis">
             {ANALYSIS_LINES.map(({ label, status }, i) => (
@@ -90,7 +93,7 @@ export default function PipelineDiagram() {
           </ul>
           <footer className="lnd-pipe-think-foot">
             <span className="lnd-pipe-pulse" aria-hidden="true" />
-            ranking matches by skill + calendar
+            {t('ranking')}
           </footer>
         </article>
 
@@ -103,8 +106,8 @@ export default function PipelineDiagram() {
         {/* Column 3: shipping */}
         <article className="glass-card lnd-pipe-col" data-col="ship">
           <header className="lnd-pipe-col-head">
-            <span className="recgon-label">shipping</span>
-            <span className="lnd-pipe-col-tag">assigned tasks</span>
+            <span className="recgon-label">{t('shipping')}</span>
+            <span className="lnd-pipe-col-tag">{t('assignedTasks')}</span>
           </header>
           <ul className="lnd-pipe-tasks">
             {TASKS.map(({ kind, title, owner, role }, i) => (

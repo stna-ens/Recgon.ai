@@ -1,0 +1,114 @@
+{
+  "eyebrow": "› pazarlama",
+  "hero": {
+    "loadingLead": "yükleniyor…",
+    "draftingLead": "planın hazırlanıyor…",
+    "draftingSub": "recgon stratejiyi çiziyor — bu ~20 saniye sürer.",
+    "firstLead": "ilk kampanyanı planla.",
+    "firstSub": "recgon stratejiyi, kanalları ve takvimi hazırlar — sen uygularsın.",
+    "plannedLead": "{count, plural, one {# kampanya planlandı.} other {# kampanya planlandı.}}",
+    "plannedSubDrafting": "yeni bir {type} hazırlanıyor · {duration}",
+    "plannedSubPick": "seçiciden birini seç ya da yeni bir plana başla.",
+    "activeSub": "{type} · {duration} · {count} içerik",
+    "campaignFallback": "kampanya"
+  },
+  "header": {
+    "switcherAria": "Aktif kampanyayı değiştir",
+    "switcherCount": "{count, plural, one {# kampanya} other {# kampanya}}",
+    "newCampaign": "yeni",
+    "newCampaignTitle": "Yeni bir kampanya başlat"
+  },
+  "empty": {
+    "heroLead": "bu proje henüz analiz edilmedi.",
+    "heroSub": "kampanya planlamasını, kanal stratejisini ve içerik üretimini açmak için projeyi analiz et.",
+    "title": "önce analiz et.",
+    "body": "Recgon strateji hazırlamadan önce kod tabanını ve proje sinyallerini okumalı. Analiz tamamlandığında bu sayfa açılır: kampanya türleri, hedef kitle çıkarımı, kanal planı, haftalık içerik takvimi ve KPI hedefleri."
+  },
+  "setup": {
+    "typeLabel": "kampanya türü",
+    "goalLabel": "kampanya hedefi",
+    "goalPlaceholder": "ör. ilk ayda 500 kayıt almak, 1000 Instagram takipçisine ulaşmak, 50 nitelikli müşteri adayı oluşturmak…",
+    "websiteLabel": "web sitesi adresi",
+    "websiteHelp": "isteğe bağlı — daha zengin AI bağlamı için sitenizi tarar",
+    "websitePlaceholder": "https://urununuz.com",
+    "durationLabel": "süre",
+    "goalRequired": "Kampanya hedefi gerekli. Bu kampanyanın neyi başarmasını istiyorsun?",
+    "planning": "kampanya planlanıyor…",
+    "selectType": "bir kampanya türü seç",
+    "planCta": "{type} kampanyası planla"
+  },
+  "campaignTypes": {
+    "productLaunch": {
+      "label": "Ürün Lansmanı",
+      "description": "Yeni bir ürün veya özelliği duyur ve benimsenmesini sağla"
+    },
+    "brandAwareness": {
+      "label": "Marka Bilinirliği",
+      "description": "Hedef pazarında tanınırlık ve güven oluştur"
+    },
+    "leadGeneration": {
+      "label": "Müşteri Adayı Oluşturma",
+      "description": "Nitelikli müşteri adayları topla ve satış hattını büyüt"
+    },
+    "communityGrowth": {
+      "label": "Topluluk Büyütme",
+      "description": "Ürününün etrafında sadık bir topluluk oluştur ve etkileşime geç"
+    },
+    "reEngagement": {
+      "label": "Yeniden Etkileşim",
+      "description": "Kaybedilen kullanıcıları geri kazan ya da pasif müşteri adaylarını yeniden harekete geçir"
+    },
+    "contentMarketing": {
+      "label": "İçerik Pazarlaması",
+      "description": "Düşünce liderliği oluştur ve organik büyümeyi sağla"
+    }
+  },
+  "durations": {
+    "twoWeeks": "2 Hafta",
+    "oneMonth": "1 Ay",
+    "threeMonths": "3 Ay"
+  },
+  "tabs": {
+    "sectionsAria": "Kampanya bölümleri",
+    "overview": "genel bakış",
+    "channels": "kanallar",
+    "calendar": "içerik takvimi",
+    "metrics": "metrikler & bütçe"
+  },
+  "overview": {
+    "targetAudience": "hedef_kitle",
+    "painPoints": "sorun_noktaları",
+    "motivations": "motivasyonlar",
+    "keyMessages": "ana_mesajlar",
+    "quickWins": "hızlı_kazanımlar < 48s"
+  },
+  "channels": {
+    "phases": "kampanya_aşamaları",
+    "tactics": "taktikler",
+    "deliverables": "çıktılar"
+  },
+  "calendar": {
+    "week": "hafta_{week}",
+    "ctaLabel": "eylem:",
+    "preview": "önizle",
+    "generate": "üret",
+    "generating": "üretiliyor…",
+    "regenerate": "yeniden üret",
+    "manual": "manuel"
+  },
+  "metrics": {
+    "kpis": "kpiler",
+    "kpiMetric": "metrik",
+    "kpiTarget": "hedef",
+    "kpiPlatform": "platform",
+    "kpiTimeframe": "zaman aralığı",
+    "budgetGuidance": "bütçe_önerisi"
+  },
+  "preview": {
+    "close": "kapat"
+  },
+  "errors": {
+    "campaignPlanning": "Kampanya planlaması başarısız oldu",
+    "contentGeneration": "İçerik üretimi başarısız oldu"
+  }
+}

@@ -1,0 +1,284 @@
+{
+  "seo": {
+    "title": "Recgon — Küçük ekipler için yapay zekâ Ürün Yöneticisi",
+    "h1": "Recgon — Küçük ekipler için yapay zekâ Ürün Yöneticisi",
+    "intro": "Tüm ekip için tek bir beyin. Recgon kod tabanınızı, GA4 analitiğinizi ve ekip etkinliğinizi okur; ardından sırada neyin geliştirileceğine karar verir ve her görevi yetkinlik eşleşmesine ve takvim uygunluğuna göre en uygun ekip arkadaşına atar.",
+    "whatHeading": "Recgon ne yapar",
+    "what": {
+      "item1": "GitHub kod tabanınızı okur ve her proje için aşama, SWOT, başlıca riskler, büyüme kaldıraçları ve sıralı bir sonraki adım listesi üretir",
+      "item2": "GA4 analitiğini içeri alır; trafiği, kanalları ve huni sinyallerini özetler",
+      "item3": "Bu birleşik sinyalden görevler üretir (next_step, dev_prompt, marketing, analytics, research)",
+      "item4": "Her görevi, yetkinlik puanları ve takvim uygunluğunu kullanarak en uygun ekip arkadaşına otomatik atar",
+      "item5": "Tamamlanan işi kabul kriterlerine göre doğrular",
+      "item6": "Günlük bir kokpit sunar: bugünün odağı, karar destesi, ekip nabzı ve neyin geliştirildiği"
+    },
+    "howHeading": "Nasıl çalışır",
+    "how": {
+      "step1": "Bir GitHub deposunu, bir GA4 mülkünü ve ekip arkadaşlarınızı bağlayın",
+      "step2": "Recgon analiz eder ve sürekli güncellenen bir ürün anlık görüntüsü üretir",
+      "step3": "Görevler doğru ekip arkadaşının takvimine düşer; bugün neyin geliştirileceğini görürsünüz"
+    },
+    "whoHeading": "Kimler için",
+    "who": "Ürünü bir kurucunun yönettiği küçük ekipler (2-10). Bir ürün yöneticisinin stratejik döngüsüne ve bir proje yöneticisinin atama disiplinine — ekstra kadro olmadan — ihtiyaç duyan indie hacker'lar, erken aşama girişimler ve yan proje ekipleri."
+  },
+  "nav": {
+    "primaryAria": "Ana menü",
+    "homeAria": "Recgon ana sayfa",
+    "how": "Nasıl",
+    "what": "Ne",
+    "terminal": "Terminal",
+    "faq": "SSS",
+    "toggleTheme": "Renk temasını değiştir",
+    "signIn": "Giriş yap",
+    "getStarted": "Başla"
+  },
+  "hero": {
+    "audienceAria": "küçük ekipler, erken aşama girişimler, indie hacker'lar, kurucu ekipler, yan projeler, solo kurucular ve ürün ekipleri için",
+    "forPrefix": "şunlar için:",
+    "audience": {
+      "smallTeams": "küçük ekipler",
+      "earlyStartups": "erken aşama girişimler",
+      "indieHackers": "indie hacker'lar",
+      "foundingTeams": "kurucu ekipler",
+      "sideProjects": "yan projeler",
+      "soloFounders": "solo kurucular",
+      "productTeams": "ürün ekipleri"
+    },
+    "titlePrefix": "Tek bir beyin:",
+    "titleStatic": "Küçük ekipler için tek bir beyin.",
+    "subtitle": "Recgon kod tabanınızı, analitiğinizi ve ekibinizi okur — sonra sırada neyin geliştirileceğine ve bunu kimin yapması gerektiğine karar verir.",
+    "getStarted": "Başla",
+    "seeHowAria": "Recgon'un nasıl çalıştığını gör",
+    "stepsTag": "// 3 adım",
+    "seeHow": "Nasıl çalıştığını gör"
+  },
+  "pipeline": {
+    "label": "döngü",
+    "title": "Oku. Karar ver. Ata. Doğrula.",
+    "subtitle": "Recgon'daki her ürün yüzeyi bu döngüye bağlanır — kod tabanı + analitik + ekip içeri akar, önceliklendirilmiş görevler dışarı akar ve doğru ekip arkadaşına atanır.",
+    "reading": "okuma",
+    "sources": "kaynaklar",
+    "thinking": "düşünme",
+    "recgonBrain": "recgon beyni",
+    "shipping": "geliştirme",
+    "assignedTasks": "atanan görevler",
+    "source": {
+      "githubMeta": "recgon/recgon · 2dk önce eşitlendi",
+      "ga4Meta": "recgon.app · 1,2b kullanıcı / 7g",
+      "team": "Ekip",
+      "teamMeta": "4 ekip arkadaşı · 3'ü şu an müsait"
+    },
+    "analysis": {
+      "swot": "swot analizi",
+      "swotStatus": "tamam",
+      "risks": "başlıca riskler",
+      "risksStatus": "3 bulundu",
+      "levers": "büyüme kaldıraçları",
+      "leversStatus": "5 bulundu",
+      "nextSteps": "önceliklendirilmiş sonraki adımlar",
+      "nextStepsStatus": "sıralandı",
+      "dispatch": "yönlendirme",
+      "dispatchStatus": "hazır"
+    },
+    "ranking": "eşleşmeler yetkinlik + takvime göre sıralanıyor",
+    "tasks": {
+      "task1Title": "7 günlük bir GTM kanalı seç",
+      "task2Title": "Stripe webhook yeniden deneme mantığını ekle",
+      "task3Title": "Lansman tweet dizisi taslağı yaz",
+      "task4Title": "GA4 huni olaylarını doğrula"
+    }
+  },
+  "capabilities": {
+    "label": "gerçekte ne yapar",
+    "title": "Asla uyumayan ve asla unutmayan bir ürün yöneticisi.",
+    "read": {
+      "label": "oku",
+      "title": "Önemli olan her şeyi okur.",
+      "body": "Kod tabanı, GA4 trafiği, commit geçmişi, ekip etkinliği — Recgon hepsini tek bir sürekli anlık görüntüye alır."
+    },
+    "decide": {
+      "label": "karar ver",
+      "title": "Bugün neyin önemli olduğuna karar verir.",
+      "body": "Kıdemli bir ürün yöneticisi modeli, ilgilenilmesi gereken tek projeyi seçer, başlıca riski öne çıkarır ve sonraki hamleleri sıralar — her sabah."
+    },
+    "assign": {
+      "label": "ata",
+      "title": "Doğru ekip arkadaşına atar.",
+      "body": "Her görev, her ekip arkadaşına karşı yetkinlik eşleşmesi, mevcut yük ve takvimindeki boş zamana göre puanlanır. Doğru kişiye bildirim gider."
+    },
+    "verify": {
+      "label": "doğrula",
+      "title": "İşin yapıldığını doğrular.",
+      "body": "Bir ekip arkadaşı bir görevi tamamlandı olarak işaretlediğinde, Recgon kanıtı orijinal kabul kriterleriyle karşılaştırır — sessiz kaymalara yer yok."
+    }
+  },
+  "how": {
+    "label": "üç adım",
+    "title": "Depodan atanmış göreve dakikalar içinde.",
+    "step1": {
+      "title": "Bağla.",
+      "body": "GitHub deponuzu ve GA4 mülkünüzü bağlayın. Ekip arkadaşlarınızı rolleriyle ekleyin. Yaklaşık bir dakika sürer."
+    },
+    "step2": {
+      "title": "Analiz et.",
+      "body": "Recgon kodu ve trafiği okur. Her proje için aşamayı, başlıca riskleri, büyüme kaldıraçlarını ve sıralı bir sonraki adım listesini öne çıkarır."
+    },
+    "step3": {
+      "title": "Harekete geç.",
+      "body": "Görevler doğru ekip arkadaşının takvimine düşer. Neyin geliştirildiğini, neyin kaydığını ve yarın neye bakacağını görürsünüz. Her gün tekrarlayın."
+    }
+  },
+  "terminalPreview": {
+    "label": "klavyeden yazmayı tercih ettiğin anlar için terminal",
+    "title": "Aynı beyin. Komut satırı arayüzü.",
+    "subPrefix": "Her analiz, her atama, her rapor bir eğik çizgi uzaklıkta. Şunu yazın:",
+    "subOr1": ",",
+    "subOr2": " ya da sade bir dille sorun.",
+    "barTitle": "recgon — terminal",
+    "transcript": {
+      "note1": "# kod tabanı okunuyor · 384 dosya · 18,2b satır",
+      "out1": "aşama: büyüme · başlıca risk: webhook yeniden denemeleri sessizce düşüyor",
+      "out2": "büyüme kaldıracı: ödemeyi tek sayfaya geçir (4 huni testinden 3'ü bunu destekliyor)",
+      "note2": "# ekip arkadaşları yetkinlik + takvime göre eşleştiriliyor",
+      "ok": "→ 4 görev atandı · 3 sahip · 1 atanmadı (0.6 üzeri uygunluk yok)"
+    }
+  },
+  "faq": {
+    "label": "sorular",
+    "title": "Sık sorulan sorular.",
+    "q1": {
+      "q": "Recgon nedir?",
+      "a": "Recgon, küçük ekipler için bir yapay zekâ Ürün Yöneticisidir. Kod tabanınızı, GA4 analitiğinizi ve ekip etkinliğinizi okur, ardından sırada neyin geliştirileceğini öne çıkarır ve her görevi yetkinlik ve takvime göre en uygun ekip arkadaşına otomatik olarak atar."
+    },
+    "q2": {
+      "q": "Analiz nasıl çalışır?",
+      "a": "Bir GitHub deposunu ve bir GA4 mülkünü bağlayın. Recgon kodu ve trafiği içeri alır, ürününüzün sürekli güncellenen bir anlık görüntüsünü (aşama, SWOT, başlıca riskler, büyüme kaldıraçları, önceliklendirilmiş sonraki adımlar) oluşturur ve her yeni commit geldiğinde yeniler."
+    },
+    "q3": {
+      "q": "Görev ataması nasıl çalışır?",
+      "a": "Her görev, her aktif ekip arkadaşına karşı yetkinlik eşleşmesi, mevcut iş yükü ve takvimindeki boş zamana göre puanlanır. En uygun kişiye atanır ve bildirim gider. Hiçbir ekip arkadaşı minimum uygunluk eşiğinin üzerine çıkmazsa, görev triyaj için size atanmamış olarak bırakılır."
+    },
+    "q4": {
+      "q": "Recgon işi kendisi mi yapar?",
+      "a": "Hayır. Recgon işi insanlara atar. Planlar, önceliklendirir, programlar ve doğrular — geliştirmeyi ekibiniz yapar."
+    },
+    "q5": {
+      "q": "Claude Code entegrasyonu var mı?",
+      "a": "Evet. Recgon bir MCP sunucusu sunar; böylece Claude Code ürün analizinizi okuyabilir, uygulanabilir bir sonraki adımı alabilir, geliştirebilir ve tamamlandı olarak işaretleyebilir — tümü Recgon'a geri işlenir."
+    }
+  },
+  "footerCta": {
+    "title": "Tahmin etmeyi bırakmaya hazır mısın?",
+    "subtitle": "Ürünlerini anlamak, işlerine odaklanmak ve daha hızlı geliştirmek için Recgon'u kullanan ekiplere katıl.",
+    "getStarted": "Başla",
+    "signIn": "Giriş yap",
+    "register": "Kaydol",
+    "tagline": "recgon — geliştiriciler için yapıldı"
+  },
+  "mobile": {
+    "hero": {
+      "audienceAria": "küçük ekipler için",
+      "forPrefix": "şunlar için:",
+      "titleStatic": "Küçük ekipler için tek bir beyin.",
+      "titlePrefix": "Tek bir beyin:",
+      "subtitle": "Recgon kod tabanınızı, analitiğinizi ve ekibinizi okur — sonra sırada neyin geliştirileceğine ve bunu kimin yapması gerektiğine karar verir.",
+      "seeWhat": "Neler elde edeceğini gör"
+    },
+    "features": {
+      "label": "yetenekler · 06",
+      "titleLine1": "İhtiyacın olan her şey,",
+      "titleLine2": "ihtiyacın olmayan hiçbir şey.",
+      "codebase": {
+        "title": "Kod tabanı analizi",
+        "body": "Bir GitHub deposu yapıştır. Recgon onu okur ve sonraki hamleleri sıralar — aşama, riskler, büyüme kaldıraçları."
+      },
+      "analytics": {
+        "title": "Analitik nabzı",
+        "body": "GA4'ü bağla. Trafik, kanallar ve huni sinyalleri haftalık brifinginize katlanır."
+      },
+      "minting": {
+        "title": "Otomatik görev üretimi",
+        "body": "Strateji, geliştirme, pazarlama, analitik, araştırma — görevler birleşik anlık görüntünüzden yazılır."
+      },
+      "assign": {
+        "title": "Yetkinlik odaklı atama",
+        "body": "Her görev, her ekip arkadaşına karşı yetkinlik, yük ve takvime göre puanlanır — en uygun olan kazanır."
+      },
+      "verification": {
+        "title": "Görev doğrulama",
+        "body": "Bir görev tamamlandı olarak işaretlendiğinde, Recgon kanıtı orijinal kabul kriterleriyle karşılaştırır."
+      },
+      "terminal": {
+        "title": "Eğik çizgi terminali",
+        "body": "/analyze, /analytics, /content — her analiz ve atama bir eğik çizgi uzaklıkta."
+      }
+    },
+    "workflow": {
+      "label": "iş akışı",
+      "titleLine1": "Üç adım.",
+      "titleLine2": "Sıfır sürtünme.",
+      "stepLabel": "adım {num}",
+      "step1": {
+        "title": "Bağla.",
+        "body": "GitHub deponuzu ve GA4 mülkünüzü bağlayın. Ekip arkadaşlarınızı rolleriyle ekleyin."
+      },
+      "step2": {
+        "title": "Analiz et.",
+        "body": "Recgon kodu ve trafiği okur, ardından her proje için sonraki adımları sıralar."
+      },
+      "step3": {
+        "title": "Harekete geç.",
+        "body": "Görevler doğru ekip arkadaşının takvimine düşer. Neyin geliştirildiğini ve neyin kaydığını görürsünüz."
+      }
+    },
+    "terminal": {
+      "label": "terminal",
+      "titleLine1": "Aynı beyin.",
+      "titleLine2": "Komut satırı arayüzü.",
+      "lede": "Her analiz, her atama, her rapor bir eğik çizgi uzaklıkta.",
+      "barTitle": "recgon — terminal",
+      "mcpNote": "// claude code okur, harekete geçer, tamamlandı işaretler — burada izlenir",
+      "script": {
+        "note1": "# 384 dosya okunuyor · 18,2b satır",
+        "out1": "aşama: büyüme · başlıca risk: webhook yeniden denemeleri",
+        "note2": "# ekip arkadaşları yetkinlik + takvime göre eşleştiriliyor",
+        "ok": "→ 4 görev atandı · 3 sahip"
+      }
+    },
+    "faq": {
+      "label": "sss",
+      "title": "Sık sorulan sorular.",
+      "q1": {
+        "q": "Recgon nedir?",
+        "a": "Küçük ekipler için bir yapay zekâ Ürün Yöneticisi. Kod tabanınızı, GA4 analitiğinizi ve ekip etkinliğinizi okur, ardından sırada neyin geliştirileceğini öne çıkarır ve her görevi en uygun ekip arkadaşına otomatik atar."
+      },
+      "q2": {
+        "q": "Görev ataması nasıl çalışır?",
+        "a": "Her görev, her ekip arkadaşına karşı yetkinlik eşleşmesi, mevcut iş yükü ve takvimindeki boş zamana göre puanlanır. En uygun kişiye atanır ve bildirim gider."
+      },
+      "q3": {
+        "q": "Recgon işi kendisi mi yapar?",
+        "a": "Hayır. Recgon planlar, önceliklendirir, programlar ve doğrular — geliştirmeyi ekibiniz yapar."
+      },
+      "q4": {
+        "q": "Claude Code entegrasyonu var mı?",
+        "a": "Evet. Recgon bir MCP sunucusu sunar; böylece Claude Code analizinizi okuyabilir, bir sonraki adımı alabilir, geliştirebilir ve tamamlandı olarak işaretleyebilir."
+      }
+    },
+    "final": {
+      "tag": "yalnızca masaüstü",
+      "titlePrefix": "Şunun için yapıldı:",
+      "device": {
+        "laptop": "dizüstün.",
+        "desktop": "masaüstün.",
+        "mac": "Mac'in.",
+        "pc": "PC'n."
+      },
+      "body": "Recgon, sen geliştirirken kullandığın bir araç. Kaydolmak için bir dizüstünde aç — mobil yolda.",
+      "pillText": "recgon.app'i masaüstünde aç"
+    },
+    "footer": {
+      "tagline": "recgon — geliştiriciler için yapıldı"
+    }
+  }
+}

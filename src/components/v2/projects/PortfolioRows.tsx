@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   relTimeShort,
   pulseShort,
@@ -32,29 +33,21 @@ interface Props {
 
 type FilterKey = ProjectPulse | 'all';
 
-const FILTERS: { value: FilterKey; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'drifting', label: 'Drifting' },
-  { value: 'stuck', label: 'Stuck' },
-  { value: 'shipping', label: 'Shipping' },
-  { value: 'converging', label: 'Converging' },
-  { value: 'idle', label: 'Idle' },
-];
+const FILTER_KEYS: FilterKey[] = ['all', 'drifting', 'stuck', 'shipping', 'converging', 'idle'];
 
-const SOURCE_LABEL: Record<string, string> = {
-  codebase: 'codebase',
-  github: 'github',
-  description: 'idea',
-};
-
-function ownershipShort(o: Ownership | undefined, teamName: string | null | undefined): string | null {
-  if (o === 'mine') return 'private';
-  if (o === 'shared-by-me') return teamName ? `shared · ${teamName}` : 'shared';
-  if (o === 'from-team') return teamName ? `from ${teamName}` : 'from team';
+function ownershipShort(
+  o: Ownership | undefined,
+  teamName: string | null | undefined,
+  t: ReturnType<typeof useTranslations<'projects'>>,
+): string | null {
+  if (o === 'mine') return t('portfolio.own.private');
+  if (o === 'shared-by-me') return teamName ? t('portfolio.own.sharedTeam', { team: teamName }) : t('portfolio.own.shared');
+  if (o === 'from-team') return teamName ? t('portfolio.own.fromTeam', { team: teamName }) : t('portfolio.own.fromTeamGeneric');
   return null;
 }
 
 export default function PortfolioRows({ projects, meta, loading }: Props) {
+  const t = useTranslations('projects');
   const [filter, setFilter] = useState<FilterKey>('all');
   const now = Date.now();
 
@@ -87,7 +80,7 @@ export default function PortfolioRows({ projects, meta, loading }: Props) {
     return (
       <div className="v2-pr">
         <div className="glass-card is-static v2-pr-card v2-pr-card-empty">
-          <p className="v2-pr-empty">No other projects to show.</p>
+          <p className="v2-pr-empty">{t('portfolio.emptyOther')}</p>
         </div>
         <style>{stylesheet}</style>
       </div>
@@ -96,18 +89,18 @@ export default function PortfolioRows({ projects, meta, loading }: Props) {
 
   return (
     <div className="v2-pr">
-      <div className="v2-pr-filters" aria-label="Filter projects">
-        {FILTERS.map((f) => {
-          const count = f.value === 'all' ? projects.length : projects.filter((p) => p.pulse === f.value).length;
+      <div className="v2-pr-filters" aria-label={t('portfolio.filterAria')}>
+        {FILTER_KEYS.map((value) => {
+          const count = value === 'all' ? projects.length : projects.filter((p) => p.pulse === value).length;
           return (
             <button
-              key={f.value}
+              key={value}
               type="button"
-              className={filter === f.value ? 'is-active' : ''}
-              onClick={() => setFilter(f.value)}
-              disabled={count === 0 && f.value !== 'all'}
+              className={filter === value ? 'is-active' : ''}
+              onClick={() => setFilter(value)}
+              disabled={count === 0 && value !== 'all'}
             >
-              <span>{f.label}</span>
+              <span>{t(`portfolio.filters.${value}`)}</span>
               <strong>{count}</strong>
             </button>
           );
@@ -116,13 +109,15 @@ export default function PortfolioRows({ projects, meta, loading }: Props) {
 
       <div className="glass-card is-static v2-pr-card">
         {sorted.length === 0 ? (
-          <p className="v2-pr-empty">No projects in this status.</p>
+          <p className="v2-pr-empty">{t('portfolio.emptyStatus')}</p>
         ) : (
           <ul className="v2-pr-list">
             {sorted.map((p) => {
               const m = meta[p.id] ?? {};
-              const sourceLabel = m.sourceType ? SOURCE_LABEL[m.sourceType] : null;
-              const ownerLabel = ownershipShort(m.ownership, m.teamName);
+              const sourceLabel = m.sourceType && ['codebase', 'github', 'description'].includes(m.sourceType)
+                ? t(`portfolio.source.${m.sourceType}`)
+                : null;
+              const ownerLabel = ownershipShort(m.ownership, m.teamName, t);
               return (
                 <li key={p.id} className="v2-pr-row" data-pulse={p.pulse}>
                   <Link href={`/projects/${p.id}`} className="v2-pr-link">
@@ -135,7 +130,7 @@ export default function PortfolioRows({ projects, meta, loading }: Props) {
                       <span className="v2-pr-name">
                         {p.name}
                         {m.hasUpdate && (
-                          <span className="v2-pr-warn" title="New commits since last analysis">! new commits</span>
+                          <span className="v2-pr-warn" title={t('portfolio.newCommitsTitle')}>{t('portfolio.newCommits')}</span>
                         )}
                       </span>
                       <span className="v2-pr-meta-line">
@@ -156,7 +151,7 @@ export default function PortfolioRows({ projects, meta, loading }: Props) {
                     </span>
                     <span className="v2-pr-pulse" data-pulse={p.pulse}>{pulseShort(p.pulse)}</span>
                     <span className="v2-pr-time">
-                      {p.analyzedAt ? `${relTimeShort(p.analyzedAt, now)} ago` : 'never'}
+                      {p.analyzedAt ? t('portfolio.agoSuffix', { time: relTimeShort(p.analyzedAt, now) }) : t('portfolio.never')}
                     </span>
                     <span className="v2-pr-arrow" aria-hidden="true">→</span>
                   </Link>

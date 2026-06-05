@@ -51,7 +51,9 @@ async function runIdeaAnalysis(job: LLMJob): Promise<WorkerResult> {
   const project = await getProject(payload.projectId, payload.teamId);
   if (!project) throw new Error(`project ${payload.projectId} not found`);
   const appContext = buildProjectAppContext(project);
-  const analysisWithContext = await analyzeIdea(payload.description, undefined, appContext);
+  // AI output language follows the user who triggered the job (job.user_id).
+  const triggeringUser = await getUserById(job.user_id).catch(() => undefined);
+  const analysisWithContext = await analyzeIdea(payload.description, undefined, appContext, triggeringUser?.language);
   project.analysis = { ...analysisWithContext, analyzedAt: new Date().toISOString() };
   await saveProject(project);
   await autoDetectLogo(project).catch(() => {});
@@ -91,11 +93,11 @@ async function runCodebaseAnalysis(job: LLMJob): Promise<WorkerResult> {
 
   let analysis;
   if (payload.existingAnalysis && payload.diffStr) {
-    analysis = await analyzeCodebaseUpdate(payload.existingAnalysis, payload.diffStr, undefined, appContext);
+    analysis = await analyzeCodebaseUpdate(payload.existingAnalysis, payload.diffStr, undefined, appContext, user?.language);
   } else {
     const clonePath = await cloneGitHubRepo(payload.githubUrl, project.id, token);
     project.path = clonePath;
-    analysis = await analyzeCodebase(clonePath, undefined, appContext);
+    analysis = await analyzeCodebase(clonePath, undefined, appContext, user?.language);
     // Record the SHA we just analyzed so the next re-analysis is diff-based.
     const commit = await getLatestCommit(payload.githubUrl, token).catch(() => null);
     if (commit) project.lastAnalyzedCommitSha = commit.sha;
@@ -127,7 +129,8 @@ async function runCompetitorAnalysis(job: LLMJob): Promise<WorkerResult> {
     return { skipped: true };
   }
 
-  const insights = await analyzeCompetitors(project.analysis.competitors, project.analysis);
+  const triggeringUser = await getUserById(job.user_id).catch(() => undefined);
+  const insights = await analyzeCompetitors(project.analysis.competitors, project.analysis, triggeringUser?.language);
   project.analysis = { ...project.analysis, competitorInsights: insights };
   await saveProject(project);
 

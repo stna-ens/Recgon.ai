@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import type { DeviceData } from './types';
 import { ChartTooltip, GlowSector } from './chart-shapes';
@@ -10,12 +11,13 @@ interface Props {
 }
 
 export default function DevicesDonut({ devices }: Props) {
+  const t = useTranslations('analytics');
   if (devices.length === 0) return null;
   return (
     <div className="glass-card is-static v2-an-chart-card">
       <div className="v2-an-chart-head">
-        <span className="recgon-label v2-block-eye">› devices</span>
-        <span className="v2-an-chart-meta">{devices.length} categories</span>
+        <span className="recgon-label v2-block-eye">{t('devices.heading')}</span>
+        <span className="v2-an-chart-meta">{t('devices.categories', { count: devices.length })}</span>
       </div>
       <div className="v2-an-donut-wrap">
         <ResponsiveContainer width="100%" height={220}>

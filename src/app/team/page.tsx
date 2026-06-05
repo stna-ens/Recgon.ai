@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -56,22 +57,24 @@ function initials(name: string): string {
   return name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
 }
 
-function relTime(iso: string): string {
+type Translator = ReturnType<typeof useTranslations<'teams'>>;
+
+function relTime(iso: string, t: Translator): string {
   const ms = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(ms / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m`;
+  if (mins < 1) return t('admin.time.justNow');
+  if (mins < 60) return t('admin.time.minutes', { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
+  if (hrs < 24) return t('admin.time.hours', { count: hrs });
+  return t('admin.time.days', { count: Math.floor(hrs / 24) });
 }
 
 // Match v1: "Xh left" / "Xd left" until expiry.
-function relativeExpiry(iso: string): string {
+function relativeExpiry(iso: string, t: Translator): string {
   const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return 'expired';
+  if (ms <= 0) return t('admin.time.expired');
   const hours = Math.round(ms / 3_600_000);
-  return hours < 24 ? `${hours}h left` : `${Math.round(hours / 24)}d left`;
+  return hours < 24 ? t('admin.time.hoursLeft', { count: hours }) : t('admin.time.daysLeft', { count: Math.round(hours / 24) });
 }
 
 // Dominant-color extraction (parity with v1).
@@ -171,6 +174,7 @@ export default function V2TeamAdminPage() {
 }
 
 function V2TeamAdminPageInner() {
+  const t = useTranslations('teams');
   const { data: session } = useSession();
   const { currentTeam, refreshTeams } = useTeam();
   const teamId = currentTeam?.id ?? null;
@@ -292,13 +296,13 @@ function V2TeamAdminPageInner() {
         }).catch(() => {});
       }
       await refreshTeams?.();
-      addToast('avatar updated', 'success');
+      addToast(t('admin.toasts.avatarUpdated'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'avatar upload failed', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.toasts.avatarFailed'), 'error');
     } finally {
       setAvatarUploading(false);
     }
-  }, [teamId, refreshTeams, addToast]);
+  }, [teamId, refreshTeams, addToast, t]);
 
   const handlePickColor = useCallback(async (color: string) => {
     setTeam((p) => p ? { ...p, avatarColor: color } : p);
@@ -306,9 +310,9 @@ function V2TeamAdminPageInner() {
       await patchTeam({ avatarColor: color });
       await refreshTeams?.();
     } catch {
-      addToast('failed to save color', 'error');
+      addToast(t('admin.toasts.colorFailed'), 'error');
     }
-  }, [patchTeam, refreshTeams, addToast]);
+  }, [patchTeam, refreshTeams, addToast, t]);
 
   const handleSaveName = useCallback(async () => {
     if (!team) return;
@@ -320,13 +324,13 @@ function V2TeamAdminPageInner() {
       setTeam((p) => p ? { ...p, name: trimmed } : p);
       await refreshTeams?.();
       setEditingName(false);
-      addToast('team renamed', 'success');
+      addToast(t('admin.toasts.renamed'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'rename failed', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.toasts.renameFailed'), 'error');
     } finally {
       setNameSaving(false);
     }
-  }, [team, nameDraft, patchTeam, refreshTeams, addToast]);
+  }, [team, nameDraft, patchTeam, refreshTeams, addToast, t]);
 
   const handleSaveDesc = useCallback(async () => {
     if (!team) return;
@@ -337,13 +341,13 @@ function V2TeamAdminPageInner() {
       await patchTeam({ description: trimmed });
       setTeam((p) => p ? { ...p, description: trimmed || undefined } : p);
       setEditingDesc(false);
-      addToast('description saved', 'success');
+      addToast(t('admin.toasts.descSaved'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'save failed', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.toasts.saveFailed'), 'error');
     } finally {
       setDescSaving(false);
     }
-  }, [team, descDraft, patchTeam, addToast]);
+  }, [team, descDraft, patchTeam, addToast, t]);
 
   const handleGenerateInvite = useCallback(async () => {
     if (!teamId || generating) return;
@@ -359,15 +363,15 @@ function V2TeamAdminPageInner() {
       if (!res.ok) throw new Error(data?.error || 'failed to generate');
       const link = `${window.location.origin}/teams/invite/${data.token}`;
       setGeneratedLink(link);
-      try { await navigator.clipboard.writeText(link); addToast('invite link copied', 'success'); }
-      catch { addToast('invite link generated — copy below', 'info'); }
+      try { await navigator.clipboard.writeText(link); addToast(t('admin.toasts.inviteCopied'), 'success'); }
+      catch { addToast(t('admin.toasts.inviteGenerated'), 'info'); }
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.toasts.failed'), 'error');
     } finally {
       setGenerating(false);
     }
-  }, [teamId, generating, inviteRole, addToast, refresh]);
+  }, [teamId, generating, inviteRole, addToast, refresh, t]);
 
   const handleRevoke = useCallback(async (inviteId: string) => {
     if (!teamId) return;
@@ -380,11 +384,11 @@ function V2TeamAdminPageInner() {
       });
       if (!res.ok) throw new Error('failed');
       setInvites((p) => p.filter((i) => i.id !== inviteId));
-      addToast('invitation revoked', 'success');
+      addToast(t('admin.toasts.inviteRevoked'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.toasts.failed'), 'error');
     }
-  }, [teamId, addToast]);
+  }, [teamId, addToast, t]);
 
   const handleRemoveMember = useCallback(async (userId: string) => {
     if (!teamId) return;
@@ -397,11 +401,11 @@ function V2TeamAdminPageInner() {
       });
       if (!res.ok) throw new Error('failed');
       setMembers((p) => p.filter((m) => m.userId !== userId));
-      addToast('member removed', 'success');
+      addToast(t('admin.toasts.memberRemoved'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.toasts.failed'), 'error');
     }
-  }, [teamId, addToast]);
+  }, [teamId, addToast, t]);
 
   const handleRoleChange = useCallback(async (userId: string, newRole: 'owner' | 'member' | 'viewer') => {
     if (!teamId) return;
@@ -417,13 +421,13 @@ function V2TeamAdminPageInner() {
         throw new Error(j?.error || 'role change failed');
       }
       setMembers((p) => p.map((m) => m.userId === userId ? { ...m, role: newRole } : m));
-      addToast('role updated', 'success');
+      addToast(t('admin.toasts.roleUpdated'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.toasts.failed'), 'error');
     } finally {
       setRoleLoading((p) => ({ ...p, [userId]: false }));
     }
-  }, [teamId, addToast]);
+  }, [teamId, addToast, t]);
 
   // Stronger leave-team warning copy: include the project-loss consequence.
   const handleLeaveTeam = useCallback(async () => {
@@ -440,12 +444,12 @@ function V2TeamAdminPageInner() {
         throw new Error(j?.error || 'leave failed');
       }
       await refreshTeams?.();
-      addToast('left team', 'success');
+      addToast(t('admin.toasts.leftTeam'), 'success');
       router.push('/projects');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.toasts.failed'), 'error');
     }
-  }, [teamId, session?.user?.id, refreshTeams, addToast, router]);
+  }, [teamId, session?.user?.id, refreshTeams, addToast, router, t]);
 
   const handleDeleteTeam = useCallback(async () => {
     if (!teamId || deleting) return;
@@ -457,18 +461,18 @@ function V2TeamAdminPageInner() {
         throw new Error(j?.error || 'delete failed');
       }
       await refreshTeams?.();
-      addToast('team deleted', 'success');
+      addToast(t('admin.toasts.teamDeleted'), 'success');
       router.push('/projects');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.toasts.failed'), 'error');
       setDeleting(false);
     }
-  }, [teamId, deleting, refreshTeams, addToast, router]);
+  }, [teamId, deleting, refreshTeams, addToast, router, t]);
 
   const handleCopyLink = (link: string) => {
     navigator.clipboard.writeText(link).then(
-      () => addToast('copied', 'success'),
-      () => addToast('copy failed', 'error'),
+      () => addToast(t('admin.toasts.copied'), 'success'),
+      () => addToast(t('admin.toasts.copyFailed'), 'error'),
     );
   };
 
@@ -505,15 +509,15 @@ function V2TeamAdminPageInner() {
             <span className="rec-stamp-corner rec-stamp-corner-br" aria-hidden />
           </div>
           <div className="rec-stamp-id">
-            <span>id</span>
+            <span>{t('admin.hero.id')}</span>
             <code>{teamShortId}</code>
           </div>
         </div>
 
         <div className="rec-hero-title-wrap">
-          <span className="rec-hero-eyebrow">› workspace · team</span>
+          <span className="rec-hero-eyebrow">{t('admin.hero.eyebrow')}</span>
           <h1 className="rec-hero-title">
-            {team?.name ?? currentTeam?.name ?? 'team'}<span className="rec-hero-period">.</span>
+            {team?.name ?? currentTeam?.name ?? t('admin.hero.teamFallback')}<span className="rec-hero-period">.</span>
           </h1>
           {team?.description && (
             <p className="rec-hero-desc">&ldquo;{team.description}&rdquo;</p>
@@ -521,27 +525,27 @@ function V2TeamAdminPageInner() {
           <dl className="rec-hero-meta">
             {team?.slug && (
               <div className="rec-meta-item">
-                <dt>slug</dt>
+                <dt>{t('admin.hero.slug')}</dt>
                 <dd><code>/{team.slug}</code></dd>
               </div>
             )}
             <div className="rec-meta-item">
-              <dt>members</dt>
+              <dt>{t('admin.hero.members')}</dt>
               <dd className="rec-meta-num">{loading ? '—' : members.length}</dd>
             </div>
             <div className="rec-meta-item">
-              <dt>pending</dt>
+              <dt>{t('admin.hero.pending')}</dt>
               <dd className="rec-meta-num">{loading ? '—' : invites.length}</dd>
             </div>
             {myRole && (
               <div className="rec-meta-item">
-                <dt>your role</dt>
-                <dd className={`rec-meta-role is-${myRole}`}>{myRole}</dd>
+                <dt>{t('admin.hero.yourRole')}</dt>
+                <dd className={`rec-meta-role is-${myRole}`}>{t(`roles.${myRole}`)}</dd>
               </div>
             )}
             {foundedDate && (
               <div className="rec-meta-item">
-                <dt>founded</dt>
+                <dt>{t('admin.hero.founded')}</dt>
                 <dd className="rec-meta-date">{foundedDate}</dd>
               </div>
             )}
@@ -550,23 +554,23 @@ function V2TeamAdminPageInner() {
       </header>
 
       <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="rec-tabs">
-        <Tabs.List className="rec-tablist" aria-label="Team admin sections">
+        <Tabs.List className="rec-tablist" aria-label={t('admin.tabs.ariaLabel')}>
           <Tabs.Trigger value="profile" className="rec-tab">
             <span className="rec-tab-num">01</span>
-            <span className="rec-tab-label">profile</span>
+            <span className="rec-tab-label">{t('admin.tabs.profile')}</span>
           </Tabs.Trigger>
           <Tabs.Trigger value="members" className="rec-tab">
             <span className="rec-tab-num">02</span>
-            <span className="rec-tab-label">members</span>
+            <span className="rec-tab-label">{t('admin.tabs.members')}</span>
           </Tabs.Trigger>
           <Tabs.Trigger value="invites" className="rec-tab">
             <span className="rec-tab-num">03</span>
-            <span className="rec-tab-label">invites</span>
+            <span className="rec-tab-label">{t('admin.tabs.invites')}</span>
             {invites.length > 0 && <span className="rec-tab-count">{invites.length}</span>}
           </Tabs.Trigger>
           <Tabs.Trigger value="dispatcher" className="rec-tab">
             <span className="rec-tab-num">04</span>
-            <span className="rec-tab-label">dispatch</span>
+            <span className="rec-tab-label">{t('admin.tabs.dispatch')}</span>
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -576,8 +580,8 @@ function V2TeamAdminPageInner() {
             <div className="rec-config-grid">
               <div className="rec-config-row">
                 <div className="rec-config-label">
-                  <span className="rec-config-key">name</span>
-                  <span className="rec-config-hint">Shown in the sidebar, hero, and member rosters.</span>
+                  <span className="rec-config-key">{t('admin.config.name')}</span>
+                  <span className="rec-config-hint">{t('admin.config.nameHint')}</span>
                 </div>
                 <div className="rec-config-value">
                   {editingName ? (
@@ -590,16 +594,16 @@ function V2TeamAdminPageInner() {
                         autoFocus
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
                       />
-                      <button type="button" className="rec-btn-tiny" onClick={() => setEditingName(false)} disabled={nameSaving}>cancel</button>
+                      <button type="button" className="rec-btn-tiny" onClick={() => setEditingName(false)} disabled={nameSaving}>{t('admin.actions.cancel')}</button>
                       <button type="button" className="rec-btn-tiny is-primary" onClick={handleSaveName} disabled={nameSaving}>
-                        {nameSaving ? <><span className="rec-spinner" /> save</> : 'save'}
+                        {nameSaving ? <><span className="rec-spinner" /> {t('admin.actions.save')}</> : t('admin.actions.save')}
                       </button>
                     </div>
                   ) : (
                     <div className="rec-read-row">
                       <span className="rec-read-text">{team?.name ?? '—'}</span>
                       {isOwner && (
-                        <button type="button" className="rec-btn-tiny" onClick={() => { setNameDraft(team?.name ?? ''); setEditingName(true); }}>rename</button>
+                        <button type="button" className="rec-btn-tiny" onClick={() => { setNameDraft(team?.name ?? ''); setEditingName(true); }}>{t('admin.actions.rename')}</button>
                       )}
                     </div>
                   )}
@@ -608,8 +612,8 @@ function V2TeamAdminPageInner() {
 
               <div className="rec-config-row">
                 <div className="rec-config-label">
-                  <span className="rec-config-key">description</span>
-                  <span className="rec-config-hint">A one-line summary. Up to 120 characters.</span>
+                  <span className="rec-config-key">{t('admin.config.description')}</span>
+                  <span className="rec-config-hint">{t('admin.config.descriptionHint')}</span>
                 </div>
                 <div className="rec-config-value">
                   {editingDesc ? (
@@ -620,14 +624,14 @@ function V2TeamAdminPageInner() {
                         rows={3}
                         maxLength={120}
                         className="rec-input is-textarea"
-                        placeholder="Short description… (max 120 chars)"
+                        placeholder={t('admin.config.descriptionPlaceholder')}
                         autoFocus
                       />
                       <div className="rec-edit-foot">
                         <span className="rec-edit-count">{descDraft.length}/120</span>
-                        <button type="button" className="rec-btn-tiny" onClick={() => setEditingDesc(false)} disabled={descSaving}>cancel</button>
+                        <button type="button" className="rec-btn-tiny" onClick={() => setEditingDesc(false)} disabled={descSaving}>{t('admin.actions.cancel')}</button>
                         <button type="button" className="rec-btn-tiny is-primary" onClick={handleSaveDesc} disabled={descSaving}>
-                          {descSaving ? <><span className="rec-spinner" /> save</> : 'save'}
+                          {descSaving ? <><span className="rec-spinner" /> {t('admin.actions.save')}</> : t('admin.actions.save')}
                         </button>
                       </div>
                     </div>
@@ -636,11 +640,11 @@ function V2TeamAdminPageInner() {
                       {team?.description ? (
                         <span className="rec-read-text">{team.description}</span>
                       ) : (
-                        <span className="rec-read-empty">No description.</span>
+                        <span className="rec-read-empty">{t('admin.config.noDescription')}</span>
                       )}
                       {isOwner && (
                         <button type="button" className="rec-btn-tiny" onClick={() => { setDescDraft(team?.description ?? ''); setEditingDesc(true); }}>
-                          {team?.description ? 'edit' : 'add'}
+                          {team?.description ? t('admin.actions.edit') : t('admin.actions.add')}
                         </button>
                       )}
                     </div>
@@ -650,8 +654,8 @@ function V2TeamAdminPageInner() {
 
               <div className="rec-config-row">
                 <div className="rec-config-label">
-                  <span className="rec-config-key">avatar</span>
-                  <span className="rec-config-hint">Upload an image, or pick a color swatch.</span>
+                  <span className="rec-config-key">{t('admin.config.avatar')}</span>
+                  <span className="rec-config-hint">{t('admin.config.avatarHint')}</span>
                 </div>
                 <div className="rec-config-value">
                   <div className="rec-avatar-cluster">
@@ -661,7 +665,7 @@ function V2TeamAdminPageInner() {
                       style={{ background: team?.avatarUrl ? 'transparent' : teamAvatarColor }}
                       onClick={() => fileInputRef.current?.click()}
                       disabled={avatarUploading || !isOwner}
-                      aria-label="Change team avatar"
+                      aria-label={t('admin.config.changeAvatar')}
                     >
                       {avatarUploading ? (
                         <span className="rec-spinner is-light" />
@@ -675,9 +679,9 @@ function V2TeamAdminPageInner() {
                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} disabled={avatarUploading} hidden />
                     {isOwner && (
                       <>
-                        <button type="button" className="rec-btn-tiny" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}>upload image</button>
+                        <button type="button" className="rec-btn-tiny" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}>{t('admin.config.uploadImage')}</button>
                         <div className="rec-color-row">
-                          <span className="rec-color-row-label">color</span>
+                          <span className="rec-color-row-label">{t('admin.config.color')}</span>
                           {AVATAR_COLORS.map((c) => (
                             <button
                               key={c}
@@ -685,7 +689,7 @@ function V2TeamAdminPageInner() {
                               className={`rec-color-swatch ${teamAvatarColor === c ? 'is-active' : ''}`}
                               style={{ background: c }}
                               onClick={() => handlePickColor(c)}
-                              aria-label={`Pick ${c}`}
+                              aria-label={t('admin.config.pickColor', { color: c })}
                             />
                           ))}
                         </div>
@@ -698,8 +702,8 @@ function V2TeamAdminPageInner() {
               {team?.slug && (
                 <div className="rec-config-row">
                   <div className="rec-config-label">
-                    <span className="rec-config-key">slug</span>
-                    <span className="rec-config-hint">URL-safe identifier. Read-only.</span>
+                    <span className="rec-config-key">{t('admin.config.slug')}</span>
+                    <span className="rec-config-hint">{t('admin.config.slugHint')}</span>
                   </div>
                   <div className="rec-config-value">
                     <div className="rec-read-row">
@@ -714,24 +718,24 @@ function V2TeamAdminPageInner() {
           <section className="rec-block rec-danger">
             <header className="rec-block-head">
               <span className="rec-block-num is-danger">!!</span>
-              <h2 className="rec-block-title is-danger">danger zone</h2>
-              <p className="rec-block-sub">Irreversible operations.</p>
+              <h2 className="rec-block-title is-danger">{t('admin.danger.title')}</h2>
+              <p className="rec-block-sub">{t('admin.danger.subtitle')}</p>
             </header>
 
             {!isOwner && (
               <div className="rec-danger-row">
                 <div>
-                  <div className="rec-danger-title">Leave this team</div>
-                  <p className="rec-danger-hint">You will lose access to all projects in this team — analyses, tasks, marketing plans, the lot.</p>
+                  <div className="rec-danger-title">{t('admin.danger.leaveTitle')}</div>
+                  <p className="rec-danger-hint">{t('admin.danger.leaveHint')}</p>
                 </div>
                 {confirmLeave ? (
                   <div className="rec-confirm">
-                    <span className="rec-confirm-text">Are you sure?</span>
-                    <button type="button" className="rec-btn" onClick={() => setConfirmLeave(false)}>cancel</button>
-                    <button type="button" className="rec-btn is-danger" onClick={handleLeaveTeam}>yes — leave</button>
+                    <span className="rec-confirm-text">{t('admin.danger.areYouSure')}</span>
+                    <button type="button" className="rec-btn" onClick={() => setConfirmLeave(false)}>{t('admin.actions.cancel')}</button>
+                    <button type="button" className="rec-btn is-danger" onClick={handleLeaveTeam}>{t('admin.danger.confirmLeave')}</button>
                   </div>
                 ) : (
-                  <button type="button" className="rec-btn is-danger-ghost" onClick={() => setConfirmLeave(true)}>leave team</button>
+                  <button type="button" className="rec-btn is-danger-ghost" onClick={() => setConfirmLeave(true)}>{t('admin.danger.leaveButton')}</button>
                 )}
               </div>
             )}
@@ -739,19 +743,19 @@ function V2TeamAdminPageInner() {
             {isOwner && (
               <div className="rec-danger-row">
                 <div>
-                  <div className="rec-danger-title">Delete this team</div>
-                  <p className="rec-danger-hint">All projects, members, and data will be permanently deleted. Cannot be undone.</p>
+                  <div className="rec-danger-title">{t('admin.danger.deleteTitle')}</div>
+                  <p className="rec-danger-hint">{t('admin.danger.deleteHint')}</p>
                 </div>
                 {confirmDelete ? (
                   <div className="rec-confirm">
-                    <span className="rec-confirm-text">Are you sure?</span>
-                    <button type="button" className="rec-btn" onClick={() => setConfirmDelete(false)} disabled={deleting}>cancel</button>
+                    <span className="rec-confirm-text">{t('admin.danger.areYouSure')}</span>
+                    <button type="button" className="rec-btn" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t('admin.actions.cancel')}</button>
                     <button type="button" className="rec-btn is-danger" onClick={handleDeleteTeam} disabled={deleting}>
-                      {deleting ? <><span className="rec-spinner" /> deleting…</> : 'yes — delete forever'}
+                      {deleting ? <><span className="rec-spinner" /> {t('admin.danger.deleting')}</> : t('admin.danger.confirmDelete')}
                     </button>
                   </div>
                 ) : (
-                  <button type="button" className="rec-btn is-danger-ghost" onClick={() => setConfirmDelete(true)}>delete team</button>
+                  <button type="button" className="rec-btn is-danger-ghost" onClick={() => setConfirmDelete(true)}>{t('admin.danger.deleteButton')}</button>
                 )}
               </div>
             )}
@@ -762,10 +766,10 @@ function V2TeamAdminPageInner() {
         <Tabs.Content value="members" className="rec-panel">
           <section className="rec-block">
             <dl className="rec-stat-strip rec-stat-strip-bar">
-              <div><dt>active</dt><dd>{loading ? '—' : members.length}</dd></div>
-              <div><dt>owners</dt><dd>{loading ? '—' : ownerCount}</dd></div>
-              <div><dt>members</dt><dd>{loading ? '—' : memberCount}</dd></div>
-              <div><dt>viewers</dt><dd>{loading ? '—' : viewerCount}</dd></div>
+              <div><dt>{t('admin.members.active')}</dt><dd>{loading ? '—' : members.length}</dd></div>
+              <div><dt>{t('admin.members.owners')}</dt><dd>{loading ? '—' : ownerCount}</dd></div>
+              <div><dt>{t('admin.members.members')}</dt><dd>{loading ? '—' : memberCount}</dd></div>
+              <div><dt>{t('admin.members.viewers')}</dt><dd>{loading ? '—' : viewerCount}</dd></div>
             </dl>
 
             {loading ? (
@@ -779,13 +783,13 @@ function V2TeamAdminPageInner() {
                 ))}
               </div>
             ) : members.length === 0 ? (
-              <p className="rec-empty">No members loaded.</p>
+              <p className="rec-empty">{t('admin.members.noneLoaded')}</p>
             ) : (
               <div className="rec-roster">
                 {members.map((m, idx) => {
                   const isMe = m.userId === myUserId;
                   const isLoading = roleLoading[m.userId];
-                  const displayName = m.nickname || m.email?.split('@')[0] || 'Member';
+                  const displayName = m.nickname || m.email?.split('@')[0] || t('admin.members.memberFallback');
                   const isConfirmingRemove = confirmRemoveUser === m.userId;
                   const canEdit = isOwner && !isMe;
                   const dotColor = defaultColor(m.nickname || m.email || '?');
@@ -796,7 +800,7 @@ function V2TeamAdminPageInner() {
                         <span
                           className="rec-roster-dot"
                           style={{ background: m.avatarUrl ? 'transparent' : dotColor }}
-                          title={`${displayName}${isMe ? ' (you)' : ''}`}
+                          title={isMe ? t('admin.members.youTitle', { name: displayName }) : displayName}
                         >
                           {m.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -808,11 +812,11 @@ function V2TeamAdminPageInner() {
                         <div className="rec-roster-id">
                           <span className="rec-roster-name">
                             {displayName}
-                            {isMe && <span className="rec-you">you</span>}
+                            {isMe && <span className="rec-you">{t('admin.members.you')}</span>}
                           </span>
                           {m.email && m.nickname && <span className="rec-roster-email">{m.email}</span>}
                         </div>
-                        <span className="rec-roster-joined">joined {relTime(m.joinedAt)} ago</span>
+                        <span className="rec-roster-joined">{t('admin.members.joinedAgo', { time: relTime(m.joinedAt, t) })}</span>
                         {canEdit ? (
                           <DropdownMenu.Root>
                             <DropdownMenu.Trigger asChild>
@@ -820,9 +824,9 @@ function V2TeamAdminPageInner() {
                                 type="button"
                                 className={`rec-role rec-role-trigger is-${m.role}`}
                                 disabled={isLoading}
-                                aria-label={`Change role (currently ${m.role})`}
+                                aria-label={t('admin.members.changeRole', { role: t(`roles.${m.role}`) })}
                               >
-                                <span>{m.role}</span>
+                                <span>{t(`roles.${m.role}`)}</span>
                                 <span className="rec-role-chevron" aria-hidden>›</span>
                               </button>
                             </DropdownMenu.Trigger>
@@ -834,7 +838,7 @@ function V2TeamAdminPageInner() {
                                     className={`rec-role-menu-item ${m.role === r ? 'is-active' : ''}`}
                                     onSelect={() => { if (r !== m.role) handleRoleChange(m.userId, r); }}
                                   >
-                                    <span>{r}</span>
+                                    <span>{t(`roles.${r}`)}</span>
                                     {m.role === r && <span aria-hidden>✓</span>}
                                   </DropdownMenu.Item>
                                 ))}
@@ -842,15 +846,15 @@ function V2TeamAdminPageInner() {
                             </DropdownMenu.Portal>
                           </DropdownMenu.Root>
                         ) : (
-                          <span className={`rec-role is-${m.role}`}>{m.role}</span>
+                          <span className={`rec-role is-${m.role}`}>{t(`roles.${m.role}`)}</span>
                         )}
                         {canEdit && members.length > 1 && !isConfirmingRemove ? (
                           <button
                             type="button"
                             className="rec-roster-remove"
                             onClick={() => setConfirmRemoveUser(m.userId)}
-                            aria-label="Remove member"
-                            title="Remove"
+                            aria-label={t('admin.members.removeMember')}
+                            title={t('admin.members.remove')}
                           >
                             ×
                           </button>
@@ -860,9 +864,9 @@ function V2TeamAdminPageInner() {
                       </div>
                       {isConfirmingRemove && (
                         <div className="rec-confirm-strip">
-                          <span className="rec-confirm-strip-text">Remove <strong>{displayName}</strong>?</span>
-                          <button type="button" className="rec-btn is-danger" onClick={() => handleRemoveMember(m.userId)}>remove</button>
-                          <button type="button" className="rec-btn" onClick={() => setConfirmRemoveUser(null)}>cancel</button>
+                          <span className="rec-confirm-strip-text">{t.rich('admin.members.removeConfirm', { name: displayName, strong: (chunks) => <strong>{chunks}</strong> })}</span>
+                          <button type="button" className="rec-btn is-danger" onClick={() => handleRemoveMember(m.userId)}>{t('admin.members.remove')}</button>
+                          <button type="button" className="rec-btn" onClick={() => setConfirmRemoveUser(null)}>{t('admin.actions.cancel')}</button>
                         </div>
                       )}
                     </div>
@@ -878,8 +882,8 @@ function V2TeamAdminPageInner() {
           <section className="rec-block">
             <div className="rec-invite-split">
               <div className="rec-invite-form">
-                <span className="rec-mini-label">new link</span>
-                <div className="rec-invite-roles" role="group" aria-label="Invite role">
+                <span className="rec-mini-label">{t('admin.invites.newLink')}</span>
+                <div className="rec-invite-roles" role="group" aria-label={t('admin.invites.roleGroup')}>
                   {(['member', 'viewer'] as const).map((r) => (
                     <button
                       key={r}
@@ -887,7 +891,7 @@ function V2TeamAdminPageInner() {
                       onClick={() => setInviteRole(r)}
                       className={`rec-invite-role-btn ${inviteRole === r ? 'is-active' : ''}`}
                     >
-                      {r}
+                      {t(`roles.${r}`)}
                     </button>
                   ))}
                 </div>
@@ -896,26 +900,26 @@ function V2TeamAdminPageInner() {
                   className="rec-btn is-primary is-block"
                   onClick={handleGenerateInvite}
                   disabled={generating || !isOwner}
-                  title={isOwner ? undefined : 'Owner only'}
+                  title={isOwner ? undefined : t('admin.invites.ownerOnly')}
                 >
-                  {generating ? <><span className="rec-spinner is-light" /> generating</> : 'generate link →'}
+                  {generating ? <><span className="rec-spinner is-light" /> {t('admin.invites.generating')}</> : t('admin.invites.generateLink')}
                 </button>
                 {generatedLink && (
                   <div className="rec-invite-result">
-                    <span className="rec-mini-label">just generated</span>
+                    <span className="rec-mini-label">{t('admin.invites.justGenerated')}</span>
                     <code className="rec-invite-code">{generatedLink}</code>
-                    <button type="button" className="rec-btn-tiny" onClick={() => handleCopyLink(generatedLink)}>copy</button>
+                    <button type="button" className="rec-btn-tiny" onClick={() => handleCopyLink(generatedLink)}>{t('admin.invites.copy')}</button>
                   </div>
                 )}
               </div>
 
               <div className="rec-invite-pending">
                 <div className="rec-pending-head">
-                  <span className="rec-mini-label">pending</span>
+                  <span className="rec-mini-label">{t('admin.invites.pending')}</span>
                   <span className="rec-pending-count">{loading ? '—' : `${invites.length}`}</span>
                 </div>
                 {loading ? null : invites.length === 0 ? (
-                  <p className="rec-empty is-tight">No pending invites.</p>
+                  <p className="rec-empty is-tight">{t('admin.invites.noPending')}</p>
                 ) : (
                   <ul className="rec-pending-list">
                     {invites.map((inv) => {
@@ -926,26 +930,26 @@ function V2TeamAdminPageInner() {
                           <div className="rec-pending-row">
                             <div className="rec-pending-info">
                               <div className="rec-pending-target">
-                                {inv.email || <span className="rec-pending-link-only">link · {inv.token.slice(0, 6)}…</span>}
+                                {inv.email || <span className="rec-pending-link-only">{t('admin.invites.linkLabel', { token: inv.token.slice(0, 6) })}</span>}
                               </div>
                               <div className="rec-pending-meta">
-                                <span className={`rec-role is-${inv.role}`}>{inv.role}</span>
-                                <span>· {relTime(inv.createdAt)} ago</span>
-                                <span className="rec-pending-expiry">· {relativeExpiry(inv.expiresAt)}</span>
+                                <span className={`rec-role is-${inv.role}`}>{t(`roles.${inv.role}`)}</span>
+                                <span>· {t('admin.invites.createdAgo', { time: relTime(inv.createdAt, t) })}</span>
+                                <span className="rec-pending-expiry">· {relativeExpiry(inv.expiresAt, t)}</span>
                               </div>
                             </div>
                             <div className="rec-pending-actions">
-                              <button type="button" className="rec-btn-tiny" onClick={() => handleCopyLink(link)}>copy</button>
+                              <button type="button" className="rec-btn-tiny" onClick={() => handleCopyLink(link)}>{t('admin.invites.copy')}</button>
                               {!isConfirmingRevoke && (
-                                <button type="button" className="rec-roster-remove is-static" onClick={() => setConfirmRevokeInvite(inv.id)} aria-label="Revoke">×</button>
+                                <button type="button" className="rec-roster-remove is-static" onClick={() => setConfirmRevokeInvite(inv.id)} aria-label={t('admin.invites.revoke')}>×</button>
                               )}
                             </div>
                           </div>
                           {isConfirmingRevoke && (
                             <div className="rec-confirm-strip">
-                              <span className="rec-confirm-strip-text">Revoke this invite?</span>
-                              <button type="button" className="rec-btn is-danger" onClick={() => handleRevoke(inv.id)}>revoke</button>
-                              <button type="button" className="rec-btn" onClick={() => setConfirmRevokeInvite(null)}>cancel</button>
+                              <span className="rec-confirm-strip-text">{t('admin.invites.revokeConfirm')}</span>
+                              <button type="button" className="rec-btn is-danger" onClick={() => handleRevoke(inv.id)}>{t('admin.invites.revoke')}</button>
+                              <button type="button" className="rec-btn" onClick={() => setConfirmRevokeInvite(null)}>{t('admin.actions.cancel')}</button>
                             </div>
                           )}
                         </li>
@@ -965,7 +969,7 @@ function V2TeamAdminPageInner() {
               <RecgonAdminPanel teamId={teamId} />
             </div>
           ) : (
-            <p className="rec-empty">No team selected.</p>
+            <p className="rec-empty">{t('admin.noTeamSelected')}</p>
           )}
         </Tabs.Content>
       </Tabs.Root>

@@ -1,0 +1,469 @@
+{
+  "shell": {
+    "crumb": "projects",
+    "tabsAria": "Project sections",
+    "tabs": {
+      "overview": "Overview",
+      "tasks": "Calendar",
+      "analytics": "Analytics",
+      "marketing": "Marketing",
+      "settings": "Settings"
+    }
+  },
+  "list": {
+    "title": "projects",
+    "importGithub": "import from github",
+    "importGithubTitle": "Import a repo from GitHub",
+    "newProject": "new project",
+    "newProjectTitle": "Describe an idea — no code required",
+    "scopeAria": "Project scope",
+    "scopeAll": "All",
+    "scopePersonal": "Personal",
+    "scopeTeamTitle": "Show projects shared in {team}",
+    "needsYouNow": "needs you now",
+    "needsYouNowSub": "{count, plural, one {# project waiting on you} other {# projects waiting on you}}",
+    "allClear": "all clear",
+    "portfolio": "portfolio",
+    "portfolioMore": "{count} more",
+    "portfolioTotal": "{count} total",
+    "empty": {
+      "titlePrefix": "No",
+      "titleRest": "projects yet.",
+      "text": "Import a GitHub repo or describe your idea — Recgon will take it from there.",
+      "addFirst": "+ add your first project",
+      "importGithub": "import from github"
+    },
+    "toast": {
+      "created": "project created",
+      "createFailed": "failed to create",
+      "createProjectFailed": "failed to create project",
+      "textExtracted": "text extracted",
+      "extractFailed": "extract failed",
+      "imported": "{name} imported",
+      "importFailed": "import failed"
+    },
+    "manualModal": {
+      "eyebrow": "new project",
+      "heading": "describe your idea",
+      "hintBefore": "No code yet? No problem. Describe what you're building and Recgon will analyse it like a PM mentor. To analyse actual code, use ",
+      "hintImport": "Import from GitHub",
+      "hintAfter": " instead.",
+      "nameLabel": "project name",
+      "namePlaceholder": "my awesome app",
+      "descriptionLabel": "idea description",
+      "descriptionPlaceholder": "Describe your idea...\n\nWhat problem does it solve? Who is it for? What makes it different?",
+      "extractedFrom": "extracted from {filename}",
+      "uploadFile": "upload .pdf or .docx",
+      "uploadTitle": "Upload a PDF or DOCX to auto-fill the description",
+      "extracting": "extracting…",
+      "creating": "creating…"
+    },
+    "githubModal": {
+      "eyebrow": "import from github",
+      "notConnectedTitle": "GitHub not connected",
+      "notConnectedText": "Connect your GitHub account to import repos into Recgon.",
+      "connect": "connect github →",
+      "loadFailed": "Failed to load GitHub repos. Please try again.",
+      "networkError": "Network error — please try again.",
+      "searchPlaceholder": "search your repos…",
+      "loading": "loading repos…",
+      "noMatch": "No repos match your search.",
+      "private": "private",
+      "updated": "updated {time}",
+      "import": "import →",
+      "importing": "importing…"
+    },
+    "timeAgo": {
+      "today": "today",
+      "days": "{n}d ago",
+      "weeks": "{n}w ago",
+      "months": "{n}mo ago"
+    }
+  },
+  "featured": {
+    "skeletonAria": "loading featured projects",
+    "allHealthy": "All projects look healthy. Nothing needs your call right now.",
+    "own": {
+      "private": "private",
+      "shared": "shared",
+      "sharedTeam": "shared · {team}",
+      "fromTeam": "from {team}",
+      "fromTeamGeneric": "from team"
+    },
+    "riskLabel": "Risk.",
+    "riskFallback": "Awaiting analysis to surface a risk.",
+    "nextLabel": "Next.",
+    "nextFallback": "Open the project to set a next move.",
+    "analyzedAgo": "analyzed {time} ago",
+    "neverAnalyzed": "never analyzed"
+  },
+  "portfolio": {
+    "filterAria": "Filter projects",
+    "filters": {
+      "all": "All",
+      "drifting": "Drifting",
+      "stuck": "Stuck",
+      "shipping": "Shipping",
+      "converging": "Converging",
+      "idle": "Idle"
+    },
+    "source": {
+      "codebase": "codebase",
+      "github": "github",
+      "description": "idea"
+    },
+    "own": {
+      "private": "private",
+      "shared": "shared",
+      "sharedTeam": "shared · {team}",
+      "fromTeam": "from {team}",
+      "fromTeamGeneric": "from team"
+    },
+    "emptyOther": "No other projects to show.",
+    "emptyStatus": "No projects in this status.",
+    "newCommits": "! new commits",
+    "newCommitsTitle": "New commits since last analysis",
+    "agoSuffix": "{time} ago",
+    "never": "never"
+  },
+  "detail": {
+    "notFound": "Project not found.",
+    "noAnalysis": {
+      "titlePrefix": "No",
+      "titleRest": "analysis yet.",
+      "text": "Run the AI mentor on {name} to get a full product brief: features, market, SWOT, prioritized next steps, GTM plan.",
+      "analyzing": "analyzing…",
+      "analyze": "analyze project →"
+    },
+    "progress": {
+      "starting": "starting analysis…"
+    },
+    "toast": {
+      "quotaReached": "analysis quota reached",
+      "analysisFailed": "analysis failed",
+      "analysisComplete": "analysis complete",
+      "deleteFailed": "failed to delete",
+      "deleteProjectFailed": "failed to delete project",
+      "deleted": "project deleted",
+      "sharedWithTeam": "project shared with team",
+      "setToPrivate": "project set to private",
+      "updateSharingFailed": "failed to update sharing",
+      "saveFailed": "failed to save",
+      "saveDescriptionFailed": "failed to save description",
+      "descriptionSaved": "description saved · re-analyzing…",
+      "connectFailed": "failed to connect",
+      "connectCodebaseFailed": "failed to connect codebase",
+      "codebaseConnected": "codebase connected · re-analyzing…"
+    },
+    "banner": {
+      "newCommits": "new commits since last analysis",
+      "reAnalyzing": "re-analyzing…",
+      "seeWhatChanged": "see what changed",
+      "reAnalyzeTitle": "Re-run mentor analysis on the latest commit",
+      "remaining": "{remaining} of {limit} analyses remaining",
+      "nextFreeAnalysis": "next free analysis · {date}"
+    },
+    "overview": {
+      "eyebrow": "› product overview",
+      "newCommitsChip": "! new commits",
+      "newCommitsChipTitle": "New commits since the last analysis",
+      "analyzedAgo": "analyzed {time}",
+      "repo": "repo",
+      "repoTitle": "Open repo on GitHub",
+      "analyzing": "analyzing…",
+      "reAnalyze": "re-analyze",
+      "reAnalyzeTitle": "Re-run mentor analysis",
+      "export": "export",
+      "exportTitle": "Download a PDF brief",
+      "sharePrivateTitle": "Private — only you can see this project. Click to share with your team.",
+      "shareSharedTitle": "Shared — all team members can see this project. Click to make it private.",
+      "shareAria": "Share with team",
+      "makePrivateAria": "Make private",
+      "deleteTitle": "Delete project",
+      "deleteAria": "Delete project"
+    },
+    "hero": {
+      "project": "project",
+      "editDescriptionTitle": "Edit idea description",
+      "editDescriptionAria": "Edit idea description",
+      "connectCodebaseTitle": "Connect a codebase to this project",
+      "connectCodebaseAria": "Connect a codebase to this project",
+      "saveReAnalyze": "save & re-analyze",
+      "saving": "saving…"
+    },
+    "stats": {
+      "stage": "stage",
+      "stackSize": "stack size",
+      "technology": "technology",
+      "technologies": "technologies",
+      "features": "features",
+      "shippedCapabilities": "shipped capabilities",
+      "usps": "usps",
+      "uniqueAngles": "unique angles",
+      "priorities": "priorities",
+      "nextSteps": "next steps"
+    },
+    "diag": {
+      "aria": "Problem and audience diagnostics",
+      "problem": "the problem",
+      "symptoms": "› symptoms",
+      "audience": "target audience",
+      "personaTraits": "› persona traits"
+    },
+    "inventory": {
+      "title": "stack inventory",
+      "techInCategories": "{count, plural, one {tech in {cats} category} other {tech in {cats} categories}}",
+      "aria": "Stack composition by category"
+    },
+    "capability": {
+      "eyebrow": "› what it does",
+      "shippedCapabilities": "shipped capabilities",
+      "uniqueAngles": "unique angles",
+      "depthAria": "depth {depth} of 8",
+      "showLess": "show less",
+      "showMore": "show {count} more"
+    },
+    "doNext": {
+      "eyebrow": "› do next"
+    },
+    "actedOn": {
+      "eyebrow": "› acted on",
+      "completeAria": "{pct}% complete",
+      "completion": "completion",
+      "of": "of",
+      "acted": "{count} acted",
+      "pending": "{count} pending",
+      "showLess": "show less",
+      "showMore": "show {count} more"
+    },
+    "whatChanged": {
+      "eyebrow": "› what changed"
+    }
+  },
+  "swotMatrix": {
+    "eyebrow": "› swot matrix",
+    "strengths": "strengths",
+    "weaknesses": "weaknesses",
+    "opportunities": "opportunities",
+    "threats": "threats"
+  },
+  "risks": {
+    "eyebrow": "› watch out",
+    "high": "high",
+    "medium": "medium",
+    "low": "low",
+    "severityAria": "severity {sev} of 3"
+  },
+  "market": {
+    "eyebrow": "› market",
+    "opportunity": "market opportunity",
+    "signalsDetected": "signals detected",
+    "battlecards": "competitive battlecards",
+    "rivalsMapped": "{count, plural, one {# rival mapped} other {# rivals mapped}}",
+    "competitors": "competitors",
+    "mapped": "{count} mapped",
+    "visit": "visit ↗",
+    "tone": "tone · {tone}",
+    "theirStrengths": "their strengths",
+    "theirGaps": "their gaps",
+    "yourEdge": "your edge",
+    "them": "them"
+  },
+  "grow": {
+    "eyebrow": "› making it grow",
+    "revenueModel": "revenue model",
+    "revenueStreams": "revenue streams",
+    "pricing": "pricing",
+    "goToMarket": "go-to-market",
+    "adoptionFunnel": "adoption funnel",
+    "channels": "{count} channels",
+    "growthMetrics": "growth metrics",
+    "kpis": "{count, plural, one {# kpi} other {# kpis}}"
+  },
+  "connectCodebase": {
+    "eyebrow": "connect github repo",
+    "closeAria": "Close",
+    "hint": "Upgrade this idea project to a full code analysis by linking a GitHub repository. The existing idea analysis will be replaced.",
+    "urlLabel": "github url",
+    "urlPlaceholder": "https://github.com/user/repo",
+    "connecting": "connecting…",
+    "connectAnalyze": "connect & analyze"
+  },
+  "deleteModal": {
+    "eyebrow": "delete project",
+    "closeAria": "Close",
+    "confirmBefore": "Delete",
+    "confirmAfter": "? This removes the project, its analysis history, and generated marketing. This cannot be undone.",
+    "deleting": "deleting…",
+    "deleteProject": "delete project"
+  },
+  "export": {
+    "loading": "Loading…",
+    "noAnalysis": "No analysis found for this project.",
+    "generating": "Generating…",
+    "downloaded": "Downloaded!",
+    "errorRetry": "Error — retry",
+    "downloadPdf": "Download PDF",
+    "back": "← Back",
+    "brief": "Product Strategy Brief",
+    "analyzed": "Analyzed {date}",
+    "productOverview": "Product Overview",
+    "targetAudience": "Target Audience",
+    "problemStatement": "Problem Statement",
+    "techStack": "Tech Stack",
+    "featuresDifferentiators": "Features & Differentiators",
+    "keyFeatures": "Key Features",
+    "uniqueSellingPoints": "Unique Selling Points",
+    "marketOpportunity": "Market Opportunity",
+    "competitiveLandscape": "Competitive Landscape",
+    "competitor": "Competitor",
+    "ourDifferentiator": "Our Differentiator",
+    "competitorIntelligence": "Competitor Intelligence",
+    "positioning": "Positioning",
+    "weaknesses": "Weaknesses",
+    "ourEdge": "OUR EDGE",
+    "businessModel": "Business Model",
+    "revenueStreams": "Revenue Streams",
+    "pricingSuggestion": "Pricing Suggestion",
+    "swotAnalysis": "SWOT Analysis",
+    "strengths": "Strengths",
+    "opportunities": "Opportunities",
+    "threats": "Threats",
+    "actionPlan": "Action Plan",
+    "prioritizedNextSteps": "Prioritized Next Steps",
+    "topRisks": "Top Risks",
+    "gtm": "Go-to-Market Strategy",
+    "earlyAdopterChannels": "Early Adopter Channels",
+    "growthMetrics": "Growth Metrics",
+    "recommendedImprovements": "Recommended Improvements",
+    "executionProgress": "Execution Progress",
+    "generatedBy": "Generated by Recgon"
+  },
+  "settings": {
+    "notFound": "Project not found.",
+    "sourceLabel": {
+      "codebase": "codebase",
+      "github": "github",
+      "description": "idea"
+    },
+    "navAria": "project navigation",
+    "sectionsAria": "sections",
+    "sections": {
+      "identity": "identity",
+      "sources": "sources",
+      "access": "access",
+      "destroy": "destroy"
+    },
+    "band": {
+      "prefix": "settings",
+      "created": "created {time} ago",
+      "analyzed": "analyzed {time} ago"
+    },
+    "idLabel": "id",
+    "fallbackName": "project",
+    "justNow": "just now",
+    "toast": {
+      "nameTooLong": "name must be 120 characters or fewer",
+      "nameUpdated": "name updated",
+      "descriptionUpdated": "description updated",
+      "logoUpdated": "logo updated",
+      "logoCleared": "logo cleared",
+      "logoDetected": "logo auto-detected",
+      "noLogoFound": "no logo found in repo or website",
+      "detectionFailed": "detection failed",
+      "githubOnly": "Only https://github.com/ URLs are supported",
+      "repoSwapped": "github repo swapped",
+      "repoConnected": "github repo connected",
+      "propertyNumeric": "Property ID must be numeric (e.g. 123456789)",
+      "propertySaveFailed": "failed to save property",
+      "ga4Linked": "GA4 property linked",
+      "ga4Cleared": "GA4 property cleared",
+      "sharedWithTeam": "shared with team",
+      "setToPrivate": "set to private",
+      "deleted": "project deleted",
+      "deleteFailed": "delete failed",
+      "failed": "failed",
+      "updateFailed": "update failed",
+      "missingContext": "missing context"
+    },
+    "creator": {
+      "none": "—",
+      "you": "You",
+      "teammate": "a teammate"
+    },
+    "identity": {
+      "title": "identity",
+      "hint": "The face of your project.",
+      "logoLabel": "logo",
+      "logoHint": "Square image used on cards and the sidebar.",
+      "logoPlaceholder": "https://example.com/logo.png",
+      "autoDetect": "auto-detect",
+      "autoDetectTitleEnabled": "Probe the GitHub repo / website for a logo",
+      "autoDetectTitleDisabled": "Connect a GitHub URL or analyze the project first",
+      "clear": "clear",
+      "cancel": "cancel",
+      "save": "save",
+      "saving": "saving",
+      "noLogoSet": "no logo set",
+      "nameLabel": "name",
+      "nameHint": "Short, memorable. Appears in cards, sidebar, and nav.",
+      "namePlaceholder": "project name",
+      "untitled": "untitled",
+      "descriptionLabel": "description",
+      "descriptionHint": "What is it? Who's it for? What problem does it solve?",
+      "descriptionPlaceholder": "A brief, honest description. The model uses this when there's no code yet.",
+      "cmdEnterSaves": "⌘ + enter saves",
+      "noDescription": "no description yet"
+    },
+    "sources": {
+      "title": "sources",
+      "hint": "Where Recgon reads your project from.",
+      "githubLabel": "github",
+      "githubHint": "Unlocks code analysis and commit-tracked deltas. Private repos work when GitHub is connected in settings.",
+      "change": "change",
+      "connect": "connect",
+      "githubPlaceholder": "https://github.com/you/repo",
+      "cloning": "cloning",
+      "save": "save",
+      "cancel": "cancel",
+      "lastAnalyzed": "last analyzed",
+      "agoSuffix": "· {time} ago",
+      "reAnalyze": "re-analyze",
+      "noRepo": "No repo connected. Idea-only is fine — connect a repo when you want code analysis.",
+      "websiteLabel": "website",
+      "websiteHint": "Detected from analysis. Used for logo lookup and product context.",
+      "noWebsite": "No website detected. Analysis pulls this from your repo's package homepage, README, or env vars.",
+      "analyticsLabel": "analytics",
+      "analyticsHint": "Link a GA4 property to surface live traffic in Recgon.",
+      "edit": "edit",
+      "link": "link",
+      "ga4Placeholder": "ga4 property id (e.g. 123456789)",
+      "unlink": "unlink",
+      "findUnderGa4": "find this under GA4 admin → property settings",
+      "noGa4": "No GA4 property linked. The analytics tab will stay empty until you connect one."
+    },
+    "access": {
+      "title": "access",
+      "hint": "Who can see this project.",
+      "visibilityLabel": "visibility",
+      "lockedHint": "Only the project creator can change this.",
+      "sharedHint": "Everyone in your team can see this project.",
+      "privateHint": "Only you can see this project.",
+      "visibilityAria": "visibility",
+      "team": "team",
+      "private": "private",
+      "createdByLabel": "created by",
+      "createdByHint": "The teammate who first added this project."
+    },
+    "destroy": {
+      "title": "destroy",
+      "hint": "Permanent. No undo.",
+      "text": "Deleting removes all analyses, marketing content, and tasks tied to this project.",
+      "deleteProject": "delete project",
+      "areYouSure": "are you sure?",
+      "cancel": "cancel",
+      "deleting": "deleting",
+      "confirmDestroy": "yes — destroy permanently"
+    }
+  }
+}

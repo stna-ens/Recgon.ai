@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import type { CalendarCard } from './calendarTypes';
 import type { TeammateWithStats } from '@/lib/recgon/types';
 import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
@@ -50,6 +51,7 @@ export function EventChip({
   teamBadge,
   ownerView = false,
 }: Props) {
+  const t = useTranslations('calendar');
   const accentColor = STATUS_COLOR[card.task.status] ?? 'var(--signature)';
   const cleanTitle = stripMd(card.title);
   const hasRescheduleRequest = card.task.rescheduleRequestStatus === 'pending';
@@ -134,11 +136,11 @@ export function EventChip({
       {overdueNow && (
         <OverdueChip tier={tier} days={lateDays} ownerView={ownerView} className="cal-chip-overdue" />
       )}
-      {hasRescheduleRequest && <span className="cal-chip-request">move</span>}
+      {hasRescheduleRequest && <span className="cal-chip-request">{t('chip.move')}</span>}
       {resizable && (
         <span
           className="cal-chip-resize"
-          aria-label="Resize task"
+          aria-label={t('overdue.resize')}
           onMouseDown={handleResizeMouseDown}
           onClick={(e) => e.stopPropagation()}
         />

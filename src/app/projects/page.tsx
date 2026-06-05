@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import SectionIndex from '@/components/v2/SectionIndex';
@@ -21,13 +22,13 @@ interface GitHubRepo {
   updated_at: string;
 }
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: ReturnType<typeof useTranslations<'projects'>>): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const days = Math.floor(diff / 86_400_000);
-  if (days < 1) return 'today';
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  return `${Math.floor(days / 30)}mo ago`;
+  if (days < 1) return t('list.timeAgo.today');
+  if (days < 7) return t('list.timeAgo.days', { n: days });
+  if (days < 30) return t('list.timeAgo.weeks', { n: Math.floor(days / 7) });
+  return t('list.timeAgo.months', { n: Math.floor(days / 30) });
 }
 
 interface OverviewResponse {
@@ -36,6 +37,8 @@ interface OverviewResponse {
 }
 
 export default function V2ProjectsListPage() {
+  const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
   const ctx = useTeam();
   const currentTeam = ctx.currentTeam;
   const teams = ctx.teams ?? [];
@@ -186,17 +189,17 @@ export default function V2ProjectsListPage() {
         const data = await res.json().catch(() => ({}));
         setReposError(data.error === 'No GitHub account connected'
           ? 'NOT_CONNECTED'
-          : 'Failed to load GitHub repos. Please try again.');
+          : t('list.githubModal.loadFailed'));
       } else {
         const list: GitHubRepo[] = await res.json();
         setRepos(list);
       }
     } catch {
-      setReposError('Network error — please try again.');
+      setReposError(t('list.githubModal.networkError'));
     } finally {
       setReposLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const handleCreate = useCallback(async () => {
     if (!name.trim() || !description.trim() || creating) return;
@@ -209,17 +212,17 @@ export default function V2ProjectsListPage() {
         body: JSON.stringify({ name: name.trim(), description: description.trim(), teamId: currentTeam.id }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'failed to create project');
-      addToast('project created', 'success');
+      if (!res.ok) throw new Error(data?.error || t('list.toast.createProjectFailed'));
+      addToast(t('list.toast.created'), 'success');
       setShowManual(false);
       refreshProjects?.();
       mutatePortfolio();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed to create', 'error');
+      addToast(err instanceof Error ? err.message : t('list.toast.createFailed'), 'error');
     } finally {
       setCreating(false);
     }
-  }, [name, description, creating, currentTeam, addToast, refreshProjects, mutatePortfolio]);
+  }, [name, description, creating, currentTeam, addToast, refreshProjects, mutatePortfolio, t]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -230,17 +233,17 @@ export default function V2ProjectsListPage() {
       fd.append('file', file);
       const res = await fetch('/api/projects/extract-text', { method: 'POST', body: fd });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'failed to extract');
+      if (!res.ok) throw new Error(data?.error || t('list.toast.extractFailed'));
       setDescription(data.text);
       setUploadedFilename(file.name);
-      addToast('text extracted', 'success');
+      addToast(t('list.toast.textExtracted'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'extract failed', 'error');
+      addToast(err instanceof Error ? err.message : t('list.toast.extractFailed'), 'error');
     } finally {
       setExtracting(false);
       e.target.value = '';
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   const handleImportRepo = useCallback(async (repo: GitHubRepo) => {
     if (!currentTeam?.id) return;
@@ -252,17 +255,17 @@ export default function V2ProjectsListPage() {
         body: JSON.stringify({ name: repo.name, path: repo.html_url, teamId: currentTeam.id }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'import failed');
-      addToast(`${repo.name} imported`, 'success');
+      if (!res.ok) throw new Error(data?.error || t('list.toast.importFailed'));
+      addToast(t('list.toast.imported', { name: repo.name }), 'success');
       setShowGithub(false);
       refreshProjects?.();
       mutatePortfolio();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'import failed', 'error');
+      addToast(err instanceof Error ? err.message : t('list.toast.importFailed'), 'error');
     } finally {
       setImporting(null);
     }
-  }, [currentTeam, addToast, refreshProjects, mutatePortfolio]);
+  }, [currentTeam, addToast, refreshProjects, mutatePortfolio, t]);
 
   const filteredRepos = useMemo(() => {
     const q = repoSearch.toLowerCase();
@@ -281,20 +284,20 @@ export default function V2ProjectsListPage() {
       <header className="v2-page-head">
         <h1 className="v2-page-title">
           <span className="v2-prompt">$</span>
-          <span>projects</span>
+          <span>{t('list.title')}</span>
         </h1>
         <div className="v2-page-cta-group">
-          <button type="button" className="v2-btn v2-btn-ghost" onClick={openGithub} title="Import a repo from GitHub">
+          <button type="button" className="v2-btn v2-btn-ghost" onClick={openGithub} title={t('list.importGithubTitle')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
             </svg>
-            import from github
+            {t('list.importGithub')}
           </button>
-          <button type="button" className="v2-btn v2-btn-primary" onClick={openManual} title="Describe an idea — no code required">
+          <button type="button" className="v2-btn v2-btn-primary" onClick={openManual} title={t('list.newProjectTitle')}>
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
             </svg>
-            new project
+            {t('list.newProject')}
           </button>
         </div>
       </header>
@@ -303,21 +306,21 @@ export default function V2ProjectsListPage() {
         <div className="glass-card is-static is-roomy v2-empty">
           <div className="v2-empty-mark">+</div>
           <h2 className="v2-empty-title">
-            <span className="v2-pink">No</span> projects yet.
+            <span className="v2-pink">{t('list.empty.titlePrefix')}</span> {t('list.empty.titleRest')}
           </h2>
-          <p className="v2-empty-text">Import a GitHub repo or describe your idea — Recgon will take it from there.</p>
+          <p className="v2-empty-text">{t('list.empty.text')}</p>
           <div className="v2-empty-actions">
             <button type="button" className="v2-btn v2-btn-primary" onClick={openManual}>
-              + add your first project
+              {t('list.empty.addFirst')}
             </button>
             <button type="button" className="v2-btn v2-btn-ghost" onClick={openGithub}>
-              import from github
+              {t('list.empty.importGithub')}
             </button>
           </div>
         </div>
       ) : (
         <div className="v2-projects-stack">
-          <div className="v2-scope-strip" role="tablist" aria-label="Project scope">
+          <div className="v2-scope-strip" role="tablist" aria-label={t('list.scopeAria')}>
             <button
               type="button"
               className={`v2-scope-chip ${scope === 'all' ? 'is-active' : ''}`}
@@ -325,7 +328,7 @@ export default function V2ProjectsListPage() {
               role="tab"
               aria-selected={scope === 'all'}
             >
-              All
+              {t('list.scopeAll')}
             </button>
             <button
               type="button"
@@ -334,21 +337,21 @@ export default function V2ProjectsListPage() {
               role="tab"
               aria-selected={scope === 'personal'}
             >
-              Personal
+              {t('list.scopePersonal')}
             </button>
-            {teams.map((t) => {
-              const isActive = scope === t.id;
+            {teams.map((tm) => {
+              const isActive = scope === tm.id;
               return (
                 <button
-                  key={t.id}
+                  key={tm.id}
                   type="button"
                   className={`v2-scope-chip ${isActive ? 'is-active' : ''}`}
-                  onClick={() => setScope(t.id)}
+                  onClick={() => setScope(tm.id)}
                   role="tab"
                   aria-selected={isActive}
-                  title={`Show projects shared in ${t.name}`}
+                  title={t('list.scopeTeamTitle', { team: tm.name })}
                 >
-                  {t.name}
+                  {tm.name}
                 </button>
               );
             })}
@@ -356,8 +359,8 @@ export default function V2ProjectsListPage() {
 
           <SectionIndex
             idx="01"
-            label="needs you now"
-            sub={featuredCount > 0 ? `${featuredCount} project${featuredCount === 1 ? '' : 's'} waiting on you` : 'all clear'}
+            label={t('list.needsYouNow')}
+            sub={featuredCount > 0 ? t('list.needsYouNowSub', { count: featuredCount }) : t('list.allClear')}
           />
           <FeaturedNeedsAttention projects={scopedPortfolio} meta={portfolioMeta} loading={portfolioLoading} />
 
@@ -365,8 +368,8 @@ export default function V2ProjectsListPage() {
             <>
               <SectionIndex
                 idx="02"
-                label="portfolio"
-                sub={featuredCount > 0 ? `${restProjects.length} more` : `${totalProjects} total`}
+                label={t('list.portfolio')}
+                sub={featuredCount > 0 ? t('list.portfolioMore', { count: restProjects.length }) : t('list.portfolioTotal', { count: totalProjects })}
               />
               <PortfolioRows projects={restProjects} meta={portfolioMeta} loading={portfolioLoading} />
             </>
@@ -379,44 +382,43 @@ export default function V2ProjectsListPage() {
         <div className="v2-modal-overlay" onClick={() => setShowManual(false)} role="dialog" aria-modal="true">
           <div className="glass-card is-static v2-modal" onClick={(e) => e.stopPropagation()}>
             <div className="v2-modal-head">
-              <span className="recgon-label v2-block-eye">new project</span>
-              <button type="button" className="v2-modal-x" onClick={() => setShowManual(false)} aria-label="Close">×</button>
+              <span className="recgon-label v2-block-eye">{t('list.manualModal.eyebrow')}</span>
+              <button type="button" className="v2-modal-x" onClick={() => setShowManual(false)} aria-label={tCommon('close')}>×</button>
             </div>
-            <h3 className="v2-modal-heading">describe your idea</h3>
+            <h3 className="v2-modal-heading">{t('list.manualModal.heading')}</h3>
             <p className="v2-modal-hint">
-              No code yet? No problem. Describe what you&apos;re building and Recgon will analyse it like a PM mentor.
-              {' '}To analyse actual code, use <strong>Import from GitHub</strong> instead.
+              {t('list.manualModal.hintBefore')}<strong>{t('list.manualModal.hintImport')}</strong>{t('list.manualModal.hintAfter')}
             </p>
 
             <label className="v2-field">
-              <span className="v2-field-label">project name</span>
+              <span className="v2-field-label">{t('list.manualModal.nameLabel')}</span>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="my awesome app"
+                placeholder={t('list.manualModal.namePlaceholder')}
                 className="v2-input"
                 autoFocus
               />
             </label>
 
             <label className="v2-field">
-              <span className="v2-field-label">idea description</span>
+              <span className="v2-field-label">{t('list.manualModal.descriptionLabel')}</span>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={8}
-                placeholder={"Describe your idea...\n\nWhat problem does it solve? Who is it for? What makes it different?"}
+                placeholder={t('list.manualModal.descriptionPlaceholder')}
                 className="v2-input v2-textarea"
               />
               {uploadedFilename && (
-                <span className="v2-field-hint">extracted from {uploadedFilename}</span>
+                <span className="v2-field-hint">{t('list.manualModal.extractedFrom', { filename: uploadedFilename })}</span>
               )}
             </label>
 
             <div className="v2-modal-actions">
-              <label className="v2-btn v2-btn-ghost v2-btn-file" title="Upload a PDF or DOCX to auto-fill the description">
-                {extracting ? <><span className="v2-spinner" /> extracting…</> : 'upload .pdf or .docx'}
+              <label className="v2-btn v2-btn-ghost v2-btn-file" title={t('list.manualModal.uploadTitle')}>
+                {extracting ? <><span className="v2-spinner" /> {t('list.manualModal.extracting')}</> : t('list.manualModal.uploadFile')}
                 <input
                   type="file"
                   accept=".pdf,.docx"
@@ -427,7 +429,7 @@ export default function V2ProjectsListPage() {
               </label>
               <div className="v2-modal-spacer" />
               <button type="button" className="v2-btn v2-btn-ghost" onClick={() => setShowManual(false)}>
-                cancel
+                {tCommon('cancel')}
               </button>
               <button
                 type="button"
@@ -435,7 +437,7 @@ export default function V2ProjectsListPage() {
                 onClick={handleCreate}
                 disabled={creating || !name.trim() || !description.trim()}
               >
-                {creating ? <><span className="v2-spinner" /> creating…</> : 'create'}
+                {creating ? <><span className="v2-spinner" /> {t('list.manualModal.creating')}</> : tCommon('create')}
               </button>
             </div>
           </div>
@@ -447,8 +449,8 @@ export default function V2ProjectsListPage() {
         <div className="v2-modal-overlay" onClick={() => setShowGithub(false)} role="dialog" aria-modal="true">
           <div className="glass-card is-static v2-modal v2-modal-tall" onClick={(e) => e.stopPropagation()}>
             <div className="v2-modal-head">
-              <span className="recgon-label v2-block-eye">import from github</span>
-              <button type="button" className="v2-modal-x" onClick={() => setShowGithub(false)} aria-label="Close">×</button>
+              <span className="recgon-label v2-block-eye">{t('list.githubModal.eyebrow')}</span>
+              <button type="button" className="v2-modal-x" onClick={() => setShowGithub(false)} aria-label={tCommon('close')}>×</button>
             </div>
 
             {reposError === 'NOT_CONNECTED' ? (
@@ -458,9 +460,9 @@ export default function V2ProjectsListPage() {
                     <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
                   </svg>
                 </div>
-                <h3 className="v2-gh-empty-title">GitHub not connected</h3>
-                <p className="v2-gh-empty-text">Connect your GitHub account to import repos into Recgon.</p>
-                <a href="/api/github/connect" className="v2-btn v2-btn-primary">connect github →</a>
+                <h3 className="v2-gh-empty-title">{t('list.githubModal.notConnectedTitle')}</h3>
+                <p className="v2-gh-empty-text">{t('list.githubModal.notConnectedText')}</p>
+                <a href="/api/github/connect" className="v2-btn v2-btn-primary">{t('list.githubModal.connect')}</a>
               </div>
             ) : reposError ? (
               <div className="v2-modal-error">
@@ -472,7 +474,7 @@ export default function V2ProjectsListPage() {
                   type="text"
                   value={repoSearch}
                   onChange={(e) => setRepoSearch(e.target.value)}
-                  placeholder="search your repos…"
+                  placeholder={t('list.githubModal.searchPlaceholder')}
                   className="v2-input v2-modal-search"
                   autoFocus
                 />
@@ -480,10 +482,10 @@ export default function V2ProjectsListPage() {
                 {reposLoading ? (
                   <div className="v2-modal-loading">
                     <span className="v2-spinner v2-spinner-pink" />
-                    <span>loading repos…</span>
+                    <span>{t('list.githubModal.loading')}</span>
                   </div>
                 ) : filteredRepos.length === 0 ? (
-                  <p className="v2-modal-hint">No repos match your search.</p>
+                  <p className="v2-modal-hint">{t('list.githubModal.noMatch')}</p>
                 ) : (
                   <ul className="v2-repo-list">
                     {filteredRepos.map((r) => (
@@ -497,16 +499,16 @@ export default function V2ProjectsListPage() {
                           <div className="v2-repo-info">
                             <div className="v2-repo-name">
                               {r.name}
-                              {r.private && <span className="v2-repo-badge">private</span>}
+                              {r.private && <span className="v2-repo-badge">{t('list.githubModal.private')}</span>}
                             </div>
                             {r.description && <div className="v2-repo-desc">{r.description}</div>}
                             <div className="v2-repo-meta">
                               {r.language && <span>{r.language}</span>}
-                              <span>updated {timeAgo(r.updated_at)}</span>
+                              <span>{t('list.githubModal.updated', { time: timeAgo(r.updated_at, t) })}</span>
                             </div>
                           </div>
                           <span className="v2-repo-action">
-                            {importing === r.full_name ? <><span className="v2-spinner v2-spinner-pink" /> importing…</> : 'import →'}
+                            {importing === r.full_name ? <><span className="v2-spinner v2-spinner-pink" /> {t('list.githubModal.importing')}</> : t('list.githubModal.import')}
                           </span>
                         </button>
                       </li>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { CampaignPlan } from './types';
 
 interface Props {
@@ -7,18 +8,19 @@ interface Props {
 }
 
 export default function CampaignMetrics({ plan }: Props) {
+  const t = useTranslations('marketing');
   return (
     <div className="v2-m-tab-body v2-m-metrics">
       <section className="glass-card is-static v2-m-section-card">
-        <span className="recgon-label v2-m-section-eye">kpis</span>
+        <span className="recgon-label v2-m-section-eye">{t('metrics.kpis')}</span>
         <div className="v2-m-kpi-wrap">
           <table className="v2-m-kpi-table">
             <thead>
               <tr>
-                <th>metric</th>
-                <th>target</th>
-                <th>platform</th>
-                <th>timeframe</th>
+                <th>{t('metrics.kpiMetric')}</th>
+                <th>{t('metrics.kpiTarget')}</th>
+                <th>{t('metrics.kpiPlatform')}</th>
+                <th>{t('metrics.kpiTimeframe')}</th>
               </tr>
             </thead>
             <tbody>
@@ -36,7 +38,7 @@ export default function CampaignMetrics({ plan }: Props) {
       </section>
 
       <section className="glass-card is-static v2-m-section-card">
-        <span className="recgon-label v2-m-section-eye">budget_guidance</span>
+        <span className="recgon-label v2-m-section-eye">{t('metrics.budgetGuidance')}</span>
         <p className="v2-m-budget-total">{plan.budgetGuidance.totalRecommendation}</p>
         {plan.budgetGuidance.breakdown.map((b, i) => (
           <div key={i} className="v2-m-budget-row">

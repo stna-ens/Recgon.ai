@@ -1,38 +1,29 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 const STEPS = [
-  {
-    num: '01',
-    title: 'Connect.',
-    body: 'Link your GitHub repo and GA4 property. Add your teammates with their roles. Takes about a minute.',
-  },
-  {
-    num: '02',
-    title: 'Analyze.',
-    body: 'Recgon reads the code and the traffic. It surfaces stage, top risks, growth levers, and a ranked next-step list per project.',
-  },
-  {
-    num: '03',
-    title: 'Act.',
-    body: 'Tasks land on the right teammate’s calendar. You see what shipped, what slipped, and what to look at tomorrow. Repeat daily.',
-  },
-];
+  { num: '01', key: 'step1' },
+  { num: '02', key: 'step2' },
+  { num: '03', key: 'step3' },
+] as const;
 
 export default function HowItWorksSection() {
+  const t = useTranslations('landing.how');
   return (
     <section id="how-it-works" className="lnd-how">
       <div className="lnd-how-head">
-        <span className="recgon-label">three steps</span>
-        <h2 className="lnd-how-title">From repo to assigned task in minutes.</h2>
+        <span className="recgon-label">{t('label')}</span>
+        <h2 className="lnd-how-title">{t('title')}</h2>
       </div>
 
       <ol className="lnd-how-list">
-        {STEPS.map(({ num, title, body }) => (
+        {STEPS.map(({ num, key }) => (
           <li key={num} className="glass-card lnd-how-step">
             <span className="lnd-how-num">{num}</span>
             <div className="lnd-how-text">
-              <h3 className="lnd-how-step-title">{title}</h3>
-              <p className="lnd-how-step-body">{body}</p>
+              <h3 className="lnd-how-step-title">{t(`${key}.title`)}</h3>
+              <p className="lnd-how-step-body">{t(`${key}.body`)}</p>
             </div>
           </li>
         ))}

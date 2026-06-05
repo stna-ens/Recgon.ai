@@ -5,6 +5,8 @@ import AppShell from '@/components/AppShell';
 import { SessionProvider } from 'next-auth/react';
 import { ToastProvider } from '@/components/Toast';
 import { Analytics } from '@vercel/analytics/next';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale } from 'next-intl/server';
 
 export const metadata: Metadata = {
   // Required for Next.js to generate absolute OG image URLs that WhatsApp /
@@ -55,25 +57,28 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <SessionProvider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <div className="mesh-bg">
-              <div className="mesh-blob mesh-blob-1"></div>
-              <div className="mesh-blob mesh-blob-2"></div>
-              <div className="mesh-blob mesh-blob-3"></div>
-            </div>
-            <ToastProvider>
-              <AppShell>{children}</AppShell>
-            </ToastProvider>
-          </ThemeProvider>
+          <NextIntlClientProvider>
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+              <div className="mesh-bg">
+                <div className="mesh-blob mesh-blob-1"></div>
+                <div className="mesh-blob mesh-blob-2"></div>
+                <div className="mesh-blob mesh-blob-3"></div>
+              </div>
+              <ToastProvider>
+                <AppShell>{children}</AppShell>
+              </ToastProvider>
+            </ThemeProvider>
+          </NextIntlClientProvider>
         </SessionProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { PropertyConfig } from './types';
 import { parseAnalyticsError } from './utils';
 
@@ -15,14 +16,19 @@ interface Props {
 // titled set of actionable steps. Generic errors fall back to a single
 // step paragraph.
 export default function AnalyticsError({ error, isOwner, propertyConfig, onRetry, onDisconnect }: Props) {
-  const { title, steps } = parseAnalyticsError(error);
+  const t = useTranslations('analytics');
+  const tc = useTranslations('common');
+  const { titleKey, stepKeys, rawStep } = parseAnalyticsError(error);
+  const title = t(titleKey);
+  // Localized step list, or — for the fallback branch — the raw server message.
+  const steps = stepKeys.length > 0 ? stepKeys.map((k) => t(k)) : [rawStep ?? error];
   return (
     <div className="v2-an">
       <header className="v2-an-head">
         <div>
-          <span className="recgon-label v2-eyebrow">› analytics</span>
+          <span className="recgon-label v2-eyebrow">{t('eyebrow')}</span>
           <h2 className="v2-an-title">
-            <span className="v2-pink">analytics</span> unavailable.
+            <span className="v2-pink">{t('error.titlePrefix')}</span> {t('error.titleSuffix')}
           </h2>
           <p className="v2-an-sub">
             <span className="v2-an-prop">{error}</span>
@@ -34,7 +40,7 @@ export default function AnalyticsError({ error, isOwner, propertyConfig, onRetry
           rel="noopener noreferrer"
           className="v2-an-link"
         >
-          new to GA4? help →
+          {t('helpLink')}
         </a>
       </header>
 
@@ -49,11 +55,11 @@ export default function AnalyticsError({ error, isOwner, propertyConfig, onRetry
         )}
         <div className="v2-an-err-actions">
           <button type="button" className="v2-btn v2-btn-ghost" onClick={onRetry}>
-            retry
+            {tc('retry')}
           </button>
           {propertyConfig?.hasCredentials && isOwner && (
             <button type="button" className="v2-btn v2-btn-ghost" onClick={onDisconnect}>
-              disconnect
+              {t('error.disconnect')}
             </button>
           )}
         </div>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { cleanText, relTimeShort } from './utils';
 
 // Background canvas effect — lazy-loaded so it doesn't sit on the critical
@@ -59,11 +60,12 @@ function RiskCallout({
   analyzedAt: string | null;
   now: Date | null;
 }) {
+  const t = useTranslations('home');
   const { title, body } = parseStatement(statement);
   const sevLabel = kind === 'risk'
-    ? (tone === 'crit' ? 'critical' : tone === 'mid' ? 'warning' : 'info')
-    : 'bet';
-  const priorityLabel = kind === 'risk' ? 'p0 · top risk' : 'top bet';
+    ? (tone === 'crit' ? t('focus.severityCritical') : tone === 'mid' ? t('focus.severityWarning') : t('focus.severityInfo'))
+    : t('focus.severityBet');
+  const priorityLabel = kind === 'risk' ? t('focus.priorityTopRisk') : t('focus.priorityTopBet');
 
   return (
     <div className="v2-fc-callout" data-kind={kind} data-tone={tone}>
@@ -90,8 +92,8 @@ function RiskCallout({
       <footer className="v2-fc-callout-foot">
         <span className="v2-fc-callout-source">
           {everAnalyzed && analyzedAt
-            ? `flagged ${relTimeShort(analyzedAt, now ?? Date.now())} ago in latest analysis`
-            : kind === 'risk' ? 'flagged in latest analysis' : 'identified by recgon'}
+            ? t('focus.flaggedAgo', { time: relTimeShort(analyzedAt, now ?? Date.now()) })
+            : kind === 'risk' ? t('focus.flaggedLatest') : t('focus.identifiedByRecgon')}
         </span>
       </footer>
     </div>
@@ -103,6 +105,7 @@ function RiskCallout({
 // and treats the score as a bonus row only when present. Tone is derived
 // from risk presence + analysis recency, not from score.
 export default function HomeFocus({ focus, loading, now = null }: Props) {
+  const t = useTranslations('home');
   if (loading) {
     return (
       <section className="v2-fc">
@@ -124,14 +127,14 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
           <div className="v2-fc-clear-content">
             <span className="v2-fc-status-chip" data-tone="good">
               <span className="v2-fc-status-chip-dot" />
-              <span>all clear</span>
+              <span>{t('focus.allClear')}</span>
             </span>
-            <h1 className="v2-fc-clear-title">Nothing demands your attention right now.</h1>
+            <h1 className="v2-fc-clear-title">{t('focus.clearTitle')}</h1>
             <p className="v2-fc-clear-text">
-              Recgon is shipping on its own. When a product slips, drifts, or surfaces a new risk, it lands here.
+              {t('focus.clearText')}
             </p>
             <Link href="/projects" className="v2-fc-cta v2-fc-cta-secondary">
-              Browse products
+              {t('focus.browseProducts')}
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                 <line x1="5" y1="12" x2="19" y2="12" />
                 <polyline points="12 5 19 12 12 19" />
@@ -162,10 +165,10 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
   else tone = 'mid';
 
   const statusLabel =
-    tone === 'crit' ? 'attention required'
-    : tone === 'mid' ? 'on watch'
-    : tone === 'good' ? 'tracking well'
-    : 'awaiting first analysis';
+    tone === 'crit' ? t('focus.statusAttentionRequired')
+    : tone === 'mid' ? t('focus.statusOnWatch')
+    : tone === 'good' ? t('focus.statusTrackingWell')
+    : t('focus.statusAwaitingFirst');
 
   // The opinionated payload always shows a risk OR a bet. Lead with risk
   // when present (since that's what the user must address), otherwise
@@ -196,7 +199,7 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
             )}
             <span className="v2-fc-strip-name">{focus.projectName}</span>
             <span className="v2-fc-strip-sep">·</span>
-            <span className="v2-fc-strip-hash" title={`Project ID: ${focus.projectId}`}>{hash}</span>
+            <span className="v2-fc-strip-hash" title={t('focus.projectIdTitle', { id: focus.projectId })}>{hash}</span>
           </span>
         </div>
 
@@ -205,7 +208,7 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
           {/* ── LEFT COLUMN — identity + payload + actions ── */}
           <div className="v2-fc-left">
             <div className="v2-fc-id">
-              <span className="v2-fc-eyebrow">today&apos;s focus</span>
+              <span className="v2-fc-eyebrow">{t('focus.eyebrow')}</span>
               <h1 className="v2-fc-name">{focus.projectName}</h1>
             </div>
 
@@ -234,21 +237,21 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
             {/* If leading with risk, surface the bet as a secondary line */}
             {showRisk && showBet && (
               <div className="v2-fc-secondary">
-                <span className="v2-fc-secondary-tag">your move</span>
+                <span className="v2-fc-secondary-tag">{t('focus.yourMove')}</span>
                 <span className="v2-fc-secondary-text">{nextStep}</span>
               </div>
             )}
 
             <div className="v2-fc-actions">
               <Link href={`/projects/${focus.projectId}`} className="v2-fc-cta v2-fc-cta-primary">
-                Open project
+                {t('focus.openProject')}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                   <line x1="5" y1="12" x2="19" y2="12" />
                   <polyline points="12 5 19 12 12 19" />
                 </svg>
               </Link>
               <Link href={`/terminal?projectId=${focus.projectId}`} className="v2-fc-cta v2-fc-cta-secondary">
-                Ask Recgon
+                {t('focus.askRecgon')}
               </Link>
             </div>
           </div>
@@ -257,26 +260,26 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
           <div className="v2-fc-right">
             {/* TOP — primary metadata */}
             <div className="v2-fc-right-top">
-              <span className="v2-fc-right-tag">project meta</span>
+              <span className="v2-fc-right-tag">{t('focus.projectMeta')}</span>
               <div className="v2-fc-meta-grid">
                 <div className="v2-fc-meta-cell">
-                  <span className="v2-fc-meta-lab">Stage</span>
-                  <span className="v2-fc-meta-val">{stage ?? '—'}</span>
+                  <span className="v2-fc-meta-lab">{t('focus.stage')}</span>
+                  <span className="v2-fc-meta-val">{stage ?? t('focus.dash')}</span>
                 </div>
                 <div className="v2-fc-meta-cell">
-                  <span className="v2-fc-meta-lab">Status</span>
+                  <span className="v2-fc-meta-lab">{t('focus.status')}</span>
                   <span className="v2-fc-meta-val v2-fc-meta-val-tone" data-tone={tone}>
                     {statusLabel}
                   </span>
                 </div>
                 <div className="v2-fc-meta-cell">
-                  <span className="v2-fc-meta-lab">Last analyzed</span>
+                  <span className="v2-fc-meta-lab">{t('focus.lastAnalyzed')}</span>
                   <span className="v2-fc-meta-val v2-fc-meta-val-mono">
-                    {everAnalyzed ? `${relTimeShort(focus.analyzedAt, now ?? Date.now())} ago` : 'never'}
+                    {everAnalyzed ? t('focus.timeAgo', { time: relTimeShort(focus.analyzedAt, now ?? Date.now()) }) : t('focus.never')}
                   </span>
                 </div>
                 <div className="v2-fc-meta-cell">
-                  <span className="v2-fc-meta-lab">Project ID</span>
+                  <span className="v2-fc-meta-lab">{t('focus.projectId')}</span>
                   <span className="v2-fc-meta-val v2-fc-meta-val-mono" title={focus.projectId}>{hash}</span>
                 </div>
               </div>
@@ -288,19 +291,19 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
                   in the inline tag, not as oversized hero numbers. */}
             <div className="v2-fc-right-middle">
               <div className="v2-fc-right-tag-row">
-                <span className="v2-fc-right-tag">your moves</span>
+                <span className="v2-fc-right-tag">{t('focus.yourMoves')}</span>
                 <span className="v2-fc-right-tally">
                   <span className="v2-fc-right-tally-cell" data-tone="warn">
-                    {focus.risksCount} flag{focus.risksCount === 1 ? '' : 's'}
+                    {focus.risksCount === 1 ? t('focus.flag', { count: focus.risksCount }) : t('focus.flags', { count: focus.risksCount })}
                   </span>
                   <span className="v2-fc-right-tally-cell" data-tone="good">
-                    {focus.improvementsCount} win{focus.improvementsCount === 1 ? '' : 's'}
+                    {focus.improvementsCount === 1 ? t('focus.win', { count: focus.improvementsCount }) : t('focus.wins', { count: focus.improvementsCount })}
                   </span>
                 </span>
               </div>
               {focus.nextSteps.length === 0 ? (
                 <p className="v2-fc-moves-empty">
-                  No next steps surfaced. Re-analyze to refresh recommendations.
+                  {t('focus.noNextSteps')}
                 </p>
               ) : (
                 <ol className="v2-fc-moves">

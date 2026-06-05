@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import type { CountryData } from './types';
 import { ChartTooltip, GlowBar } from './chart-shapes';
@@ -10,13 +11,14 @@ interface Props {
 }
 
 export default function CountriesBar({ countries }: Props) {
+  const t = useTranslations('analytics');
   if (countries.length === 0) return null;
   const slice = countries.slice(0, 8);
   return (
     <div className="glass-card is-static v2-an-chart-card">
       <div className="v2-an-chart-head">
-        <span className="recgon-label v2-block-eye">› top countries</span>
-        <span className="v2-an-chart-meta">top {slice.length}</span>
+        <span className="recgon-label v2-block-eye">{t('countries.heading')}</span>
+        <span className="v2-an-chart-meta">{t('countries.top', { count: slice.length })}</span>
       </div>
       <div className="v2-an-chart-wrap">
         <ResponsiveContainer width="100%" height={Math.max(180, slice.length * 30)}>
@@ -34,7 +36,7 @@ export default function CountriesBar({ countries }: Props) {
             <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(var(--signature-rgb), 0.04)' }} />
             <Bar
               dataKey="sessions"
-              name="sessions"
+              name={t('trend.sessions')}
               radius={[0, 4, 4, 0]}
               activeBar={<GlowBar />}
               background={{ fill: 'rgba(128,128,128,0.06)', radius: 4 }}

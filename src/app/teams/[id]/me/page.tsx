@@ -4,6 +4,7 @@
 // the lifted form state).
 
 import { auth } from '@/auth';
+import { getTranslations } from 'next-intl/server';
 import { redirect, notFound } from 'next/navigation';
 import { verifyTeamAccess, getTeam } from '@/lib/teamStorage';
 import { getProfile } from '@/lib/recgon/profileStorage';
@@ -28,6 +29,7 @@ export default async function MyProfilePage({
   if (!session?.user?.id) {
     redirect('/login');
   }
+  const t = await getTranslations('teams');
   const { id: teamId } = await params;
 
   const role = await verifyTeamAccess(teamId, session.user.id);
@@ -59,12 +61,11 @@ export default async function MyProfilePage({
   return (
     <div className="profile-shell">
       <header className="profile-shell__head">
-        <div className="profile-shell__eyebrow">YOUR PROFILE</div>
-        <h1 className="profile-shell__title">Tell me what you do</h1>
+        <div className="profile-shell__eyebrow">{t('profile.eyebrow')}</div>
+        <h1 className="profile-shell__title">{t('profile.title')}</h1>
         <div aria-hidden="true" className="profile-shell__rule" />
         <p className="profile-shell__lede">
-          What you put here is what I&apos;ll use to pick which task lands on your desk. The
-          preview on the right updates as you go.
+          {t('profile.lede')}
         </p>
       </header>
 
@@ -73,7 +74,7 @@ export default async function MyProfilePage({
         initialProfile={profile}
         canonicalVocab={[...CANONICAL_VOCAB]}
         user={user}
-        teamName={team?.name ?? 'your team'}
+        teamName={team?.name ?? t('profile.yourTeamFallback')}
         initialInferredSkills={inferredSkills}
         initialConsentedAt={mining?.githubMiningConsentAt ?? null}
         initialLastScanAt={mining?.lastScanAt ?? null}

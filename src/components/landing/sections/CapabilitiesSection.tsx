@@ -1,49 +1,31 @@
 'use client';
 
 import { Eye, Brain, UserCheck, ShieldCheck } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 const TILES = [
-  {
-    icon: Eye,
-    label: 'read',
-    title: 'Reads everything that matters.',
-    body: 'Codebase, GA4 traffic, commit history, team activity — Recgon ingests all of it into one running snapshot.',
-  },
-  {
-    icon: Brain,
-    label: 'decide',
-    title: 'Decides what matters today.',
-    body: 'A senior-PM model picks the single project that needs attention, surfaces the top risk, and ranks the next moves — every morning.',
-  },
-  {
-    icon: UserCheck,
-    label: 'assign',
-    title: 'Assigns to the right teammate.',
-    body: 'Each task is scored against every teammate by skill match, current load, and free time on their calendar. The right person gets pinged.',
-  },
-  {
-    icon: ShieldCheck,
-    label: 'verify',
-    title: 'Verifies the work is done.',
-    body: 'When a teammate marks a task done, Recgon checks the evidence against the original acceptance criteria — no silent slips.',
-  },
-];
+  { icon: Eye, key: 'read' },
+  { icon: Brain, key: 'decide' },
+  { icon: UserCheck, key: 'assign' },
+  { icon: ShieldCheck, key: 'verify' },
+] as const;
 
 export default function CapabilitiesSection() {
+  const t = useTranslations('landing.capabilities');
   return (
     <section id="capabilities" className="lnd-caps">
       <div className="lnd-caps-head">
-        <span className="recgon-label">what it actually does</span>
-        <h2 className="lnd-caps-title">A PM that never sleeps and never forgets.</h2>
+        <span className="recgon-label">{t('label')}</span>
+        <h2 className="lnd-caps-title">{t('title')}</h2>
       </div>
 
       <div className="lnd-caps-grid">
-        {TILES.map(({ icon: Icon, label, title, body }) => (
-          <article key={label} className="glass-card lnd-caps-tile">
+        {TILES.map(({ icon: Icon, key }) => (
+          <article key={key} className="glass-card lnd-caps-tile">
             <span className="lnd-caps-icon"><Icon size={20} strokeWidth={2} /></span>
-            <span className="recgon-label lnd-caps-label">{label}</span>
-            <h3 className="lnd-caps-tile-title">{title}</h3>
-            <p className="lnd-caps-body">{body}</p>
+            <span className="recgon-label lnd-caps-label">{t(`${key}.label`)}</span>
+            <h3 className="lnd-caps-tile-title">{t(`${key}.title`)}</h3>
+            <p className="lnd-caps-body">{t(`${key}.body`)}</p>
           </article>
         ))}
       </div>

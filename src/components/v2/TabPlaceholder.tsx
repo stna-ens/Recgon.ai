@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   /** Eyebrow / title (e.g. "feedback", "marketing"). */
@@ -22,12 +23,13 @@ interface Props {
  * isn't ported yet.
  */
 export default function TabPlaceholder({ title, body, fallbackHref, fallbackLabel, numeral }: Props) {
+  const t = useTranslations('home');
   return (
     <div className="v2-stub">
       <header className="v2-stub-head">
-        <span className="recgon-label v2-stub-eye">› {title}</span>
+        <span className="recgon-label v2-stub-eye">{t('stub.eyebrow', { title })}</span>
         <h2 className="v2-stub-title">
-          <span className="v2-pink">soon</span>{' '}in v2.
+          <span className="v2-pink">{t('stub.soon')}</span>{t('stub.soonRest')}
         </h2>
       </header>
 

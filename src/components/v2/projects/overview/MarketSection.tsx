@@ -1,9 +1,11 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { ProductAnalysis } from './types';
 import { extractTags, splitHeadline } from './utils';
 
 export default function MarketSection({ analysis }: { analysis: ProductAnalysis }) {
+  const t = useTranslations('projects');
   const a = analysis;
   const hasContent =
     !!a.marketOpportunity ||
@@ -14,7 +16,7 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
   return (
     <section className="v2-section">
       <div className="v2-section-head">
-        <span className="recgon-label v2-eyebrow">› market</span>
+        <span className="recgon-label v2-eyebrow">{t('market.eyebrow')}</span>
       </div>
 
       {a.marketOpportunity && (() => {
@@ -30,14 +32,14 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
           <div className="glass-card is-static is-roomy v2-mkt">
             <div className="v2-mkt-grid">
               <div className="v2-mkt-prose">
-                <span className="recgon-label v2-block-eye">market opportunity</span>
+                <span className="recgon-label v2-block-eye">{t('market.opportunity')}</span>
                 <p className="v2-mkt-headline">{split.headline}</p>
                 {split.rest && <p className="v2-mkt-body">{split.rest}</p>}
               </div>
               {signals.length > 0 && (
                 <div className="v2-mkt-side">
                   <div className="v2-mkt-signals">
-                    <span className="recgon-label v2-block-eye">signals detected</span>
+                    <span className="recgon-label v2-block-eye">{t('market.signalsDetected')}</span>
                     <div className="v2-mkt-signal-list">
                       {signals.map((s) => (
                         <span key={s} className="v2-mkt-signal">{s}</span>
@@ -54,8 +56,8 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
       {a.competitorInsights && a.competitorInsights.length > 0 ? (
         <div className="v2-batt-wrap">
           <div className="v2-batt-head">
-            <span className="recgon-label v2-block-eye">competitive battlecards</span>
-            <span className="v2-batt-meta">{a.competitorInsights.length} {a.competitorInsights.length === 1 ? 'rival' : 'rivals'} mapped</span>
+            <span className="recgon-label v2-block-eye">{t('market.battlecards')}</span>
+            <span className="v2-batt-meta">{t('market.rivalsMapped', { count: a.competitorInsights.length })}</span>
           </div>
           <div className="v2-batt-grid">
             {a.competitorInsights.map((c, i) => (
@@ -64,10 +66,10 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
                   <span className="v2-batt-rank">#{String(i + 1).padStart(2, '0')}</span>
                   <span className="v2-batt-name">{c.name}</span>
                   {c.url && (
-                    <a href={c.url} target="_blank" rel="noreferrer" className="v2-batt-visit">visit ↗</a>
+                    <a href={c.url} target="_blank" rel="noreferrer" className="v2-batt-visit">{t('market.visit')}</a>
                   )}
                   {c.messagingTone && (
-                    <span className="v2-batt-tone">tone · {c.messagingTone}</span>
+                    <span className="v2-batt-tone">{t('market.tone', { tone: c.messagingTone })}</span>
                   )}
                 </div>
                 {c.summary && (
@@ -78,7 +80,7 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
                     <div className="v2-batt-col v2-batt-pro">
                       <div className="v2-batt-col-head">
                         <span className="v2-batt-col-glyph">+</span>
-                        <span className="v2-batt-col-label">their strengths</span>
+                        <span className="v2-batt-col-label">{t('market.theirStrengths')}</span>
                         <span className="v2-batt-col-count">{c.keyFeatures.length}</span>
                       </div>
                       <ul className="v2-batt-items">
@@ -91,7 +93,7 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
                     <div className="v2-batt-col v2-batt-con">
                       <div className="v2-batt-col-head">
                         <span className="v2-batt-col-glyph">−</span>
-                        <span className="v2-batt-col-label">their gaps</span>
+                        <span className="v2-batt-col-label">{t('market.theirGaps')}</span>
                         <span className="v2-batt-col-count">{c.weaknesses.length}</span>
                       </div>
                       <ul className="v2-batt-items">
@@ -102,7 +104,7 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
                 </div>
                 {c.differentiator && (
                   <div className="v2-batt-edge">
-                    <span className="v2-batt-edge-label">your edge</span>
+                    <span className="v2-batt-edge-label">{t('market.yourEdge')}</span>
                     <span className="v2-batt-edge-text">{c.differentiator}</span>
                   </div>
                 )}
@@ -113,8 +115,8 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
       ) : a.competitors && a.competitors.length > 0 ? (
         <div className="v2-batt-wrap">
           <div className="v2-batt-head">
-            <span className="recgon-label v2-block-eye">competitors</span>
-            <span className="v2-batt-meta">{a.competitors.length} mapped</span>
+            <span className="recgon-label v2-block-eye">{t('market.competitors')}</span>
+            <span className="v2-batt-meta">{t('market.mapped', { count: a.competitors.length })}</span>
           </div>
           <div className="v2-comp-lite-grid">
             {a.competitors.map((c, i) => {
@@ -128,18 +130,18 @@ export default function MarketSection({ analysis }: { analysis: ProductAnalysis 
                     <div className="v2-comp-card-id">
                       <span className="v2-comp-card-name">{c.name}</span>
                       {c.url && (
-                        <a href={c.url} target="_blank" rel="noreferrer" className="v2-batt-visit">visit ↗</a>
+                        <a href={c.url} target="_blank" rel="noreferrer" className="v2-batt-visit">{t('market.visit')}</a>
                       )}
                     </div>
                   </div>
                   {theirFocus && (
                     <div className="v2-comp-card-row">
-                      <span className="v2-comp-card-tag v2-comp-card-tag-them">them</span>
+                      <span className="v2-comp-card-tag v2-comp-card-tag-them">{t('market.them')}</span>
                       <p className="v2-comp-card-text">{theirFocus}</p>
                     </div>
                   )}
                   <div className="v2-comp-card-row v2-comp-card-row-edge">
-                    <span className="v2-comp-card-tag v2-comp-card-tag-you">your edge</span>
+                    <span className="v2-comp-card-tag v2-comp-card-tag-you">{t('market.yourEdge')}</span>
                     <p className="v2-comp-card-text">{yourEdge}</p>
                   </div>
                 </div>

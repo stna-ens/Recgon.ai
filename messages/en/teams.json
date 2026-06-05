@@ -1,0 +1,191 @@
+{
+  "roles": {
+    "owner": "owner",
+    "member": "member",
+    "viewer": "viewer"
+  },
+  "index": {
+    "eyebrow": "workspace",
+    "title": "teams",
+    "subtitle": "{active} active · {owned} owned — each team is its own surface for projects, members, and agents.",
+    "newTeam": "New team",
+    "cancel": "Cancel",
+    "teamNameLabel": "team name",
+    "teamNamePlaceholder": "e.g. Aurora Labs, Founders, Ops…",
+    "creating": "Creating…",
+    "createArrow": "Create →",
+    "allTeams": "all teams · {count}",
+    "active": "active",
+    "emptyTitle": "No teams yet.",
+    "emptyCopy": "Spin one up to start collaborating — invite people, run analyses, and wire up Recgon agents.",
+    "createFirst": "Create your first team",
+    "created": "Team \"{name}\" created",
+    "createFailed": "Failed to create team"
+  },
+  "setup": {
+    "back": "Back",
+    "createFailed": "Failed to create team",
+    "joinFailed": "Failed to join team",
+    "choose": {
+      "title": "Set up your team",
+      "subtitle": "Create a new team or join an existing one to get started.",
+      "createButton": "Create a Team",
+      "joinButton": "Join with Invite Link"
+    },
+    "create": {
+      "title": "Create a team",
+      "subtitle": "Give your team a name. You can invite members after.",
+      "nameLabel": "Team Name",
+      "namePlaceholder": "My awesome team",
+      "creating": "Creating...",
+      "submit": "Create Team"
+    },
+    "join": {
+      "title": "Join a team",
+      "subtitle": "Paste the invitation link or token you received.",
+      "tokenLabel": "Invite Link or Token",
+      "tokenPlaceholder": "Paste invite link or token",
+      "joining": "Joining...",
+      "submit": "Join Team"
+    }
+  },
+  "invite": {
+    "loading": "Loading invitation...",
+    "loadFailed": "Failed to load invitation.",
+    "invalidOrExpired": "This invitation is invalid or has expired.",
+    "expired": "This invitation has expired.",
+    "acceptFailed": "Failed to accept invitation",
+    "invitedToJoin": "You're invited to join",
+    "asRole": "as a <strong>{role}</strong>",
+    "joining": "Joining...",
+    "accept": "Accept Invitation",
+    "signInPrompt": "Sign in or create an account to join — you'll come right back here.",
+    "signIn": "Sign in",
+    "createAccount": "Create account"
+  },
+  "switcher": {
+    "teams": "Teams",
+    "manageTeams": "Manage Teams"
+  },
+  "profile": {
+    "eyebrow": "YOUR PROFILE",
+    "title": "Tell me what you do",
+    "lede": "What you put here is what I'll use to pick which task lands on your desk. The preview on the right updates as you go.",
+    "yourTeamFallback": "your team"
+  },
+  "admin": {
+    "noTeamSelected": "No team selected.",
+    "time": {
+      "justNow": "just now",
+      "minutes": "{count}m",
+      "hours": "{count}h",
+      "days": "{count}d",
+      "expired": "expired",
+      "hoursLeft": "{count}h left",
+      "daysLeft": "{count}d left"
+    },
+    "actions": {
+      "cancel": "cancel",
+      "save": "save",
+      "rename": "rename",
+      "edit": "edit",
+      "add": "add"
+    },
+    "hero": {
+      "id": "id",
+      "eyebrow": "› workspace · team",
+      "teamFallback": "team",
+      "slug": "slug",
+      "members": "members",
+      "pending": "pending",
+      "yourRole": "your role",
+      "founded": "founded"
+    },
+    "tabs": {
+      "ariaLabel": "Team admin sections",
+      "profile": "profile",
+      "members": "members",
+      "invites": "invites",
+      "dispatch": "dispatch"
+    },
+    "config": {
+      "name": "name",
+      "nameHint": "Shown in the sidebar, hero, and member rosters.",
+      "description": "description",
+      "descriptionHint": "A one-line summary. Up to 120 characters.",
+      "descriptionPlaceholder": "Short description… (max 120 chars)",
+      "noDescription": "No description.",
+      "avatar": "avatar",
+      "avatarHint": "Upload an image, or pick a color swatch.",
+      "changeAvatar": "Change team avatar",
+      "uploadImage": "upload image",
+      "color": "color",
+      "pickColor": "Pick {color}",
+      "slug": "slug",
+      "slugHint": "URL-safe identifier. Read-only."
+    },
+    "danger": {
+      "title": "danger zone",
+      "subtitle": "Irreversible operations.",
+      "areYouSure": "Are you sure?",
+      "leaveTitle": "Leave this team",
+      "leaveHint": "You will lose access to all projects in this team — analyses, tasks, marketing plans, the lot.",
+      "leaveButton": "leave team",
+      "confirmLeave": "yes — leave",
+      "deleteTitle": "Delete this team",
+      "deleteHint": "All projects, members, and data will be permanently deleted. Cannot be undone.",
+      "deleteButton": "delete team",
+      "confirmDelete": "yes — delete forever",
+      "deleting": "deleting…"
+    },
+    "members": {
+      "active": "active",
+      "owners": "owners",
+      "members": "members",
+      "viewers": "viewers",
+      "noneLoaded": "No members loaded.",
+      "memberFallback": "Member",
+      "you": "you",
+      "youTitle": "{name} (you)",
+      "joinedAgo": "joined {time} ago",
+      "changeRole": "Change role (currently {role})",
+      "removeMember": "Remove member",
+      "remove": "remove",
+      "removeConfirm": "Remove <strong>{name}</strong>?"
+    },
+    "invites": {
+      "newLink": "new link",
+      "roleGroup": "Invite role",
+      "ownerOnly": "Owner only",
+      "generating": "generating",
+      "generateLink": "generate link →",
+      "justGenerated": "just generated",
+      "copy": "copy",
+      "pending": "pending",
+      "noPending": "No pending invites.",
+      "linkLabel": "link · {token}…",
+      "createdAgo": "{time} ago",
+      "revoke": "revoke",
+      "revokeConfirm": "Revoke this invite?"
+    },
+    "toasts": {
+      "avatarUpdated": "avatar updated",
+      "avatarFailed": "avatar upload failed",
+      "colorFailed": "failed to save color",
+      "renamed": "team renamed",
+      "renameFailed": "rename failed",
+      "descSaved": "description saved",
+      "saveFailed": "save failed",
+      "inviteCopied": "invite link copied",
+      "inviteGenerated": "invite link generated — copy below",
+      "inviteRevoked": "invitation revoked",
+      "memberRemoved": "member removed",
+      "roleUpdated": "role updated",
+      "leftTeam": "left team",
+      "teamDeleted": "team deleted",
+      "copied": "copied",
+      "copyFailed": "copy failed",
+      "failed": "failed"
+    }
+  }
+}

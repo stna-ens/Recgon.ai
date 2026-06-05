@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 
 interface Competitor {
@@ -193,6 +194,7 @@ function DownloadButton({ projectId, teamId, projectName }: {
   projectName: string;
 }) {
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const t = useTranslations('projects');
 
   const handleDownload = async () => {
     setState('loading');
@@ -214,10 +216,10 @@ function DownloadButton({ projectId, teamId, projectName }: {
     }
   };
 
-  const label = state === 'loading' ? 'Generating…'
-    : state === 'done'    ? 'Downloaded!'
-    : state === 'error'   ? 'Error — retry'
-    : 'Download PDF';
+  const label = state === 'loading' ? t('export.generating')
+    : state === 'done'    ? t('export.downloaded')
+    : state === 'error'   ? t('export.errorRetry')
+    : t('export.downloadPdf');
 
   return (
     <button
@@ -256,6 +258,7 @@ function DownloadButton({ projectId, teamId, projectName }: {
 /* ─── Page ─── */
 
 export default function ExportPage() {
+  const t = useTranslations('projects');
   const params = useParams();
   const { currentTeam } = useTeam();
   const [project, setProject] = useState<Project | null>(null);
@@ -277,18 +280,18 @@ export default function ExportPage() {
 
   if (loading) return (
     <div style={statusStyle}>
-      <p style={{ color: C.txt3, fontSize: 14 }}>Loading…</p>
+      <p style={{ color: C.txt3, fontSize: 14 }}>{t('export.loading')}</p>
     </div>
   );
 
   if (!project?.analysis) return (
     <div style={statusStyle}>
-      <p style={{ color: C.txt3, fontSize: 14 }}>No analysis found for this project.</p>
+      <p style={{ color: C.txt3, fontSize: 14 }}>{t('export.noAnalysis')}</p>
     </div>
   );
 
   const a = project.analysis;
-  const date = new Date(a.analyzedAt).toLocaleDateString('en-US', {
+  const date = new Date(a.analyzedAt).toLocaleDateString(undefined, {
     year: 'numeric', month: 'long', day: 'numeric',
   });
   const stage = a.currentStage ? STAGE_META[a.currentStage] : null;
@@ -323,7 +326,7 @@ export default function ExportPage() {
           border: `1px solid ${C.border}`,
           fontSize: 12, fontWeight: 500,
           cursor: 'pointer', fontFamily: 'inherit',
-        }}>← Back</button>
+        }}>{t('export.back')}</button>
         <span style={{ marginLeft: 'auto', fontSize: 11, color: C.txt3, fontFamily: "'JetBrains Mono', monospace" }}>
           {a.name}
         </span>
@@ -354,7 +357,7 @@ export default function ExportPage() {
             <span style={{
               marginLeft: 'auto', fontSize: 11, color: C.txt3,
               fontFamily: "'JetBrains Mono', monospace",
-            }}>Product Strategy Brief</span>
+            }}>{t('export.brief')}</span>
           </div>
 
           <h1 style={{
@@ -364,7 +367,7 @@ export default function ExportPage() {
           }}>{a.name}</h1>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, color: C.txt3 }}>Analyzed {date}</span>
+            <span style={{ fontSize: 13, color: C.txt3 }}>{t('export.analyzed', { date })}</span>
             {stage && a.currentStage && (
               <span style={{
                 fontSize: 10, fontWeight: 600,
@@ -381,24 +384,24 @@ export default function ExportPage() {
 
         {/* Overview */}
         <section>
-          <Label>Product Overview</Label>
+          <Label>{t('export.productOverview')}</Label>
           <Body>{a.description}</Body>
           <div style={{ height: 18 }} />
           <Grid2>
             <div>
-              <Label>Target Audience</Label>
+              <Label>{t('export.targetAudience')}</Label>
               <Body>{a.targetAudience}</Body>
             </div>
             {a.problemStatement && (
               <div>
-                <Label>Problem Statement</Label>
+                <Label>{t('export.problemStatement')}</Label>
                 <Body>{a.problemStatement}</Body>
               </div>
             )}
           </Grid2>
           {a.techStack.length > 0 && (
             <div style={{ marginTop: 18 }}>
-              <Label>Tech Stack</Label>
+              <Label>{t('export.techStack')}</Label>
               <Pills items={a.techStack} />
             </div>
           )}
@@ -408,14 +411,14 @@ export default function ExportPage() {
 
         {/* Features & USPs */}
         <section>
-          <SectionHeading>Features & Differentiators</SectionHeading>
+          <SectionHeading>{t('export.featuresDifferentiators')}</SectionHeading>
           <Grid2>
             <div>
-              <Label>Key Features</Label>
+              <Label>{t('export.keyFeatures')}</Label>
               <BulletList items={a.features} />
             </div>
             <div>
-              <Label>Unique Selling Points</Label>
+              <Label>{t('export.uniqueSellingPoints')}</Label>
               <BulletList items={a.uniqueSellingPoints} color={C.brand} />
             </div>
           </Grid2>
@@ -425,7 +428,7 @@ export default function ExportPage() {
           <>
             <Divider />
             <section>
-              <SectionHeading>Market Opportunity</SectionHeading>
+              <SectionHeading>{t('export.marketOpportunity')}</SectionHeading>
               <Body>{a.marketOpportunity}</Body>
             </section>
           </>
@@ -435,12 +438,12 @@ export default function ExportPage() {
           <>
             <Divider />
             <section>
-              <SectionHeading>Competitive Landscape</SectionHeading>
+              <SectionHeading>{t('export.competitiveLandscape')}</SectionHeading>
               <div style={{ borderRadius: 10, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
-                      {['Competitor', 'Our Differentiator'].map((h) => (
+                      {[t('export.competitor'), t('export.ourDifferentiator')].map((h) => (
                         <th key={h} style={{
                           textAlign: 'left', padding: '10px 16px',
                           fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -469,7 +472,7 @@ export default function ExportPage() {
           <>
             <Divider />
             <section>
-              <SectionHeading>Competitor Intelligence</SectionHeading>
+              <SectionHeading>{t('export.competitorIntelligence')}</SectionHeading>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {a.competitorInsights!.map((ci, i) => (
                   <div key={i} style={{
@@ -490,18 +493,18 @@ export default function ExportPage() {
                     <Body>{ci.summary}</Body>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 14 }}>
                       <div>
-                        <Label>Positioning</Label>
+                        <Label>{t('export.positioning')}</Label>
                         <Body>{ci.positioning}</Body>
                       </div>
                       {ci.keyFeatures.length > 0 && (
                         <div>
-                          <Label>Key Features</Label>
+                          <Label>{t('export.keyFeatures')}</Label>
                           <BulletList items={ci.keyFeatures} />
                         </div>
                       )}
                       {ci.weaknesses.length > 0 && (
                         <div>
-                          <Label>Weaknesses</Label>
+                          <Label>{t('export.weaknesses')}</Label>
                           <BulletList items={ci.weaknesses} color={C.danger} />
                         </div>
                       )}
@@ -512,7 +515,7 @@ export default function ExportPage() {
                         background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.borderStrong}`,
                         display: 'flex', gap: 10, alignItems: 'flex-start',
                       }}>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 700, color: C.txt1, letterSpacing: '0.05em', flexShrink: 0, paddingTop: 2 }}>OUR EDGE</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 700, color: C.txt1, letterSpacing: '0.05em', flexShrink: 0, paddingTop: 2 }}>{t('export.ourEdge')}</span>
                         <Body>{ci.differentiator}</Body>
                       </div>
                     )}
@@ -527,18 +530,18 @@ export default function ExportPage() {
           <>
             <Divider />
             <section>
-              <SectionHeading>Business Model</SectionHeading>
+              <SectionHeading>{t('export.businessModel')}</SectionHeading>
               {a.businessModel && <div style={{ marginBottom: 16 }}><Body>{a.businessModel}</Body></div>}
               <Grid2>
                 {(a.revenueStreams?.length ?? 0) > 0 && (
                   <div>
-                    <Label>Revenue Streams</Label>
+                    <Label>{t('export.revenueStreams')}</Label>
                     <BulletList items={a.revenueStreams!} color={C.success} />
                   </div>
                 )}
                 {a.pricingSuggestion && (
                   <div>
-                    <Label>Pricing Suggestion</Label>
+                    <Label>{t('export.pricingSuggestion')}</Label>
                     <Body>{a.pricingSuggestion}</Body>
                   </div>
                 )}
@@ -551,10 +554,11 @@ export default function ExportPage() {
           <>
             <Divider />
             <section>
-              <SectionHeading>SWOT Analysis</SectionHeading>
+              <SectionHeading>{t('export.swotAnalysis')}</SectionHeading>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {(Object.keys(SWOT_CFG) as (keyof typeof SWOT_CFG)[]).map((key) => {
                   const cfg = SWOT_CFG[key];
+                  const swotLabel = t(`export.${key}`);
                   return (
                     <div key={key} style={{
                       padding: '14px 16px', borderRadius: 10,
@@ -567,7 +571,7 @@ export default function ExportPage() {
                         letterSpacing: '0.1em', textTransform: 'uppercase',
                         color: cfg.color, fontFamily: "'JetBrains Mono', monospace",
                         marginBottom: 10,
-                      }}>{cfg.label}</p>
+                      }}>{swotLabel}</p>
                       <BulletList items={a.swot![key] ?? []} color={cfg.color} />
                     </div>
                   );
@@ -581,17 +585,17 @@ export default function ExportPage() {
           <>
             <Divider />
             <section>
-              <SectionHeading>Action Plan</SectionHeading>
+              <SectionHeading>{t('export.actionPlan')}</SectionHeading>
               <Grid2>
                 {(a.prioritizedNextSteps?.length ?? 0) > 0 && (
                   <div>
-                    <Label>Prioritized Next Steps</Label>
+                    <Label>{t('export.prioritizedNextSteps')}</Label>
                     <NumberedList items={a.prioritizedNextSteps!} />
                   </div>
                 )}
                 {(a.topRisks?.length ?? 0) > 0 && (
                   <div>
-                    <Label>Top Risks</Label>
+                    <Label>{t('export.topRisks')}</Label>
                     <BulletList items={a.topRisks!} color={C.danger} />
                   </div>
                 )}
@@ -604,18 +608,18 @@ export default function ExportPage() {
           <>
             <Divider />
             <section>
-              <SectionHeading>Go-to-Market Strategy</SectionHeading>
+              <SectionHeading>{t('export.gtm')}</SectionHeading>
               {a.gtmStrategy && <div style={{ marginBottom: 16 }}><Body>{a.gtmStrategy}</Body></div>}
               <Grid2>
                 {(a.earlyAdopterChannels?.length ?? 0) > 0 && (
                   <div>
-                    <Label>Early Adopter Channels</Label>
+                    <Label>{t('export.earlyAdopterChannels')}</Label>
                     <BulletList items={a.earlyAdopterChannels!} color={C.blue} />
                   </div>
                 )}
                 {(a.growthMetrics?.length ?? 0) > 0 && (
                   <div>
-                    <Label>Growth Metrics</Label>
+                    <Label>{t('export.growthMetrics')}</Label>
                     <BulletList items={a.growthMetrics!} color={C.success} />
                   </div>
                 )}
@@ -628,7 +632,7 @@ export default function ExportPage() {
           <>
             <Divider />
             <section>
-              <SectionHeading>Recommended Improvements</SectionHeading>
+              <SectionHeading>{t('export.recommendedImprovements')}</SectionHeading>
               <BulletList items={a.improvements!} color={C.warning} />
             </section>
           </>
@@ -638,7 +642,7 @@ export default function ExportPage() {
           <>
             <Divider />
             <section>
-              <SectionHeading>Execution Progress</SectionHeading>
+              <SectionHeading>{t('export.executionProgress')}</SectionHeading>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {a.nextStepsTaken!.map((ns, i) => (
                   <div key={i} style={{
@@ -683,7 +687,7 @@ export default function ExportPage() {
               fontSize: 8, fontWeight: 700, color: '#000',
               fontFamily: "'JetBrains Mono', monospace",
             }}>R</div>
-            <span style={{ fontSize: 11, color: C.txt3 }}>Generated by Recgon</span>
+            <span style={{ fontSize: 11, color: C.txt3 }}>{t('export.generatedBy')}</span>
           </div>
           <span style={{ fontSize: 11, color: C.txt3, fontFamily: "'JetBrains Mono', monospace" }}>recgon.ai</span>
         </div>

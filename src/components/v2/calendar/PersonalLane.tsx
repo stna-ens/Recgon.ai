@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
+import { useTranslations } from 'next-intl';
 import { EventChip } from './EventChip';
 import type { CalendarCard } from './calendarTypes';
 import { localDateKey } from './calendarUtils';
@@ -53,9 +54,11 @@ export function PersonalLane({
   onCardClick,
   teamBadgeByTeamId,
   label,
-  eyebrow = 'YOU',
+  eyebrow,
   logoUrl = null,
 }: Props) {
+  const t = useTranslations('calendar');
+  const eyebrowText = eyebrow ?? t('lane.you');
   const [expandedCells, setExpandedCells] = useState<Set<number>>(new Set());
 
   const multiCards = cards.filter((c) => c.isMultiDay);
@@ -109,7 +112,7 @@ export function PersonalLane({
               {projectInitial(label)}
             </span>
           )}
-          <span className="personal-lane-label-eyebrow">{eyebrow}</span>
+          <span className="personal-lane-label-eyebrow">{eyebrowText}</span>
           <span className="personal-lane-label-name" title={label}>{label}</span>
         </div>
       </div>
@@ -158,7 +161,7 @@ export function PersonalLane({
                 ))}
                 {(overflow > 0 || (isExpanded && cellSingles.length > VISIBLE_CAP)) && (
                   <button type="button" className="cal-day-more" onClick={() => toggleCell(di)}>
-                    {isExpanded ? '− less' : `+ ${overflow} more`}
+                    {isExpanded ? t('lane.less') : t('lane.more', { count: overflow })}
                   </button>
                 )}
               </div>

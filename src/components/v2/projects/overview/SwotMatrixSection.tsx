@@ -1,14 +1,16 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { ProductAnalysis, SWOT } from './types';
 
 export default function SwotMatrixSection({ swot, projectName }: { swot: SWOT; projectName: ProductAnalysis['name'] }) {
+  const t = useTranslations('projects');
   if (!swot) return null;
   if (!swot.strengths.length && !swot.weaknesses.length && !swot.opportunities.length && !swot.threats.length) return null;
   return (
     <section className="v2-section">
       <div className="v2-section-head">
-        <span className="recgon-label v2-eyebrow">› swot matrix</span>
+        <span className="recgon-label v2-eyebrow">{t('swotMatrix.eyebrow')}</span>
       </div>
       <div className="glass-card is-static is-roomy v2-swot">
         <div className="v2-swot-grid">
@@ -20,7 +22,7 @@ export default function SwotMatrixSection({ swot, projectName }: { swot: SWOT; p
                   <path d="M5.5 8l2 2 3.5-4" />
                 </svg>
               </span>
-              <span className="v2-swot-name">strengths</span>
+              <span className="v2-swot-name">{t('swotMatrix.strengths')}</span>
               <span className="v2-swot-count">{swot.strengths.length}</span>
             </div>
             <ul className="v2-swot-items">
@@ -37,7 +39,7 @@ export default function SwotMatrixSection({ swot, projectName }: { swot: SWOT; p
                   <line x1="5" y1="8" x2="11" y2="8" />
                 </svg>
               </span>
-              <span className="v2-swot-name">weaknesses</span>
+              <span className="v2-swot-name">{t('swotMatrix.weaknesses')}</span>
               <span className="v2-swot-count">{swot.weaknesses.length}</span>
             </div>
             <ul className="v2-swot-items">
@@ -55,7 +57,7 @@ export default function SwotMatrixSection({ swot, projectName }: { swot: SWOT; p
                   <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
                 </svg>
               </span>
-              <span className="v2-swot-name">opportunities</span>
+              <span className="v2-swot-name">{t('swotMatrix.opportunities')}</span>
               <span className="v2-swot-count">{swot.opportunities.length}</span>
             </div>
             <ul className="v2-swot-items">
@@ -73,7 +75,7 @@ export default function SwotMatrixSection({ swot, projectName }: { swot: SWOT; p
                   <circle cx="8" cy="11.8" r="0.6" fill="currentColor" stroke="none" />
                 </svg>
               </span>
-              <span className="v2-swot-name">threats</span>
+              <span className="v2-swot-name">{t('swotMatrix.threats')}</span>
               <span className="v2-swot-count">{swot.threats.length}</span>
             </div>
             <ul className="v2-swot-items">

@@ -5,11 +5,13 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useSession, signOut } from 'next-auth/react';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import HelpFeedbackModal from './HelpFeedbackModal';
 
 export default function AvatarMenu() {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
+  const t = useTranslations('shared');
   const [open, setOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -65,7 +67,7 @@ export default function AvatarMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Account menu"
+        aria-label={t('avatarMenu.accountMenu')}
       >
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -81,7 +83,7 @@ export default function AvatarMenu() {
       {open && mounted && typeof document !== 'undefined' && createPortal(
         <div ref={menuRef} className="v2-avatar-menu" role="menu">
           <div className="v2-avatar-meta">
-            <div className="v2-avatar-name">{session.user.nickname || 'You'}</div>
+            <div className="v2-avatar-name">{session.user.nickname || t('avatarMenu.fallbackName')}</div>
             <div className="v2-avatar-email">{session.user.email}</div>
           </div>
 
@@ -91,14 +93,14 @@ export default function AvatarMenu() {
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
-              My profile
+              {t('avatarMenu.myProfile')}
             </Link>
             <Link href="/settings" className="v2-menu-item" role="menuitem" onClick={() => setOpen(false)}>
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
-              Settings
+              {t('avatarMenu.settings')}
             </Link>
             <Link href="/team" className="v2-menu-item" role="menuitem" onClick={() => setOpen(false)}>
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -107,7 +109,7 @@ export default function AvatarMenu() {
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
-              Team admin
+              {t('avatarMenu.teamAdmin')}
             </Link>
           </div>
 
@@ -138,7 +140,7 @@ export default function AvatarMenu() {
                   <path d="M20.354 15.354A9 9 0 018.646 3.646 9 9 0 0012 21a9 9 0 008.354-5.646z" />
                 </svg>
               )}
-              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              {theme === 'dark' ? t('avatarMenu.lightMode') : t('avatarMenu.darkMode')}
             </button>
             <button
               type="button"
@@ -154,7 +156,7 @@ export default function AvatarMenu() {
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
-              Help & feedback
+              {t('avatarMenu.helpFeedback')}
             </button>
           </div>
 
@@ -172,7 +174,7 @@ export default function AvatarMenu() {
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
               </svg>
-              Sign out
+              {t('avatarMenu.signOut')}
             </button>
           </div>
         </div>,

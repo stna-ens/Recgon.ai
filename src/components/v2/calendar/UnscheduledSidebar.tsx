@@ -1,13 +1,11 @@
 'use client';
 
 import type { DragEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import type { AgentTask } from '@/lib/recgon/types';
 import { stripMd } from '@/lib/strings';
 
-const KIND_LABEL: Record<string, string> = {
-  next_step: 'next', dev_prompt: 'dev', marketing: 'mktg',
-  analytics: 'data', research: 'rsch', custom: 'task',
-};
+const KIND_KEYS = new Set(['next_step', 'dev_prompt', 'marketing', 'analytics', 'research', 'custom']);
 
 type Props = {
   tasks: AgentTask[];
@@ -31,35 +29,36 @@ function priorityLabel(p: number): string {
 }
 
 export function UnscheduledSidebar({ tasks, onSelect, canDrag = false, onDragStart, onDragEnd }: Props) {
+  const t = useTranslations('calendar');
   return (
-    <aside className="cal-unsched-sidebar" aria-label="Unscheduled tasks">
+    <aside className="cal-unsched-sidebar" aria-label={t('unsched.aria')}>
       <div className="cal-unsched-header">
-        <span className="cal-unsched-eyebrow">UNSCHEDULED</span>
+        <span className="cal-unsched-eyebrow">{t('unsched.title')}</span>
         <span className="cal-unsched-count">{tasks.length}</span>
       </div>
       <ul className="cal-unsched-list">
-        {tasks.map((t) => (
-          <li key={t.id}>
+        {tasks.map((task) => (
+          <li key={task.id}>
             <button
               type="button"
               className={`cal-unsched-item${canDrag ? ' is-draggable' : ''}`}
-              onClick={() => onSelect(t)}
+              onClick={() => onSelect(task)}
               draggable={canDrag}
-              onDragStart={(e) => onDragStart?.(e, t)}
+              onDragStart={(e) => onDragStart?.(e, task)}
               onDragEnd={onDragEnd}
             >
-              <span className="cal-unsched-priority" style={{ color: priorityColor(t.priority) }}>
-                {priorityLabel(t.priority)}
+              <span className="cal-unsched-priority" style={{ color: priorityColor(task.priority) }}>
+                {priorityLabel(task.priority)}
               </span>
-              <span className="cal-unsched-title">{stripMd(t.title)}</span>
-              <span className="cal-unsched-kind">{KIND_LABEL[t.kind] ?? t.kind}</span>
+              <span className="cal-unsched-title">{stripMd(task.title)}</span>
+              <span className="cal-unsched-kind">{KIND_KEYS.has(task.kind) ? t(`unsched.kind.${task.kind}`) : task.kind}</span>
             </button>
           </li>
         ))}
         {tasks.length === 0 && (
           <li className="cal-unsched-empty">
             <span className="cal-unsched-empty-mark">—</span>
-            <span>all clear</span>
+            <span>{t('unsched.allClear')}</span>
           </li>
         )}
       </ul>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { WeekRange } from './calendarTypes';
 
 type Props = {
@@ -16,13 +17,13 @@ type Props = {
   refreshing?: boolean;
 };
 
-const MONTH_ABBR = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 
-// Locale-pinned formatter so SSR (server's default locale) and the client
-// (user's browser locale, e.g. tr-TR) emit identical strings.
-function fmtEditorial(start: Date, end: Date): { primary: string; year: string } {
-  const sm = MONTH_ABBR[start.getMonth()];
-  const em = MONTH_ABBR[end.getMonth()];
+// Locale-pinned formatter; month abbreviations are resolved from the active
+// translation namespace so the headline matches the chosen UI language.
+function fmtEditorial(start: Date, end: Date, month: (i: number) => string): { primary: string; year: string } {
+  const sm = month(start.getMonth());
+  const em = month(end.getMonth());
   const primary = sm === em
     ? `${sm} ${start.getDate()} — ${end.getDate()}`
     : `${sm} ${start.getDate()} — ${em} ${end.getDate()}`;
@@ -34,7 +35,8 @@ export function WeekNav({
   week, onPrev, onNext, onToday, viewMode, onToggleView,
   unscheduledCount, sidebarOpen, onToggleSidebar, refreshing,
 }: Props) {
-  const { primary, year } = fmtEditorial(week.start, week.end);
+  const t = useTranslations('calendar');
+  const { primary, year } = fmtEditorial(week.start, week.end, (i) => t(`months.${MONTH_KEYS[i]}`));
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const viewMenuRef = useRef<HTMLDivElement>(null);
 
@@ -62,7 +64,7 @@ export function WeekNav({
   return (
     <div className="cal-nav">
       <div className="cal-nav-left">
-        <span className="cal-nav-eyebrow">WEEK</span>
+        <span className="cal-nav-eyebrow">{t('nav.week')}</span>
         <h1 className="cal-nav-headline">
           <span className="cal-nav-headline-primary">{primary}</span>
           <span className="cal-nav-headline-year">{year}</span>
@@ -72,9 +74,9 @@ export function WeekNav({
 
       <div className="cal-nav-right">
         <div className="cal-nav-pager">
-          <button type="button" className="cal-nav-arrow" onClick={onPrev} aria-label="Previous week">‹</button>
-          <button type="button" className="cal-nav-today-link" onClick={onToday}>today</button>
-          <button type="button" className="cal-nav-arrow" onClick={onNext} aria-label="Next week">›</button>
+          <button type="button" className="cal-nav-arrow" onClick={onPrev} aria-label={t('nav.prevWeek')}>‹</button>
+          <button type="button" className="cal-nav-today-link" onClick={onToday}>{t('nav.today')}</button>
+          <button type="button" className="cal-nav-arrow" onClick={onNext} aria-label={t('nav.nextWeek')}>›</button>
         </div>
 
         {unscheduledCount > 0 && (
@@ -86,7 +88,7 @@ export function WeekNav({
           >
             <span className="cal-nav-unsched-mark">▲</span>
             <span className="cal-nav-unsched-count">{unscheduledCount}</span>
-            <span className="cal-nav-unsched-text">unscheduled</span>
+            <span className="cal-nav-unsched-text">{t('nav.unscheduled')}</span>
           </button>
         )}
 
@@ -99,11 +101,11 @@ export function WeekNav({
             aria-expanded={viewMenuOpen}
           >
             <span className="cal-view-trigger-dot" aria-hidden="true" />
-            <span className="cal-view-trigger-text">{viewMode}</span>
+            <span className="cal-view-trigger-text">{t(`view.${viewMode}`)}</span>
             <span className="cal-view-trigger-chev" aria-hidden="true">⌄</span>
           </button>
           {viewMenuOpen && (
-            <div className="cal-view-menu-panel" role="menu" aria-label="Calendar view">
+            <div className="cal-view-menu-panel" role="menu" aria-label={t('view.menuAria')}>
               {(['calendar', 'list'] as const).map((option) => (
                 <button
                   key={option}
@@ -113,7 +115,7 @@ export function WeekNav({
                   className={`cal-view-option${viewMode === option ? ' is-active' : ''}`}
                   onClick={() => chooseView(option)}
                 >
-                  <span className="cal-view-option-label">{option}</span>
+                  <span className="cal-view-option-label">{t(`view.${option}`)}</span>
                   {viewMode === option && <span className="cal-view-option-mark" aria-hidden="true">•</span>}
                 </button>
               ))}

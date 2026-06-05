@@ -1,0 +1,19 @@
+{
+  "nav": {
+    "home": "Home",
+    "projects": "Projects",
+    "tasks": "Tasks",
+    "calendar": "Calendar",
+    "terminal": "Terminal"
+  },
+  "settings": {
+    "language": {
+      "label": "language",
+      "hint": "Sets the app interface and the language Recgon writes in."
+    }
+  },
+  "common": {
+    "cancel": "cancel",
+    "save": "save"
+  }
+}

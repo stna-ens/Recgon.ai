@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { CampaignPlan } from './types';
 import { platformBadgeColor } from './utils';
 
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function CampaignChannels({ plan }: Props) {
+  const t = useTranslations('marketing');
   return (
     <div className="v2-m-tab-body">
       <div className="v2-m-channels-list">
@@ -37,7 +39,7 @@ export default function CampaignChannels({ plan }: Props) {
         ))}
       </div>
 
-      <span className="recgon-label v2-m-section-eye">campaign_phases</span>
+      <span className="recgon-label v2-m-section-eye">{t('channels.phases')}</span>
       <div className="v2-m-phases-list">
         {plan.phases.map((phase, i) => (
           <article key={i} className="glass-card is-static v2-m-phase-card">
@@ -48,7 +50,7 @@ export default function CampaignChannels({ plan }: Props) {
             <p className="v2-m-phase-obj">{phase.objective}</p>
             <div className="v2-m-phase-grid">
               <div>
-                <span className="v2-m-phase-col-label">tactics</span>
+                <span className="v2-m-phase-col-label">{t('channels.tactics')}</span>
                 {phase.tactics.map((tactic, j) => (
                   <div key={j} className="v2-m-phase-tactic">
                     {tactic}
@@ -56,7 +58,7 @@ export default function CampaignChannels({ plan }: Props) {
                 ))}
               </div>
               <div>
-                <span className="v2-m-phase-col-label">deliverables</span>
+                <span className="v2-m-phase-col-label">{t('channels.deliverables')}</span>
                 {phase.keyDeliverables.map((d, j) => (
                   <div key={j} className="v2-m-phase-deliv">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" aria-hidden="true">

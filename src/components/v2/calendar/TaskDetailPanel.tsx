@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ProofDropZone } from '@/components/ProofDropZone';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { AgentTask } from '@/lib/recgon/types';
@@ -8,10 +9,7 @@ import { useToast } from '@/components/Toast';
 import { daysOverdue, isOverdue } from '@/lib/recgon/overduePolicy';
 import { OverdueChip } from './OverdueChip';
 
-const KIND_LABEL: Record<string, string> = {
-  next_step: 'next step', dev_prompt: 'dev', marketing: 'marketing',
-  analytics: 'analytics', research: 'research', custom: 'task',
-};
+const KIND_KEYS = new Set(['next_step', 'dev_prompt', 'marketing', 'analytics', 'research', 'custom']);
 
 function cleanText(s: string): string {
   return s.replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1').replace(/\*\*/g, '').replace(/__/g, '');
@@ -40,12 +38,13 @@ type TaskWithWhyYou = AgentTask & { whyYouSentence?: string };
 // — keeps the panel clean for tasks without a reasoning envelope (legacy)
 // and for viewers who aren't the assignee or owner (privacy filter).
 function WhyYouBlock({ sentence }: { sentence?: string }) {
+  const t = useTranslations('calendar');
   if (!sentence || typeof sentence !== 'string' || sentence.trim().length === 0) {
     return null;
   }
   return (
     <section className="cal-panel-section">
-      <span className="cal-panel-section-eyebrow">WHY YOU</span>
+      <span className="cal-panel-section-eyebrow">{t('panel.whyYou')}</span>
       <p className="cal-panel-section-note">{sentence}</p>
     </section>
   );
@@ -72,6 +71,7 @@ function SnoozeControl({
   onSnoozed: () => void;
   onError: (msg: string) => void;
 }) {
+  const t = useTranslations('calendar');
   const [working, setWorking] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [customDays, setCustomDays] = useState<string>('');
@@ -79,7 +79,7 @@ function SnoozeControl({
   const submit = useCallback(async (days: number) => {
     if (working) return;
     if (!Number.isInteger(days) || days < 1 || days > 30) {
-      onError('days must be an integer between 1 and 30');
+      onError(t('toast.snoozeRange'));
       return;
     }
     setWorking(true);
@@ -91,15 +91,15 @@ function SnoozeControl({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'snooze failed');
+        throw new Error(j.error || t('toast.snoozeFailed'));
       }
       onSnoozed();
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'snooze failed');
+      onError(err instanceof Error ? err.message : t('toast.snoozeFailed'));
     } finally {
       setWorking(false);
     }
-  }, [working, taskId, teamId, onSnoozed, onError]);
+  }, [working, taskId, teamId, onSnoozed, onError, t]);
 
   const submitCustom = useCallback(() => {
     const n = parseInt(customDays, 10);
@@ -108,9 +108,9 @@ function SnoozeControl({
 
   return (
     <section className="cal-panel-section">
-      <span className="cal-panel-section-eyebrow">SNOOZE</span>
+      <span className="cal-panel-section-eyebrow">{t('panel.snooze')}</span>
       <p className="cal-panel-section-note">
-        Push this task forward without reassigning. Tier resets on snooze.
+        {t('panel.snoozeNote')}
       </p>
       <div className="cal-panel-actions">
         <button
@@ -119,33 +119,33 @@ function SnoozeControl({
           onClick={() => submit(1)}
           disabled={working}
           data-snooze="1"
-        >1 day</button>
+        >{t('panel.snooze1Day')}</button>
         <button
           type="button"
           className="cal-panel-btn"
           onClick={() => submit(3)}
           disabled={working}
           data-snooze="3"
-        >3 days</button>
+        >{t('panel.snooze3Days')}</button>
         <button
           type="button"
           className="cal-panel-btn"
           onClick={() => submit(7)}
           disabled={working}
           data-snooze="7"
-        >7 days</button>
+        >{t('panel.snooze7Days')}</button>
         <button
           type="button"
           className="cal-panel-btn"
           onClick={() => setCustomOpen((v) => !v)}
           disabled={working}
           data-snooze="custom"
-        >custom</button>
+        >{t('panel.snoozeCustom')}</button>
       </div>
       {customOpen && (
         <div className="cal-panel-reschedule-form">
           <label className="cal-panel-field">
-            <span className="cal-panel-field-label">days (1-30)</span>
+            <span className="cal-panel-field-label">{t('panel.snoozeDaysLabel')}</span>
             <input
               type="number"
               min={1}
@@ -154,8 +154,8 @@ function SnoozeControl({
               value={customDays}
               onChange={(e) => setCustomDays(e.target.value)}
               className="cal-panel-input is-mono"
-              placeholder="e.g. 5"
-              aria-label="Custom snooze days"
+              placeholder={t('panel.snoozeDaysPlaceholder')}
+              aria-label={t('panel.snoozeDaysAria')}
             />
           </label>
           <div className="cal-panel-actions cal-panel-actions-right">
@@ -165,7 +165,7 @@ function SnoozeControl({
               onClick={submitCustom}
               disabled={working}
               data-snooze-submit="true"
-            >{working ? 'snoozing' : 'snooze'}</button>
+            >{working ? t('panel.snoozing') : t('panel.snoozeAction')}</button>
           </div>
         </div>
       )}
@@ -188,6 +188,7 @@ type Props = {
 };
 
 export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onClose, onRefresh }: Props) {
+  const t = useTranslations('calendar');
   const { addToast } = useToast();
   const [working, setWorking] = useState(false);
   const [proofText, setProofText] = useState('');
@@ -213,22 +214,22 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `${action} failed`);
+        throw new Error(j.error || t('toast.actionFailed', { action }));
       }
       if (action === 'decline') {
         const { reassignedTo, ownerFallback } = await res.json().catch(() => ({}));
-        addToast(ownerFallback ? 'sent to team owner' : reassignedTo ? 'recgon reassigned' : 'recgon will reassign', 'success');
+        addToast(ownerFallback ? t('toast.sentToOwner') : reassignedTo ? t('toast.reassigned') : t('toast.willReassign'), 'success');
       } else {
-        addToast(action === 'accept' ? 'accepted' : 'sent for verification', 'success');
+        addToast(action === 'accept' ? t('toast.accepted') : t('toast.sentForVerification'), 'success');
       }
       onRefresh();
       if (action !== 'accept') onClose();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : `${action} failed`, 'error');
+      addToast(err instanceof Error ? err.message : t('toast.actionFailed', { action }), 'error');
     } finally {
       setWorking(false);
     }
-  }, [task, working, addToast, onRefresh, onClose]);
+  }, [task, working, addToast, onRefresh, onClose, t]);
 
   const handleUpload = useCallback(async (files: FileList | null) => {
     if (!task || !files || files.length === 0) return;
@@ -237,21 +238,21 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
       const fd = new FormData();
       for (const f of Array.from(files)) fd.append('file', f);
       const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}/proof/upload`, { method: 'POST', body: fd });
-      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'upload failed'); }
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || t('toast.uploadFailed')); }
       const { attachments: added } = (await res.json()) as { attachments: Array<{ name: string; url: string }> };
       setAttachments((prev) => [...prev, ...added]);
-      addToast(`${added.length} file${added.length === 1 ? '' : 's'} attached`, 'success');
+      addToast(t('toast.filesAttached', { count: added.length }), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'upload failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.uploadFailed'), 'error');
     } finally { setUploadingFile(false); }
-  }, [task, addToast]);
+  }, [task, addToast, t]);
 
   const submitProof = useCallback(async () => {
     if (!task || working) return;
     const text = proofText.trim();
     const links = proofLinks.trim() ? proofLinks.trim().split(/\s+/).filter(Boolean) : [];
     if (!text && links.length === 0 && attachments.length === 0) {
-      addToast('add a note, a link, or a file before submitting', 'error'); return;
+      addToast(t('toast.proofMissing'), 'error'); return;
     }
     setWorking(true);
     try {
@@ -260,32 +261,32 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ text: text || undefined, links: links.length ? links : undefined, attachments: attachments.length ? attachments : undefined, submittedAt: new Date().toISOString(), submittedBy: 'self' }),
       });
-      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'submit failed'); }
-      addToast('proof sent — recgon is re-checking', 'success');
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || t('toast.submitFailed')); }
+      addToast(t('toast.proofSent'), 'success');
       setProofText(''); setProofLinks(''); setAttachments([]);
       onRefresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.failed'), 'error');
     } finally { setWorking(false); }
-  }, [task, working, proofText, proofLinks, attachments, addToast, onRefresh]);
+  }, [task, working, proofText, proofLinks, attachments, addToast, onRefresh, t]);
 
   // Owner override — bypasses verification and marks complete. Used when a
   // task is awaiting review or stuck on proof and the owner wants to clear it.
   const overrideTask = useCallback(async () => {
     if (!task || working) return;
-    if (!confirm('Mark this task complete and bypass verification?')) return;
+    if (!confirm(t('confirm.override'))) return;
     setWorking(true);
     try {
       const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}/override`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
       });
-      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'override failed'); }
-      addToast('marked complete (override)', 'success');
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || t('toast.overrideFailed')); }
+      addToast(t('toast.overrideDone'), 'success');
       onRefresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'override failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.overrideFailed'), 'error');
     } finally { setWorking(false); }
-  }, [task, working, addToast, onRefresh]);
+  }, [task, working, addToast, onRefresh, t]);
 
   // Owner reassign — uses the /decline endpoint which unassigns and
   // re-dispatches via Recgon's matcher.
@@ -296,38 +297,38 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
       const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}/decline`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
       });
-      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'reassign failed'); }
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || t('toast.reassignFailed')); }
       const { reassignedTo, ownerFallback } = await res.json().catch(() => ({}));
       addToast(
-        ownerFallback ? 'no other match — sent to you'
-        : reassignedTo ? 'recgon reassigned'
-        : 'recgon will reassign',
+        ownerFallback ? t('toast.reassignNoMatch')
+        : reassignedTo ? t('toast.reassigned')
+        : t('toast.willReassign'),
         'success',
       );
       onRefresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'reassign failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.reassignFailed'), 'error');
     } finally { setWorking(false); }
-  }, [task, working, addToast, onRefresh]);
+  }, [task, working, addToast, onRefresh, t]);
 
   // Owner cancel — keeps the task in history but stops execution.
   const cancelTask = useCallback(async () => {
     if (!task || working) return;
-    if (!confirm('Cancel this task? It will be marked cancelled but kept for history.')) return;
+    if (!confirm(t('confirm.cancel'))) return;
     setWorking(true);
     try {
       const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}`, {
         method: 'PATCH', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'cancel' }),
       });
-      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'cancel failed'); }
-      addToast('task cancelled', 'success');
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || t('toast.cancelFailed')); }
+      addToast(t('toast.cancelled'), 'success');
       onRefresh();
       onClose();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'cancel failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.cancelFailed'), 'error');
     } finally { setWorking(false); }
-  }, [task, working, addToast, onRefresh, onClose]);
+  }, [task, working, addToast, onRefresh, onClose, t]);
 
   const submitRescheduleRequest = useCallback(async () => {
     if (!task || working) return;
@@ -343,17 +344,17 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || 'request failed');
+        throw new Error(j.error || t('toast.requestFailed'));
       }
-      addToast('reschedule request sent', 'success');
+      addToast(t('toast.requestSent'), 'success');
       setRequestOpen(false);
       onRefresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'request failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toast.requestFailed'), 'error');
     } finally {
       setWorking(false);
     }
-  }, [addToast, onRefresh, requestDate, requestNote, task, working]);
+  }, [addToast, onRefresh, requestDate, requestNote, task, working, t]);
 
   const isAssigned = task?.status === 'assigned';
   const isInFlight = task?.status === 'accepted' || task?.status === 'in_progress';
@@ -379,11 +380,11 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
   return (
     <>
       <div className={`cal-panel-overlay${isOpen ? ' is-open' : ''}`} onClick={onClose} aria-hidden="true" />
-      <aside className={`cal-panel${isOpen ? ' is-open' : ''}`} aria-label="Task detail">
+      <aside className={`cal-panel${isOpen ? ' is-open' : ''}`} aria-label={t('panel.aria')}>
         {!task ? null : (<>
         <div className="cal-panel-header">
           <div className="cal-panel-meta">
-            <span className="cal-panel-kind">{KIND_LABEL[task.kind] ?? task.kind}</span>
+            <span className="cal-panel-kind">{KIND_KEYS.has(task.kind) ? t(`kind.${task.kind}`) : task.kind}</span>
             <span className="cal-panel-meta-sep" aria-hidden="true">·</span>
             <TaskStatusChip
               status={task.status as Parameters<typeof TaskStatusChip>[0]['status']}
@@ -391,7 +392,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
               evidence={task.verificationEvidence ?? null}
             />
           </div>
-          <button type="button" className="cal-panel-close" onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="cal-panel-close" onClick={onClose} aria-label={t('panel.close')}>×</button>
         </div>
 
         <div className="cal-panel-body">
@@ -403,7 +404,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
 
             {task.scheduledDate && (
               <section className="cal-panel-section">
-                <span className="cal-panel-section-eyebrow">SCHEDULED</span>
+                <span className="cal-panel-section-eyebrow">{t('panel.scheduled')}</span>
                 <p className="cal-panel-section-text">
                   {new Date(`${task.scheduledDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                   {task.scheduledUntilDate && task.scheduledUntilDate > task.scheduledDate && (
@@ -445,7 +446,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                 <SnoozeControl
                   taskId={task.id}
                   teamId={task.teamId}
-                  onSnoozed={() => { addToast('snoozed', 'success'); onRefresh(); }}
+                  onSnoozed={() => { addToast(t('toast.snoozed'), 'success'); onRefresh(); }}
                   onError={(msg) => addToast(msg, 'error')}
                 />
               );
@@ -453,7 +454,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
 
             {hasPendingReschedule && (
               <section className="cal-panel-section is-reschedule">
-                <span className="cal-panel-section-eyebrow is-reschedule">RESCHEDULE REQUESTED</span>
+                <span className="cal-panel-section-eyebrow is-reschedule">{t('panel.rescheduleRequested')}</span>
                 {fmtRequestedDay(task) && (
                   <p className="cal-panel-section-text">{fmtRequestedDay(task)}</p>
                 )}
@@ -468,17 +469,17 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                 {isAssigned && (
                   <>
                     <button type="button" className="cal-panel-btn is-primary" onClick={() => act('accept')} disabled={working}>
-                      {working ? <><span className="cal-panel-spin" aria-hidden="true" />working</> : 'accept'}
+                      {working ? <><span className="cal-panel-spin" aria-hidden="true" />{t('actions.working')}</> : t('actions.accept')}
                     </button>
-                    <button type="button" className="cal-panel-btn" onClick={() => act('decline')} disabled={working}>decline</button>
+                    <button type="button" className="cal-panel-btn" onClick={() => act('decline')} disabled={working}>{t('actions.decline')}</button>
                   </>
                 )}
                 {isInFlight && !needsProof && (
                   <>
                     <button type="button" className="cal-panel-btn is-primary" onClick={() => act('complete')} disabled={working}>
-                      {working ? <><span className="cal-panel-spin" aria-hidden="true" />working</> : 'mark done'}
+                      {working ? <><span className="cal-panel-spin" aria-hidden="true" />{t('actions.working')}</> : t('actions.markDone')}
                     </button>
-                    <button type="button" className="cal-panel-btn" onClick={() => act('decline')} disabled={working}>hand back</button>
+                    <button type="button" className="cal-panel-btn" onClick={() => act('decline')} disabled={working}>{t('actions.handBack')}</button>
                   </>
                 )}
               </section>
@@ -486,23 +487,23 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
 
             {isOwnerView && !isTerminal && (
               <section className="cal-panel-section">
-                <span className="cal-panel-section-eyebrow">OWNER ACTIONS</span>
+                <span className="cal-panel-section-eyebrow">{t('panel.ownerActions')}</span>
                 <p className="cal-panel-section-note">
-                  The assignee handles accept / decline / mark done in their own inbox. From here you can intervene without acting on their behalf.
+                  {t('panel.ownerActionsNote')}
                 </p>
                 <div className="cal-panel-actions">
                   {canVerify && (
                     <button type="button" className="cal-panel-btn is-primary" onClick={overrideTask} disabled={working}>
-                      {working ? <><span className="cal-panel-spin" aria-hidden="true" />working</> : 'verify'}
+                      {working ? <><span className="cal-panel-spin" aria-hidden="true" />{t('actions.working')}</> : t('actions.verify')}
                     </button>
                   )}
                   {task.assignedTo && (
                     <button type="button" className="cal-panel-btn" onClick={reassignTask} disabled={working}>
-                      reassign
+                      {t('actions.reassign')}
                     </button>
                   )}
                   <button type="button" className="cal-panel-btn" onClick={cancelTask} disabled={working}>
-                    cancel task
+                    {t('actions.cancelTask')}
                   </button>
                 </div>
               </section>
@@ -517,7 +518,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                     onClick={() => setRequestOpen((v) => !v)}
                     disabled={working}
                   >
-                    {hasPendingReschedule ? 'update reschedule' : 'request reschedule'}
+                    {hasPendingReschedule ? t('actions.updateReschedule') : t('actions.requestReschedule')}
                   </button>
                 </div>
 
@@ -525,7 +526,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                   <div className="cal-panel-reschedule-form">
                     <div className="cal-panel-time-grid">
                       <label className="cal-panel-field">
-                        <span className="cal-panel-field-label">preferred day</span>
+                        <span className="cal-panel-field-label">{t('panel.preferredDay')}</span>
                         <input
                           type="date"
                           value={requestDate}
@@ -537,7 +538,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                     <textarea
                       value={requestNote}
                       onChange={(e) => setRequestNote(e.target.value)}
-                      placeholder="why this needs to move"
+                      placeholder={t('panel.notePlaceholder')}
                       className="cal-panel-input"
                       rows={3}
                     />
@@ -548,7 +549,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                         onClick={submitRescheduleRequest}
                         disabled={working}
                       >
-                        {working ? 'sending' : 'send request'}
+                        {working ? t('actions.sending') : t('actions.sendRequest')}
                       </button>
                     </div>
                   </div>
@@ -558,12 +559,12 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
 
             {needsProof && isAssignee && (
               <section className="cal-panel-section is-warn">
-                <span className="cal-panel-section-eyebrow is-warn">PROOF NEEDED</span>
-                <p className="cal-panel-section-note">Recgon couldn&apos;t auto-verify this. Drop a note, paste a link, or attach a file.</p>
+                <span className="cal-panel-section-eyebrow is-warn">{t('panel.proofNeeded')}</span>
+                <p className="cal-panel-section-note">{t('panel.proofNeededNote')}</p>
                 <textarea
                   value={proofText}
                   onChange={(e) => setProofText(e.target.value)}
-                  placeholder="describe what you did"
+                  placeholder={t('panel.describePlaceholder')}
                   className="cal-panel-input"
                   rows={3}
                 />
@@ -571,7 +572,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                   type="text"
                   value={proofLinks}
                   onChange={(e) => setProofLinks(e.target.value)}
-                  placeholder="proof links (space-separated)"
+                  placeholder={t('panel.linksPlaceholder')}
                   className="cal-panel-input is-mono"
                 />
                 <ProofDropZone
@@ -580,10 +581,10 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                   onPick={handleUpload}
                   onRemove={(i) => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
                 />
-                <p className="cal-panel-section-foot">Recgon will fetch any URL you paste and judge the page itself.</p>
+                <p className="cal-panel-section-foot">{t('panel.proofFoot')}</p>
                 <div className="cal-panel-actions cal-panel-actions-right">
                   <button type="button" className="cal-panel-btn is-warn" onClick={submitProof} disabled={working}>
-                    {working ? 'sending' : 'submit proof'}
+                    {working ? t('actions.sending') : t('actions.submitProof')}
                   </button>
                 </div>
               </section>

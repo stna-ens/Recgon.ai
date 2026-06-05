@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   cleanText,
   relTimeShort,
@@ -29,14 +30,19 @@ export function pickFeatured(projects: PortfolioRow[]): PortfolioRow[] {
     .slice(0, 3);
 }
 
-function ownershipShort(o: Ownership | undefined, teamName: string | null | undefined): string | null {
-  if (o === 'mine') return 'private';
-  if (o === 'shared-by-me') return teamName ? `shared · ${teamName}` : 'shared';
-  if (o === 'from-team') return teamName ? `from ${teamName}` : 'from team';
+function ownershipShort(
+  o: Ownership | undefined,
+  teamName: string | null | undefined,
+  t: ReturnType<typeof useTranslations<'projects'>>,
+): string | null {
+  if (o === 'mine') return t('featured.own.private');
+  if (o === 'shared-by-me') return teamName ? t('featured.own.sharedTeam', { team: teamName }) : t('featured.own.shared');
+  if (o === 'from-team') return teamName ? t('featured.own.fromTeam', { team: teamName }) : t('featured.own.fromTeamGeneric');
   return null;
 }
 
 export default function FeaturedNeedsAttention({ projects, meta, loading }: Props) {
+  const t = useTranslations('projects');
   const triage = useMemo(() => pickFeatured(projects), [projects]);
   const now = Date.now();
 
@@ -56,7 +62,7 @@ export default function FeaturedNeedsAttention({ projects, meta, loading }: Prop
   if (triage.length === 0) {
     return (
       <section className="v2-fnp">
-        <p className="v2-fnp-clear">All projects look healthy. Nothing needs your call right now.</p>
+        <p className="v2-fnp-clear">{t('featured.allHealthy')}</p>
         <style>{stylesheet}</style>
       </section>
     );
@@ -69,7 +75,7 @@ export default function FeaturedNeedsAttention({ projects, meta, loading }: Prop
           const risk = cleanText(p.topRisk);
           const nextStep = cleanText(p.topNextStep);
           const m = meta[p.id] ?? {};
-          const ownerLabel = ownershipShort(m.ownership, m.teamName);
+          const ownerLabel = ownershipShort(m.ownership, m.teamName, t);
           return (
             <Link key={p.id} href={`/projects/${p.id}`} className="glass-card is-static v2-fnp-card" data-pulse={p.pulse}>
               <div className="v2-fnp-card-head">
@@ -95,18 +101,18 @@ export default function FeaturedNeedsAttention({ projects, meta, loading }: Prop
 
               <div className="v2-fnp-body">
                 <p className="v2-fnp-line">
-                  <span className="v2-fnp-key">Risk.</span>{' '}
-                  {risk || 'Awaiting analysis to surface a risk.'}
+                  <span className="v2-fnp-key">{t('featured.riskLabel')}</span>{' '}
+                  {risk || t('featured.riskFallback')}
                 </p>
                 <p className="v2-fnp-line">
-                  <span className="v2-fnp-key">Next.</span>{' '}
-                  {nextStep || 'Open the project to set a next move.'}
+                  <span className="v2-fnp-key">{t('featured.nextLabel')}</span>{' '}
+                  {nextStep || t('featured.nextFallback')}
                 </p>
               </div>
 
               <div className="v2-fnp-foot">
                 <span className="v2-fnp-time">
-                  {p.analyzedAt ? `analyzed ${relTimeShort(p.analyzedAt, now)} ago` : 'never analyzed'}
+                  {p.analyzedAt ? t('featured.analyzedAgo', { time: relTimeShort(p.analyzedAt, now) }) : t('featured.neverAnalyzed')}
                 </span>
               </div>
             </Link>

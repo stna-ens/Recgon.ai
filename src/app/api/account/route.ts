@@ -10,6 +10,7 @@ export async function GET() {
   const user = await getUserById(session.user.id);
   return NextResponse.json({
     avatarUrl: user?.avatarUrl ?? null,
+    language: user?.language ?? 'en',
     isWaitlistAdmin: isWaitlistAdminEmail(session.user.email),
   });
 }
@@ -28,6 +29,15 @@ export async function PATCH(request: NextRequest) {
     }
     await updateUser(session.user.id, { nickname: nickname.trim() });
     return NextResponse.json({ success: true, nickname: nickname.trim() });
+  }
+
+  if (type === 'language') {
+    const { language } = body;
+    if (language !== 'en' && language !== 'tr') {
+      return NextResponse.json({ error: 'Unsupported language' }, { status: 400 });
+    }
+    await updateUser(session.user.id, { language });
+    return NextResponse.json({ success: true, language });
   }
 
   if (type === 'email') {

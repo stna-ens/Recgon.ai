@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 
 interface SelectOption {
   value: string;
@@ -18,6 +19,7 @@ interface SelectProps {
 }
 
 export default function Select({ value, onChange, options, placeholder, style, size = 'md' }: SelectProps) {
+  const t = useTranslations('shared');
   const sm = size === 'sm';
   const [open, setOpen] = useState(false);
   const [dropdownRect, setDropdownRect] = useState<DOMRect | null>(null);
@@ -117,7 +119,7 @@ export default function Select({ value, onChange, options, placeholder, style, s
         }}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selected ? selected.label : (placeholder ?? 'Select...')}
+          {selected ? selected.label : (placeholder ?? t('select.placeholder'))}
         </span>
         <svg
           width="14"

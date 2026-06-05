@@ -1,0 +1,129 @@
+{
+  "language": {
+    "label": "dil",
+    "hint": "Uygulama arayüzünü ve Recgon'un yazdığı dili belirler."
+  },
+  "band": {
+    "eyebrow": "ayarlar · hesap"
+  },
+  "rail": {
+    "navAria": "ayarlar gezinmesi",
+    "sectionsAria": "bölümler",
+    "fallbackName": "Sen"
+  },
+  "sections": {
+    "identity": "kimlik",
+    "security": "güvenlik",
+    "appearance": "görünüm",
+    "connections": "bağlantılar",
+    "admin": "yönetim",
+    "session": "oturum"
+  },
+  "identity": {
+    "label": "kimlik",
+    "hint": "Recgon'da nasıl göründüğün.",
+    "avatarLabel": "avatar",
+    "avatarHint": "Kare görsel. JPEG, PNG, WebP veya GIF. En fazla 2 MB.",
+    "avatarUploading": "yükleniyor",
+    "avatarChange": "değiştir",
+    "avatarUpload": "yükle",
+    "avatarRemove": "kaldır",
+    "avatarTooLarge": "görsel 2 MB'tan küçük olmalı",
+    "avatarUpdated": "avatar güncellendi",
+    "avatarRemoved": "avatar kaldırıldı",
+    "nicknameLabel": "takma ad",
+    "nicknameHint": "Bahsetmelerde ve avatar menüsünde kullanılır.",
+    "nicknamePlaceholder": "takma adın",
+    "nicknameEmpty": "henüz takma ad yok",
+    "nicknameUpdated": "takma ad güncellendi",
+    "emailLabel": "e-posta",
+    "emailHint": "Davetleri, parola sıfırlamalarını ve bildirimleri buraya gönderiyoruz. Değiştirmen oturumunu kapatır.",
+    "emailAction": "değiştir",
+    "emailPlaceholder": "yeni@ornek.com",
+    "emailConfirmPlaceholder": "mevcut parolanla onayla",
+    "emailUpdated": "e-posta güncellendi. lütfen tekrar giriş yap."
+  },
+  "security": {
+    "label": "güvenlik",
+    "hint": "Giriş bilgilerin.",
+    "passwordLabel": "parola",
+    "passwordHint": "En az 8 karakter. Diğer oturumlar açık kalır.",
+    "passwordAction": "değiştir",
+    "currentPlaceholder": "mevcut parola",
+    "newPlaceholder": "yeni parola (en az 8 karakter)",
+    "confirmPlaceholder": "yeni parolayı onayla",
+    "update": "güncelle",
+    "tooShort": "yeni parola en az 8 karakter olmalı",
+    "mismatch": "yeni parolalar eşleşmiyor",
+    "passwordUpdated": "parola güncellendi"
+  },
+  "appearance": {
+    "label": "görünüm",
+    "hint": "Recgon'un bu tarayıcıda nasıl göründüğü.",
+    "themeLabel": "tema",
+    "themeHint": "Her tarayıcı için ayrı kaydedilir. Sistem teması otomatik takip edilmez.",
+    "themeAria": "tema",
+    "dark": "koyu",
+    "light": "açık",
+    "english": "ingilizce",
+    "turkish": "türkçe"
+  },
+  "connections": {
+    "label": "bağlantılar",
+    "hint": "Hesabına bağlı dış araçlar.",
+    "githubLabel": "github",
+    "githubHint": "Özel depoları içe aktarmanı ve kod analizini açmanı sağlar.",
+    "checking": "kontrol ediliyor…",
+    "connected": "bağlı",
+    "disconnecting": "bağlantı kesiliyor",
+    "disconnect": "bağlantıyı kes",
+    "githubEmpty": "Bağlı bir GitHub hesabı yok. Herkese açık depolar yine de çalışır, ancak özel içe aktarmalar için bağlantı gerekir.",
+    "connectGithub": "github'a bağlan",
+    "githubConnected": "github bağlandı",
+    "githubDisconnected": "github bağlantısı kesildi",
+    "githubDisconnectConfirm": "GitHub bağlantısı kesilsin mi?",
+    "claudeCodeLabel": "claude code",
+    "claudeCodeHint": "MCP aktarımı. Recgon içgörülerini editörüne aktarır.",
+    "mcpInstruction": "bunu terminaline yapıştır, tarayıcı açıldığında giriş yap",
+    "copied": "kopyalandı",
+    "copy": "kopyala",
+    "copyFailed": "kopyalanamadı"
+  },
+  "admin": {
+    "label": "yönetim",
+    "hint": "METU dışı e-postalar için bekleme listesi.",
+    "waitlistLabel": "bekleme listesi",
+    "waitlistHint": "Bir e-postayı onaylamak, o kullanıcının kaydını hemen tamamlamasına izin verir.",
+    "pending": "beklemede:",
+    "refreshing": "yenileniyor",
+    "refresh": "yenile",
+    "loadingWaitlist": "Bekleme listesi yükleniyor…",
+    "noPending": "Şu an bekleyen istek yok.",
+    "requested": "{date} tarihinde istendi",
+    "reject": "reddet",
+    "approve": "onayla",
+    "recentlyApproved": "son onaylananlar",
+    "approvedAt": "{date} tarihinde onaylandı",
+    "approvedBy": " · {email}",
+    "loadFailed": "bekleme listesi yüklenemedi",
+    "updateFailed": "bekleme listesi güncellenemedi",
+    "approvedToast": "kayıt için onaylandı",
+    "rejectedToast": "kuyruktan kaldırıldı"
+  },
+  "session": {
+    "label": "oturum",
+    "hint": "Bu tarayıcının oturumunu kapatır.",
+    "signedInAs": "Giriş yapıldı:",
+    "signedInRest": ". Diğer tarayıcılar ve Claude Code MCP bağlantısı açık kalır.",
+    "signOut": "çıkış yap",
+    "areYouSure": "emin misin?",
+    "signingOut": "çıkış yapılıyor",
+    "confirmSignOut": "evet — çıkış yap"
+  },
+  "common": {
+    "saving": "kaydediliyor",
+    "cancel": "vazgeç",
+    "save": "kaydet",
+    "failed": "başarısız"
+  }
+}

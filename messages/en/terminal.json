@@ -1,0 +1,96 @@
+{
+  "banner": {
+    "openSessions": "Open sessions (⌘P)",
+    "openSessionsAria": "Open sessions",
+    "sessions": "sessions",
+    "newSession": "New session",
+    "newSessionAria": "New session"
+  },
+  "loadingConversation": "loading conversation…",
+  "empty": {
+    "projects": "projects",
+    "analyzed": "analyzed",
+    "campaigns": "campaigns",
+    "greetPrefix": "welcome. type",
+    "greetSuffix": "for commands, or just ask anything.",
+    "hintTry": "# try:",
+    "hintTailored": "# tailored to your projects:"
+  },
+  "suggestions": {
+    "focusWeek": "what should I focus on this week?",
+    "first100": "how do I find my first 100 users?",
+    "risks": "what risks am I underestimating?",
+    "launch": "plan a launch for my best project"
+  },
+  "stream": {
+    "connectionFailed": "connection failed. try again?",
+    "connectionLost": "connection lost mid-response. try again?"
+  },
+  "help": {
+    "title": "Terminal commands",
+    "freeText": "Free-text input is sent to Recgon as a natural-language question."
+  },
+  "input": {
+    "placeholder": "type a command or a question  ·  '/' for commands",
+    "placeholderLoading": "loading team…",
+    "aria": "Terminal input"
+  },
+  "running": {
+    "prefix": "running… press",
+    "esc": "esc",
+    "suffix": "to stop"
+  },
+  "status": {
+    "escToStop": "esc to stop",
+    "run": "run",
+    "commands": "commands",
+    "history": "history",
+    "showCommands": "Show slash commands"
+  },
+  "slash": {
+    "commands": "commands",
+    "hint": "↑↓ navigate · ⇥ complete · ↵ run · esc close",
+    "pickProject": "pick a project for {command}",
+    "noProjects": "no projects match.",
+    "createOne": "create one from /projects.",
+    "analyzed": "analyzed",
+    "unanalyzed": "unanalyzed"
+  },
+  "scrollPill": "↓ latest",
+  "toast": {
+    "conversationCleared": "conversation cleared",
+    "clearFailed": "clear failed",
+    "renameFailed": "rename failed",
+    "sessionDeleted": "session deleted",
+    "deleteFailed": "delete failed",
+    "assignedToProject": "assigned to project",
+    "movedToGeneral": "moved to general",
+    "assignFailed": "assign failed"
+  },
+  "drawer": {
+    "dialogAria": "Conversations",
+    "searchPlaceholder": "search sessions…",
+    "searchAria": "Search sessions",
+    "esc": "esc",
+    "justNow": "just now",
+    "emptyNoSessions": "no sessions yet. type below to start one.",
+    "emptyNoMatches": "no matches.",
+    "untitled": "Untitled",
+    "renameAria": "Rename session",
+    "renameHint": "↵ save · esc cancel",
+    "current": "current",
+    "openDoubleClick": "open · double-click to rename",
+    "assignToProject": "Assign to project (a)",
+    "assignToProjectAria": "Assign to project",
+    "rename": "Rename (e)",
+    "renameAriaShort": "Rename",
+    "delete": "Delete (d)",
+    "deleteAriaShort": "Delete",
+    "assignTo": "assign to",
+    "general": "general",
+    "noProjectsYet": "no projects yet",
+    "footHint": "↑↓ navigate · ↵ open · e rename · d delete · a assign · esc close",
+    "new": "+ new",
+    "confirmDelete": "Delete \"{title}\"?"
+  }
+}

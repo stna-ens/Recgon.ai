@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { ANALYZE_SYSTEM, analyzeUserPrompt, ANALYZE_UPDATE_SYSTEM, analyzeUpdateUserPrompt } from './prompts';
+import { ANALYZE_SYSTEM, analyzeUserPrompt, ANALYZE_UPDATE_SYSTEM, analyzeUpdateUserPrompt, localeDirective, type OutputLanguage } from './prompts';
 import { AnalysisResultSchema } from './schemas';
 import { generateStructuredOutput } from './llm/quality';
 
@@ -170,12 +170,13 @@ export async function analyzeCodebaseUpdate(
   diffStr: string,
   onProgress?: (message: string) => void,
   appContext?: string,
+  language?: OutputLanguage,
 ): Promise<import('./schemas').AnalysisResult> {
   onProgress?.('Analyzing code changes...');
   const analysis = await generateStructuredOutput({
     taskKind: 'codebase_analysis',
     schema: AnalysisResultSchema,
-    systemPrompt: ANALYZE_UPDATE_SYSTEM,
+    systemPrompt: ANALYZE_UPDATE_SYSTEM + localeDirective(language),
     userPrompt: analyzeUpdateUserPrompt(existingAnalysis, diffStr, appContext),
     options: { temperature: 0.4, maxTokens: 16384 },
     qualityProfile: 'analysis',
@@ -188,6 +189,7 @@ export async function analyzeCodebase(
   projectPath: string,
   onProgress?: (message: string) => void,
   appContext?: string,
+  language?: OutputLanguage,
 ): Promise<import('./schemas').AnalysisResult> {
   onProgress?.('Reading project structure...');
   const tree = walkDir(projectPath);
@@ -208,7 +210,7 @@ export async function analyzeCodebase(
   const analysis = await generateStructuredOutput({
     taskKind: 'codebase_analysis',
     schema: AnalysisResultSchema,
-    systemPrompt: ANALYZE_SYSTEM,
+    systemPrompt: ANALYZE_SYSTEM + localeDirective(language),
     userPrompt: analyzeUserPrompt(treeStr, filesStr, appContext),
     options: { temperature: 0.4, maxTokens: 16384 },
     qualityProfile: 'analysis',

@@ -1,16 +1,19 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 export default function MarketingEmpty() {
+  const t = useTranslations('marketing');
   return (
     <div className="v2-m">
       <header className="v2-m-head">
         <div>
-          <span className="recgon-label v2-m-eye">› marketing</span>
+          <span className="recgon-label v2-m-eye">{t('eyebrow')}</span>
           <h2 className="v2-m-hero">
-            <span>this project isn&apos;t analyzed yet.</span>
+            <span>{t('empty.heroLead')}</span>
           </h2>
           <p className="v2-m-sub">
-            analyze the project to unlock campaign planning, channel strategy, and content generation.
+            {t('empty.heroSub')}
           </p>
         </div>
       </header>
@@ -35,12 +38,8 @@ export default function MarketingEmpty() {
           </svg>
         </span>
         <div>
-          <h3>analyze first.</h3>
-          <p>
-            Recgon needs to read the codebase + project signals before it can draft strategy. Once the
-            analysis is in, this page unlocks: campaign types, audience inference, channel plan, weekly
-            content calendar, and KPI targets.
-          </p>
+          <h3>{t('empty.title')}</h3>
+          <p>{t('empty.body')}</p>
         </div>
       </div>
     </div>

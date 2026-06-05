@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 
 import {
@@ -33,6 +34,7 @@ export default function V2ProjectMarketingPage() {
   const params = useParams<{ id: string }>();
   const selectedProjectId = params?.id ?? '';
   const { currentTeam } = useTeam();
+  const t = useTranslations('marketing');
 
   // Projects come from SWR — cached across navigations, so returning to the
   // Marketing tab paints instantly and revalidates in the background. Focus
@@ -73,7 +75,7 @@ export default function V2ProjectMarketingPage() {
   const handlePlan = async () => {
     if (!selectedProjectId) return;
     if (!campaignGoal.trim()) {
-      setPlanError('A campaign goal is required. What do you want this campaign to achieve?');
+      setPlanError(t('setup.goalRequired'));
       return;
     }
     setIsPlanning(true);
@@ -93,14 +95,14 @@ export default function V2ProjectMarketingPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Campaign planning failed');
+      if (!res.ok) throw new Error(data.error || t('errors.campaignPlanning'));
       setActiveCampaign(data.campaign);
       setActiveTab('overview');
       setGeneratedContents({});
       setContentErrors({});
       mutateProjects();
     } catch (err) {
-      setPlanError(err instanceof Error ? err.message : 'Campaign planning failed');
+      setPlanError(err instanceof Error ? err.message : t('errors.campaignPlanning'));
     } finally {
       setIsPlanning(false);
     }
@@ -129,7 +131,7 @@ export default function V2ProjectMarketingPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Content generation failed');
+      if (!res.ok) throw new Error(data.error || t('errors.contentGeneration'));
       setGeneratedContents((prev) => ({
         ...prev,
         [itemKey]: { content: data.content, platform },
@@ -138,7 +140,7 @@ export default function V2ProjectMarketingPage() {
     } catch (err) {
       setContentErrors((prev) => ({
         ...prev,
-        [itemKey]: err instanceof Error ? err.message : 'Content generation failed',
+        [itemKey]: err instanceof Error ? err.message : t('errors.contentGeneration'),
       }));
     } finally {
       setGeneratingContent(null);

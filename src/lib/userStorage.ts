@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 
+export type Language = 'en' | 'tr';
+
 export interface User {
   id: string;
   email: string;
@@ -10,6 +12,7 @@ export interface User {
   githubUsername?: string;
   avatarUrl?: string;
   socialProfiles?: { platform: string; url: string }[];
+  language: Language;
 }
 
 function generateId(): string {
@@ -27,6 +30,7 @@ function rowToUser(row: Record<string, unknown>): User {
     githubUsername: row.github_username as string | undefined,
     avatarUrl: row.avatar_url as string | undefined,
     socialProfiles: (row.social_profiles as { platform: string; url: string }[]) ?? [],
+    language: ((row.language as string) === 'tr' ? 'tr' : 'en'),
   };
 }
 
@@ -50,7 +54,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
 
 export async function updateUser(
   id: string,
-  updates: Partial<Pick<User, 'email' | 'passwordHash' | 'nickname' | 'githubAccessToken' | 'githubUsername' | 'avatarUrl' | 'socialProfiles'>>
+  updates: Partial<Pick<User, 'email' | 'passwordHash' | 'nickname' | 'githubAccessToken' | 'githubUsername' | 'avatarUrl' | 'socialProfiles' | 'language'>>
 ): Promise<User | undefined> {
   const mapped: Record<string, unknown> = {};
   if (updates.email !== undefined) mapped.email = updates.email;
@@ -60,6 +64,7 @@ export async function updateUser(
   if ('githubUsername' in updates) mapped.github_username = updates.githubUsername ?? null;
   if (updates.avatarUrl !== undefined) mapped.avatar_url = updates.avatarUrl;
   if (updates.socialProfiles !== undefined) mapped.social_profiles = updates.socialProfiles;
+  if (updates.language !== undefined) mapped.language = updates.language;
 
   const { data } = await supabase
     .from('users')

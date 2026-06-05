@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/Toast';
 import { useTeam } from '@/components/TeamProvider';
 
@@ -37,6 +38,7 @@ export default function V2ProjectAnalyticsPage() {
   const projectId = params?.id;
   const { addToast } = useToast();
   const { currentTeam } = useTeam();
+  const t = useTranslations('analytics');
   const teamId = currentTeam?.id;
   const isOwner = currentTeam?.role === 'owner';
 
@@ -99,18 +101,18 @@ export default function V2ProjectAnalyticsPage() {
       const r = await fetch(`/api/analytics/properties?scope=team&teamId=${teamId}`, { cache: 'no-store' });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
-        setPropertiesError(j?.error ?? 'Failed to load properties');
+        setPropertiesError(j?.error ?? t('toasts.failedLoadProperties'));
         setAvailableProperties([]);
       } else {
         const list: GAProperty[] = Array.isArray(j) ? j : Array.isArray(j?.properties) ? j.properties : [];
         setAvailableProperties(list);
       }
     } catch (e) {
-      setPropertiesError(e instanceof Error ? e.message : 'Failed to load properties');
+      setPropertiesError(e instanceof Error ? e.message : t('toasts.failedLoadProperties'));
     } finally {
       setPropertiesLoading(false);
     }
-  }, [teamId]);
+  }, [teamId, t]);
 
   useEffect(() => {
     if (teamId && propertyConfig?.hasCredentials) fetchProperties();
@@ -123,7 +125,7 @@ export default function V2ProjectAnalyticsPage() {
       const r = await fetch(`/api/analytics/data?projectId=${projectId}&days=${days}`, { cache: 'no-store', signal });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
-        setError(j?.error || 'Analytics not available for this project');
+        setError(j?.error || t('toasts.notAvailable'));
         setData(null);
         return;
       }
@@ -131,10 +133,10 @@ export default function V2ProjectAnalyticsPage() {
       setLinkedPropertyId(j?.propertyId ?? null);
     } catch (e) {
       if ((e as { name?: string })?.name === 'AbortError') return;
-      setError('Network error loading analytics');
+      setError(t('toasts.networkError'));
       setData(null);
     }
-  }, [projectId, days]);
+  }, [projectId, days, t]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -187,7 +189,7 @@ export default function V2ProjectAnalyticsPage() {
         body: JSON.stringify({ data, days, projectId, teamId }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'analysis failed');
+      if (!res.ok) throw new Error(json?.error || t('toasts.analysisFailed'));
       setInsights(json);
       if (insightsKey) {
         try { localStorage.setItem(insightsKey, JSON.stringify(json)); } catch { /* ignore */ }
@@ -199,22 +201,22 @@ export default function V2ProjectAnalyticsPage() {
           if (Array.isArray(j?.insights)) setSavedRuns(j.insights);
         }
       }
-      addToast('mentor read regenerated', 'success');
+      addToast(t('toasts.regenerated'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'analysis failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toasts.analysisFailed'), 'error');
     } finally {
       setRegenerating(false);
     }
-  }, [data, days, projectId, teamId, regenerating, addToast, insightsKey]);
+  }, [data, days, projectId, teamId, regenerating, addToast, insightsKey, t]);
 
   const handleSubmitServiceAccount = useCallback(async (propertyIdInput: string, serviceAccountJson: string) => {
     if (!projectId || setupSaving) return;
     if (!teamId) {
-      setSetupError('No active team — switch teams to connect GA4');
+      setSetupError(t('toasts.noTeam'));
       return;
     }
     if (!isOwner) {
-      setSetupError('Only team owners can connect Google Analytics for the team');
+      setSetupError(t('toasts.ownerOnlyConnect'));
       return;
     }
     setSetupSaving(true);
@@ -226,7 +228,7 @@ export default function V2ProjectAnalyticsPage() {
         body: JSON.stringify({ propertyId: propertyIdInput, serviceAccountJson }),
       });
       const credJson = await credRes.json().catch(() => ({}));
-      if (!credRes.ok) throw new Error(credJson?.error || 'failed to save credentials');
+      if (!credRes.ok) throw new Error(credJson?.error || t('toasts.saveCredsFailed'));
 
       const linkRes = await fetch('/api/analytics/property', {
         method: 'POST',
@@ -234,16 +236,16 @@ export default function V2ProjectAnalyticsPage() {
         body: JSON.stringify({ type: 'set_project_property', projectId, propertyId: propertyIdInput }),
       });
       const linkJson = await linkRes.json().catch(() => ({}));
-      if (!linkRes.ok) throw new Error(linkJson?.error || 'failed to link property');
+      if (!linkRes.ok) throw new Error(linkJson?.error || t('toasts.linkPropertyFailed'));
 
-      addToast('GA4 connected — give it a moment to propagate', 'success');
+      addToast(t('toasts.connected'), 'success');
       setReloadKey((k) => k + 1);
     } catch (err) {
-      setSetupError(err instanceof Error ? err.message : 'connection failed');
+      setSetupError(err instanceof Error ? err.message : t('toasts.connectionFailed'));
     } finally {
       setSetupSaving(false);
     }
-  }, [projectId, teamId, isOwner, setupSaving, addToast]);
+  }, [projectId, teamId, isOwner, setupSaving, addToast, t]);
 
   const handlePickProperty = useCallback(async (pid: string) => {
     if (!projectId || !pid) return;
@@ -255,14 +257,14 @@ export default function V2ProjectAnalyticsPage() {
       });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error || 'link failed');
+        throw new Error(j?.error || t('toasts.linkFailed'));
       }
-      addToast(`linked to property ${pid}`, 'success');
+      addToast(t('toasts.linkedToProperty', { id: pid }), 'success');
       setReloadKey((k) => k + 1);
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'link failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toasts.linkFailed'), 'error');
     }
-  }, [projectId, addToast]);
+  }, [projectId, addToast, t]);
 
   const handleTransferConnection = useCallback(async () => {
     if (!teamId) return;
@@ -275,35 +277,35 @@ export default function V2ProjectAnalyticsPage() {
         body: JSON.stringify({ direction, teamId }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || 'transfer failed');
-      addToast(direction === 'to_team' ? 'moved to team' : 'moved to personal', 'success');
+      if (!r.ok) throw new Error(j?.error || t('toasts.transferFailed'));
+      addToast(direction === 'to_team' ? t('toasts.movedToTeam') : t('toasts.movedToPersonal'), 'success');
       setReloadKey((k) => k + 1);
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'transfer failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toasts.transferFailed'), 'error');
     }
-  }, [teamId, propertyConfig, addToast]);
+  }, [teamId, propertyConfig, addToast, t]);
 
   const handleDisconnect = useCallback(async () => {
     if (!teamId) return;
     if (!isOwner) {
-      addToast('only team owners can disconnect', 'error');
+      addToast(t('toasts.ownerOnlyDisconnect'), 'error');
       return;
     }
     try {
       const r = await fetch(`/api/analytics/property?scope=team&teamId=${teamId}`, { method: 'DELETE' });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error || 'disconnect failed');
+        throw new Error(j?.error || t('toasts.disconnectFailed'));
       }
-      addToast('GA4 disconnected', 'success');
+      addToast(t('toasts.disconnected'), 'success');
       setData(null);
       setInsights(null);
       setLinkedPropertyId(null);
       setReloadKey((k) => k + 1);
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'disconnect failed', 'error');
+      addToast(err instanceof Error ? err.message : t('toasts.disconnectFailed'), 'error');
     }
-  }, [teamId, isOwner, addToast]);
+  }, [teamId, isOwner, addToast, t]);
 
   const handleReload = useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -345,7 +347,7 @@ export default function V2ProjectAnalyticsPage() {
     }
     return (
       <AnalyticsError
-        error={error ?? 'Could not reach the analytics service.'}
+        error={error ?? t('toasts.couldNotReach')}
         isOwner={isOwner}
         propertyConfig={propertyConfig}
         onRetry={handleReload}
@@ -383,9 +385,9 @@ export default function V2ProjectAnalyticsPage() {
       {!insights && (
         <section className="glass-card is-static v2-an-no-insight">
           <div className="v2-an-no-insight-body">
-            <span className="recgon-label v2-block-eye">mentor read</span>
+            <span className="recgon-label v2-block-eye">{t('noInsight.label')}</span>
             <p className="v2-an-no-insight-text">
-              Get the mentor&apos;s read on what&apos;s actually moving the needle — what to lean into, what to fix, top win, top concern.
+              {t('noInsight.text')}
             </p>
           </div>
           <button
@@ -394,7 +396,7 @@ export default function V2ProjectAnalyticsPage() {
             onClick={handleRegenerateInsights}
             disabled={regenerating}
           >
-            {regenerating ? <><span className="v2-an-spinner" /> generating…</> : 'analyze with recgon'}
+            {regenerating ? <><span className="v2-an-spinner" /> {t('noInsight.generating')}</> : t('noInsight.cta')}
           </button>
         </section>
       )}

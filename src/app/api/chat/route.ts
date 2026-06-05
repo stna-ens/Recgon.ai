@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getAllProjects } from '@/lib/storage';
 import { getGeminiClient, withRetry } from '@/lib/gemini';
-import { mentorSystemPrompt, generateSuggestions, classifyChatProjectPrompt } from '@/lib/prompts';
+import { mentorSystemPrompt, generateSuggestions, classifyChatProjectPrompt, localeDirective } from '@/lib/prompts';
+import { getUserById } from '@/lib/userStorage';
 import {
   getConversationMessages,
   saveMessages,
@@ -131,7 +132,8 @@ export async function POST(request: NextRequest) {
       ? `\n\nCURRENTLY SELECTED PROJECT FROM THE UI:\n- Name: ${selectedProject.name}\n- ID: ${selectedProject.id}\nWhen the user asks an ambiguous project question, answer for this project unless they clearly name another one.\n`
       : '';
 
-    const systemPrompt = mentorSystemPrompt(projects, memoryContext) + selectedProjectBlock + activitiesBlock + toolGuidance;
+    const user = await getUserById(session.user.id);
+    const systemPrompt = mentorSystemPrompt(projects, memoryContext) + selectedProjectBlock + activitiesBlock + toolGuidance + localeDirective(user?.language);
 
     const client = getGeminiClient();
     const functionDeclarations = geminiFunctionDeclarations();

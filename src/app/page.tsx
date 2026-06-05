@@ -4,6 +4,7 @@ import { Suspense, useMemo } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import HomeFocus, { type FocusData } from '@/components/v2/HomeFocus';
 import HomeBoard, {
@@ -59,6 +60,7 @@ function totalDecisions(decisions: BoardDecisions): number {
 // metrics. None of those answer a real PM question. Throughput is not an
 // outcome.
 function V2HomeInner() {
+  const t = useTranslations('home');
   const { currentTeam } = useTeam();
   const teamId = currentTeam?.id ?? null;
   const searchParams = useSearchParams();
@@ -103,13 +105,13 @@ function V2HomeInner() {
           <div className="v2-empty-num" aria-hidden="true">01</div>
           <div className="v2-empty-body">
             <h2 className="v2-empty-title">
-              <span className="v2-pink">Add</span> a product. Recgon takes it from there.
+              <span className="v2-pink">{t('emptyHero.titlePink')}</span>{t('emptyHero.titleRest')}
             </h2>
             <p className="v2-empty-text">
-              Connect a repo or describe an idea. You&apos;ll get a full product brief, a task queue, and a mentor that knows your context — within minutes.
+              {t('emptyHero.text')}
             </p>
             <Link href="/projects" className="v2-empty-cta">
-              <span>Create your first project</span>
+              <span>{t('emptyHero.cta')}</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="5" y1="12" x2="19" y2="12" />
                 <polyline points="12 5 19 12 12 19" />
@@ -526,15 +528,16 @@ function V2HomeInner() {
 }
 
 function ClassicHome({ overview, loading }: { overview: OverviewPayload; loading: boolean }) {
+  const t = useTranslations('home');
   return (
     <>
-      <SectionIndex idx="01" label="focus" sub="what needs your attention" />
+      <SectionIndex idx="01" label={t('sections.focus')} sub={t('sections.focusSub')} />
       <HomeFocus
         focus={overview.todayFocus}
         loading={loading}
       />
 
-      <SectionIndex idx="02" label="board" />
+      <SectionIndex idx="02" label={t('sections.board')} />
       <HomeBoard
         decisions={overview.decisionDeck}
         updates={overview.updates}
@@ -551,19 +554,20 @@ function ClassicHome({ overview, loading }: { overview: OverviewPayload; loading
 }
 
 function RefinedHome({ overview, loading }: { overview: OverviewPayload; loading: boolean }) {
+  const t = useTranslations('home');
   return (
     <>
       <div className="v2-home-mode">
-        <Link href="/?home=classic" className="v2-home-action-classic">classic view</Link>
+        <Link href="/?home=classic" className="v2-home-action-classic">{t('refined.classicView')}</Link>
       </div>
 
-      <SectionIndex idx="01" label="next action" sub="what deserves your attention first" />
+      <SectionIndex idx="01" label={t('sections.nextAction')} sub={t('sections.nextActionSub')} />
       <HomeFocus
         focus={overview.todayFocus}
         loading={loading}
       />
 
-      <SectionIndex idx="02" label="today's board" sub="decisions first, updates second" />
+      <SectionIndex idx="02" label={t('sections.todaysBoard')} sub={t('sections.todaysBoardSub')} />
       <HomeBoard
         decisions={overview.decisionDeck}
         updates={overview.updates}
@@ -578,6 +582,7 @@ function RefinedHome({ overview, loading }: { overview: OverviewPayload; loading
 }
 
 function PortfolioSnapshot({ projects, loading }: { projects: PortfolioRow[]; loading: boolean }) {
+  const t = useTranslations('home');
   const visible = useMemo(() => {
     return [...projects]
       .sort((a, b) => {
@@ -591,12 +596,12 @@ function PortfolioSnapshot({ projects, loading }: { projects: PortfolioRow[]; lo
   return (
     <section className="v2-home-pf">
       <header className="v2-home-pf-head">
-        <div className="v2-sec-idx" aria-label="Section 3, portfolio snapshot">
+        <div className="v2-sec-idx" aria-label={t('portfolioSnapshot.ariaLabel')}>
           <span className="v2-sec-idx-num">03</span>
-          <span className="v2-sec-idx-lab">portfolio snapshot</span>
+          <span className="v2-sec-idx-lab">{t('portfolioSnapshot.label')}</span>
         </div>
         <span className="v2-home-pf-grow" />
-        <Link href="/projects" className="v2-home-pf-all">View all products</Link>
+        <Link href="/projects" className="v2-home-pf-all">{t('portfolioSnapshot.viewAll')}</Link>
       </header>
 
       <div className="glass-card is-static v2-home-pf-card">
@@ -607,11 +612,11 @@ function PortfolioSnapshot({ projects, loading }: { projects: PortfolioRow[]; lo
             <span />
           </div>
         ) : projects.length === 0 ? (
-          <p className="v2-home-pf-empty">No products yet.</p>
+          <p className="v2-home-pf-empty">{t('portfolioSnapshot.empty')}</p>
         ) : (
           <ul className="v2-home-pf-list">
             {visible.map((p) => {
-              const risk = cleanText(p.topRisk) || cleanText(p.topNextStep) || 'No clear risk recorded yet.';
+              const risk = cleanText(p.topRisk) || cleanText(p.topNextStep) || t('portfolioSnapshot.noRisk');
               return (
                 <li key={p.id} className="v2-home-pf-row" data-pulse={p.pulse}>
                   <Link href={`/projects/${p.id}`} className="v2-home-pf-link">

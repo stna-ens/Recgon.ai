@@ -1,9 +1,11 @@
 import type { AnalyticsData, GAProperty, MetricKey, TileMetric, TrendPoint } from './types';
 
+// `labelKey` / `longLabelKey` index into the `analytics.days` namespace so the
+// range buttons localize at render time. `value` stays the numeric day count.
 export const DAYS_OPTIONS = [
-  { label: '7d', longLabel: '7 days', value: 7 },
-  { label: '30d', longLabel: '30 days', value: 30 },
-  { label: '90d', longLabel: '90 days', value: 90 },
+  { labelKey: 'days.label7', longLabelKey: 'days.long7', value: 7 },
+  { labelKey: 'days.label30', longLabelKey: 'days.long30', value: 30 },
+  { labelKey: 'days.label90', longLabelKey: 'days.long90', value: 90 },
 ];
 
 // Pink-led spectrum — anchors the v2 visual identity. Used for channels /
@@ -33,60 +35,61 @@ export const PERF_COLOR: Record<string, string> = {
   insufficient_data: 'var(--txt-faint)',
 };
 
-export const PERF_LABEL: Record<string, string> = {
-  growing: 'growing',
-  stable: 'stable',
-  declining: 'declining',
-  insufficient_data: 'low data',
+// Maps a performance band to its key in the `analytics.perf` namespace.
+// Resolved through useTranslations at render time (header, saved-runs strip).
+export const PERF_LABEL_KEY: Record<string, string> = {
+  growing: 'perf.growing',
+  stable: 'perf.stable',
+  declining: 'perf.declining',
+  insufficient_data: 'perf.insufficientData',
 };
 
-// Parse a raw GA4 error string into a structured title + step list. Used
-// by AnalyticsError so the user gets actionable instructions instead of
-// a stack trace.
-export function parseAnalyticsError(raw: string): { title: string; steps: string[] } {
+// Parse a raw GA4 error string into a structured set of translation keys.
+// Used by AnalyticsError so the user gets actionable, localized instructions
+// instead of a stack trace. The `.includes()` matches run against the raw
+// (English) GA4 API message — do NOT translate those substrings.
+//
+// `titleKey` + `stepKeys` index into the `analytics.error` namespace. The
+// `fallback` branch has no step keys: the component renders the raw message
+// (which is server/API text) verbatim.
+export interface AnalyticsErrorDescriptor {
+  titleKey: string;
+  stepKeys: string[];
+  rawStep?: string;
+}
+
+export function parseAnalyticsError(raw: string): AnalyticsErrorDescriptor {
   if (raw.includes('PERMISSION_DENIED') || raw.includes('does not have permissions')) {
     return {
-      title: 'Service account does not have access to this GA4 property',
-      steps: [
-        'Open Google Analytics → Admin → Property Access Management',
-        'Click + → Add user',
-        'Paste the service account email (the client_email in your JSON)',
-        'Set role: Viewer',
-        'Wait 30 seconds, then click retry',
+      titleKey: 'error.permissionTitle',
+      stepKeys: [
+        'error.permissionStep1',
+        'error.permissionStep2',
+        'error.permissionStep3',
+        'error.permissionStep4',
+        'error.permissionStep5',
       ],
     };
   }
   if (raw.includes('INVALID_ARGUMENT') || raw.includes('Invalid property')) {
     return {
-      title: 'GA4 property ID is invalid',
-      steps: [
-        'Go to GA4 → Admin → Property details',
-        'Copy the numeric Property ID (e.g. 123456789) — not the Measurement ID (G-XXXX)',
-        'Paste it below and reconnect',
-      ],
+      titleKey: 'error.invalidArgTitle',
+      stepKeys: ['error.invalidArgStep1', 'error.invalidArgStep2', 'error.invalidArgStep3'],
     };
   }
   if (raw.includes('UNAUTHENTICATED') || raw.includes('credentials')) {
     return {
-      title: 'Service account credentials are invalid',
-      steps: [
-        'Re-download the JSON key from Google Cloud → IAM → Service Accounts',
-        'Make sure you copied the entire file (it starts with { "type": "service_account" )',
-        'Paste it again below',
-      ],
+      titleKey: 'error.unauthTitle',
+      stepKeys: ['error.unauthStep1', 'error.unauthStep2', 'error.unauthStep3'],
     };
   }
   if (raw.includes('has not been used') || raw.includes('disabled')) {
     return {
-      title: 'Google Analytics Data API is not enabled',
-      steps: [
-        'Go to Google Cloud Console → APIs & Services → Library',
-        'Search for "Google Analytics Data API" and click Enable',
-        'Wait 1–2 minutes, then click retry',
-      ],
+      titleKey: 'error.apiDisabledTitle',
+      stepKeys: ['error.apiDisabledStep1', 'error.apiDisabledStep2', 'error.apiDisabledStep3'],
     };
   }
-  return { title: 'Failed to load analytics data', steps: [raw] };
+  return { titleKey: 'error.fallbackTitle', stepKeys: [], rawStep: raw };
 }
 
 export function fmtNumber(n: number): string {
@@ -181,10 +184,12 @@ export function buildTileMetrics(data: AnalyticsData): TileMetric[] {
   const usersDelta = computeDelta(sumOf(current, 'users'), sumOf(prior, 'users'));
   const pvDelta = computeDelta(sumOf(current, 'pageViews'), sumOf(prior, 'pageViews'));
 
+  // `label` holds the key into the `analytics.tiles` namespace; the rendering
+  // component (AnalyticsTiles) resolves it via useTranslations.
   return [
     {
       key: 'sessions' as MetricKey,
-      label: 'sessions',
+      label: 'tiles.sessions',
       formatted: fmtNumber(o.sessions),
       delta: sessionsDelta,
       series: sessionsSeries,
@@ -192,7 +197,7 @@ export function buildTileMetrics(data: AnalyticsData): TileMetric[] {
     },
     {
       key: 'activeUsers' as MetricKey,
-      label: 'active users',
+      label: 'tiles.activeUsers',
       formatted: fmtNumber(o.activeUsers),
       delta: usersDelta,
       series: usersSeries,
@@ -200,7 +205,7 @@ export function buildTileMetrics(data: AnalyticsData): TileMetric[] {
     },
     {
       key: 'screenPageViews' as MetricKey,
-      label: 'page views',
+      label: 'tiles.pageViews',
       formatted: fmtNumber(o.screenPageViews),
       delta: pvDelta,
       series: pvSeries,
@@ -208,7 +213,7 @@ export function buildTileMetrics(data: AnalyticsData): TileMetric[] {
     },
     {
       key: 'bounceRate' as MetricKey,
-      label: 'bounce rate',
+      label: 'tiles.bounceRate',
       formatted: fmtPct(o.bounceRate),
       delta: null,
       series: [],
@@ -218,7 +223,7 @@ export function buildTileMetrics(data: AnalyticsData): TileMetric[] {
     },
     {
       key: 'averageSessionDuration' as MetricKey,
-      label: 'avg session',
+      label: 'tiles.avgSession',
       formatted: fmtDuration(o.averageSessionDuration),
       delta: null,
       series: [],
@@ -227,19 +232,33 @@ export function buildTileMetrics(data: AnalyticsData): TileMetric[] {
   ];
 }
 
-// Build the hero headline from the current data + tile deltas. Picks the
-// largest absolute movement and frames it. Falls back gracefully when no
-// prior data exists.
+// Localization-friendly hero descriptor. The header resolves `kind` +
+// `metricLabelKey` + numeric `pct` / `arrow` / `compareKey` through
+// useTranslations. `range` is GA4-provided date-range text passed through.
+export interface AnalyticsHeroDescriptor {
+  kind: 'sessions' | 'metricUp' | 'metricDown' | 'metricSteady' | 'flatDown';
+  metricLabelKey?: string;
+  range?: string;
+  sessions?: string;
+  arrow?: string;
+  pct?: string;
+  compareKey?: string;
+  deltaTone?: 'success' | 'danger' | 'faint';
+}
+
+// Build the hero headline descriptor from the current data + tile deltas.
+// Picks the largest absolute movement and frames it. Falls back gracefully
+// when no prior data exists.
 export function buildHeroHeadline(
   data: AnalyticsData,
   tiles: TileMetric[],
   perf?: string,
-): { lead: string; metric?: string; deltaText?: string; deltaTone?: 'success' | 'danger' | 'faint' } {
+): AnalyticsHeroDescriptor {
   const range = data.dateRange.toLowerCase();
   const movable = tiles.filter((t) => t.delta !== null);
 
   if (movable.length === 0) {
-    return { lead: `${fmtNumber(data.overview.sessions)} sessions, ${range}.` };
+    return { kind: 'sessions', sessions: fmtNumber(data.overview.sessions), range };
   }
 
   // Largest absolute delta wins. For "inverse" metrics (bounce rate), invert
@@ -251,20 +270,23 @@ export function buildHeroHeadline(
   const tone: 'success' | 'danger' | 'faint' =
     Math.abs(raw) < 1 ? 'faint' : effective >= 0 ? 'success' : 'danger';
   const arrow = Math.abs(raw) < 1 ? '~' : raw > 0 ? '↑' : '↓';
-  const pct = `${arrow} ${Math.abs(raw).toFixed(0)}%`;
+  const pct = Math.abs(raw).toFixed(0);
 
-  // Choose the comparison phrase based on the window length
-  const compareTo = data.trend.length >= 60 ? 'vs prior month' : data.trend.length >= 14 ? 'vs prior week' : 'vs prior period';
+  // Choose the comparison phrase key based on the window length.
+  const compareKey =
+    data.trend.length >= 60 ? 'hero.compareMonth' : data.trend.length >= 14 ? 'hero.compareWeek' : 'hero.comparePeriod';
 
   if (tone === 'faint') {
-    if (perf === 'declining') return { lead: `traffic flat — leaning down.`, metric: star.label };
-    return { lead: `${star.label} steady, ${range}.`, metric: star.label };
+    if (perf === 'declining') return { kind: 'flatDown', metricLabelKey: star.label };
+    return { kind: 'metricSteady', metricLabelKey: star.label, range };
   }
 
   return {
-    lead: `${star.label} are ${effective >= 0 ? 'up' : 'down'}`,
-    metric: star.label,
-    deltaText: `${pct} ${compareTo}`,
+    kind: effective >= 0 ? 'metricUp' : 'metricDown',
+    metricLabelKey: star.label,
+    arrow,
+    pct,
+    compareKey,
     deltaTone: tone,
   };
 }

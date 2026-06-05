@@ -1,0 +1,191 @@
+{
+  "roles": {
+    "owner": "sahip",
+    "member": "üye",
+    "viewer": "izleyici"
+  },
+  "index": {
+    "eyebrow": "çalışma alanı",
+    "title": "takımlar",
+    "subtitle": "{active} etkin · {owned} sahip olunan — her takım, projeler, üyeler ve ajanlar için kendi alanıdır.",
+    "newTeam": "Yeni takım",
+    "cancel": "İptal",
+    "teamNameLabel": "takım adı",
+    "teamNamePlaceholder": "ör. Aurora Labs, Kurucular, Operasyon…",
+    "creating": "Oluşturuluyor…",
+    "createArrow": "Oluştur →",
+    "allTeams": "tüm takımlar · {count}",
+    "active": "etkin",
+    "emptyTitle": "Henüz takım yok.",
+    "emptyCopy": "İş birliğine başlamak için bir tane oluştur — insanları davet et, analizler çalıştır ve Recgon ajanlarını bağla.",
+    "createFirst": "İlk takımını oluştur",
+    "created": "\"{name}\" takımı oluşturuldu",
+    "createFailed": "Takım oluşturulamadı"
+  },
+  "setup": {
+    "back": "Geri",
+    "createFailed": "Takım oluşturulamadı",
+    "joinFailed": "Takıma katılınamadı",
+    "choose": {
+      "title": "Takımını kur",
+      "subtitle": "Başlamak için yeni bir takım oluştur ya da var olan bir takıma katıl.",
+      "createButton": "Takım Oluştur",
+      "joinButton": "Davet Bağlantısıyla Katıl"
+    },
+    "create": {
+      "title": "Takım oluştur",
+      "subtitle": "Takımına bir ad ver. Üyeleri sonradan davet edebilirsin.",
+      "nameLabel": "Takım Adı",
+      "namePlaceholder": "Harika takımım",
+      "creating": "Oluşturuluyor...",
+      "submit": "Takım Oluştur"
+    },
+    "join": {
+      "title": "Takıma katıl",
+      "subtitle": "Aldığın davet bağlantısını ya da kodunu yapıştır.",
+      "tokenLabel": "Davet Bağlantısı ya da Kodu",
+      "tokenPlaceholder": "Davet bağlantısını ya da kodunu yapıştır",
+      "joining": "Katılınıyor...",
+      "submit": "Takıma Katıl"
+    }
+  },
+  "invite": {
+    "loading": "Davet yükleniyor...",
+    "loadFailed": "Davet yüklenemedi.",
+    "invalidOrExpired": "Bu davet geçersiz ya da süresi dolmuş.",
+    "expired": "Bu davetin süresi dolmuş.",
+    "acceptFailed": "Davet kabul edilemedi",
+    "invitedToJoin": "Katılmaya davet edildin",
+    "asRole": "<strong>{role}</strong> olarak",
+    "joining": "Katılınıyor...",
+    "accept": "Daveti Kabul Et",
+    "signInPrompt": "Katılmak için giriş yap ya da hesap oluştur — hemen buraya geri döneceksin.",
+    "signIn": "Giriş yap",
+    "createAccount": "Hesap oluştur"
+  },
+  "switcher": {
+    "teams": "Takımlar",
+    "manageTeams": "Takımları Yönet"
+  },
+  "profile": {
+    "eyebrow": "PROFİLİN",
+    "title": "Bana ne yaptığını anlat",
+    "lede": "Buraya yazdıkların, hangi görevin masana geleceğini seçerken kullanacağım şeydir. Sağdaki önizleme yazdıkça güncellenir.",
+    "yourTeamFallback": "takımın"
+  },
+  "admin": {
+    "noTeamSelected": "Takım seçilmedi.",
+    "time": {
+      "justNow": "az önce",
+      "minutes": "{count} dk",
+      "hours": "{count} sa",
+      "days": "{count} gün",
+      "expired": "süresi doldu",
+      "hoursLeft": "{count} sa kaldı",
+      "daysLeft": "{count} gün kaldı"
+    },
+    "actions": {
+      "cancel": "iptal",
+      "save": "kaydet",
+      "rename": "yeniden adlandır",
+      "edit": "düzenle",
+      "add": "ekle"
+    },
+    "hero": {
+      "id": "kimlik",
+      "eyebrow": "› çalışma alanı · takım",
+      "teamFallback": "takım",
+      "slug": "kısa ad",
+      "members": "üyeler",
+      "pending": "bekleyen",
+      "yourRole": "rolün",
+      "founded": "kuruluş"
+    },
+    "tabs": {
+      "ariaLabel": "Takım yönetim bölümleri",
+      "profile": "profil",
+      "members": "üyeler",
+      "invites": "davetler",
+      "dispatch": "dağıtım"
+    },
+    "config": {
+      "name": "ad",
+      "nameHint": "Kenar çubuğunda, başlıkta ve üye listelerinde görünür.",
+      "description": "açıklama",
+      "descriptionHint": "Tek satırlık bir özet. En fazla 120 karakter.",
+      "descriptionPlaceholder": "Kısa açıklama… (en fazla 120 karakter)",
+      "noDescription": "Açıklama yok.",
+      "avatar": "avatar",
+      "avatarHint": "Bir görsel yükle ya da bir renk örneği seç.",
+      "changeAvatar": "Takım avatarını değiştir",
+      "uploadImage": "görsel yükle",
+      "color": "renk",
+      "pickColor": "{color} rengini seç",
+      "slug": "kısa ad",
+      "slugHint": "URL'ye uygun tanımlayıcı. Salt okunur."
+    },
+    "danger": {
+      "title": "tehlikeli bölge",
+      "subtitle": "Geri alınamaz işlemler.",
+      "areYouSure": "Emin misin?",
+      "leaveTitle": "Bu takımdan ayrıl",
+      "leaveHint": "Bu takımdaki tüm projelere erişimini kaybedersin — analizler, görevler, pazarlama planları, hepsi.",
+      "leaveButton": "takımdan ayrıl",
+      "confirmLeave": "evet — ayrıl",
+      "deleteTitle": "Bu takımı sil",
+      "deleteHint": "Tüm projeler, üyeler ve veriler kalıcı olarak silinecek. Geri alınamaz.",
+      "deleteButton": "takımı sil",
+      "confirmDelete": "evet — kalıcı olarak sil",
+      "deleting": "siliniyor…"
+    },
+    "members": {
+      "active": "etkin",
+      "owners": "sahipler",
+      "members": "üyeler",
+      "viewers": "izleyiciler",
+      "noneLoaded": "Üye yüklenmedi.",
+      "memberFallback": "Üye",
+      "you": "sen",
+      "youTitle": "{name} (sen)",
+      "joinedAgo": "{time} önce katıldı",
+      "changeRole": "Rolü değiştir (şu an {role})",
+      "removeMember": "Üyeyi çıkar",
+      "remove": "çıkar",
+      "removeConfirm": "<strong>{name}</strong> çıkarılsın mı?"
+    },
+    "invites": {
+      "newLink": "yeni bağlantı",
+      "roleGroup": "Davet rolü",
+      "ownerOnly": "Yalnızca sahip",
+      "generating": "oluşturuluyor",
+      "generateLink": "bağlantı oluştur →",
+      "justGenerated": "yeni oluşturuldu",
+      "copy": "kopyala",
+      "pending": "bekleyen",
+      "noPending": "Bekleyen davet yok.",
+      "linkLabel": "bağlantı · {token}…",
+      "createdAgo": "{time} önce",
+      "revoke": "iptal et",
+      "revokeConfirm": "Bu davet iptal edilsin mi?"
+    },
+    "toasts": {
+      "avatarUpdated": "avatar güncellendi",
+      "avatarFailed": "avatar yüklenemedi",
+      "colorFailed": "renk kaydedilemedi",
+      "renamed": "takım yeniden adlandırıldı",
+      "renameFailed": "yeniden adlandırma başarısız",
+      "descSaved": "açıklama kaydedildi",
+      "saveFailed": "kaydetme başarısız",
+      "inviteCopied": "davet bağlantısı kopyalandı",
+      "inviteGenerated": "davet bağlantısı oluşturuldu — aşağıdan kopyala",
+      "inviteRevoked": "davet iptal edildi",
+      "memberRemoved": "üye çıkarıldı",
+      "roleUpdated": "rol güncellendi",
+      "leftTeam": "takımdan ayrıldın",
+      "teamDeleted": "takım silindi",
+      "copied": "kopyalandı",
+      "copyFailed": "kopyalama başarısız",
+      "failed": "başarısız"
+    }
+  }
+}

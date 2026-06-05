@@ -1,0 +1,284 @@
+{
+  "seo": {
+    "title": "Recgon — The AI Product Manager for small teams",
+    "h1": "Recgon — The AI Product Manager for small teams",
+    "intro": "One brain for the whole team. Recgon reads your codebase, GA4 analytics, and team activity, then decides what to ship next and assigns each task to the best-fit teammate by skill match and calendar availability.",
+    "whatHeading": "What Recgon does",
+    "what": {
+      "item1": "Reads your GitHub codebase and produces stage, SWOT, top risks, growth levers, and a ranked next-step list per project",
+      "item2": "Ingests GA4 analytics and summarizes traffic, channels, and funnel signals",
+      "item3": "Mints tasks from this unified signal (next_step, dev_prompt, marketing, analytics, research)",
+      "item4": "Auto-assigns each task to the best-fit teammate using skill scores and calendar availability",
+      "item5": "Verifies completed work against acceptance criteria",
+      "item6": "Surfaces a daily cockpit: today's focus, decision deck, team pulse, and what shipped"
+    },
+    "howHeading": "How it works",
+    "how": {
+      "step1": "Connect a GitHub repo, a GA4 property, and your teammates",
+      "step2": "Recgon analyzes and produces a running product snapshot",
+      "step3": "Tasks land on the right teammate's calendar; you see what to ship today"
+    },
+    "whoHeading": "Who it's for",
+    "who": "Small teams (2-10) with a founder running product. Indie hackers, early-stage startups, and side-project teams that need a PM's strategic loop and a project manager's assignment discipline — without the headcount."
+  },
+  "nav": {
+    "primaryAria": "Primary",
+    "homeAria": "Recgon home",
+    "how": "How",
+    "what": "What",
+    "terminal": "Terminal",
+    "faq": "FAQ",
+    "toggleTheme": "Toggle color theme",
+    "signIn": "Sign in",
+    "getStarted": "Get started"
+  },
+  "hero": {
+    "audienceAria": "for small teams, early-stage startups, indie hackers, founding teams, side projects, solo founders, and product teams",
+    "forPrefix": "for",
+    "audience": {
+      "smallTeams": "small teams",
+      "earlyStartups": "early-stage startups",
+      "indieHackers": "indie hackers",
+      "foundingTeams": "founding teams",
+      "sideProjects": "side projects",
+      "soloFounders": "solo founders",
+      "productTeams": "product teams"
+    },
+    "titlePrefix": "One brain for",
+    "titleStatic": "One brain for small teams.",
+    "subtitle": "Recgon reads your codebase, analytics, and team — then decides what to ship next and who should ship it.",
+    "getStarted": "Get started",
+    "seeHowAria": "See how Recgon works",
+    "stepsTag": "// 3 steps",
+    "seeHow": "See how it works"
+  },
+  "pipeline": {
+    "label": "the loop",
+    "title": "Read. Decide. Assign. Verify.",
+    "subtitle": "Every product surface in Recgon ties back to this loop — codebase + analytics + team flow in, prioritized tasks flow out, assigned to the right teammate.",
+    "reading": "reading",
+    "sources": "sources",
+    "thinking": "thinking",
+    "recgonBrain": "recgon brain",
+    "shipping": "shipping",
+    "assignedTasks": "assigned tasks",
+    "source": {
+      "githubMeta": "recgon/recgon · synced 2m ago",
+      "ga4Meta": "recgon.app · 1.2k users / 7d",
+      "team": "Team",
+      "teamMeta": "4 teammates · 3 free now"
+    },
+    "analysis": {
+      "swot": "swot analysis",
+      "swotStatus": "ok",
+      "risks": "top risks",
+      "risksStatus": "3 found",
+      "levers": "growth levers",
+      "leversStatus": "5 found",
+      "nextSteps": "prioritized next steps",
+      "nextStepsStatus": "ranked",
+      "dispatch": "dispatch",
+      "dispatchStatus": "ready"
+    },
+    "ranking": "ranking matches by skill + calendar",
+    "tasks": {
+      "task1Title": "Pick a 7-day GTM channel",
+      "task2Title": "Add Stripe webhook retry logic",
+      "task3Title": "Draft launch tweet thread",
+      "task4Title": "Verify GA4 funnel events"
+    }
+  },
+  "capabilities": {
+    "label": "what it actually does",
+    "title": "A PM that never sleeps and never forgets.",
+    "read": {
+      "label": "read",
+      "title": "Reads everything that matters.",
+      "body": "Codebase, GA4 traffic, commit history, team activity — Recgon ingests all of it into one running snapshot."
+    },
+    "decide": {
+      "label": "decide",
+      "title": "Decides what matters today.",
+      "body": "A senior-PM model picks the single project that needs attention, surfaces the top risk, and ranks the next moves — every morning."
+    },
+    "assign": {
+      "label": "assign",
+      "title": "Assigns to the right teammate.",
+      "body": "Each task is scored against every teammate by skill match, current load, and free time on their calendar. The right person gets pinged."
+    },
+    "verify": {
+      "label": "verify",
+      "title": "Verifies the work is done.",
+      "body": "When a teammate marks a task done, Recgon checks the evidence against the original acceptance criteria — no silent slips."
+    }
+  },
+  "how": {
+    "label": "three steps",
+    "title": "From repo to assigned task in minutes.",
+    "step1": {
+      "title": "Connect.",
+      "body": "Link your GitHub repo and GA4 property. Add your teammates with their roles. Takes about a minute."
+    },
+    "step2": {
+      "title": "Analyze.",
+      "body": "Recgon reads the code and the traffic. It surfaces stage, top risks, growth levers, and a ranked next-step list per project."
+    },
+    "step3": {
+      "title": "Act.",
+      "body": "Tasks land on the right teammate's calendar. You see what shipped, what slipped, and what to look at tomorrow. Repeat daily."
+    }
+  },
+  "terminalPreview": {
+    "label": "the terminal, for when you'd rather just type",
+    "title": "Same brain. Command-line interface.",
+    "subPrefix": "Every analysis, every assignment, every report is one slash away. Type",
+    "subOr1": ",",
+    "subOr2": ", or just ask in plain English.",
+    "barTitle": "recgon — terminal",
+    "transcript": {
+      "note1": "# reading codebase · 384 files · 18.2k loc",
+      "out1": "stage: growth · top risk: webhook retries silently drop",
+      "out2": "growth lever: switch checkout to single-page (3 of 4 funnel tests favour it)",
+      "note2": "# matching teammates by skill + calendar",
+      "ok": "→ assigned 4 tasks · 3 owners · 1 unassigned (no fit above 0.6)"
+    }
+  },
+  "faq": {
+    "label": "questions",
+    "title": "Common questions.",
+    "q1": {
+      "q": "What is Recgon?",
+      "a": "Recgon is an AI Product Manager for small teams. It reads your codebase, GA4 analytics, and team activity, then surfaces what to ship next and automatically assigns each task to the best-fit teammate by skill and calendar."
+    },
+    "q2": {
+      "q": "How does the analysis work?",
+      "a": "Connect a GitHub repo and a GA4 property. Recgon ingests the code and the traffic, builds a running snapshot of your product (stage, SWOT, top risks, growth levers, prioritized next steps), and refreshes it whenever new commits land."
+    },
+    "q3": {
+      "q": "How does task assignment work?",
+      "a": "Each task is scored against every active teammate by skill match, current workload, and open time on their calendar. The best fit gets assigned and pinged. If no teammate scores above the minimum fit threshold, the task is left unassigned for you to triage."
+    },
+    "q4": {
+      "q": "Does Recgon do the work itself?",
+      "a": "No. Recgon assigns work to humans. It plans, prioritizes, schedules, and verifies — your team ships."
+    },
+    "q5": {
+      "q": "Is there a Claude Code integration?",
+      "a": "Yes. Recgon ships an MCP server so Claude Code can read your product analysis, pick up an actionable next step, implement it, and mark it complete — all tracked back in Recgon."
+    }
+  },
+  "footerCta": {
+    "title": "Ready to stop guessing?",
+    "subtitle": "Join to the teams who use Recgon to understand their product, focus their work, and ship faster.",
+    "getStarted": "Get started",
+    "signIn": "Sign in",
+    "register": "Register",
+    "tagline": "recgon — built for builders"
+  },
+  "mobile": {
+    "hero": {
+      "audienceAria": "for small teams",
+      "forPrefix": "for",
+      "titleStatic": "One brain for small teams.",
+      "titlePrefix": "One brain for",
+      "subtitle": "Recgon reads your codebase, analytics, and team — then decides what to ship next and who should ship it.",
+      "seeWhat": "See what you'll get"
+    },
+    "features": {
+      "label": "capabilities · 06",
+      "titleLine1": "Everything you need,",
+      "titleLine2": "nothing you don't.",
+      "codebase": {
+        "title": "Codebase analysis",
+        "body": "Paste a GitHub repo. Recgon reads it and ranks the next moves — stage, risks, growth levers."
+      },
+      "analytics": {
+        "title": "Analytics pulse",
+        "body": "Connect GA4. Traffic, channels, and funnel signals get folded into your weekly brief."
+      },
+      "minting": {
+        "title": "Auto task minting",
+        "body": "Strategy, dev, marketing, analytics, research — tasks are written from your unified snapshot."
+      },
+      "assign": {
+        "title": "Skill-aware assign",
+        "body": "Each task gets scored against every teammate by skill, load, and calendar — best fit wins."
+      },
+      "verification": {
+        "title": "Task verification",
+        "body": "When a task is marked done, Recgon checks the evidence against the original acceptance criteria."
+      },
+      "terminal": {
+        "title": "Slash terminal",
+        "body": "/analyze, /analytics, /content — every analysis and assignment is one slash away."
+      }
+    },
+    "workflow": {
+      "label": "workflow",
+      "titleLine1": "Three steps.",
+      "titleLine2": "Zero friction.",
+      "stepLabel": "step {num}",
+      "step1": {
+        "title": "Connect.",
+        "body": "Link your GitHub repo and GA4 property. Add your teammates with their roles."
+      },
+      "step2": {
+        "title": "Analyze.",
+        "body": "Recgon reads the code and the traffic, then ranks the next steps per project."
+      },
+      "step3": {
+        "title": "Act.",
+        "body": "Tasks land on the right teammate's calendar. You see what shipped and what slipped."
+      }
+    },
+    "terminal": {
+      "label": "the terminal",
+      "titleLine1": "Same brain.",
+      "titleLine2": "Command-line interface.",
+      "lede": "Every analysis, every assignment, every report is one slash away.",
+      "barTitle": "recgon — terminal",
+      "mcpNote": "// claude code reads, acts, marks done — tracked here",
+      "script": {
+        "note1": "# reading 384 files · 18.2k loc",
+        "out1": "stage: growth · top risk: webhook retries",
+        "note2": "# matching teammates by skill + calendar",
+        "ok": "→ assigned 4 tasks · 3 owners"
+      }
+    },
+    "faq": {
+      "label": "faq",
+      "title": "Common questions.",
+      "q1": {
+        "q": "What is Recgon?",
+        "a": "An AI Product Manager for small teams. Reads your codebase, GA4 analytics, and team activity, then surfaces what to ship next and auto-assigns each task to the best-fit teammate."
+      },
+      "q2": {
+        "q": "How does task assignment work?",
+        "a": "Each task is scored against every teammate by skill match, current workload, and open time on their calendar. The best fit gets assigned and pinged."
+      },
+      "q3": {
+        "q": "Does Recgon do the work itself?",
+        "a": "No. Recgon plans, prioritizes, schedules, and verifies — your team ships."
+      },
+      "q4": {
+        "q": "Is there a Claude Code integration?",
+        "a": "Yes. Recgon ships an MCP server so Claude Code can read your analysis, pick up a next step, implement it, and mark it complete."
+      }
+    },
+    "final": {
+      "tag": "desktop only",
+      "titlePrefix": "Built for your",
+      "device": {
+        "laptop": "laptop.",
+        "desktop": "desktop.",
+        "mac": "Mac.",
+        "pc": "PC."
+      },
+      "body": "Recgon's a tool you use while you build. Open it on a laptop to sign up — mobile is on the way.",
+      "pillText": "open recgon.app on desktop"
+    },
+    "footer": {
+      "tagline": "recgon — built for builders"
+    }
+  }
+}

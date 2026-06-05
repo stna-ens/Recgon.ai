@@ -4,6 +4,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import RecgonLogo from '@/components/RecgonLogo';
 import BlurText from '../BlurText';
 
@@ -20,6 +21,7 @@ const AURORA_DARK: [string, string, string] = ['#1a0a10', '#f0b8d0', '#1a0a10'];
 const AURORA_LIGHT: [string, string, string] = ['#fde4ee', '#c2357a', '#fde4ee'];
 
 export default function FooterCta() {
+  const t = useTranslations('landing.footerCta');
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -42,7 +44,7 @@ export default function FooterCta() {
         <div className="lnd-cta-v1-inner">
           <h2 className="lnd-cta-v1-title">
             <BlurText
-              text="Ready to stop guessing?"
+              text={t('title')}
               animateBy="words"
               delay={100}
               stepDuration={0.4}
@@ -50,11 +52,11 @@ export default function FooterCta() {
             />
           </h2>
           <p className="lnd-cta-v1-sub">
-            Join to the teams who use Recgon to understand their product, focus their work, and ship faster.
+            {t('subtitle')}
           </p>
           <div className="lnd-cta-v1-row">
-            <Link href="/register" className="lnd-cta-v1-primary">Get started</Link>
-            <Link href="/login" className="lnd-cta-v1-ghost">Sign in</Link>
+            <Link href="/register" className="lnd-cta-v1-primary">{t('getStarted')}</Link>
+            <Link href="/login" className="lnd-cta-v1-ghost">{t('signIn')}</Link>
           </div>
         </div>
       </section>
@@ -66,8 +68,8 @@ export default function FooterCta() {
             <span>recgon</span>
           </Link>
           <nav className="lnd-foot-nav">
-            <Link href="/login" className="lnd-foot-link">Sign in</Link>
-            <Link href="/register" className="lnd-foot-link">Register</Link>
+            <Link href="/login" className="lnd-foot-link">{t('signIn')}</Link>
+            <Link href="/register" className="lnd-foot-link">{t('register')}</Link>
           </nav>
         </div>
       </footer>

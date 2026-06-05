@@ -1,0 +1,96 @@
+{
+  "banner": {
+    "openSessions": "Oturumları aç (⌘P)",
+    "openSessionsAria": "Oturumları aç",
+    "sessions": "oturumlar",
+    "newSession": "Yeni oturum",
+    "newSessionAria": "Yeni oturum"
+  },
+  "loadingConversation": "konuşma yükleniyor…",
+  "empty": {
+    "projects": "proje",
+    "analyzed": "analiz edildi",
+    "campaigns": "kampanya",
+    "greetPrefix": "hoş geldin. komutlar için",
+    "greetSuffix": "yaz ya da aklına geleni sor.",
+    "hintTry": "# deneyin:",
+    "hintTailored": "# projelerinize özel:"
+  },
+  "suggestions": {
+    "focusWeek": "bu hafta neye odaklanmalıyım?",
+    "first100": "ilk 100 kullanıcımı nasıl bulurum?",
+    "risks": "hangi riskleri olduğundan az gösteriyorum?",
+    "launch": "en iyi projem için bir lansman planla"
+  },
+  "stream": {
+    "connectionFailed": "bağlantı başarısız. tekrar dener misin?",
+    "connectionLost": "yanıt sırasında bağlantı koptu. tekrar dener misin?"
+  },
+  "help": {
+    "title": "Terminal komutları",
+    "freeText": "Serbest metin girişi, doğal dildeki bir soru olarak Recgon'a iletilir."
+  },
+  "input": {
+    "placeholder": "bir komut ya da soru yaz  ·  komutlar için '/'",
+    "placeholderLoading": "ekip yükleniyor…",
+    "aria": "Terminal girişi"
+  },
+  "running": {
+    "prefix": "çalışıyor… durdurmak için",
+    "esc": "esc",
+    "suffix": "tuşuna bas"
+  },
+  "status": {
+    "escToStop": "durdurmak için esc",
+    "run": "çalıştır",
+    "commands": "komutlar",
+    "history": "geçmiş",
+    "showCommands": "Eğik çizgi komutlarını göster"
+  },
+  "slash": {
+    "commands": "komutlar",
+    "hint": "↑↓ gezin · ⇥ tamamla · ↵ çalıştır · esc kapat",
+    "pickProject": "{command} için bir proje seç",
+    "noProjects": "eşleşen proje yok.",
+    "createOne": "/projects ile bir tane oluştur.",
+    "analyzed": "analiz edildi",
+    "unanalyzed": "analiz edilmedi"
+  },
+  "scrollPill": "↓ en son",
+  "toast": {
+    "conversationCleared": "konuşma temizlendi",
+    "clearFailed": "temizleme başarısız",
+    "renameFailed": "yeniden adlandırma başarısız",
+    "sessionDeleted": "oturum silindi",
+    "deleteFailed": "silme başarısız",
+    "assignedToProject": "projeye atandı",
+    "movedToGeneral": "genele taşındı",
+    "assignFailed": "atama başarısız"
+  },
+  "drawer": {
+    "dialogAria": "Konuşmalar",
+    "searchPlaceholder": "oturumlarda ara…",
+    "searchAria": "Oturumlarda ara",
+    "esc": "esc",
+    "justNow": "az önce",
+    "emptyNoSessions": "henüz oturum yok. başlamak için aşağıya yaz.",
+    "emptyNoMatches": "eşleşme yok.",
+    "untitled": "Başlıksız",
+    "renameAria": "Oturumu yeniden adlandır",
+    "renameHint": "↵ kaydet · esc iptal",
+    "current": "geçerli",
+    "openDoubleClick": "aç · yeniden adlandırmak için çift tıkla",
+    "assignToProject": "Projeye ata (a)",
+    "assignToProjectAria": "Projeye ata",
+    "rename": "Yeniden adlandır (e)",
+    "renameAriaShort": "Yeniden adlandır",
+    "delete": "Sil (d)",
+    "deleteAriaShort": "Sil",
+    "assignTo": "şuna ata",
+    "general": "genel",
+    "noProjectsYet": "henüz proje yok",
+    "footHint": "↑↓ gezin · ↵ aç · e yeniden adlandır · d sil · a ata · esc kapat",
+    "new": "+ yeni",
+    "confirmDelete": "\"{title}\" silinsin mi?"
+  }
+}

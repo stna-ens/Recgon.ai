@@ -22,6 +22,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
+import { useTranslations } from 'next-intl';
 
 export type OverdueChipVariant = {
   color: string;
@@ -58,7 +59,9 @@ type Props = {
 };
 
 export function OverdueChip({ tier, days, ownerView = false, className }: Props) {
+  const t = useTranslations('calendar');
   const v = variantForTier(tier, ownerView);
+  const label = days <= 1 ? t('overdue.oneDayLate') : t('overdue.daysLate', { days });
   const style: CSSProperties = {
     borderColor: v.color,
     background: v.filled ? v.color : 'transparent',
@@ -70,9 +73,9 @@ export function OverdueChip({ tier, days, ownerView = false, className }: Props)
       data-tier={tier}
       data-owner-view={ownerView ? 'true' : 'false'}
       style={style}
-      aria-label={formatOverdueLabel(days)}
+      aria-label={label}
     >
-      {formatOverdueLabel(days)}
+      {label}
       <style>{css}</style>
     </span>
   );

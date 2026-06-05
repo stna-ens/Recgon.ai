@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useTeam } from './TeamProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function TeamSwitcher() {
+  const t = useTranslations('teams');
   const { teams, currentTeam, setCurrentTeam } = useTeam();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -97,7 +99,7 @@ export default function TeamSwitcher() {
             textTransform: 'uppercase',
             letterSpacing: '0.06em',
           }}>
-            Teams
+            {t('switcher.teams')}
           </div>
           {teams.map((team) => (
             <button
@@ -150,7 +152,7 @@ export default function TeamSwitcher() {
                 background: 'var(--glass-substrate)',
                 borderRadius: '4px',
               }}>
-                {team.role}
+                {t(`roles.${team.role}`)}
               </span>
             </button>
           ))}
@@ -175,7 +177,7 @@ export default function TeamSwitcher() {
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
-            Manage Teams
+            {t('switcher.manageTeams')}
           </Link>
         </div>
       )}

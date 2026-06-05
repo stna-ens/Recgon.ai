@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { TileMetric } from './types';
 import DeltaChip from './DeltaChip';
 import Sparkline from './Sparkline';
@@ -11,16 +12,17 @@ interface Props {
 // Each tile: label / value+delta row / interactive sparkline. Hover the
 // sparkline to scrub the daily values; releases back to the period total.
 export default function AnalyticsTiles({ tiles }: Props) {
+  const t = useTranslations('analytics');
   return (
     <div className="v2-an-grid">
-      {tiles.map((t) => (
-        <div key={t.key} className="glass-card is-static is-tight v2-an-tile">
-          <span className="recgon-label v2-an-tile-label">{t.label}</span>
+      {tiles.map((tile) => (
+        <div key={tile.key} className="glass-card is-static is-tight v2-an-tile">
+          <span className="recgon-label v2-an-tile-label">{t(tile.label)}</span>
           <div className="v2-an-tile-row">
-            <span className="v2-an-tile-value">{t.formatted}</span>
-            <DeltaChip delta={t.delta} inverse={t.inverse} />
+            <span className="v2-an-tile-value">{tile.formatted}</span>
+            <DeltaChip delta={tile.delta} inverse={tile.inverse} />
           </div>
-          <Sparkline series={t.series} labels={t.seriesLabels} negative={t.warn} />
+          <Sparkline series={tile.series} labels={tile.seriesLabels} negative={tile.warn} />
         </div>
       ))}
     </div>

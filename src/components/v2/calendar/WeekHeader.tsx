@@ -1,19 +1,21 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { formatDayHeader, isToday } from './calendarUtils';
 
 type Props = {
   dayDates: Date[];
   activeDayIndex: number | null;
-  rowLabel?: string;
+  rowLabel?: 'member' | 'project';
 };
 
-export function WeekHeader({ dayDates, activeDayIndex, rowLabel = 'MEMBER' }: Props) {
+export function WeekHeader({ dayDates, activeDayIndex, rowLabel = 'member' }: Props) {
+  const t = useTranslations('calendar');
   return (
     <>
       <div className="cal-corner">
-        <span className="cal-corner-date">DATE</span>
-        <span className="cal-corner-member">{rowLabel}</span>
+        <span className="cal-corner-date">{t('header.date')}</span>
+        <span className="cal-corner-member">{t(`header.${rowLabel}`)}</span>
         <svg className="cal-corner-line" aria-hidden="true">
           <line x1="0" y1="0" x2="100%" y2="100%" />
         </svg>

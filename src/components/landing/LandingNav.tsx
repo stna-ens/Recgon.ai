@@ -3,16 +3,18 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import RecgonLogo from '@/components/RecgonLogo';
 
 const SECTIONS = [
-  { href: '#how-it-works', label: 'How' },
-  { href: '#capabilities', label: 'What' },
-  { href: '#terminal', label: 'Terminal' },
-  { href: '#faq', label: 'FAQ' },
-];
+  { href: '#how-it-works', key: 'how' },
+  { href: '#capabilities', key: 'what' },
+  { href: '#terminal', key: 'terminal' },
+  { href: '#faq', key: 'faq' },
+] as const;
 
 export default function LandingNav() {
+  const t = useTranslations('landing.nav');
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -20,17 +22,17 @@ export default function LandingNav() {
 
   return (
     <>
-      <header className="lnd-nav" aria-label="Primary">
+      <header className="lnd-nav" aria-label={t('primaryAria')}>
         <div className="lnd-nav-inner">
           <div className="lnd-nav-left">
-            <Link href="/landing" className="lnd-brand" aria-label="Recgon home">
+            <Link href="/landing" className="lnd-brand" aria-label={t('homeAria')}>
               <RecgonLogo size={26} uid="lnd-logo" />
             </Link>
             <span className="lnd-rule" aria-hidden="true" />
             <nav className="lnd-links">
               {SECTIONS.map((s) => (
                 <a key={s.href} href={s.href} className="lnd-link">
-                  {s.label}
+                  {t(s.key)}
                 </a>
               ))}
             </nav>
@@ -41,7 +43,7 @@ export default function LandingNav() {
               type="button"
               className="lnd-theme"
               onClick={() => setTheme(current === 'dark' ? 'light' : 'dark')}
-              aria-label="Toggle color theme"
+              aria-label={t('toggleTheme')}
             >
               {mounted && current === 'dark' ? (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -54,8 +56,8 @@ export default function LandingNav() {
                 </svg>
               )}
             </button>
-            <Link href="/login" className="lnd-login">Sign in</Link>
-            <Link href="/register" className="lnd-cta">Get started</Link>
+            <Link href="/login" className="lnd-login">{t('signIn')}</Link>
+            <Link href="/register" className="lnd-cta">{t('getStarted')}</Link>
           </div>
         </div>
       </header>

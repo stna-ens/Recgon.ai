@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { Campaign, ContentCalendarItem, GeneratedContentEntry } from './types';
 import { getPlatformKey, platformBadgeColor } from './utils';
 
@@ -20,6 +21,7 @@ export default function CampaignCalendar({
   onGenerate,
   onPreview,
 }: Props) {
+  const t = useTranslations('marketing');
   const plan = campaign.plan;
   const weeks = Array.from(new Set(plan.contentCalendar.map((item) => item.week))).sort(
     (a, b) => a - b,
@@ -32,7 +34,7 @@ export default function CampaignCalendar({
         return (
           <div key={week} className="v2-m-week">
             <div className="v2-m-week-label">
-              <span className="v2-m-week-label-text">week_{week}</span>
+              <span className="v2-m-week-label-text">{t('calendar.week', { week })}</span>
               <span className="v2-m-week-rule" />
             </div>
             <div className="v2-m-cal-items">
@@ -60,7 +62,7 @@ export default function CampaignCalendar({
                         <p className="v2-m-cal-topic">{item.topic}</p>
                         <p className="v2-m-cal-angle">{item.angle}</p>
                         <p className="v2-m-cal-cta">
-                          <span className="v2-m-cal-cta-label">cta:</span> {item.cta}
+                          <span className="v2-m-cal-cta-label">{t('calendar.ctaLabel')}</span> {item.cta}
                         </p>
                       </div>
                       <div className="v2-m-cal-actions">
@@ -74,7 +76,7 @@ export default function CampaignCalendar({
                               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                               <circle cx="12" cy="12" r="3" />
                             </svg>
-                            preview
+                            {t('calendar.preview')}
                           </button>
                         )}
                         {supported ? (
@@ -87,21 +89,21 @@ export default function CampaignCalendar({
                             {isGenerating ? (
                               <>
                                 <span className="v2-m-spinner" aria-hidden="true" />
-                                generating…
+                                {t('calendar.generating')}
                               </>
                             ) : generated ? (
                               <>
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
                                   <polyline points="20 6 9 17 4 12" />
                                 </svg>
-                                regenerate
+                                {t('calendar.regenerate')}
                               </>
                             ) : (
-                              'generate'
+                              t('calendar.generate')
                             )}
                           </button>
                         ) : (
-                          <span className="v2-m-cal-manual">manual</span>
+                          <span className="v2-m-cal-manual">{t('calendar.manual')}</span>
                         )}
                       </div>
                     </div>

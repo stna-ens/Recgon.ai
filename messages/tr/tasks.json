@@ -1,0 +1,106 @@
+{
+  "eyebrow": "› görevler",
+  "ownerLock": {
+    "eyebrow": "› yalnızca sahip",
+    "title": "Bu görünüm takım sahibine özeldir.",
+    "body": "Projenin tam görev panosu yalnızca takım sahibine açıktır. Sana atanan görevler gelen kutunda."
+  },
+  "viewToggle": {
+    "calendar": "‹ takvim"
+  },
+  "search": {
+    "placeholder": "görevleri filtrele…",
+    "aria": "Görevleri filtrele",
+    "clear": "Aramayı temizle"
+  },
+  "filters": {
+    "overdue": "gecikmiş"
+  },
+  "columns": {
+    "assigned": "atanan",
+    "wip": "devam eden",
+    "review": "incelemede"
+  },
+  "kind": {
+    "next_step": "sonraki adım",
+    "dev_prompt": "geliştirme",
+    "marketing": "pazarlama",
+    "analytics": "analiz",
+    "research": "araştırma",
+    "custom": "görev"
+  },
+  "priority": {
+    "urgent": "acil",
+    "high": "yüksek"
+  },
+  "relTime": {
+    "justNow": "az önce",
+    "minutes": "{count} dk önce",
+    "hours": "{count} sa önce",
+    "days": "{count} gün önce"
+  },
+  "schedule": {
+    "due": "son tarih {date}"
+  },
+  "empty": {
+    "overdueClear": "geciken bir şey yok — her şey kontrol altında",
+    "assigned": "seni bekleyen bir şey yok.",
+    "wip": "devam eden bir şey yok.",
+    "review": "incelemede bir şey yok."
+  },
+  "flags": {
+    "proof": "kanıt",
+    "move": "taşı",
+    "moveRequested": "taşıma istendi"
+  },
+  "teamTitle": "Takım: {name}",
+  "detail": {
+    "aria": "Görev ayrıntısı",
+    "close": "Kapat",
+    "whyYou": "neden sen",
+    "rescheduleRequested": "yeniden planlama istendi"
+  },
+  "actions": {
+    "working": "işleniyor…",
+    "accept": "kabul et",
+    "decline": "reddet",
+    "markDone": "tamamlandı işaretle",
+    "handBack": "geri ver",
+    "openProject": "projeyi aç →",
+    "requestReschedule": "yeniden planlama iste",
+    "updateReschedule": "planlamayı güncelle"
+  },
+  "reschedule": {
+    "preferredDay": "tercih edilen gün",
+    "notePlaceholder": "neden taşınması gerekiyor",
+    "sending": "gönderiliyor…",
+    "sendRequest": "istek gönder"
+  },
+  "proof": {
+    "needed": "kanıt gerekli",
+    "hint": "Recgon bunu otomatik doğrulayamadı. Kanıt olarak bir not bırak, bir bağlantı yapıştır veya bir dosya ekle.",
+    "describePlaceholder": "ne yaptığını açıkla",
+    "linksPlaceholder": "kanıt bağlantıları (boşlukla ayır)",
+    "foot": "Recgon yapıştırdığın her bağlantıyı getirip sayfanın kendisini değerlendirir — yalnızca açıklamanı değil.",
+    "sending": "gönderiliyor…",
+    "submit": "kanıt gönder"
+  },
+  "toast": {
+    "declinedOwner": "reddedildi — karar için takım sahibine gönderildi",
+    "declinedReassigned": "reddedildi — recgon yeniden atadı",
+    "declinedWillReassign": "reddedildi — recgon yeniden atayacak",
+    "accepted": "kabul edildi",
+    "markedComplete": "tamamlandı olarak işaretlendi",
+    "actionFailed": "{action} başarısız oldu",
+    "cantMove": "{from} → {to} taşınamaz",
+    "filesAttached": "{count, plural, one {# dosya eklendi} other {# dosya eklendi}}",
+    "uploadFailed": "yükleme başarısız oldu",
+    "proofMissing": "göndermeden önce bir not, bağlantı veya dosya ekle",
+    "proofSent": "kanıt gönderildi — recgon yeniden denetliyor",
+    "proofSubmitFailed": "kanıt gönderimi başarısız oldu",
+    "failed": "başarısız oldu",
+    "rescheduleSent": "yeniden planlama isteği gönderildi",
+    "rescheduleFailed": "yeniden planlama isteği başarısız oldu",
+    "requestFailed": "istek başarısız oldu"
+  }
+}

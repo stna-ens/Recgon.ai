@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import useSWR from 'swr';
 import type { AgentTask } from '@/lib/recgon/types';
 import { WeekHeader } from './WeekHeader';
@@ -16,11 +17,11 @@ const FILTER_STORAGE_KEY = 'v2:calendar:teamFilter';
 const SYNTHETIC_TEAMMATE_ID = '__me__';
 const NO_PROJECT_KEY = '__no_project__';
 
-const MONTH_ABBR = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 
-function fmtEditorial(start: Date, end: Date): { primary: string; year: string } {
-  const sm = MONTH_ABBR[start.getMonth()];
-  const em = MONTH_ABBR[end.getMonth()];
+function fmtEditorial(start: Date, end: Date, month: (i: number) => string): { primary: string; year: string } {
+  const sm = month(start.getMonth());
+  const em = month(end.getMonth());
   const primary = sm === em
     ? `${sm} ${start.getDate()} — ${end.getDate()}`
     : `${sm} ${start.getDate()} — ${em} ${end.getDate()}`;
@@ -29,6 +30,7 @@ function fmtEditorial(start: Date, end: Date): { primary: string; year: string }
 }
 
 export function PersonalCalendar() {
+  const t = useTranslations('calendar');
   const [weekRange, setWeekRange] = useState<WeekRange>(() => getWeekRange(new Date()));
   const fromKey = localDateKey(weekRange.start);
   const toKey = localDateKey(weekRange.end);
@@ -182,16 +184,16 @@ export function PersonalCalendar() {
   };
 
   const teams = data?.teams ?? [];
-  const { primary, year } = fmtEditorial(weekRange.start, weekRange.end);
+  const { primary, year } = fmtEditorial(weekRange.start, weekRange.end, (i) => t(`months.${MONTH_KEYS[i]}`));
   const filterLabel = selectedTeamId
-    ? (teams.find((t) => t.id === selectedTeamId)?.name ?? 'team')
-    : 'all teams';
+    ? (teams.find((team) => team.id === selectedTeamId)?.name ?? t('filter.team'))
+    : t('filter.allTeams');
 
   return (
     <div className="personal-cal-root">
       <div className="cal-nav">
         <div className="cal-nav-left">
-          <span className="cal-nav-eyebrow">YOUR WEEK</span>
+          <span className="cal-nav-eyebrow">{t('nav.yourWeek')}</span>
           <h1 className="cal-nav-headline">
             <span className="cal-nav-headline-primary">{primary}</span>
             <span className="cal-nav-headline-year">{year}</span>
@@ -205,16 +207,16 @@ export function PersonalCalendar() {
               type="button"
               className="cal-nav-arrow"
               onClick={activeDayIndex !== null ? () => handleDayNav(-1) : handlePrev}
-              aria-label="Previous"
+              aria-label={t('nav.prev')}
             >
               ‹
             </button>
-            <button type="button" className="cal-nav-today-link" onClick={handleToday}>today</button>
+            <button type="button" className="cal-nav-today-link" onClick={handleToday}>{t('nav.today')}</button>
             <button
               type="button"
               className="cal-nav-arrow"
               onClick={activeDayIndex !== null ? () => handleDayNav(1) : handleNext}
-              aria-label="Next"
+              aria-label={t('nav.next')}
             >
               ›
             </button>
@@ -233,7 +235,7 @@ export function PersonalCalendar() {
                   className="cal-view-trigger-dot"
                   style={{
                     background: selectedTeamId
-                      ? teams.find((t) => t.id === selectedTeamId)?.avatarColor ?? 'var(--signature)'
+                      ? teams.find((team) => team.id === selectedTeamId)?.avatarColor ?? 'var(--signature)'
                       : 'var(--signature)',
                   }}
                   aria-hidden="true"
@@ -242,7 +244,7 @@ export function PersonalCalendar() {
                 <span className="cal-view-trigger-chev" aria-hidden="true">⌄</span>
               </button>
               {filterMenuOpen && (
-                <div className="cal-view-menu-panel" role="menu" aria-label="Team filter">
+                <div className="cal-view-menu-panel" role="menu" aria-label={t('filter.menuAria')}>
                   <button
                     type="button"
                     role="menuitemradio"
@@ -250,7 +252,7 @@ export function PersonalCalendar() {
                     className={`cal-view-option${selectedTeamId === null ? ' is-active' : ''}`}
                     onClick={() => { setSelectedTeamId(null); setFilterMenuOpen(false); }}
                   >
-                    <span className="cal-view-option-label">all teams</span>
+                    <span className="cal-view-option-label">{t('filter.allTeams')}</span>
                     {selectedTeamId === null && <span className="cal-view-option-mark" aria-hidden="true">•</span>}
                   </button>
                   {teams.map((team) => (
@@ -295,7 +297,7 @@ export function PersonalCalendar() {
             ))}
           </div>
           <span className="personal-cal-skel-shimmer" aria-hidden="true" />
-          <span className="personal-cal-skel-loading-label">loading week</span>
+          <span className="personal-cal-skel-loading-label">{t('loading')}</span>
         </div>
       ) : (
         <div className="personal-cal-outer">
@@ -304,10 +306,10 @@ export function PersonalCalendar() {
               className="personal-cal-grid"
               style={{ gridTemplateColumns: `var(--cal-label-width, 180px) repeat(${activeDayIndex !== null ? 1 : 7}, minmax(0, 1fr))` }}
             >
-              <WeekHeader dayDates={days} activeDayIndex={activeDayIndex} rowLabel="PROJECT" />
+              <WeekHeader dayDates={days} activeDayIndex={activeDayIndex} rowLabel="project" />
               {projectLanes.length === 0 ? (
                 <div className="personal-cal-empty" style={{ gridColumn: `1 / ${(activeDayIndex !== null ? 1 : 7) + 2}` }}>
-                  No scheduled tasks this week.
+                  {t('empty.noScheduled')}
                 </div>
               ) : (
                 projectLanes.map((lane) => (
@@ -318,8 +320,8 @@ export function PersonalCalendar() {
                     activeDayIndex={activeDayIndex}
                     onCardClick={() => {}}
                     teamBadgeByTeamId={teamBadgeByTeamId}
-                    label={lane.project?.name ?? 'no project'}
-                    eyebrow={lane.project ? 'PROJECT' : '—'}
+                    label={lane.project?.name ?? t('lane.noProject')}
+                    eyebrow={lane.project ? t('lane.project') : t('lane.noProjectEyebrow')}
                     logoUrl={lane.project?.logoUrl ?? null}
                   />
                 ))

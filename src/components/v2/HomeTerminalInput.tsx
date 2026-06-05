@@ -2,12 +2,14 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   visible: boolean;
 }
 
 export default function HomeTerminalInput({ visible }: Props) {
+  const t = useTranslations('home');
   const router = useRouter();
   const [value, setValue] = useState('');
 
@@ -26,19 +28,19 @@ export default function HomeTerminalInput({ visible }: Props) {
 
   return (
     <section className="v2-ask">
-      <span className="recgon-label v2-section-eyebrow">› open terminal</span>
+      <span className="recgon-label v2-section-eyebrow">{t('terminal.eyebrow')}</span>
 
       <form onSubmit={submit} className="glass-card is-static v2-ask-form">
         <span className="v2-ask-prefix" aria-hidden="true">{'>'}</span>
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="what should I ship next? plan a launch…"
+          placeholder={t('terminal.placeholder')}
           className="v2-ask-input"
-          aria-label="Open terminal"
+          aria-label={t('terminal.ariaLabel')}
         />
-        <button type="submit" className="v2-ask-submit" aria-label="Open terminal">
-          <span className="v2-ask-submit-text">{value.trim() ? 'Run' : 'Open terminal'}</span>
+        <button type="submit" className="v2-ask-submit" aria-label={t('terminal.ariaLabel')}>
+          <span className="v2-ask-submit-text">{value.trim() ? t('terminal.run') : t('terminal.openTerminal')}</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="5" y1="12" x2="19" y2="12" />
             <polyline points="12 5 19 12 12 19" />

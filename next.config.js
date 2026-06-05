@@ -1,3 +1,7 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+// Resolves the per-user UI locale (no URL routing — see src/i18n/request.ts).
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -104,4 +108,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

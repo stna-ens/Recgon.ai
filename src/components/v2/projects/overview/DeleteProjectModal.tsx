@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface DeleteProjectModalProps {
   open: boolean;
   projectName: string;
@@ -15,6 +17,8 @@ export default function DeleteProjectModal({
   onDelete,
   deleting,
 }: DeleteProjectModalProps) {
+  const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
   if (!open) return null;
   return (
     <div
@@ -25,20 +29,19 @@ export default function DeleteProjectModal({
     >
       <div className="glass-card is-static v2-modal" onClick={(e) => e.stopPropagation()}>
         <div className="v2-modal-head">
-          <span className="recgon-label v2-block-eye" style={{ color: 'var(--danger)' }}>delete project</span>
+          <span className="recgon-label v2-block-eye" style={{ color: 'var(--danger)' }}>{t('deleteModal.eyebrow')}</span>
           <button
             type="button"
             className="v2-modal-x"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={tCommon('close')}
             disabled={deleting}
           >
             ×
           </button>
         </div>
         <p className="v2-modal-hint">
-          Delete <strong>{projectName}</strong>? This removes the project, its analysis history, and generated
-          marketing. This cannot be undone.
+          {t('deleteModal.confirmBefore')}<strong>{projectName}</strong>{t('deleteModal.confirmAfter')}
         </p>
         <div className="v2-modal-actions">
           <div className="v2-modal-spacer" />
@@ -48,7 +51,7 @@ export default function DeleteProjectModal({
             onClick={onClose}
             disabled={deleting}
           >
-            cancel
+            {tCommon('cancel')}
           </button>
           <button
             type="button"
@@ -61,7 +64,7 @@ export default function DeleteProjectModal({
               background: 'rgba(255,69,58,0.06)',
             }}
           >
-            {deleting ? <><span className="v2-mod-spinner" /> deleting…</> : 'delete project'}
+            {deleting ? <><span className="v2-mod-spinner" /> {t('deleteModal.deleting')}</> : t('deleteModal.deleteProject')}
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import type { GAProperty, PropertyConfig } from './types';
 import { propIdOf } from './utils';
 
@@ -44,6 +45,14 @@ export default function AnalyticsConnect({
   onSubmitServiceAccount,
   onReload,
 }: Props) {
+  const t = useTranslations('analytics');
+  const tc = useTranslations('common');
+  // Rich-text tag map for the service-account guide steps (b/i/code markup).
+  const guideTags = {
+    b: (chunks: ReactNode) => <strong>{chunks}</strong>,
+    i: (chunks: ReactNode) => <em>{chunks}</em>,
+    c: (chunks: ReactNode) => <code>{chunks}</code>,
+  };
   const [propertyIdInput, setPropertyIdInput] = useState('');
   const [serviceAccountJson, setServiceAccountJson] = useState('');
   const [serviceAccountFileName, setServiceAccountFileName] = useState('');
@@ -54,11 +63,11 @@ export default function AnalyticsConnect({
   const handleServiceAccountFile = useCallback((file: File) => {
     setLocalError(null);
     if (!file.name.endsWith('.json')) {
-      setLocalError('Please upload a .json file');
+      setLocalError(t('connect.errFileType'));
       return;
     }
     if (file.size > 50_000) {
-      setLocalError('File too large — service account keys are typically under 5 KB');
+      setLocalError(t('connect.errFileSize'));
       return;
     }
     const reader = new FileReader();
@@ -67,31 +76,31 @@ export default function AnalyticsConnect({
         const text = String(ev.target?.result ?? '');
         const parsed = JSON.parse(text);
         if (!parsed.client_email || !parsed.private_key) {
-          setLocalError('Invalid service account key — missing client_email or private_key');
+          setLocalError(t('connect.errMissingFields'));
           return;
         }
         setServiceAccountJson(text);
         setServiceAccountFileName(file.name);
       } catch {
-        setLocalError('Invalid JSON file');
+        setLocalError(t('connect.errInvalidJson'));
       }
     };
-    reader.onerror = () => setLocalError('Could not read file');
+    reader.onerror = () => setLocalError(t('connect.errReadFile'));
     reader.readAsText(file);
-  }, []);
+  }, [t]);
 
   const handleSubmit = useCallback(async () => {
     if (!/^\d+$/.test(propertyIdInput.trim())) {
-      setLocalError('Property ID must be numeric (e.g. 123456789)');
+      setLocalError(t('connect.errPropIdNumeric'));
       return;
     }
     if (!serviceAccountJson.trim()) {
-      setLocalError('Paste or drop a service account JSON key');
+      setLocalError(t('connect.errPasteKey'));
       return;
     }
     setLocalError(null);
     await onSubmitServiceAccount(propertyIdInput.trim(), serviceAccountJson);
-  }, [propertyIdInput, serviceAccountJson, onSubmitServiceAccount]);
+  }, [propertyIdInput, serviceAccountJson, onSubmitServiceAccount, t]);
 
   const apiNotEnabled = propertiesError.includes('has not been used') || propertiesError.includes('disabled');
 
@@ -99,9 +108,9 @@ export default function AnalyticsConnect({
     <div className="v2-an">
       <header className="v2-an-head">
         <div>
-          <span className="recgon-label v2-eyebrow">› analytics</span>
+          <span className="recgon-label v2-eyebrow">{t('eyebrow')}</span>
           <h2 className="v2-an-title">
-            <span className="v2-pink">connect</span> GA4 first.
+            <span className="v2-pink">{t('connect.titlePrefix')}</span> {t('connect.titleSuffix')}
           </h2>
         </div>
         <a
@@ -110,22 +119,22 @@ export default function AnalyticsConnect({
           rel="noopener noreferrer"
           className="v2-an-link"
         >
-          new to GA4? help →
+          {t('helpLink')}
         </a>
       </header>
 
       {availableProperties.length > 0 && (
         <section className="glass-card is-static v2-an-setup-card">
-          <span className="recgon-label v2-block-eye">pick a property</span>
-          <p className="v2-an-prose">Recgon already has access to your account. Pick the GA4 property you want to track for this project.</p>
+          <span className="recgon-label v2-block-eye">{t('connect.pickProperty')}</span>
+          <p className="v2-an-prose">{t('connect.pickPropertyProse')}</p>
           <div className="v2-an-setup-row">
             <select
               onChange={(e) => onPickProperty(e.target.value)}
               className="v2-input v2-select"
               defaultValue=""
-              aria-label="GA4 property"
+              aria-label={t('connect.propertyAria')}
             >
-              <option value="" disabled>select a property…</option>
+              <option value="" disabled>{t('connect.selectPropertyOption')}</option>
               {availableProperties.map((p) => {
                 const id = propIdOf(p);
                 return (
@@ -143,7 +152,7 @@ export default function AnalyticsConnect({
 
       {propertiesLoading && availableProperties.length === 0 && (
         <div className="v2-an-stage">
-          <span className="recgon-label">› loading your properties</span>
+          <span className="recgon-label">{t('connect.loadingProperties')}</span>
           <div className="v2-an-stage-bar" />
         </div>
       )}
@@ -152,11 +161,11 @@ export default function AnalyticsConnect({
         <div className="v2-an-err-card">
           {apiNotEnabled ? (
             <>
-              <p className="v2-an-err-title">! Google Analytics Admin API is not enabled</p>
+              <p className="v2-an-err-title">{t('connect.apiNotEnabledTitle')}</p>
               <ol className="v2-an-err-steps">
-                <li>Go to <strong>Google Cloud Console → APIs &amp; Services → Library</strong></li>
-                <li>Search for <strong>&quot;Google Analytics Admin API&quot;</strong> and click Enable</li>
-                <li>Wait 1–2 minutes, then click <strong>retry</strong> below</li>
+                <li>{t('connect.apiNotEnabledStep1Pre')}<strong>{t('connect.apiNotEnabledStep1Strong')}</strong></li>
+                <li>{t('connect.apiNotEnabledStep2Pre')}<strong>{t('connect.apiNotEnabledStep2Strong')}</strong>{t('connect.apiNotEnabledStep2Post')}</li>
+                <li>{t('connect.apiNotEnabledStep3Pre')}<strong>{t('connect.apiNotEnabledStep3Strong')}</strong>{t('connect.apiNotEnabledStep3Post')}</li>
               </ol>
             </>
           ) : (
@@ -164,28 +173,28 @@ export default function AnalyticsConnect({
           )}
           <div className="v2-an-err-actions">
             <button type="button" className="v2-btn v2-btn-ghost" onClick={onRetryProperties} disabled={propertiesLoading}>
-              retry
+              {tc('retry')}
             </button>
           </div>
         </div>
       )}
 
       <section className="glass-card is-static v2-an-setup-card">
-        <span className="recgon-label v2-block-eye">connect GA4</span>
+        <span className="recgon-label v2-block-eye">{t('connect.connectHeading')}</span>
         <p className="v2-an-prose">
-          Pair this project with a GA4 property to see traffic, channels, and the mentor&apos;s read on what&apos;s actually moving the needle. Connecting{' '}
-          <strong>{teamId ? `for team "${currentTeamName ?? ''}"` : 'this project'}</strong>.
+          {t('connect.connectProsePre')}
+          <strong>{teamId ? t('connect.connectScopeTeam', { team: currentTeamName ?? '' }) : t('connect.connectScopeProject')}</strong>.
         </p>
 
         {!isOwner && currentTeamName && (
           <p className="v2-an-retry-hint">
-            Only team owners can connect Google Analytics for the team. Ask <strong>{currentTeamName}</strong>&apos;s owner to connect.
+            {t('connect.ownerOnlyHintPre')}<strong>{currentTeamName}</strong>{t('connect.ownerOnlyHintPost')}
           </p>
         )}
 
         {oauthConfigured && oauthHref && (
           <div className="v2-an-oauth-card">
-            <p className="v2-an-prose">Sign in with your Google account to grant Recgon read-only access to your analytics.</p>
+            <p className="v2-an-prose">{t('connect.oauthProse')}</p>
             <a
               href={isOwner ? oauthHref : '#'}
               className="v2-btn v2-btn-primary"
@@ -198,16 +207,16 @@ export default function AnalyticsConnect({
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
-              connect with google
+              {t('connect.oauthButton')}
             </a>
-            <p className="v2-an-oauth-foot">read-only access — recgon can only view your analytics data</p>
+            <p className="v2-an-oauth-foot">{t('connect.oauthFoot')}</p>
           </div>
         )}
 
         {oauthConfigured && (
           <div className="v2-an-or">
             <span className="v2-an-or-line" />
-            <span className="v2-an-or-text">or</span>
+            <span className="v2-an-or-text">{t('connect.or')}</span>
             <span className="v2-an-or-line" />
           </div>
         )}
@@ -215,18 +224,18 @@ export default function AnalyticsConnect({
         {(!oauthConfigured || showManual) ? (
           <>
             <details className="v2-an-guide" open>
-              <summary>How to get a service account key (5 steps)</summary>
+              <summary>{t('connect.guideSummary')}</summary>
               <ol className="v2-an-guide-list">
-                <li><strong>Google Cloud Console</strong> → APIs &amp; Services → Library → search for <em>Google Analytics Data API</em> and enable it.</li>
-                <li><strong>IAM &amp; Admin</strong> → Service Accounts → Create Service Account (skip role grants).</li>
-                <li>Open the created service account → <strong>Keys</strong> tab → Add Key → Create new key → <strong>JSON</strong> → download.</li>
-                <li>Drop the downloaded file below or paste its contents.</li>
-                <li>In <strong>Google Analytics</strong> → Admin → <strong>Property Access Management</strong> → click + → add the service account&apos;s email (the <code>client_email</code> in the JSON) with <strong>Viewer</strong> role.</li>
+                <li>{t.rich('connect.guideStep1', guideTags)}</li>
+                <li>{t.rich('connect.guideStep2', guideTags)}</li>
+                <li>{t.rich('connect.guideStep3', guideTags)}</li>
+                <li>{t.rich('connect.guideStep4', guideTags)}</li>
+                <li>{t.rich('connect.guideStep5', guideTags)}</li>
               </ol>
             </details>
 
             <label className="v2-an-field">
-              <span className="v2-an-field-label">service account key (JSON)</span>
+              <span className="v2-an-field-label">{t('connect.saKeyLabel')}</span>
               <div
                 className={`v2-an-drop ${dragOver ? 'is-over' : ''} ${serviceAccountJson ? 'is-loaded' : ''}`}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -252,12 +261,12 @@ export default function AnalyticsConnect({
                 />
                 {serviceAccountJson ? (
                   <span className="v2-an-drop-loaded">
-                    ✓ {serviceAccountFileName || 'key loaded'} — click to replace
+                    {t('connect.saKeyLoaded', { name: serviceAccountFileName || t('connect.saKeyLoadedFallback') })}
                   </span>
                 ) : (
                   <>
-                    <span className="v2-an-drop-prompt">Drop your <strong>.json</strong> key file here or click to browse</span>
-                    <span className="v2-an-drop-sub">or paste the JSON below</span>
+                    <span className="v2-an-drop-prompt">{t('connect.dropPromptPre')}<strong>{t('connect.dropPromptStrong')}</strong>{t('connect.dropPromptPost')}</span>
+                    <span className="v2-an-drop-sub">{t('connect.dropSub')}</span>
                   </>
                 )}
               </div>
@@ -271,15 +280,15 @@ export default function AnalyticsConnect({
             </label>
 
             <label className="v2-an-field">
-              <span className="v2-an-field-label">GA4 property ID</span>
+              <span className="v2-an-field-label">{t('connect.propIdLabel')}</span>
               <input
                 type="text"
                 value={propertyIdInput}
                 onChange={(e) => setPropertyIdInput(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="e.g. 123456789"
+                placeholder={t('connect.propIdPlaceholder')}
                 className="v2-input v2-an-prop-input"
               />
-              <span className="v2-an-field-help">Google Analytics → Admin → Property details → numeric Property ID (not the Measurement ID).</span>
+              <span className="v2-an-field-help">{t('connect.propIdHelp')}</span>
             </label>
 
             {(localError || setupError) && (
@@ -293,7 +302,7 @@ export default function AnalyticsConnect({
                 onClick={handleSubmit}
                 disabled={setupSaving || !propertyIdInput.trim() || !serviceAccountJson.trim() || !isOwner}
               >
-                {setupSaving ? <><span className="v2-an-spinner" /> connecting…</> : 'connect property'}
+                {setupSaving ? <><span className="v2-an-spinner" /> {t('connect.connecting')}</> : t('connect.connectProperty')}
               </button>
               <button
                 type="button"
@@ -301,12 +310,12 @@ export default function AnalyticsConnect({
                 onClick={onReload}
                 disabled={setupSaving}
               >
-                retry
+                {tc('retry')}
               </button>
             </div>
 
             {setupSaving && (
-              <p className="v2-an-retry-hint">Just connected? Wait 1–2 minutes for the property to propagate, then click <strong>retry</strong> above.</p>
+              <p className="v2-an-retry-hint">{t('connect.propagateHintPre')}<strong>{t('connect.propagateHintStrong')}</strong>{t('connect.propagateHintPost')}</p>
             )}
           </>
         ) : (
@@ -315,7 +324,7 @@ export default function AnalyticsConnect({
             className="v2-btn v2-btn-ghost v2-an-fallback"
             onClick={() => setShowManual(true)}
           >
-            use service account instead
+            {t('connect.useServiceAccount')}
           </button>
         )}
 

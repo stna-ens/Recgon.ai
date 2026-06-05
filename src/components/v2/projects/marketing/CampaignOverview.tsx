@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { CampaignPlan } from './types';
 
 interface Props {
@@ -7,14 +8,15 @@ interface Props {
 }
 
 export default function CampaignOverview({ plan }: Props) {
+  const t = useTranslations('marketing');
   return (
     <div className="v2-m-tab-body v2-m-grid-2">
       <section className="glass-card is-static v2-m-section-card">
-        <span className="recgon-label v2-m-section-eye">target_audience</span>
+        <span className="recgon-label v2-m-section-eye">{t('overview.targetAudience')}</span>
         <p className="v2-m-overview-primary">{plan.targetAudience.primary}</p>
         <p className="v2-m-overview-secondary">{plan.targetAudience.secondary}</p>
 
-        <span className="recgon-label v2-m-section-eye">pain_points</span>
+        <span className="recgon-label v2-m-section-eye">{t('overview.painPoints')}</span>
         <div className="v2-m-bullet-list">
           {plan.targetAudience.painPoints.map((p, i) => (
             <div key={i} className="v2-m-bullet v2-m-bullet-pain">
@@ -27,7 +29,7 @@ export default function CampaignOverview({ plan }: Props) {
           ))}
         </div>
 
-        <span className="recgon-label v2-m-section-eye">motivations</span>
+        <span className="recgon-label v2-m-section-eye">{t('overview.motivations')}</span>
         <div className="v2-m-bullet-list">
           {plan.targetAudience.motivations.map((m, i) => (
             <div key={i} className="v2-m-bullet v2-m-bullet-motivation">
@@ -42,7 +44,7 @@ export default function CampaignOverview({ plan }: Props) {
 
       <div className="v2-m-section-card">
         <section className="glass-card is-static v2-m-section-card">
-          <span className="recgon-label v2-m-section-eye">key_messages</span>
+          <span className="recgon-label v2-m-section-eye">{t('overview.keyMessages')}</span>
           <div className="v2-m-keymsg-list">
             {plan.keyMessages.map((m, i) => (
               <div key={i} className="v2-m-keymsg">
@@ -58,7 +60,7 @@ export default function CampaignOverview({ plan }: Props) {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
-            <span>{'quick_wins < 48h'}</span>
+            <span>{t('overview.quickWins')}</span>
           </div>
           <div className="v2-m-quickwin-list">
             {plan.quickWins.map((w, i) => (

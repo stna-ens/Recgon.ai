@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   cleanText,
   relTimeShort,
@@ -31,13 +32,13 @@ interface Props {
 
 type FilterKey = ProjectPulse | 'all';
 
-const FILTERS: { value: FilterKey; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'drifting', label: 'Drifting' },
-  { value: 'stuck', label: 'Stuck' },
-  { value: 'shipping', label: 'Shipping' },
-  { value: 'converging', label: 'Converging' },
-  { value: 'idle', label: 'Idle' },
+const FILTERS: { value: FilterKey; labelKey: string }[] = [
+  { value: 'all', labelKey: 'portfolio.filterAll' },
+  { value: 'drifting', labelKey: 'portfolio.filterDrifting' },
+  { value: 'stuck', labelKey: 'portfolio.filterStuck' },
+  { value: 'shipping', labelKey: 'portfolio.filterShipping' },
+  { value: 'converging', labelKey: 'portfolio.filterConverging' },
+  { value: 'idle', labelKey: 'portfolio.filterIdle' },
 ];
 
 function ProductAvatar({ name, logoUrl }: { name: string; logoUrl?: string }) {
@@ -61,6 +62,7 @@ function ProductAvatar({ name, logoUrl }: { name: string; logoUrl?: string }) {
 }
 
 function ProductCard({ project, now }: { project: PortfolioRow; now: number }) {
+  const t = useTranslations('home');
   const risk = cleanText(project.topRisk);
   const nextStep = cleanText(project.topNextStep);
   const hash = project.id.replace(/-/g, '').slice(0, 7);
@@ -72,7 +74,7 @@ function ProductCard({ project, now }: { project: PortfolioRow; now: number }) {
         <div className="v2-products-id">
           <h3>{project.name}</h3>
           <span>
-            {project.currentStage ?? 'No stage'}
+            {project.currentStage ?? t('portfolio.noStage')}
             <i>·</i>
             <code>{hash}</code>
           </span>
@@ -82,24 +84,25 @@ function ProductCard({ project, now }: { project: PortfolioRow; now: number }) {
 
       <div className="v2-products-body">
         <div className="v2-products-field">
-          <span className="v2-products-label">Risk</span>
-          <p>{risk || 'No risk recorded yet.'}</p>
+          <span className="v2-products-label">{t('portfolio.labelRisk')}</span>
+          <p>{risk || t('portfolio.noRisk')}</p>
         </div>
         <div className="v2-products-field">
-          <span className="v2-products-label">Next move</span>
-          <p>{nextStep || 'Open the project to decide the next move.'}</p>
+          <span className="v2-products-label">{t('portfolio.labelNextMove')}</span>
+          <p>{nextStep || t('portfolio.decideNextMove')}</p>
         </div>
       </div>
 
       <div className="v2-products-foot">
-        <span className="v2-products-time">{project.analyzedAt ? `${relTimeShort(project.analyzedAt, now)} ago` : 'never analyzed'}</span>
-        <Link href={`/projects/${project.id}`} className="v2-products-open">Open</Link>
+        <span className="v2-products-time">{project.analyzedAt ? t('portfolio.timeAgo', { time: relTimeShort(project.analyzedAt, now) }) : t('portfolio.neverAnalyzed')}</span>
+        <Link href={`/projects/${project.id}`} className="v2-products-open">{t('portfolio.open')}</Link>
       </div>
     </article>
   );
 }
 
 export default function HomePortfolio({ projects, loading }: Props) {
+  const t = useTranslations('home');
   const [filter, setFilter] = useState<FilterKey>('all');
   const now = Date.now();
 
@@ -124,20 +127,20 @@ export default function HomePortfolio({ projects, loading }: Props) {
   return (
     <section className="v2-products">
       <header className="v2-products-head">
-        <div className="v2-sec-idx" aria-label="Section 3, products">
+        <div className="v2-sec-idx" aria-label={t('portfolio.sectionAria')}>
           <span className="v2-sec-idx-num">03</span>
-          <span className="v2-sec-idx-lab">products</span>
+          <span className="v2-sec-idx-lab">{t('portfolio.products')}</span>
         </div>
-        <div className="v2-products-summary" aria-label="Product summary">
-          <span><strong>{stats.needsAttention}</strong> need attention</span>
-          <span><strong>{stats.moving}</strong> moving</span>
-          <span><strong>{stats.idle}</strong> idle</span>
+        <div className="v2-products-summary" aria-label={t('portfolio.summaryAria')}>
+          <span><strong>{stats.needsAttention}</strong> {t('portfolio.needAttention')}</span>
+          <span><strong>{stats.moving}</strong> {t('portfolio.moving')}</span>
+          <span><strong>{stats.idle}</strong> {t('portfolio.idle')}</span>
         </div>
-        <Link href="/projects" className="v2-products-all">All products</Link>
+        <Link href="/projects" className="v2-products-all">{t('portfolio.allProducts')}</Link>
       </header>
 
       {!loading && projects.length > 0 && (
-        <div className="v2-products-filters" aria-label="Filter products">
+        <div className="v2-products-filters" aria-label={t('portfolio.filterAria')}>
           {FILTERS.map((f) => {
             const count = f.value === 'all' ? projects.length : projects.filter((p) => p.pulse === f.value).length;
             return (
@@ -148,7 +151,7 @@ export default function HomePortfolio({ projects, loading }: Props) {
                 onClick={() => setFilter(f.value)}
                 disabled={count === 0 && f.value !== 'all'}
               >
-                <span>{f.label}</span>
+                <span>{t(f.labelKey)}</span>
                 <strong>{count}</strong>
               </button>
             );
@@ -165,13 +168,13 @@ export default function HomePortfolio({ projects, loading }: Props) {
           </div>
         ) : projects.length === 0 ? (
           <div className="v2-products-empty">
-            <p>No products yet.</p>
-            <Link href="/projects">Add a product</Link>
+            <p>{t('portfolio.emptyNoProducts')}</p>
+            <Link href="/projects">{t('portfolio.addProduct')}</Link>
           </div>
         ) : sorted.length === 0 ? (
           <div className="v2-products-empty">
-            <p>No products in this status.</p>
-            <button type="button" onClick={() => setFilter('all')}>Show all</button>
+            <p>{t('portfolio.emptyNoStatus')}</p>
+            <button type="button" onClick={() => setFilter('all')}>{t('portfolio.showAll')}</button>
           </div>
         ) : (
           <div className="v2-products-grid">

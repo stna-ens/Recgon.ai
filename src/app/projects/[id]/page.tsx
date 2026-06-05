@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import SwotMatrixSection from '@/components/v2/projects/overview/SwotMatrixSection';
@@ -27,6 +28,8 @@ import { projectInitial } from '@/components/v2/utils';
 import './overview.css';
 
 export default function V2ProjectOverviewPage() {
+  const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const projectId = params?.id;
@@ -86,11 +89,11 @@ export default function V2ProjectOverviewPage() {
   const handleAnalyze = useCallback(async () => {
     if (!projectId || !teamId || analyzing) return;
     if (quotaBlocked) {
-      addToast(quota?.reason || 'analysis quota reached', 'error');
+      addToast(quota?.reason || t('detail.toast.quotaReached'), 'error');
       return;
     }
     setAnalyzing(true);
-    setProgress('starting analysis…');
+    setProgress(t('detail.progress.starting'));
     try {
       const res = await fetch(`/api/projects/${projectId}/analyze`, {
         method: 'POST',
@@ -98,7 +101,7 @@ export default function V2ProjectOverviewPage() {
       });
       if (!res.ok || !res.body) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || 'analysis failed');
+        throw new Error(body?.error || t('detail.toast.analysisFailed'));
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -120,7 +123,7 @@ export default function V2ProjectOverviewPage() {
               setHasUpdates(false);
               setLatestCommit(null);
               refreshProjects?.();
-              addToast('analysis complete', 'success');
+              addToast(t('detail.toast.analysisComplete'), 'success');
               fetch('/api/analysis-quota').then((r) => (r.ok ? r.json() : null)).then((q) => { if (q) setQuota(q); }).catch(() => {});
             } else if (event.type === 'error') {
               throw new Error(event.message);
@@ -132,12 +135,12 @@ export default function V2ProjectOverviewPage() {
         }
       }
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'analysis failed', 'error');
+      addToast(err instanceof Error ? err.message : t('detail.toast.analysisFailed'), 'error');
     } finally {
       setAnalyzing(false);
       setProgress(null);
     }
-  }, [projectId, teamId, analyzing, refreshProjects, addToast, quotaBlocked, quota?.reason, mutateProject]);
+  }, [projectId, teamId, analyzing, refreshProjects, addToast, quotaBlocked, quota?.reason, mutateProject, t]);
 
   const handleDelete = useCallback(async () => {
     if (!projectId || !teamId || deleting) return;
@@ -146,17 +149,17 @@ export default function V2ProjectOverviewPage() {
       const res = await fetch(`/api/projects/${projectId}?teamId=${teamId}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'failed to delete project');
+        throw new Error(data?.error || t('detail.toast.deleteProjectFailed'));
       }
       refreshProjects?.();
-      addToast('project deleted', 'success');
+      addToast(t('detail.toast.deleted'), 'success');
       router.push('/projects');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed to delete', 'error');
+      addToast(err instanceof Error ? err.message : t('detail.toast.deleteFailed'), 'error');
       setDeleting(false);
       setConfirmingDelete(false);
     }
-  }, [projectId, teamId, deleting, refreshProjects, addToast, router]);
+  }, [projectId, teamId, deleting, refreshProjects, addToast, router, t]);
 
   const handleToggleShared = useCallback(async () => {
     if (!project || !teamId || togglingShared) return;
@@ -171,17 +174,17 @@ export default function V2ProjectOverviewPage() {
       if (res.ok) {
         mutateProject({ ...project, isShared: next }, { revalidate: false });
         refreshProjects?.();
-        addToast(next ? 'project shared with team' : 'project set to private', 'success');
+        addToast(next ? t('detail.toast.sharedWithTeam') : t('detail.toast.setToPrivate'), 'success');
       } else {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'failed to update sharing');
+        throw new Error(data?.error || t('detail.toast.updateSharingFailed'));
       }
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed to update sharing', 'error');
+      addToast(err instanceof Error ? err.message : t('detail.toast.updateSharingFailed'), 'error');
     } finally {
       setTogglingShared(false);
     }
-  }, [project, teamId, togglingShared, refreshProjects, addToast, mutateProject]);
+  }, [project, teamId, togglingShared, refreshProjects, addToast, mutateProject, t]);
 
   const handleSaveDescription = useCallback(async () => {
     if (!draftDescription.trim() || !project || !teamId || savingDescription) return;
@@ -194,18 +197,18 @@ export default function V2ProjectOverviewPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'failed to save description');
+        throw new Error(data.error || t('detail.toast.saveDescriptionFailed'));
       }
       mutateProject({ ...project, description: draftDescription }, { revalidate: false });
       setEditingDescription(false);
-      addToast('description saved · re-analyzing…', 'success');
+      addToast(t('detail.toast.descriptionSaved'), 'success');
       handleAnalyze();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed to save', 'error');
+      addToast(err instanceof Error ? err.message : t('detail.toast.saveFailed'), 'error');
     } finally {
       setSavingDescription(false);
     }
-  }, [draftDescription, project, teamId, savingDescription, addToast, handleAnalyze, mutateProject]);
+  }, [draftDescription, project, teamId, savingDescription, addToast, handleAnalyze, mutateProject, t]);
 
   const handleConnectCodebase = useCallback(async () => {
     if (!codebasePath.trim() || !project || !teamId || connectLoading) return;
@@ -218,20 +221,20 @@ export default function V2ProjectOverviewPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'failed to connect codebase');
+        throw new Error(data.error || t('detail.toast.connectCodebaseFailed'));
       }
       const isGithub = codebasePath.startsWith('https://github.com/');
       mutateProject({ ...project, path: codebasePath, sourceType: isGithub ? 'github' : 'description', isGithub }, { revalidate: false });
       setConnectingCodebase(false);
       setCodebasePath('');
-      addToast('codebase connected · re-analyzing…', 'success');
+      addToast(t('detail.toast.codebaseConnected'), 'success');
       handleAnalyze();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed to connect', 'error');
+      addToast(err instanceof Error ? err.message : t('detail.toast.connectFailed'), 'error');
     } finally {
       setConnectLoading(false);
     }
-  }, [codebasePath, project, teamId, connectLoading, addToast, handleAnalyze, mutateProject]);
+  }, [codebasePath, project, teamId, connectLoading, addToast, handleAnalyze, mutateProject, t]);
 
   // Esc closes modals
   useEffect(() => {
@@ -264,7 +267,7 @@ export default function V2ProjectOverviewPage() {
     return (
       <div className="v2-overview">
         <div className="glass-card is-static is-roomy">
-          <p style={{ color: 'var(--txt-muted)', margin: 0 }}>Project not found.</p>
+          <p style={{ color: 'var(--txt-muted)', margin: 0 }}>{t('detail.notFound')}</p>
         </div>
       </div>
     );
@@ -277,20 +280,19 @@ export default function V2ProjectOverviewPage() {
           <div className="v2-no-analysis-num">01</div>
           <div className="v2-no-analysis-body">
             <h2 className="v2-no-analysis-title">
-              <span className="v2-pink">No</span> analysis yet.
+              <span className="v2-pink">{t('detail.noAnalysis.titlePrefix')}</span> {t('detail.noAnalysis.titleRest')}
             </h2>
             <p className="v2-no-analysis-text">
-              Run the AI mentor on {project.name} to get a full product brief: features,
-              market, SWOT, prioritized next steps, GTM plan.
+              {t('detail.noAnalysis.text', { name: project.name })}
             </p>
             {analyzing ? (
               <div className="v2-analyzing">
                 <span className="v2-analyzing-spinner" />
-                <span className="v2-analyzing-text">{progress ?? 'analyzing…'}</span>
+                <span className="v2-analyzing-text">{progress ?? t('detail.noAnalysis.analyzing')}</span>
               </div>
             ) : (
               <button type="button" onClick={handleAnalyze} className="v2-btn-primary v2-btn-anal">
-                analyze project →
+                {t('detail.noAnalysis.analyze')}
               </button>
             )}
           </div>
@@ -311,7 +313,7 @@ export default function V2ProjectOverviewPage() {
             </svg>
           </div>
           <div className="v2-banner-body">
-            <div className="v2-banner-title">new commits since last analysis</div>
+            <div className="v2-banner-title">{t('detail.banner.newCommits')}</div>
             {latestCommit && (
               <div className="v2-banner-sub">
                 <a href={latestCommit.url} target="_blank" rel="noreferrer" className="v2-banner-commit">
@@ -327,17 +329,17 @@ export default function V2ProjectOverviewPage() {
             onClick={handleAnalyze}
             disabled={analyzing || quotaBlocked}
             className="v2-btn v2-btn-warn"
-            title={quotaBlocked ? quota?.reason : 'Re-run mentor analysis on the latest commit'}
+            title={quotaBlocked ? quota?.reason : t('detail.banner.reAnalyzeTitle')}
           >
             {analyzing ? (
-              <><span className="v2-analyzing-spinner v2-analyzing-spinner-sm" /> re-analyzing…</>
+              <><span className="v2-analyzing-spinner v2-analyzing-spinner-sm" /> {t('detail.banner.reAnalyzing')}</>
             ) : (
               <>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: '-2px' }}>
                   <polyline points="23 4 23 10 17 10" />
                   <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                 </svg>
-                see what changed
+                {t('detail.banner.seeWhatChanged')}
               </>
             )}
           </button>
@@ -355,11 +357,11 @@ export default function V2ProjectOverviewPage() {
           </div>
           <div className="v2-banner-body">
             <div className="v2-banner-title">
-              {quotaBlocked ? quota.reason : `${quota.limit - quota.used} of ${quota.limit} analyses remaining`}
+              {quotaBlocked ? quota.reason : t('detail.banner.remaining', { remaining: quota.limit - quota.used, limit: quota.limit })}
             </div>
             {!quotaBlocked && quota.used > 0 && quota.nextAvailableAt && (
               <div className="v2-banner-sub">
-                next free analysis · {new Date(quota.nextAvailableAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {t('detail.banner.nextFreeAnalysis', { date: new Date(quota.nextAvailableAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) })}
               </div>
             )}
           </div>
@@ -377,15 +379,15 @@ export default function V2ProjectOverviewPage() {
       {/* --- Brief header --- */}
       <section className="v2-section">
         <div className="v2-section-head">
-          <span className="recgon-label v2-eyebrow">› product overview</span>
+          <span className="recgon-label v2-eyebrow">{t('detail.overview.eyebrow')}</span>
           <div className="v2-meta-strip">
             <div className="v2-meta-info">
               {hasUpdates && project.sourceType !== 'description' && (
-                <span className="v2-chip is-warn" title="New commits since the last analysis">
-                  ! new commits
+                <span className="v2-chip is-warn" title={t('detail.overview.newCommitsChipTitle')}>
+                  {t('detail.overview.newCommitsChip')}
                 </span>
               )}
-              <span className="v2-meta-time">analyzed {timeAgo(a.analyzedAt)}</span>
+              <span className="v2-meta-time">{t('detail.overview.analyzedAgo', { time: timeAgo(a.analyzedAt) })}</span>
             </div>
 
             <div className="v2-meta-actions">
@@ -395,18 +397,18 @@ export default function V2ProjectOverviewPage() {
                   target="_blank"
                   rel="noreferrer"
                   className="v2-action-btn"
-                  title="Open repo on GitHub"
+                  title={t('detail.overview.repoTitle')}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z"/>
                   </svg>
-                  <span>repo</span>
+                  <span>{t('detail.overview.repo')}</span>
                 </a>
               )}
               {analyzing ? (
                 <span className="v2-action-btn is-loading">
                   <span className="v2-analyzing-spinner v2-analyzing-spinner-sm" />
-                  <span>{progress ?? 'analyzing…'}</span>
+                  <span>{progress ?? t('detail.overview.analyzing')}</span>
                 </span>
               ) : (
                 <button
@@ -414,22 +416,22 @@ export default function V2ProjectOverviewPage() {
                   onClick={handleAnalyze}
                   disabled={quotaBlocked}
                   className="v2-action-btn"
-                  title={quotaBlocked ? quota?.reason : 'Re-run mentor analysis'}
+                  title={quotaBlocked ? quota?.reason : t('detail.overview.reAnalyzeTitle')}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
                     <polyline points="23 4 23 10 17 10" />
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
                   </svg>
-                  <span>re-analyze</span>
+                  <span>{t('detail.overview.reAnalyze')}</span>
                 </button>
               )}
-              <Link href={`/projects/${project.id}/export`} className="v2-action-btn" target="_blank" rel="noreferrer" title="Download a PDF brief">
+              <Link href={`/projects/${project.id}/export`} className="v2-action-btn" target="_blank" rel="noreferrer" title={t('detail.overview.exportTitle')}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
-                <span>export</span>
+                <span>{t('detail.overview.export')}</span>
               </Link>
 
               <span className="v2-meta-divider" aria-hidden="true" />
@@ -439,11 +441,11 @@ export default function V2ProjectOverviewPage() {
                   type="button"
                   className="v2-action-icon"
                   title={project.isShared === false
-                    ? 'Private — only you can see this project. Click to share with your team.'
-                    : 'Shared — all team members can see this project. Click to make it private.'}
+                    ? t('detail.overview.sharePrivateTitle')
+                    : t('detail.overview.shareSharedTitle')}
                   onClick={handleToggleShared}
                   disabled={togglingShared}
-                  aria-label={project.isShared === false ? 'Share with team' : 'Make private'}
+                  aria-label={project.isShared === false ? t('detail.overview.shareAria') : t('detail.overview.makePrivateAria')}
                 >
                   {project.isShared === false ? (
                     <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -463,10 +465,10 @@ export default function V2ProjectOverviewPage() {
               <button
                 type="button"
                 className="v2-action-icon is-danger"
-                title="Delete project"
+                title={t('detail.overview.deleteTitle')}
                 onClick={() => setConfirmingDelete(true)}
                 disabled={deleting}
-                aria-label="Delete project"
+                aria-label={t('detail.overview.deleteAria')}
               >
                 <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <polyline points="3 6 5 6 21 6" />
@@ -481,15 +483,15 @@ export default function V2ProjectOverviewPage() {
         <div className="v2-pov-hero">
           <div className="glass-card is-static is-roomy v2-pov-id">
             <div className="v2-pov-id-head">
-              <span className="recgon-label v2-block-eye">project</span>
+              <span className="recgon-label v2-block-eye">{t('detail.hero.project')}</span>
               {project.sourceType === 'description' && (
                 <div className="v2-brief-actions">
                   <button
                     type="button"
                     className="v2-icon-btn"
-                    title="Edit idea description"
+                    title={t('detail.hero.editDescriptionTitle')}
                     onClick={() => { setDraftDescription(project.description ?? ''); setEditingDescription(true); }}
-                    aria-label="Edit idea description"
+                    aria-label={t('detail.hero.editDescriptionAria')}
                   >
                     <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -499,9 +501,9 @@ export default function V2ProjectOverviewPage() {
                   <button
                     type="button"
                     className="v2-icon-btn"
-                    title="Connect a codebase to this project"
+                    title={t('detail.hero.connectCodebaseTitle')}
                     onClick={() => setConnectingCodebase(true)}
-                    aria-label="Connect a codebase to this project"
+                    aria-label={t('detail.hero.connectCodebaseAria')}
                   >
                     <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <polyline points="16 18 22 12 16 6"/>
@@ -518,7 +520,7 @@ export default function V2ProjectOverviewPage() {
                       onError={(e) => { (e.currentTarget.parentElement as HTMLElement).textContent = projectInitial(project.name); }} />
                   : projectInitial(project.name)}
               </span>
-              <span className="v2-pov-name-text">{(a.name ?? '').toLowerCase()}</span>
+              <span className="v2-pov-name-text">{(a.name ?? '').toLocaleLowerCase('tr')}</span>
             </h2>
             {editingDescription ? (
               <div className="v2-pov-edit">
@@ -534,14 +536,14 @@ export default function V2ProjectOverviewPage() {
                   }}
                 />
                 <div className="v2-pov-edit-actions">
-                  <button type="button" className="v2-btn v2-btn-ghost" onClick={() => setEditingDescription(false)}>cancel</button>
+                  <button type="button" className="v2-btn v2-btn-ghost" onClick={() => setEditingDescription(false)}>{tCommon('cancel')}</button>
                   <button
                     type="button"
                     className="v2-btn v2-btn-primary"
                     onClick={handleSaveDescription}
                     disabled={savingDescription || !draftDescription.trim()}
                   >
-                    {savingDescription ? <><span className="v2-mod-spinner" /> saving…</> : 'save & re-analyze'}
+                    {savingDescription ? <><span className="v2-mod-spinner" /> {t('detail.hero.saving')}</> : t('detail.hero.saveReAnalyze')}
                   </button>
                 </div>
               </div>
@@ -557,7 +559,7 @@ export default function V2ProjectOverviewPage() {
               const tone = STAGE_LABEL[a.currentStage]?.tone ?? 'var(--signature)';
               return (
                 <div className="glass-card is-static is-tight v2-pov-stat v2-pov-stat-stage">
-                  <span className="recgon-label v2-block-eye">stage</span>
+                  <span className="recgon-label v2-block-eye">{t('detail.stats.stage')}</span>
                   <div className="v2-stage-pipeline" style={{ ['--stage-tone' as string]: tone }}>
                     {stages.map((s, i) => (
                       <div
@@ -576,33 +578,33 @@ export default function V2ProjectOverviewPage() {
 
             {a.techStack?.length > 0 && (
               <div className="glass-card is-static is-tight v2-pov-stat v2-pov-stat-num">
-                <span className="recgon-label v2-block-eye">stack size</span>
+                <span className="recgon-label v2-block-eye">{t('detail.stats.stackSize')}</span>
                 <div className="v2-pov-bignum">{a.techStack.length}</div>
-                <div className="v2-pov-bignum-sub">{a.techStack.length === 1 ? 'technology' : 'technologies'}</div>
+                <div className="v2-pov-bignum-sub">{a.techStack.length === 1 ? t('detail.stats.technology') : t('detail.stats.technologies')}</div>
               </div>
             )}
 
             {a.features?.length > 0 && (
               <div className="glass-card is-static is-tight v2-pov-stat v2-pov-stat-num">
-                <span className="recgon-label v2-block-eye">features</span>
+                <span className="recgon-label v2-block-eye">{t('detail.stats.features')}</span>
                 <div className="v2-pov-bignum">{a.features.length}</div>
-                <div className="v2-pov-bignum-sub">shipped capabilities</div>
+                <div className="v2-pov-bignum-sub">{t('detail.stats.shippedCapabilities')}</div>
               </div>
             )}
 
             {a.uniqueSellingPoints?.length > 0 && (
               <div className="glass-card is-static is-tight v2-pov-stat v2-pov-stat-num">
-                <span className="recgon-label v2-block-eye">usps</span>
+                <span className="recgon-label v2-block-eye">{t('detail.stats.usps')}</span>
                 <div className="v2-pov-bignum">{a.uniqueSellingPoints.length}</div>
-                <div className="v2-pov-bignum-sub">unique angles</div>
+                <div className="v2-pov-bignum-sub">{t('detail.stats.uniqueAngles')}</div>
               </div>
             )}
 
             {a.prioritizedNextSteps && a.prioritizedNextSteps.length > 0 && (
               <div className="glass-card is-static is-tight v2-pov-stat v2-pov-stat-num">
-                <span className="recgon-label v2-block-eye">priorities</span>
+                <span className="recgon-label v2-block-eye">{t('detail.stats.priorities')}</span>
                 <div className="v2-pov-bignum">{a.prioritizedNextSteps.length}</div>
-                <div className="v2-pov-bignum-sub">next steps</div>
+                <div className="v2-pov-bignum-sub">{t('detail.stats.nextSteps')}</div>
               </div>
             )}
           </div>
@@ -615,10 +617,10 @@ export default function V2ProjectOverviewPage() {
           const painTags = a.problemStatement ? extractTags(a.problemStatement, PAIN_DICT) : [];
           const audTags  = a.targetAudience  ? extractTags(a.targetAudience,  AUDIENCE_DICT) : [];
           return (
-            <div className="v2-diag" role="group" aria-label="Problem and audience diagnostics">
+            <div className="v2-diag" role="group" aria-label={t('detail.diag.aria')}>
               {a.problemStatement && (
                 <div className="glass-card is-static is-roomy v2-diag-panel v2-diag-prob">
-                  <span className="recgon-label v2-block-eye">the problem</span>
+                  <span className="recgon-label v2-block-eye">{t('detail.diag.problem')}</span>
                   {probSplit?.headline && (
                     <p className="v2-diag-headline">{probSplit.headline}</p>
                   )}
@@ -627,7 +629,7 @@ export default function V2ProjectOverviewPage() {
                   )}
                   {painTags.length > 0 && (
                     <div className="v2-diag-tags-block">
-                      <span className="recgon-label v2-diag-tags-eye">› symptoms</span>
+                      <span className="recgon-label v2-diag-tags-eye">{t('detail.diag.symptoms')}</span>
                       <div className="v2-diag-tags">
                         {painTags.map((t) => (
                           <span key={t} className="v2-diag-tag v2-diag-tag-pain">{t}</span>
@@ -640,7 +642,7 @@ export default function V2ProjectOverviewPage() {
 
               {a.targetAudience && (
                 <div className="glass-card is-static is-roomy v2-diag-panel v2-diag-aud">
-                  <span className="recgon-label v2-block-eye">target audience</span>
+                  <span className="recgon-label v2-block-eye">{t('detail.diag.audience')}</span>
                   {audSplit?.headline && (
                     <p className="v2-diag-headline">{audSplit.headline}</p>
                   )}
@@ -649,7 +651,7 @@ export default function V2ProjectOverviewPage() {
                   )}
                   {audTags.length > 0 && (
                     <div className="v2-diag-tags-block">
-                      <span className="recgon-label v2-diag-tags-eye">› persona traits</span>
+                      <span className="recgon-label v2-diag-tags-eye">{t('detail.diag.personaTraits')}</span>
                       <div className="v2-diag-tags">
                         {audTags.map((t) => (
                           <span key={t} className="v2-diag-tag v2-diag-tag-aud">{t}</span>
@@ -676,14 +678,14 @@ export default function V2ProjectOverviewPage() {
           return (
             <div className="glass-card is-static is-roomy v2-inv-card">
               <div className="v2-inv-head">
-                <span className="recgon-label v2-block-eye">stack inventory</span>
+                <span className="recgon-label v2-block-eye">{t('detail.inventory.title')}</span>
                 <div className="v2-inv-counts">
                   <span className="v2-inv-total">{total}</span>
-                  <span className="v2-inv-total-sub">tech in {ordered.length} {ordered.length === 1 ? 'category' : 'categories'}</span>
+                  <span className="v2-inv-total-sub">{t('detail.inventory.techInCategories', { count: ordered.length, cats: ordered.length })}</span>
                 </div>
               </div>
 
-              <div className="v2-inv-bar" role="img" aria-label="Stack composition by category">
+              <div className="v2-inv-bar" role="img" aria-label={t('detail.inventory.aria')}>
                 {ordered.map(([key, g]) => (
                   <span
                     key={key}
@@ -718,7 +720,7 @@ export default function V2ProjectOverviewPage() {
                     </div>
                     <div className="v2-inv-cat-items">
                       {g.items.map((it) => (
-                        <span key={it} className="v2-inv-chip">{it.toLowerCase()}</span>
+                        <span key={it} className="v2-inv-chip">{it.toLocaleLowerCase('tr')}</span>
                       ))}
                     </div>
                   </div>
@@ -733,7 +735,7 @@ export default function V2ProjectOverviewPage() {
       {(a.features?.length || a.uniqueSellingPoints?.length) && (
         <section className="v2-section">
           <div className="v2-section-head">
-            <span className="recgon-label v2-eyebrow">› what it does</span>
+            <span className="recgon-label v2-eyebrow">{t('detail.capability.eyebrow')}</span>
           </div>
           <div className="v2-cap-grid">
             {a.features?.length > 0 && (() => {
@@ -742,7 +744,7 @@ export default function V2ProjectOverviewPage() {
               return (
                 <div className="glass-card is-static is-roomy v2-cap-card v2-cap-card-feat">
                   <div className="v2-cap-head">
-                    <span className="recgon-label v2-block-eye">shipped capabilities</span>
+                    <span className="recgon-label v2-block-eye">{t('detail.capability.shippedCapabilities')}</span>
                     <span className="v2-cap-count">{a.features.length}</span>
                   </div>
                   <ul className="v2-cap-list">
@@ -752,7 +754,7 @@ export default function V2ProjectOverviewPage() {
                         <li key={i} className="v2-cap-row">
                           <span className="v2-cap-idx">F{String(i + 1).padStart(2, '0')}</span>
                           <span className="v2-cap-text">{f}</span>
-                          <span className="v2-cap-depth" aria-label={`depth ${depth} of 8`}>
+                          <span className="v2-cap-depth" aria-label={t('detail.capability.depthAria', { depth })}>
                             {Array.from({ length: 8 }).map((_, j) => (
                               <span key={j} className={`v2-cap-tick ${j < depth ? 'is-on' : ''}`} />
                             ))}
@@ -764,8 +766,8 @@ export default function V2ProjectOverviewPage() {
                   {hidden > 0 && (
                     <button type="button" className="v2-acted-expand" onClick={() => setFeaturesExpanded(!featuresExpanded)}>
                       {featuresExpanded
-                        ? <>show less <span className="v2-acted-expand-glyph">↑</span></>
-                        : <>show {hidden} more <span className="v2-acted-expand-glyph">↓</span></>}
+                        ? <>{t('detail.capability.showLess')} <span className="v2-acted-expand-glyph">↑</span></>
+                        : <>{t('detail.capability.showMore', { count: hidden })} <span className="v2-acted-expand-glyph">↓</span></>}
                     </button>
                   )}
                 </div>
@@ -777,7 +779,7 @@ export default function V2ProjectOverviewPage() {
               return (
                 <div className="glass-card is-static is-roomy v2-cap-card v2-cap-card-usp">
                   <div className="v2-cap-head">
-                    <span className="recgon-label v2-block-eye">unique angles</span>
+                    <span className="recgon-label v2-block-eye">{t('detail.capability.uniqueAngles')}</span>
                     <span className="v2-cap-count">{a.uniqueSellingPoints.length}</span>
                   </div>
                   <ul className="v2-cap-list">
@@ -795,8 +797,8 @@ export default function V2ProjectOverviewPage() {
                   {hidden > 0 && (
                     <button type="button" className="v2-acted-expand" onClick={() => setUspsExpanded(!uspsExpanded)}>
                       {uspsExpanded
-                        ? <>show less <span className="v2-acted-expand-glyph">↑</span></>
-                        : <>show {hidden} more <span className="v2-acted-expand-glyph">↓</span></>}
+                        ? <>{t('detail.capability.showLess')} <span className="v2-acted-expand-glyph">↑</span></>
+                        : <>{t('detail.capability.showMore', { count: hidden })} <span className="v2-acted-expand-glyph">↓</span></>}
                     </button>
                   )}
                 </div>
@@ -810,7 +812,7 @@ export default function V2ProjectOverviewPage() {
       {a.prioritizedNextSteps && a.prioritizedNextSteps.length > 0 && (
         <section className="v2-section">
           <div className="v2-section-head">
-            <span className="recgon-label v2-eyebrow">› do next</span>
+            <span className="recgon-label v2-eyebrow">{t('detail.doNext.eyebrow')}</span>
           </div>
           <div className="glass-card is-static is-roomy v2-ladder">
             {a.prioritizedNextSteps.map((s, i) => {
@@ -854,11 +856,11 @@ export default function V2ProjectOverviewPage() {
         return (
           <section className="v2-section">
             <div className="v2-section-head">
-              <span className="recgon-label v2-eyebrow">› acted on</span>
+              <span className="recgon-label v2-eyebrow">{t('detail.actedOn.eyebrow')}</span>
             </div>
             <div className="glass-card is-static is-roomy v2-acted-card">
               <div className="v2-acted-summary">
-                <div className="v2-acted-ring" role="img" aria-label={`${pct}% complete`}>
+                <div className="v2-acted-ring" role="img" aria-label={t('detail.actedOn.completeAria', { pct })}>
                   <svg viewBox="0 0 80 80" width="64" height="64">
                     <circle cx="40" cy="40" r="28" fill="none" stroke="var(--rule)" strokeWidth="5" />
                     <circle
@@ -876,12 +878,12 @@ export default function V2ProjectOverviewPage() {
                 </div>
                 <div className="v2-acted-summary-text">
                   <div className="v2-acted-summary-head">
-                    <span className="recgon-label v2-block-eye">completion</span>
-                    <span className="v2-acted-summary-count">{taken} <span>of</span> {total}</span>
+                    <span className="recgon-label v2-block-eye">{t('detail.actedOn.completion')}</span>
+                    <span className="v2-acted-summary-count">{taken} <span>{t('detail.actedOn.of')}</span> {total}</span>
                   </div>
                   <div className="v2-acted-summary-pills">
-                    <span className="v2-acted-pill is-acted">{taken} acted</span>
-                    <span className="v2-acted-pill">{total - taken} pending</span>
+                    <span className="v2-acted-pill is-acted">{t('detail.actedOn.acted', { count: taken })}</span>
+                    <span className="v2-acted-pill">{t('detail.actedOn.pending', { count: total - taken })}</span>
                   </div>
                 </div>
               </div>
@@ -915,8 +917,8 @@ export default function V2ProjectOverviewPage() {
                   onClick={() => setActedExpanded(!actedExpanded)}
                 >
                   {actedExpanded
-                    ? <>show less <span className="v2-acted-expand-glyph">↑</span></>
-                    : <>show {total - 4} more <span className="v2-acted-expand-glyph">↓</span></>}
+                    ? <>{t('detail.actedOn.showLess')} <span className="v2-acted-expand-glyph">↑</span></>
+                    : <>{t('detail.actedOn.showMore', { count: total - 4 })} <span className="v2-acted-expand-glyph">↓</span></>}
                 </button>
               )}
             </div>
@@ -928,7 +930,7 @@ export default function V2ProjectOverviewPage() {
       {a.improvements && a.improvements.length > 0 && (
         <section className="v2-section">
           <div className="v2-section-head">
-            <span className="recgon-label v2-eyebrow">› what changed</span>
+            <span className="recgon-label v2-eyebrow">{t('detail.whatChanged.eyebrow')}</span>
           </div>
           <div className="glass-card is-static is-roomy v2-diff">
             <ul className="v2-diff-list">

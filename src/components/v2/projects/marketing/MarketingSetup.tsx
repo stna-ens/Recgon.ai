@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import CampaignIcon from './CampaignIcon';
 import type { CampaignType } from './types';
 import { CAMPAIGN_TYPES, DURATIONS } from './utils';
@@ -31,27 +32,29 @@ export default function MarketingSetup({
   onChangeDuration,
   onPlan,
 }: Props) {
-  const typeConfig = CAMPAIGN_TYPES.find((t) => t.id === campaignType) ?? null;
+  const t = useTranslations('marketing');
+  const locale = useLocale();
+  const typeConfig = CAMPAIGN_TYPES.find((c) => c.id === campaignType) ?? null;
 
   return (
     <section className="glass-card is-static v2-m-setup">
       <div className="v2-m-field">
-        <span className="v2-m-field-label">campaign type</span>
+        <span className="v2-m-field-label">{t('setup.typeLabel')}</span>
         <div className="v2-m-type-grid">
-          {CAMPAIGN_TYPES.map((t) => {
-            const selected = campaignType === t.id;
+          {CAMPAIGN_TYPES.map((c) => {
+            const selected = campaignType === c.id;
             return (
               <button
-                key={t.id}
+                key={c.id}
                 type="button"
-                onClick={() => onChangeType(t.id)}
+                onClick={() => onChangeType(c.id)}
                 className={`v2-m-type-card ${selected ? 'is-active' : ''}`}
               >
                 <div className="v2-m-type-card-icon">
-                  <CampaignIcon type={t.id} size={17} />
+                  <CampaignIcon type={c.id} size={17} />
                 </div>
-                <div className="v2-m-type-card-label">{t.label}</div>
-                <p className="v2-m-type-card-desc">{t.description}</p>
+                <div className="v2-m-type-card-label">{t(c.labelKey)}</div>
+                <p className="v2-m-type-card-desc">{t(c.descKey)}</p>
               </button>
             );
           })}
@@ -59,10 +62,10 @@ export default function MarketingSetup({
       </div>
 
       <div className="v2-m-field">
-        <span className="v2-m-field-label">campaign goal</span>
+        <span className="v2-m-field-label">{t('setup.goalLabel')}</span>
         <textarea
           className="v2-m-textarea"
-          placeholder="e.g. Get 500 signups in the first month, reach 1000 Instagram followers, generate 50 qualified leads…"
+          placeholder={t('setup.goalPlaceholder')}
           value={campaignGoal}
           onChange={(e) => onChangeGoal(e.target.value)}
           rows={2}
@@ -71,19 +74,19 @@ export default function MarketingSetup({
 
       <div className="v2-m-field">
         <span className="v2-m-field-label">
-          website url <span className="v2-m-field-help">optional — crawls your site for richer AI context</span>
+          {t('setup.websiteLabel')} <span className="v2-m-field-help">{t('setup.websiteHelp')}</span>
         </span>
         <input
           className="v2-m-input"
           type="url"
-          placeholder="https://yourproduct.com"
+          placeholder={t('setup.websitePlaceholder')}
           value={websiteUrl}
           onChange={(e) => onChangeWebsite(e.target.value)}
         />
       </div>
 
       <div className="v2-m-field">
-        <span className="v2-m-field-label">duration</span>
+        <span className="v2-m-field-label">{t('setup.durationLabel')}</span>
         <div className="v2-m-duration-row">
           {DURATIONS.map((d) => {
             const selected = duration === d.value;
@@ -94,7 +97,7 @@ export default function MarketingSetup({
                 onClick={() => onChangeDuration(d.value)}
                 className={`v2-m-duration-pill ${selected ? 'is-active' : ''}`}
               >
-                {d.label}
+                {t(d.labelKey)}
               </button>
             );
           })}
@@ -121,12 +124,14 @@ export default function MarketingSetup({
         {isPlanning ? (
           <>
             <span className="v2-m-spinner is-lg" aria-hidden="true" />
-            planning campaign…
+            {t('setup.planning')}
           </>
         ) : (
           <>
             {campaignType && <CampaignIcon type={campaignType} size={14} color="currentColor" />}
-            {typeConfig ? `plan ${typeConfig.label.toLowerCase()} campaign` : 'select a campaign type'}
+            {typeConfig
+              ? t('setup.planCta', { type: t(typeConfig.labelKey).toLocaleLowerCase(locale) })
+              : t('setup.selectType')}
           </>
         )}
       </button>

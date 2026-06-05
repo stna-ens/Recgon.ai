@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 import { useTeam } from '@/components/TeamProvider';
 import { WeekCalendar } from '@/components/v2/calendar/WeekCalendar';
 import { ProjectTasksListView } from './list-view';
 
 export default function V2ProjectTasksPage() {
+  const t = useTranslations('tasks');
   const params = useParams<{ id: string }>();
   const projectId = params?.id ?? '';
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
@@ -20,10 +22,10 @@ export default function V2ProjectTasksPage() {
     return (
       <div className="v2-tasks-locked">
         <div className="glass-card is-static is-roomy">
-          <span className="recgon-label v2-locked-eye">› owner-only</span>
-          <h2 className="v2-locked-title">This view is for the team owner.</h2>
+          <span className="recgon-label v2-locked-eye">{t('ownerLock.eyebrow')}</span>
+          <h2 className="v2-locked-title">{t('ownerLock.title')}</h2>
           <p className="v2-locked-body">
-            The full project task board is owner-only. Your assigned tasks live in your inbox.
+            {t('ownerLock.body')}
           </p>
         </div>
         <style>{`
@@ -77,7 +79,7 @@ export default function V2ProjectTasksPage() {
               cursor: 'pointer',
             }}
           >
-            ‹ calendar
+            {t('viewToggle.calendar')}
           </button>
         </div>
         <ProjectTasksListView />

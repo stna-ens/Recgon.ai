@@ -1,0 +1,129 @@
+{
+  "language": {
+    "label": "language",
+    "hint": "Sets the app interface and the language Recgon writes in."
+  },
+  "band": {
+    "eyebrow": "settings · account"
+  },
+  "rail": {
+    "navAria": "settings navigation",
+    "sectionsAria": "sections",
+    "fallbackName": "You"
+  },
+  "sections": {
+    "identity": "identity",
+    "security": "security",
+    "appearance": "appearance",
+    "connections": "connections",
+    "admin": "admin",
+    "session": "session"
+  },
+  "identity": {
+    "label": "identity",
+    "hint": "How you show up in Recgon.",
+    "avatarLabel": "avatar",
+    "avatarHint": "Square image. JPEG, PNG, WebP, or GIF. Max 2MB.",
+    "avatarUploading": "uploading",
+    "avatarChange": "change",
+    "avatarUpload": "upload",
+    "avatarRemove": "remove",
+    "avatarTooLarge": "image must be under 2MB",
+    "avatarUpdated": "avatar updated",
+    "avatarRemoved": "avatar removed",
+    "nicknameLabel": "nickname",
+    "nicknameHint": "Used in mentions and the avatar menu.",
+    "nicknamePlaceholder": "your nickname",
+    "nicknameEmpty": "no nickname yet",
+    "nicknameUpdated": "nickname updated",
+    "emailLabel": "email",
+    "emailHint": "Where we send invites, password resets, and notifications. Changing it signs you out.",
+    "emailAction": "change",
+    "emailPlaceholder": "new@example.com",
+    "emailConfirmPlaceholder": "confirm with current password",
+    "emailUpdated": "email updated. please sign in again."
+  },
+  "security": {
+    "label": "security",
+    "hint": "Your sign-in credentials.",
+    "passwordLabel": "password",
+    "passwordHint": "Minimum 8 characters. Other sessions stay signed in.",
+    "passwordAction": "change",
+    "currentPlaceholder": "current password",
+    "newPlaceholder": "new password (min 8 chars)",
+    "confirmPlaceholder": "confirm new password",
+    "update": "update",
+    "tooShort": "new password must be at least 8 characters",
+    "mismatch": "new passwords do not match",
+    "passwordUpdated": "password updated"
+  },
+  "appearance": {
+    "label": "appearance",
+    "hint": "How Recgon looks in this browser.",
+    "themeLabel": "theme",
+    "themeHint": "Saved per browser. System theme is not auto-followed.",
+    "themeAria": "theme",
+    "dark": "dark",
+    "light": "light",
+    "english": "english",
+    "turkish": "türkçe"
+  },
+  "connections": {
+    "label": "connections",
+    "hint": "External tools wired into your account.",
+    "githubLabel": "github",
+    "githubHint": "Lets you import private repos and unlock code analysis.",
+    "checking": "checking…",
+    "connected": "connected",
+    "disconnecting": "disconnecting",
+    "disconnect": "disconnect",
+    "githubEmpty": "No GitHub account linked. Public repos still work, but private imports need a connection.",
+    "connectGithub": "connect github",
+    "githubConnected": "github connected",
+    "githubDisconnected": "github disconnected",
+    "githubDisconnectConfirm": "Disconnect GitHub?",
+    "claudeCodeLabel": "claude code",
+    "claudeCodeHint": "MCP transport. Pipes Recgon insights into your editor.",
+    "mcpInstruction": "paste this in your terminal, then sign in when the browser opens",
+    "copied": "copied",
+    "copy": "copy",
+    "copyFailed": "failed to copy"
+  },
+  "admin": {
+    "label": "admin",
+    "hint": "Waitlist queue for non-METU emails.",
+    "waitlistLabel": "waitlist",
+    "waitlistHint": "Approving an email lets that user complete registration immediately.",
+    "pending": "pending:",
+    "refreshing": "refreshing",
+    "refresh": "refresh",
+    "loadingWaitlist": "Loading waitlist…",
+    "noPending": "No pending requests right now.",
+    "requested": "requested {date}",
+    "reject": "reject",
+    "approve": "approve",
+    "recentlyApproved": "recently approved",
+    "approvedAt": "approved {date}",
+    "approvedBy": " by {email}",
+    "loadFailed": "failed to load waitlist",
+    "updateFailed": "failed to update waitlist",
+    "approvedToast": "approved for registration",
+    "rejectedToast": "removed from queue"
+  },
+  "session": {
+    "label": "session",
+    "hint": "Ends this browser’s session.",
+    "signedInAs": "Signed in as",
+    "signedInRest": ". Other browsers and the Claude Code MCP connection stay signed in.",
+    "signOut": "sign out",
+    "areYouSure": "are you sure?",
+    "signingOut": "signing out",
+    "confirmSignOut": "yes — sign out"
+  },
+  "common": {
+    "saving": "saving",
+    "cancel": "cancel",
+    "save": "save",
+    "failed": "failed"
+  }
+}

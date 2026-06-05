@@ -1,23 +1,24 @@
 'use client';
 
-const TRANSCRIPT: { kind: 'cmd' | 'out' | 'note' | 'ok'; text: string }[] = [
-  { kind: 'cmd', text: '/analyze https://github.com/acme/storefront' },
-  { kind: 'note', text: '# reading codebase · 384 files · 18.2k loc' },
-  { kind: 'out', text: 'stage: growth · top risk: webhook retries silently drop' },
-  { kind: 'out', text: 'growth lever: switch checkout to single-page (3 of 4 funnel tests favour it)' },
-  { kind: 'note', text: '# matching teammates by skill + calendar' },
-  { kind: 'ok', text: '→ assigned 4 tasks · 3 owners · 1 unassigned (no fit above 0.6)' },
-];
+import { useTranslations } from 'next-intl';
 
 export default function TerminalPreviewSection() {
+  const t = useTranslations('landing.terminalPreview');
+  const TRANSCRIPT: { kind: 'cmd' | 'out' | 'note' | 'ok'; text: string }[] = [
+    { kind: 'cmd', text: '/analyze https://github.com/acme/storefront' },
+    { kind: 'note', text: t('transcript.note1') },
+    { kind: 'out', text: t('transcript.out1') },
+    { kind: 'out', text: t('transcript.out2') },
+    { kind: 'note', text: t('transcript.note2') },
+    { kind: 'ok', text: t('transcript.ok') },
+  ];
   return (
     <section id="terminal" className="lnd-term">
       <div className="lnd-term-head">
-        <span className="recgon-label">the terminal, for when you&apos;d rather just type</span>
-        <h2 className="lnd-term-title">Same brain. Command-line interface.</h2>
+        <span className="recgon-label">{t('label')}</span>
+        <h2 className="lnd-term-title">{t('title')}</h2>
         <p className="lnd-term-sub">
-          Every analysis, every assignment, every report is one slash away.
-          Type <code>/analyze</code>, <code>/analytics</code>, or just ask in plain English.
+          {t('subPrefix')} <code>/analyze</code>{t('subOr1')} <code>/analytics</code>{t('subOr2')}
         </p>
       </div>
 
@@ -26,7 +27,7 @@ export default function TerminalPreviewSection() {
           <span className="lnd-term-light" data-c="r" />
           <span className="lnd-term-light" data-c="y" />
           <span className="lnd-term-light" data-c="g" />
-          <span className="lnd-term-title-text">recgon — terminal</span>
+          <span className="lnd-term-title-text">{t('barTitle')}</span>
         </header>
         <div className="lnd-term-body">
           {TRANSCRIPT.map((line, i) => (

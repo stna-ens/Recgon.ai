@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, ShieldCheck, UploadCloud, XCircle } from 'lucide-react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
@@ -42,9 +43,11 @@ interface VerifyTask {
   proof: ProofPayload | null;
 }
 
-function fmtSubmittedAt(iso: string | undefined): string {
+type Translator = ReturnType<typeof useTranslations<'auth'>>;
+
+function fmtSubmittedAt(iso: string | undefined, t: Translator): string {
   if (!iso) return '';
-  return relTime(iso);
+  return relTime(iso, t);
 }
 
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|avif|svg|bmp)(\?|#|$)/i;
@@ -77,20 +80,24 @@ function bucketFor(t: VerifyTask): FilterKey | null {
   return null;
 }
 
-const FILTER_OPTIONS: { value: FilterKey; label: string; tone: 'crit' | 'warn' | 'info' | 'mute' }[] = [
-  { value: 'all',      label: 'all',            tone: 'mute' },
-  { value: 'failed',   label: 'failed',         tone: 'crit' },
-  { value: 'awaiting', label: 'awaiting proof', tone: 'warn' },
-  { value: 'stuck',    label: 'stuck',          tone: 'crit' },
+const FILTER_OPTIONS: { value: FilterKey; tone: 'crit' | 'warn' | 'info' | 'mute' }[] = [
+  { value: 'all',      tone: 'mute' },
+  { value: 'failed',   tone: 'crit' },
+  { value: 'awaiting', tone: 'warn' },
+  { value: 'stuck',    tone: 'crit' },
 ];
 
-function relTime(iso: string | null): string {
+function filterLabel(value: FilterKey, t: Translator): string {
+  return t(`verify.filters.${value}`);
+}
+
+function relTime(iso: string | null, t: Translator): string {
   if (!iso) return '';
   const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return 'just now';
-  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
-  if (ms < 86_400_000) return `${Math.round(ms / 3_600_000)}h ago`;
-  return `${Math.round(ms / 86_400_000)}d ago`;
+  if (ms < 60_000) return t('verify.time.justNow');
+  if (ms < 3_600_000) return t('verify.time.minutesAgo', { count: Math.round(ms / 60_000) });
+  if (ms < 86_400_000) return t('verify.time.hoursAgo', { count: Math.round(ms / 3_600_000) });
+  return t('verify.time.daysAgo', { count: Math.round(ms / 86_400_000) });
 }
 
 function cleanText(s: string): string {
@@ -101,39 +108,40 @@ function cleanText(s: string): string {
     .replace(/__/g, '');
 }
 
-function statusTone(vs: VerificationStatus | undefined): { tone: 'crit' | 'warn' | 'info' | 'mute'; label: string } {
+function statusTone(vs: VerificationStatus | undefined, t: Translator): { tone: 'crit' | 'warn' | 'info' | 'mute'; label: string } {
   switch (vs) {
-    case 'failed':            return { tone: 'crit',  label: 'recgon rejected' };
-    case 'proof_requested':   return { tone: 'warn',  label: 'awaiting proof' };
-    case 'auto_inconclusive': return { tone: 'warn',  label: 'inconclusive' };
-    case 'proof_evaluating':  return { tone: 'info',  label: 'recgon re-checking' };
-    case 'auto_running':      return { tone: 'info',  label: 'recgon checking' };
-    default:                  return { tone: 'mute',  label: vs ?? 'unknown' };
+    case 'failed':            return { tone: 'crit',  label: t('verify.status.rejected') };
+    case 'proof_requested':   return { tone: 'warn',  label: t('verify.status.awaitingProof') };
+    case 'auto_inconclusive': return { tone: 'warn',  label: t('verify.status.inconclusive') };
+    case 'proof_evaluating':  return { tone: 'info',  label: t('verify.status.reChecking') };
+    case 'auto_running':      return { tone: 'info',  label: t('verify.status.checking') };
+    default:                  return { tone: 'mute',  label: vs ?? t('verify.status.unknown') };
   }
 }
 
-function filterTitle(filter: FilterKey, count: number): string {
-  if (filter === 'failed') return `${count} failed ${count === 1 ? 'task' : 'tasks'}`;
-  if (filter === 'awaiting') return `${count} awaiting proof`;
-  if (filter === 'stuck') return `${count} stuck ${count === 1 ? 'task' : 'tasks'}`;
-  return `${count} task${count === 1 ? '' : 's'} needing review`;
+function filterTitle(filter: FilterKey, count: number, t: Translator): string {
+  if (filter === 'failed') return t('verify.titles.failed', { count });
+  if (filter === 'awaiting') return t('verify.titles.awaiting', { count });
+  if (filter === 'stuck') return t('verify.titles.stuck', { count });
+  return t('verify.titles.review', { count });
 }
 
-function filterHelp(filter: FilterKey): string {
-  if (filter === 'failed') return 'Start here: compare the submitted proof with Recgon’s concern, then approve or decline.';
-  if (filter === 'awaiting') return 'These need one more note, link, or file before Recgon can make a clean call.';
-  if (filter === 'stuck') return 'These have been checking too long. Use owner override or decline to unblock the team.';
-  return 'A focused queue for tasks where automatic verification needs a human decision.';
+function filterHelp(filter: FilterKey, t: Translator): string {
+  if (filter === 'failed') return t('verify.help.failed');
+  if (filter === 'awaiting') return t('verify.help.awaiting');
+  if (filter === 'stuck') return t('verify.help.stuck');
+  return t('verify.help.default');
 }
 
-function taskActionLabel(t: VerifyTask): string {
-  if (t.verification_status === 'failed') return 'Review proof';
-  if (t.verification_status === 'proof_requested' || t.verification_status === 'auto_inconclusive') return 'Add proof';
-  if (t.verification_status === 'auto_running' || t.verification_status === 'proof_evaluating') return 'Unblock';
-  return 'Decide';
+function taskActionLabel(task: VerifyTask, t: Translator): string {
+  if (task.verification_status === 'failed') return t('verify.actionLabel.reviewProof');
+  if (task.verification_status === 'proof_requested' || task.verification_status === 'auto_inconclusive') return t('verify.actionLabel.addProof');
+  if (task.verification_status === 'auto_running' || task.verification_status === 'proof_evaluating') return t('verify.actionLabel.unblock');
+  return t('verify.actionLabel.decide');
 }
 
 function V2VerifyInner() {
+  const t = useTranslations('auth');
   const { currentTeam } = useTeam();
   const teamId = currentTeam?.id ?? null;
   const { addToast } = useToast();
@@ -248,13 +256,13 @@ function V2VerifyInner() {
       const { attachments } = (await res.json()) as { attachments: Array<{ name: string; url: string }> };
       const existing = proofState[task.id]?.attachments ?? [];
       updateProofField(task.id, { attachments: [...existing, ...attachments] });
-      addToast(`${attachments.length} file${attachments.length === 1 ? '' : 's'} attached`, 'success');
+      addToast(t('verify.toasts.filesAttached', { count: attachments.length }), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'upload failed', 'error');
+      addToast(err instanceof Error ? err.message : t('verify.toasts.uploadFailed'), 'error');
     } finally {
       setUploadingId(null);
     }
-  }, [addToast, proofState, updateProofField]);
+  }, [addToast, proofState, updateProofField, t]);
 
   const submitProof = useCallback(async (task: VerifyTask) => {
     if (working === task.id) return;
@@ -264,7 +272,7 @@ function V2VerifyInner() {
     const links = linksRaw ? linksRaw.split(/\s+/).filter(Boolean) : [];
     const attachments = s?.attachments ?? [];
     if (!text && links.length === 0 && attachments.length === 0) {
-      addToast('add a note, a link, or a file before submitting', 'error');
+      addToast(t('verify.toasts.proofRequired'), 'error');
       return;
     }
     setWorking(task.id);
@@ -284,19 +292,19 @@ function V2VerifyInner() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || 'proof submit failed');
       }
-      addToast('proof sent — recgon is re-checking', 'success');
+      addToast(t('verify.toasts.proofSent'), 'success');
       setProofState((p) => { const c = { ...p }; delete c[task.id]; return c; });
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('verify.toasts.failed'), 'error');
     } finally {
       setWorking(null);
     }
-  }, [working, proofState, addToast, refresh]);
+  }, [working, proofState, addToast, refresh, t]);
 
   const overrideTask = useCallback(async (task: VerifyTask) => {
     if (working === task.id) return;
-    if (!confirm(`Mark "${task.title}" complete by owner override?\n\nThis bypasses Recgon's verification and is final.`)) return;
+    if (!confirm(t('verify.confirm.override', { title: task.title }))) return;
     setWorking(task.id);
     try {
       const res = await fetch(`/api/teams/${task.team_id}/tasks/${task.id}/override`, {
@@ -308,18 +316,18 @@ function V2VerifyInner() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || 'override failed');
       }
-      addToast('overridden — task marked complete', 'success');
+      addToast(t('verify.toasts.overridden'), 'success');
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'override failed', 'error');
+      addToast(err instanceof Error ? err.message : t('verify.toasts.overrideFailed'), 'error');
     } finally {
       setWorking(null);
     }
-  }, [working, addToast, refresh]);
+  }, [working, addToast, refresh, t]);
 
   const declineTask = useCallback(async (task: VerifyTask) => {
     if (working === task.id) return;
-    if (!confirm(`Decline "${task.title}"? It will be sent back to the routing queue.`)) return;
+    if (!confirm(t('verify.confirm.decline', { title: task.title }))) return;
     setWorking(task.id);
     try {
       const res = await fetch(`/api/teams/${task.team_id}/tasks/${task.id}/decline`, {
@@ -330,37 +338,37 @@ function V2VerifyInner() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || 'decline failed');
       }
-      addToast('declined', 'success');
+      addToast(t('verify.toasts.declined'), 'success');
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'decline failed', 'error');
+      addToast(err instanceof Error ? err.message : t('verify.toasts.declineFailed'), 'error');
     } finally {
       setWorking(null);
     }
-  }, [working, addToast, refresh]);
+  }, [working, addToast, refresh, t]);
 
   return (
     <div className="v2-vf">
       <div className="glass-card v2-vf-hero" data-tone={headTone}>
         <Link href="/" className="v2-vf-back">
           <ArrowLeft size={14} strokeWidth={2.2} />
-          <span>back to home</span>
+          <span>{t('verify.backToHome')}</span>
         </Link>
 
         <div className="v2-vf-hero-grid">
           <div className="v2-vf-hero-left">
             <div className="v2-vf-tag">
               <ShieldCheck size={14} strokeWidth={2.2} />
-              <span>Verification queue</span>
+              <span>{t('verify.queueTag')}</span>
             </div>
             <h1 className="v2-vf-headline">
               {loading ? '··'
                 : counts.total === 0
-                ? 'Nothing waiting on you.'
-                : filterTitle(filter, visible.length)}
+                ? t('verify.nothingWaiting')
+                : filterTitle(filter, visible.length, t)}
             </h1>
             <p className="v2-vf-sub">
-              {filterHelp(filter)}
+              {filterHelp(filter, t)}
             </p>
           </div>
 
@@ -368,17 +376,17 @@ function V2VerifyInner() {
             <div className="v2-vf-stat" data-tone="crit">
               <CircleAlert size={16} strokeWidth={2.2} />
               <div className="v2-vf-stat-num">{counts.failed}</div>
-              <div className="v2-vf-stat-lab">failed</div>
+              <div className="v2-vf-stat-lab">{t('verify.stats.failed')}</div>
             </div>
             <div className="v2-vf-stat" data-tone="warn">
               <UploadCloud size={16} strokeWidth={2.2} />
               <div className="v2-vf-stat-num">{counts.awaiting}</div>
-              <div className="v2-vf-stat-lab">awaiting proof</div>
+              <div className="v2-vf-stat-lab">{t('verify.stats.awaitingProof')}</div>
             </div>
             <div className="v2-vf-stat" data-tone="crit">
               <CircleDashed size={16} strokeWidth={2.2} />
               <div className="v2-vf-stat-num">{counts.stuck}</div>
-              <div className="v2-vf-stat-lab">stuck &gt;{STUCK_HOURS}h</div>
+              <div className="v2-vf-stat-lab">{t('verify.stats.stuck', { hours: STUCK_HOURS })}</div>
             </div>
           </div>
         </div>
@@ -399,7 +407,7 @@ function V2VerifyInner() {
                   disabled={n === 0 && o.value !== 'all'}
                 >
                   <span className="v2-vf-pill-dot" />
-                  <span className="v2-vf-pill-lab">{o.label}</span>
+                  <span className="v2-vf-pill-lab">{filterLabel(o.value, t)}</span>
                   <span className="v2-vf-pill-num">{n}</span>
                 </button>
               );
@@ -419,48 +427,48 @@ function V2VerifyInner() {
           <div className="v2-vf-empty-body">
             <p className="v2-vf-empty-title">
               {counts.total === 0
-                ? "All clear."
-                : `No ${filter} verifications.`}
+                ? t('verify.empty.allClearTitle')
+                : t('verify.empty.noFilterTitle', { filter: filterLabel(filter, t) })}
             </p>
             <p className="v2-vf-empty-text">
               {counts.total === 0
-                ? "Recgon is verifying every task on its own. You'll see anything that needs your call here."
-                : "Try a different filter — or head back to the cockpit."}
+                ? t('verify.empty.allClearText')
+                : t('verify.empty.noFilterText')}
             </p>
           </div>
         </div>
       ) : (
         <ul className="v2-vf-list">
-          {visible.map((t) => {
-            const tone = statusTone(t.verification_status);
-            const ev = t.verification_evidence;
-            const proof = proofState[t.id];
+          {visible.map((task) => {
+            const tone = statusTone(task.verification_status, t);
+            const ev = task.verification_evidence;
+            const proof = proofState[task.id];
             // Proof submission and decline are assignee-only — never on
             // someone else's behalf. The owner gets `mark complete`
             // (override) instead, and uses the calendar/list view for
             // reassignment.
-            const isAssignee = isAssigneeOf(t);
+            const isAssignee = isAssigneeOf(task);
             const canSubmitProof =
               isAssignee && (
-                t.verification_status === 'proof_requested' ||
-                t.verification_status === 'auto_inconclusive'
+                task.verification_status === 'proof_requested' ||
+                task.verification_status === 'auto_inconclusive'
               );
-            const isStuck = bucketFor(t) === 'stuck';
-            const isFailed = t.verification_status === 'failed';
+            const isStuck = bucketFor(task) === 'stuck';
+            const isFailed = task.verification_status === 'failed';
             const isLive =
-              t.verification_status === 'auto_running' ||
-              t.verification_status === 'proof_evaluating';
-            const isWorking = working === t.id;
+              task.verification_status === 'auto_running' ||
+              task.verification_status === 'proof_evaluating';
+            const isWorking = working === task.id;
             const hasSubmittedProof = Boolean(
-              t.proof &&
-              ((t.proof.text && t.proof.text.trim()) ||
-                (t.proof.links && t.proof.links.length > 0) ||
-                (t.proof.attachments && t.proof.attachments.length > 0)),
+              task.proof &&
+              ((task.proof.text && task.proof.text.trim()) ||
+                (task.proof.links && task.proof.links.length > 0) ||
+                (task.proof.attachments && task.proof.attachments.length > 0)),
             );
-            const actionLabel = taskActionLabel(t);
+            const actionLabel = taskActionLabel(task, t);
 
             return (
-              <li key={t.id} className="glass-card v2-vf-card" data-tone={tone.tone}>
+              <li key={task.id} className="glass-card v2-vf-card" data-tone={tone.tone}>
                 <span className="v2-vf-card-rib" aria-hidden="true" />
 
                 <div className="v2-vf-card-grid">
@@ -471,18 +479,18 @@ function V2VerifyInner() {
                         {!isLive && <span className="v2-vf-status-dot" aria-hidden="true" />}
                         {tone.label}
                       </span>
-                      {t.projectName && <span className="v2-vf-project">{t.projectName}</span>}
+                      {task.projectName && <span className="v2-vf-project">{task.projectName}</span>}
                       <span className="v2-vf-spacer" />
-                      <span className="v2-vf-time">{relTime(t.assigned_at)}</span>
+                      <span className="v2-vf-time">{relTime(task.assigned_at, t)}</span>
                     </header>
 
-                    <h3 className="v2-vf-title">{cleanText(t.title)}</h3>
+                    <h3 className="v2-vf-title">{cleanText(task.title)}</h3>
 
                     {(ev?.verdict || isStuck || isFailed) && (
                       <div className="v2-vf-verdict">
                         <div className="v2-vf-verdict-head">
                           <span className="v2-vf-verdict-tag">
-                            {isFailed ? 'Recgon concern' : isStuck ? 'Why this is stuck' : 'Recgon said'}
+                            {isFailed ? t('verify.verdict.concern') : isStuck ? t('verify.verdict.whyStuck') : t('verify.verdict.recgonSaid')}
                           </span>
                           {typeof ev?.confidence === 'number' && (
                             <span className="v2-vf-verdict-conf">
@@ -494,35 +502,35 @@ function V2VerifyInner() {
                           {ev?.verdict
                             ? cleanText(ev.verdict)
                             : isStuck
-                            ? `AI verification has been running for over ${STUCK_HOURS}h.`
-                            : 'No verdict text recorded.'}
+                            ? t('verify.verdict.stuckText', { hours: STUCK_HOURS })
+                            : t('verify.verdict.noVerdict')}
                         </p>
                       </div>
                     )}
 
-                    {hasSubmittedProof && t.proof && (
+                    {hasSubmittedProof && task.proof && (
                     <div className="v2-vf-submitted">
                       <div className="v2-vf-submitted-head">
                         <span className="v2-vf-submitted-tag">
-                          submitted proof
+                          {t('verify.submittedProof')}
                         </span>
                         <span className="v2-vf-submitted-meta">
-                          {t.proof.submittedBy && t.proof.submittedBy !== 'self' && (
-                            <>by {t.proof.submittedBy} · </>
+                          {task.proof.submittedBy && task.proof.submittedBy !== 'self' && (
+                            <>{t('verify.byUser', { user: task.proof.submittedBy })} · </>
                           )}
-                          {fmtSubmittedAt(t.proof.submittedAt)}
+                          {fmtSubmittedAt(task.proof.submittedAt, t)}
                         </span>
                       </div>
 
-                      {t.proof.text && t.proof.text.trim() && (
+                      {task.proof.text && task.proof.text.trim() && (
                         <p className="v2-vf-submitted-text">
-                          {cleanText(t.proof.text)}
+                          {cleanText(task.proof.text)}
                         </p>
                       )}
 
-                      {t.proof.links && t.proof.links.length > 0 && (
+                      {task.proof.links && task.proof.links.length > 0 && (
                         <ul className="v2-vf-submitted-links">
-                          {t.proof.links.map((href, i) => (
+                          {task.proof.links.map((href, i) => (
                             <li key={i}>
                               <a
                                 href={href}
@@ -541,9 +549,9 @@ function V2VerifyInner() {
                         </ul>
                       )}
 
-                      {t.proof.attachments && t.proof.attachments.length > 0 && (() => {
-                        const images = t.proof.attachments.filter(isImageAttachment);
-                        const files  = t.proof.attachments.filter((a) => !isImageAttachment(a));
+                      {task.proof.attachments && task.proof.attachments.length > 0 && (() => {
+                        const images = task.proof.attachments.filter(isImageAttachment);
+                        const files  = task.proof.attachments.filter((a) => !isImageAttachment(a));
                         return (
                           <>
                             {images.length > 0 && (
@@ -554,8 +562,8 @@ function V2VerifyInner() {
                                       type="button"
                                       className="v2-vf-submitted-img"
                                       onClick={() => setLightbox({ url: att.url, name: att.name })}
-                                      title={`Open ${att.name} full-size`}
-                                      aria-label={`Open ${att.name} full-size`}
+                                      title={t('verify.openFullSize', { name: att.name })}
+                                      aria-label={t('verify.openFullSize', { name: att.name })}
                                     >
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img src={att.url} alt={att.name} loading="lazy" />
@@ -591,20 +599,20 @@ function V2VerifyInner() {
                     </div>
                     )}
 
-                    {(t.description || ev?.routedSource || (typeof ev?.iterations === 'number' && ev.iterations > 0)) && (
+                    {(task.description || ev?.routedSource || (typeof ev?.iterations === 'number' && ev.iterations > 0)) && (
                       <details className="v2-vf-details">
                         <summary>
-                          <span>Task details</span>
+                          <span>{t('verify.taskDetails')}</span>
                           <ChevronDown size={14} strokeWidth={2.2} />
                         </summary>
-                        {t.description && (
-                          <p className="v2-vf-desc">{cleanText(t.description)}</p>
+                        {task.description && (
+                          <p className="v2-vf-desc">{cleanText(task.description)}</p>
                         )}
                         {(ev?.routedSource || (typeof ev?.iterations === 'number' && ev.iterations > 0)) && (
                           <div className="v2-vf-verdict-meta">
-                            {ev?.routedSource && <span>source: {ev.routedSource}</span>}
+                            {ev?.routedSource && <span>{t('verify.meta.source', { source: ev.routedSource })}</span>}
                             {typeof ev?.iterations === 'number' && ev.iterations > 0 && (
-                              <span>iterations: {ev.iterations}</span>
+                              <span>{t('verify.meta.iterations', { count: ev.iterations })}</span>
                             )}
                           </div>
                         )}
@@ -617,45 +625,45 @@ function V2VerifyInner() {
                       <span>{actionLabel}</span>
                       <small>
                         {isOwner
-                          ? 'owner controls'
+                          ? t('verify.roleHint.owner')
                           : isAssignee
-                            ? 'your task'
-                            : 'view-only'}
+                            ? t('verify.roleHint.assignee')
+                            : t('verify.roleHint.viewer')}
                       </small>
                     </div>
 
                     {canSubmitProof && (
                       <div className="v2-vf-proof">
                         <label className="v2-vf-field">
-                          <span className="v2-vf-field-lab">short proof note</span>
+                          <span className="v2-vf-field-lab">{t('verify.proofNoteLabel')}</span>
                           <textarea
                             className="v2-vf-textarea"
                             rows={3}
-                            placeholder="What changed, and where can Recgon see it?"
+                            placeholder={t('verify.proofNotePlaceholder')}
                             value={proof?.text ?? ''}
-                            onChange={(e) => updateProofField(t.id, { text: e.target.value })}
+                            onChange={(e) => updateProofField(task.id, { text: e.target.value })}
                             disabled={isWorking}
                           />
                         </label>
                         <label className="v2-vf-field">
-                          <span className="v2-vf-field-lab">links</span>
+                          <span className="v2-vf-field-lab">{t('verify.linksLabel')}</span>
                           <input
                             type="text"
                             className="v2-vf-input"
-                            placeholder="Paste one or more links"
+                            placeholder={t('verify.linksPlaceholder')}
                             value={proof?.links ?? ''}
-                            onChange={(e) => updateProofField(t.id, { links: e.target.value })}
+                            onChange={(e) => updateProofField(task.id, { links: e.target.value })}
                             disabled={isWorking}
                           />
                         </label>
                         <ProofDropZone
-                          uploading={uploadingId === t.id}
-                          onPick={(files) => handleUpload(t, files)}
+                          uploading={uploadingId === task.id}
+                          onPick={(files) => handleUpload(task, files)}
                           files={proof?.attachments ?? []}
                           onRemove={(idx) => {
                             const next = [...(proof?.attachments ?? [])];
                             next.splice(idx, 1);
-                            updateProofField(t.id, { attachments: next });
+                            updateProofField(task.id, { attachments: next });
                           }}
                         />
                       </div>
@@ -666,33 +674,33 @@ function V2VerifyInner() {
                         <button
                           type="button"
                           className="v2-vf-btn v2-vf-btn-primary"
-                          onClick={() => submitProof(t)}
+                          onClick={() => submitProof(task)}
                           disabled={isWorking}
                         >
                           <UploadCloud size={14} strokeWidth={2.2} />
-                          {isWorking ? 'sending' : 'submit proof'}
+                          {isWorking ? t('verify.sending') : t('verify.submitProof')}
                         </button>
                       )}
                       <button
                         type="button"
                         className="v2-vf-btn v2-vf-btn-strong"
-                        onClick={() => overrideTask(t)}
+                        onClick={() => overrideTask(task)}
                         disabled={isWorking || !isOwner}
-                        title={isOwner ? 'Mark complete by owner override' : 'Owner-only action'}
+                        title={isOwner ? t('verify.markCompleteTitle') : t('verify.ownerOnlyTitle')}
                       >
                         <CheckCircle2 size={14} strokeWidth={2.2} />
-                        mark complete
+                        {t('verify.markComplete')}
                       </button>
                       {(isAssignee || isOwner) && (
                         <button
                           type="button"
                           className="v2-vf-btn v2-vf-btn-ghost"
-                          onClick={() => declineTask(t)}
+                          onClick={() => declineTask(task)}
                           disabled={isWorking}
-                          title={isAssignee ? 'Hand back — Recgon will reassign' : 'Reassign to another teammate'}
+                          title={isAssignee ? t('verify.declineTitle') : t('verify.reassignTitle')}
                         >
                           <XCircle size={14} strokeWidth={2.2} />
-                          {isAssignee ? 'decline' : 'reassign'}
+                          {isAssignee ? t('verify.decline') : t('verify.reassign')}
                         </button>
                       )}
                     </footer>
@@ -709,14 +717,14 @@ function V2VerifyInner() {
           className="v2-vf-lightbox"
           role="dialog"
           aria-modal="true"
-          aria-label={`Full-size preview: ${lightbox.name}`}
+          aria-label={t('verify.lightbox.previewLabel', { name: lightbox.name })}
           onClick={() => setLightbox(null)}
         >
           <button
             type="button"
             className="v2-vf-lightbox-close"
             onClick={(e) => { e.stopPropagation(); setLightbox(null); }}
-            aria-label="Close preview"
+            aria-label={t('verify.lightbox.close')}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -733,7 +741,7 @@ function V2VerifyInner() {
           <div className="v2-vf-lightbox-caption" onClick={(e) => e.stopPropagation()}>
             <span>{lightbox.name}</span>
             <a href={lightbox.url} target="_blank" rel="noopener noreferrer" className="v2-vf-lightbox-open">
-              open original
+              {t('verify.lightbox.openOriginal')}
             </a>
           </div>
         </div>,

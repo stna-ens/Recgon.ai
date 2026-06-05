@@ -4,18 +4,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import RecgonLogo from '@/components/RecgonLogo';
 import TeamSwitcher from '@/components/TeamSwitcher';
 import AvatarMenu from '@/components/v2/AvatarMenu';
 
-type NavItem = { href: string; label: string; matchPrefix?: boolean };
+type NavItem = { href: string; key: string; matchPrefix?: boolean };
 
 const NAV: NavItem[] = [
-  { href: '/', label: 'Home' },
-  { href: '/projects', label: 'Projects', matchPrefix: true },
-  { href: '/tasks', label: 'Tasks', matchPrefix: true },
-  { href: '/calendar', label: 'Calendar', matchPrefix: true },
-  { href: '/terminal', label: 'Terminal', matchPrefix: true },
+  { href: '/', key: 'home' },
+  { href: '/projects', key: 'projects', matchPrefix: true },
+  { href: '/tasks', key: 'tasks', matchPrefix: true },
+  { href: '/calendar', key: 'calendar', matchPrefix: true },
+  { href: '/terminal', key: 'terminal', matchPrefix: true },
 ];
 
 function isMac() {
@@ -32,6 +33,8 @@ const TASKS_SEEN_KEY = 'v2:tasks:lastSeenAt';
 export default function TopNavV2() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const t = useTranslations('nav');
+  const ts = useTranslations('shared');
   const [hasNewTask, setHasNewTask] = useState(false);
   const [mac, setMac] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
@@ -91,13 +94,13 @@ export default function TopNavV2() {
       <header className="v2-topnav">
         <div className="v2-topnav-inner">
           <div className="v2-topnav-left">
-            <Link href="/" className="v2-brand" aria-label="Recgon home">
+            <Link href="/" className="v2-brand" aria-label={ts('nav.recgonHome')}>
               <RecgonLogo size={28} uid="logo-v2" />
             </Link>
 
             <span className="v2-topnav-rule" aria-hidden="true" />
 
-            <nav className="v2-primary-nav" aria-label="Primary">
+            <nav className="v2-primary-nav" aria-label={ts('nav.primaryAria')}>
               {NAV.map((item) => {
                 const active = item.matchPrefix
                   ? pathname === item.href || pathname.startsWith(item.href + '/')
@@ -110,9 +113,9 @@ export default function TopNavV2() {
                     className={`v2-nav-link ${active ? 'is-active' : ''}`}
                     aria-current={active ? 'page' : undefined}
                   >
-                    <span className="v2-nav-label">{item.label}</span>
+                    <span className="v2-nav-label">{t(item.key)}</span>
                     {showBadge && (
-                      <span className="v2-nav-badge-dot" aria-label="new task" />
+                      <span className="v2-nav-badge-dot" aria-label={ts('nav.newTask')} />
                     )}
                   </Link>
                 );
@@ -122,7 +125,7 @@ export default function TopNavV2() {
 
           <div className="v2-topnav-right">
             {now && (
-              <div className="v2-clock" title="Local time" aria-label={`Current time ${formatTime(now)}`}>
+              <div className="v2-clock" title={ts('nav.localTime')} aria-label={ts('nav.currentTime', { time: formatTime(now) })}>
                 {formatTime(now)}
               </div>
             )}
@@ -131,13 +134,13 @@ export default function TopNavV2() {
               type="button"
               className="v2-cmdk-trigger"
               onClick={openPalette}
-              aria-label="Open command palette"
+              aria-label={ts('nav.openCommandPalette')}
             >
               <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <circle cx="11" cy="11" r="7" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
-              <span className="v2-cmdk-text">Search or jump to…</span>
+              <span className="v2-cmdk-text">{ts('nav.searchPlaceholder')}</span>
               <span className="v2-cmdk-shortcut">{mac ? '⌘K' : 'Ctrl K'}</span>
             </button>
 

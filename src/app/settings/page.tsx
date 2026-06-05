@@ -2,14 +2,18 @@
 
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/Toast';
+
+type Language = 'en' | 'tr';
 
 interface Account {
   email: string | null;
   nickname: string | null;
   avatarUrl: string | null;
+  language?: Language;
   isWaitlistAdmin?: boolean;
 }
 
@@ -60,9 +64,12 @@ function formatDateTime(value: string | null): string {
 function V2SettingsPageInner() {
   const { data: session, update } = useSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const t = useTranslations('settings');
   const { addToast } = useToast();
   const [mounted, setMounted] = useState(false);
+  const [langSaving, setLangSaving] = useState(false);
 
   const [account, setAccount] = useState<Account | null>(null);
   const [githubStatus, setGithubStatus] = useState<GitHubStatus | null>(null);
@@ -136,9 +143,9 @@ function V2SettingsPageInner() {
         .then((r) => r.ok ? r.json() : null)
         .then((d) => d && setGithubStatus(d))
         .catch(() => null);
-      addToast('github connected', 'success');
+      addToast(t('connections.githubConnected'), 'success');
     }
-  }, [searchParams, addToast]);
+  }, [searchParams, addToast, t]);
 
   // TOC scroll-spy — only observe sections that are actually rendered.
   useEffect(() => {
@@ -178,17 +185,41 @@ function V2SettingsPageInner() {
         body: JSON.stringify({ type: 'nickname', nickname: v }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'failed');
+      if (!res.ok) throw new Error(data?.error || t('common.failed'));
       setAccount((p) => p ? { ...p, nickname: v } : p);
       await update({ nickname: v });
       closeEditor();
-      addToast('nickname updated', 'success');
+      addToast(t('identity.nicknameUpdated'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('common.failed'), 'error');
     } finally {
       setNickSaving(false);
     }
-  }, [nickDraft, nickSaving, addToast, update, closeEditor]);
+  }, [nickDraft, nickSaving, addToast, update, closeEditor, t]);
+
+  // ── Appearance · language ───────────────────────────
+  const handleSetLanguage = useCallback(async (lang: Language) => {
+    if (langSaving || account?.language === lang) return;
+    setLangSaving(true);
+    try {
+      const res = await fetch('/api/account', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'language', language: lang }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || t('common.failed'));
+      setAccount((p) => p ? { ...p, language: lang } : p);
+      // Fast path for the locale resolver on the next render (see src/i18n/request.ts).
+      document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000; samesite=lax`;
+      // Re-render server components in the new locale.
+      router.refresh();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : t('common.failed'), 'error');
+    } finally {
+      setLangSaving(false);
+    }
+  }, [langSaving, account?.language, addToast, router, t]);
 
   const openEmail = useCallback(() => {
     setEmailDraft(account?.email ?? '');
@@ -207,25 +238,25 @@ function V2SettingsPageInner() {
         body: JSON.stringify({ type: 'email', newEmail: v, password: emailPassword }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'failed');
+      if (!res.ok) throw new Error(data?.error || t('common.failed'));
       setAccount((p) => p ? { ...p, email: v } : p);
       await update({ email: v });
       closeEditor();
       setEmailDraft('');
       setEmailPassword('');
-      addToast('email updated. please sign in again.', 'success');
+      addToast(t('identity.emailUpdated'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('common.failed'), 'error');
     } finally {
       setEmailSaving(false);
     }
-  }, [emailDraft, emailPassword, emailSaving, addToast, update, closeEditor]);
+  }, [emailDraft, emailPassword, emailSaving, addToast, update, closeEditor, t]);
 
   const handleAvatarUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      addToast('image must be under 2MB', 'error');
+      addToast(t('identity.avatarTooLarge'), 'error');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -235,17 +266,17 @@ function V2SettingsPageInner() {
       fd.append('file', file);
       const res = await fetch('/api/account/avatar', { method: 'POST', body: fd });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'failed');
+      if (!res.ok) throw new Error(data?.error || t('common.failed'));
       setAccount((p) => p ? { ...p, avatarUrl: data.avatarUrl ?? p.avatarUrl } : p);
       await update({ avatarUrl: data.avatarUrl });
-      addToast('avatar updated', 'success');
+      addToast(t('identity.avatarUpdated'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('common.failed'), 'error');
     } finally {
       setAvatarUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [addToast, update]);
+  }, [addToast, update, t]);
 
   const handleAvatarRemove = useCallback(async () => {
     if (avatarUploading) return;
@@ -254,17 +285,17 @@ function V2SettingsPageInner() {
       const res = await fetch('/api/account/avatar', { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'failed');
+        throw new Error(data?.error || t('common.failed'));
       }
       setAccount((p) => p ? { ...p, avatarUrl: null } : p);
       await update({ avatarUrl: '' });
-      addToast('avatar removed', 'success');
+      addToast(t('identity.avatarRemoved'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('common.failed'), 'error');
     } finally {
       setAvatarUploading(false);
     }
-  }, [avatarUploading, addToast, update]);
+  }, [avatarUploading, addToast, update, t]);
 
   // ── Security ────────────────────────────────────────
   const openPassword = useCallback(() => {
@@ -277,11 +308,11 @@ function V2SettingsPageInner() {
   const handleSavePassword = useCallback(async () => {
     if (!currentPwd || !newPwd || pwdSaving) return;
     if (newPwd.length < 8) {
-      addToast('new password must be at least 8 characters', 'error');
+      addToast(t('security.tooShort'), 'error');
       return;
     }
     if (newPwd !== confirmPwd) {
-      addToast('new passwords do not match', 'error');
+      addToast(t('security.mismatch'), 'error');
       return;
     }
     setPwdSaving(true);
@@ -292,34 +323,34 @@ function V2SettingsPageInner() {
         body: JSON.stringify({ type: 'password', currentPassword: currentPwd, newPassword: newPwd }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'failed');
+      if (!res.ok) throw new Error(data?.error || t('common.failed'));
       closeEditor();
       setCurrentPwd('');
       setNewPwd('');
       setConfirmPwd('');
-      addToast('password updated', 'success');
+      addToast(t('security.passwordUpdated'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('common.failed'), 'error');
     } finally {
       setPwdSaving(false);
     }
-  }, [currentPwd, newPwd, confirmPwd, pwdSaving, addToast, closeEditor]);
+  }, [currentPwd, newPwd, confirmPwd, pwdSaving, addToast, closeEditor, t]);
 
   // ── Connections ─────────────────────────────────────
   const handleGithubDisconnect = useCallback(async () => {
-    if (!confirm('Disconnect GitHub?')) return;
+    if (!confirm(t('connections.githubDisconnectConfirm'))) return;
     setGithubDisconnecting(true);
     try {
       const res = await fetch('/api/github/connect', { method: 'DELETE' });
-      if (!res.ok) throw new Error('failed');
+      if (!res.ok) throw new Error(t('common.failed'));
       setGithubStatus({ connected: false, username: null });
-      addToast('github disconnected', 'success');
+      addToast(t('connections.githubDisconnected'), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('common.failed'), 'error');
     } finally {
       setGithubDisconnecting(false);
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   const handleMcpCopy = useCallback(async () => {
     try {
@@ -327,9 +358,9 @@ function V2SettingsPageInner() {
       setMcpCopied(true);
       setTimeout(() => setMcpCopied(false), 2000);
     } catch {
-      addToast('failed to copy', 'error');
+      addToast(t('connections.copyFailed'), 'error');
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   // ── Waitlist ────────────────────────────────────────
   const loadWaitlist = useCallback(async () => {
@@ -337,14 +368,14 @@ function V2SettingsPageInner() {
     try {
       const res = await fetch('/api/admin/waitlist');
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'failed to load waitlist');
+      if (!res.ok) throw new Error(data?.error || t('admin.loadFailed'));
       setWaitlistEntries(Array.isArray(data.entries) ? data.entries : []);
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed to load waitlist', 'error');
+      addToast(err instanceof Error ? err.message : t('admin.loadFailed'), 'error');
     } finally {
       setWaitlistLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   useEffect(() => {
     if (!isWaitlistAdmin) return;
@@ -360,7 +391,7 @@ function V2SettingsPageInner() {
         body: JSON.stringify({ id, status }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'failed to update waitlist');
+      if (!res.ok) throw new Error(data?.error || t('admin.updateFailed'));
       const updated = data.entry as WaitlistEntry;
       setWaitlistEntries((prev) => {
         const next = prev.map((entry) => (entry.id === updated.id ? updated : entry));
@@ -373,15 +404,15 @@ function V2SettingsPageInner() {
         });
       });
       addToast(
-        status === 'approved' ? 'approved for registration' : 'removed from queue',
+        status === 'approved' ? t('admin.approvedToast') : t('admin.rejectedToast'),
         'success'
       );
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'failed', 'error');
+      addToast(err instanceof Error ? err.message : t('common.failed'), 'error');
     } finally {
       setWaitlistUpdating((prev) => ({ ...prev, [id]: false }));
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true);
@@ -398,7 +429,7 @@ function V2SettingsPageInner() {
     [waitlistEntries]
   );
 
-  const displayName = account?.nickname || (account?.email || session?.user?.email || 'You').split('@')[0];
+  const displayName = account?.nickname || (account?.email || session?.user?.email || t('rail.fallbackName')).split('@')[0];
   const displayEmail = account?.email || session?.user?.email || '';
   const initials = (account?.nickname || displayEmail || '?').slice(0, 2).toUpperCase();
   const avatarUrl = account?.avatarUrl;
@@ -418,7 +449,7 @@ function V2SettingsPageInner() {
       ) : (
         <>
           <div className="v2-uset-band">
-            <span className="recgon-label v2-uset-band-eye">settings · account</span>
+            <span className="recgon-label v2-uset-band-eye">{t('band.eyebrow')}</span>
             <span className="v2-uset-band-rule" aria-hidden />
             <span className="v2-uset-band-meta">
               <span>{displayEmail}</span>
@@ -426,7 +457,7 @@ function V2SettingsPageInner() {
           </div>
 
           <div className="v2-uset-shell">
-            <aside className="v2-uset-rail" aria-label="settings navigation">
+            <aside className="v2-uset-rail" aria-label={t('rail.navAria')}>
               <div className="v2-uset-rail-stick">
                 <div className="v2-uset-id">
                   <h1 className="v2-uset-name">{displayName}</h1>
@@ -435,7 +466,7 @@ function V2SettingsPageInner() {
                   )}
                 </div>
 
-                <nav className="v2-uset-toc" aria-label="sections">
+                <nav className="v2-uset-toc" aria-label={t('rail.sectionsAria')}>
                   {visibleSections.map((s) => (
                     <a
                       key={s.id}
@@ -451,7 +482,7 @@ function V2SettingsPageInner() {
                       className={`v2-uset-toc-item ${activeSection === s.id ? 'is-active' : ''} ${s.id === 'sect-session' ? 'is-danger' : ''}`}
                     >
                       <span className="v2-uset-toc-num">{s.index}</span>
-                      <span className="v2-uset-toc-label">{s.label}</span>
+                      <span className="v2-uset-toc-label">{t(`sections.${s.label}`)}</span>
                     </a>
                   ))}
                 </nav>
@@ -464,14 +495,14 @@ function V2SettingsPageInner() {
                 ref={(el) => { sectionRefs.current['sect-identity'] = el; }}
                 id="sect-identity"
                 index="00"
-                label="identity"
-                hint="How you show up in Recgon."
+                label={t('identity.label')}
+                hint={t('identity.hint')}
                 stagger={0}
               >
                 {/* Avatar */}
                 <Field
-                  label="avatar"
-                  hint="Square image. JPEG, PNG, WebP, or GIF. Max 2MB."
+                  label={t('identity.avatarLabel')}
+                  hint={t('identity.avatarHint')}
                   open={false}
                   readOnly
                 >
@@ -486,7 +517,7 @@ function V2SettingsPageInner() {
                     </div>
                     <div className="v2-uset-avatar-actions">
                       <label className="v2-uset-tiny v2-uset-tiny-file">
-                        {avatarUploading ? <><Spinner /> uploading</> : (avatarUrl ? 'change' : 'upload')}
+                        {avatarUploading ? <><Spinner /> {t('identity.avatarUploading')}</> : (avatarUrl ? t('identity.avatarChange') : t('identity.avatarUpload'))}
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -503,7 +534,7 @@ function V2SettingsPageInner() {
                           onClick={handleAvatarRemove}
                           disabled={avatarUploading}
                         >
-                          remove
+                          {t('identity.avatarRemove')}
                         </button>
                       )}
                     </div>
@@ -512,8 +543,8 @@ function V2SettingsPageInner() {
 
                 {/* Nickname */}
                 <Field
-                  label="nickname"
-                  hint="Used in mentions and the avatar menu."
+                  label={t('identity.nicknameLabel')}
+                  hint={t('identity.nicknameHint')}
                   open={editing === 'nickname'}
                   onOpen={openNickname}
                   onCancel={closeEditor}
@@ -525,7 +556,7 @@ function V2SettingsPageInner() {
                         value={nickDraft}
                         onChange={(e) => setNickDraft(e.target.value)}
                         className="v2-uset-input v2-uset-input-display"
-                        placeholder="your nickname"
+                        placeholder={t('identity.nicknamePlaceholder')}
                         minLength={2}
                         autoFocus
                         onKeyDown={(e) => {
@@ -535,27 +566,27 @@ function V2SettingsPageInner() {
                       />
                       <FieldActions>
                         <span style={{ flex: 1 }} />
-                        <button type="button" className="v2-uset-btn v2-uset-btn-ghost" onClick={closeEditor} disabled={nickSaving}>cancel</button>
+                        <button type="button" className="v2-uset-btn v2-uset-btn-ghost" onClick={closeEditor} disabled={nickSaving}>{t('common.cancel')}</button>
                         <button type="button" className="v2-uset-btn v2-uset-btn-primary" onClick={handleSaveNick} disabled={nickSaving || !nickDraft.trim()}>
-                          {nickSaving ? <><Spinner /> saving</> : 'save'}
+                          {nickSaving ? <><Spinner /> {t('common.saving')}</> : t('common.save')}
                         </button>
                       </FieldActions>
                     </div>
                   ) : (
                     <p className="v2-uset-val v2-uset-val-display">
-                      {account?.nickname || <Empty>no nickname yet</Empty>}
+                      {account?.nickname || <Empty>{t('identity.nicknameEmpty')}</Empty>}
                     </p>
                   )}
                 </Field>
 
                 {/* Email */}
                 <Field
-                  label="email"
-                  hint="Where we send invites, password resets, and notifications. Changing it signs you out."
+                  label={t('identity.emailLabel')}
+                  hint={t('identity.emailHint')}
                   open={editing === 'email'}
                   onOpen={openEmail}
                   onCancel={closeEditor}
-                  actionLabel="change"
+                  actionLabel={t('identity.emailAction')}
                 >
                   {editing === 'email' ? (
                     <div className="v2-uset-edit">
@@ -563,7 +594,7 @@ function V2SettingsPageInner() {
                         type="email"
                         value={emailDraft}
                         onChange={(e) => setEmailDraft(e.target.value)}
-                        placeholder="new@example.com"
+                        placeholder={t('identity.emailPlaceholder')}
                         className="v2-uset-input"
                         autoFocus
                       />
@@ -571,19 +602,19 @@ function V2SettingsPageInner() {
                         type="password"
                         value={emailPassword}
                         onChange={(e) => setEmailPassword(e.target.value)}
-                        placeholder="confirm with current password"
+                        placeholder={t('identity.emailConfirmPlaceholder')}
                         className="v2-uset-input"
                       />
                       <FieldActions>
                         <span style={{ flex: 1 }} />
-                        <button type="button" className="v2-uset-btn v2-uset-btn-ghost" onClick={closeEditor} disabled={emailSaving}>cancel</button>
+                        <button type="button" className="v2-uset-btn v2-uset-btn-ghost" onClick={closeEditor} disabled={emailSaving}>{t('common.cancel')}</button>
                         <button
                           type="button"
                           className="v2-uset-btn v2-uset-btn-primary"
                           onClick={handleSaveEmail}
                           disabled={emailSaving || !emailDraft.trim() || !emailPassword}
                         >
-                          {emailSaving ? <><Spinner /> saving</> : 'save'}
+                          {emailSaving ? <><Spinner /> {t('common.saving')}</> : t('common.save')}
                         </button>
                       </FieldActions>
                     </div>
@@ -598,17 +629,17 @@ function V2SettingsPageInner() {
                 ref={(el) => { sectionRefs.current['sect-security'] = el; }}
                 id="sect-security"
                 index="01"
-                label="security"
-                hint="Your sign-in credentials."
+                label={t('security.label')}
+                hint={t('security.hint')}
                 stagger={1}
               >
                 <Field
-                  label="password"
-                  hint="Minimum 8 characters. Other sessions stay signed in."
+                  label={t('security.passwordLabel')}
+                  hint={t('security.passwordHint')}
                   open={editing === 'password'}
                   onOpen={openPassword}
                   onCancel={closeEditor}
-                  actionLabel="change"
+                  actionLabel={t('security.passwordAction')}
                 >
                   {editing === 'password' ? (
                     <div className="v2-uset-edit">
@@ -616,7 +647,7 @@ function V2SettingsPageInner() {
                         type="password"
                         value={currentPwd}
                         onChange={(e) => setCurrentPwd(e.target.value)}
-                        placeholder="current password"
+                        placeholder={t('security.currentPlaceholder')}
                         className="v2-uset-input"
                         autoFocus
                       />
@@ -624,7 +655,7 @@ function V2SettingsPageInner() {
                         type="password"
                         value={newPwd}
                         onChange={(e) => setNewPwd(e.target.value)}
-                        placeholder="new password (min 8 chars)"
+                        placeholder={t('security.newPlaceholder')}
                         className="v2-uset-input"
                         minLength={8}
                       />
@@ -632,7 +663,7 @@ function V2SettingsPageInner() {
                         type="password"
                         value={confirmPwd}
                         onChange={(e) => setConfirmPwd(e.target.value)}
-                        placeholder="confirm new password"
+                        placeholder={t('security.confirmPlaceholder')}
                         className="v2-uset-input"
                       />
                       <FieldActions>
@@ -643,7 +674,7 @@ function V2SettingsPageInner() {
                           onClick={() => { closeEditor(); setCurrentPwd(''); setNewPwd(''); setConfirmPwd(''); }}
                           disabled={pwdSaving}
                         >
-                          cancel
+                          {t('common.cancel')}
                         </button>
                         <button
                           type="button"
@@ -651,7 +682,7 @@ function V2SettingsPageInner() {
                           onClick={handleSavePassword}
                           disabled={pwdSaving || !currentPwd || !newPwd || !confirmPwd}
                         >
-                          {pwdSaving ? <><Spinner /> saving</> : 'update'}
+                          {pwdSaving ? <><Spinner /> {t('common.saving')}</> : t('security.update')}
                         </button>
                       </FieldActions>
                     </div>
@@ -666,17 +697,17 @@ function V2SettingsPageInner() {
                 ref={(el) => { sectionRefs.current['sect-appearance'] = el; }}
                 id="sect-appearance"
                 index="02"
-                label="appearance"
-                hint="How Recgon looks in this browser."
+                label={t('appearance.label')}
+                hint={t('appearance.hint')}
                 stagger={2}
               >
                 <Field
-                  label="theme"
-                  hint="Saved per browser. System theme is not auto-followed."
+                  label={t('appearance.themeLabel')}
+                  hint={t('appearance.themeHint')}
                   open={false}
                   readOnly
                 >
-                  <div role="radiogroup" aria-label="theme" className="v2-uset-toggle">
+                  <div role="radiogroup" aria-label={t('appearance.themeAria')} className="v2-uset-toggle">
                     <button
                       type="button"
                       role="radio"
@@ -686,7 +717,7 @@ function V2SettingsPageInner() {
                       disabled={!mounted}
                     >
                       <span className="v2-uset-toggle-dot" aria-hidden />
-                      <span>dark</span>
+                      <span>{t('appearance.dark')}</span>
                     </button>
                     <button
                       type="button"
@@ -697,7 +728,38 @@ function V2SettingsPageInner() {
                       disabled={!mounted}
                     >
                       <span className="v2-uset-toggle-dot" aria-hidden />
-                      <span>light</span>
+                      <span>{t('appearance.light')}</span>
+                    </button>
+                  </div>
+                </Field>
+                <Field
+                  label={t('language.label')}
+                  hint={t('language.hint')}
+                  open={false}
+                  readOnly
+                >
+                  <div role="radiogroup" aria-label={t('language.label')} className="v2-uset-toggle">
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={(account?.language ?? 'en') === 'en'}
+                      className={`v2-uset-toggle-cell ${(account?.language ?? 'en') === 'en' ? 'is-on' : ''}`}
+                      onClick={() => handleSetLanguage('en')}
+                      disabled={langSaving}
+                    >
+                      <span className="v2-uset-toggle-dot" aria-hidden />
+                      <span>{t('appearance.english')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={account?.language === 'tr'}
+                      className={`v2-uset-toggle-cell ${account?.language === 'tr' ? 'is-on' : ''}`}
+                      onClick={() => handleSetLanguage('tr')}
+                      disabled={langSaving}
+                    >
+                      <span className="v2-uset-toggle-dot" aria-hidden />
+                      <span>{t('appearance.turkish')}</span>
                     </button>
                   </div>
                 </Field>
@@ -708,26 +770,26 @@ function V2SettingsPageInner() {
                 ref={(el) => { sectionRefs.current['sect-connections'] = el; }}
                 id="sect-connections"
                 index="03"
-                label="connections"
-                hint="External tools wired into your account."
+                label={t('connections.label')}
+                hint={t('connections.hint')}
                 stagger={3}
               >
                 {/* GitHub */}
                 <Field
-                  label="github"
-                  hint="Lets you import private repos and unlock code analysis."
+                  label={t('connections.githubLabel')}
+                  hint={t('connections.githubHint')}
                   open={false}
                   readOnly
                 >
                   {githubStatus === null ? (
-                    <p className="v2-uset-val v2-uset-val-empty">checking…</p>
+                    <p className="v2-uset-val v2-uset-val-empty">{t('connections.checking')}</p>
                   ) : githubStatus.connected ? (
                     <div className="v2-uset-val v2-uset-val-stack">
                       <div className="v2-uset-anchor">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                           <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2c-3.2.7-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.62 1.58.23 2.75.11 3.04.74.81 1.18 1.83 1.18 3.09 0 4.43-2.7 5.4-5.27 5.68.41.36.78 1.06.78 2.13v3.16c0 .31.21.68.8.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z" />
                         </svg>
-                        <code>{githubStatus.username ? `@${githubStatus.username}` : 'connected'}</code>
+                        <code>{githubStatus.username ? `@${githubStatus.username}` : t('connections.connected')}</code>
                       </div>
                       <div className="v2-uset-meta-row">
                         <span style={{ flex: 1 }} />
@@ -737,18 +799,18 @@ function V2SettingsPageInner() {
                           onClick={handleGithubDisconnect}
                           disabled={githubDisconnecting}
                         >
-                          {githubDisconnecting ? <><Spinner /> disconnecting</> : 'disconnect'}
+                          {githubDisconnecting ? <><Spinner /> {t('connections.disconnecting')}</> : t('connections.disconnect')}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="v2-uset-val v2-uset-val-stack">
-                      <p className="v2-uset-val-empty">No GitHub account linked. Public repos still work, but private imports need a connection.</p>
+                      <p className="v2-uset-val-empty">{t('connections.githubEmpty')}</p>
                       <a href="/api/github/connect" className="v2-uset-btn v2-uset-btn-ghost">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                           <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.085 1.84 1.237 1.84 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.468-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.652.242 2.873.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222 0 1.604-.015 2.896-.015 3.293 0 .321.216.694.825.576C20.565 21.796 24 17.298 24 12c0-6.63-5.37-12-12-12z" />
                         </svg>
-                        connect github
+                        {t('connections.connectGithub')}
                       </a>
                     </div>
                   )}
@@ -756,22 +818,22 @@ function V2SettingsPageInner() {
 
                 {/* Claude Code MCP */}
                 <Field
-                  label="claude code"
-                  hint="MCP transport. Pipes Recgon insights into your editor."
+                  label={t('connections.claudeCodeLabel')}
+                  hint={t('connections.claudeCodeHint')}
                   open={false}
                   readOnly
                 >
                   <div className="v2-uset-val v2-uset-val-stack">
                     <code className="v2-uset-mcp-code">{MCP_COMMAND}</code>
                     <div className="v2-uset-meta-row">
-                      <span className="v2-uset-meta-key">paste this in your terminal, then sign in when the browser opens</span>
+                      <span className="v2-uset-meta-key">{t('connections.mcpInstruction')}</span>
                       <span style={{ flex: 1 }} />
                       <button
                         type="button"
                         onClick={handleMcpCopy}
                         className={`v2-uset-tiny ${mcpCopied ? 'v2-uset-tiny-success' : ''}`}
                       >
-                        {mcpCopied ? 'copied' : 'copy'}
+                        {mcpCopied ? t('connections.copied') : t('connections.copy')}
                       </button>
                     </div>
                   </div>
@@ -784,20 +846,20 @@ function V2SettingsPageInner() {
                   ref={(el) => { sectionRefs.current['sect-admin'] = el; }}
                   id="sect-admin"
                   index="04"
-                  label="admin"
-                  hint="Waitlist queue for non-METU emails."
+                  label={t('admin.label')}
+                  hint={t('admin.hint')}
                   stagger={4}
                 >
                   <Field
-                    label="waitlist"
-                    hint="Approving an email lets that user complete registration immediately."
+                    label={t('admin.waitlistLabel')}
+                    hint={t('admin.waitlistHint')}
                     open={false}
                     readOnly
                   >
                     <div className="v2-uset-val v2-uset-val-stack v2-uset-waitlist-body">
                       <div className="v2-uset-meta-row">
                         <span className="v2-uset-meta-key">
-                          pending: <strong style={{ color: 'var(--txt-pure)' }}>{pendingWaitlistEntries.length}</strong>
+                          {t('admin.pending')} <strong style={{ color: 'var(--txt-pure)' }}>{pendingWaitlistEntries.length}</strong>
                         </span>
                         <span style={{ flex: 1 }} />
                         <button
@@ -806,14 +868,14 @@ function V2SettingsPageInner() {
                           disabled={waitlistLoading}
                           className="v2-uset-tiny"
                         >
-                          {waitlistLoading ? <><Spinner /> refreshing</> : 'refresh'}
+                          {waitlistLoading ? <><Spinner /> {t('admin.refreshing')}</> : t('admin.refresh')}
                         </button>
                       </div>
 
                       {waitlistLoading && waitlistEntries.length === 0 ? (
-                        <p className="v2-uset-val-empty">Loading waitlist…</p>
+                        <p className="v2-uset-val-empty">{t('admin.loadingWaitlist')}</p>
                       ) : pendingWaitlistEntries.length === 0 ? (
-                        <p className="v2-uset-val-empty">No pending requests right now.</p>
+                        <p className="v2-uset-val-empty">{t('admin.noPending')}</p>
                       ) : (
                         <div className="v2-uset-waitlist-list">
                           {pendingWaitlistEntries.map((entry) => {
@@ -823,7 +885,7 @@ function V2SettingsPageInner() {
                                 <div className="v2-uset-waitlist-info">
                                   <div className="v2-uset-waitlist-email">{entry.email}</div>
                                   <div className="v2-uset-waitlist-meta">
-                                    {entry.nickname ? `${entry.nickname} · ` : ''}requested {formatDateTime(entry.requestedAt)}
+                                    {entry.nickname ? `${entry.nickname} · ` : ''}{t('admin.requested', { date: formatDateTime(entry.requestedAt) })}
                                   </div>
                                 </div>
                                 <div className="v2-uset-actions">
@@ -833,7 +895,7 @@ function V2SettingsPageInner() {
                                     onClick={() => updateWaitlistEntry(entry.id, 'rejected')}
                                     disabled={updating}
                                   >
-                                    {updating ? <><Spinner /></> : 'reject'}
+                                    {updating ? <><Spinner /></> : t('admin.reject')}
                                   </button>
                                   <button
                                     type="button"
@@ -841,7 +903,7 @@ function V2SettingsPageInner() {
                                     onClick={() => updateWaitlistEntry(entry.id, 'approved')}
                                     disabled={updating}
                                   >
-                                    {updating ? <><Spinner /></> : 'approve'}
+                                    {updating ? <><Spinner /></> : t('admin.approve')}
                                   </button>
                                 </div>
                               </div>
@@ -852,15 +914,15 @@ function V2SettingsPageInner() {
 
                       {approvedWaitlistEntries.length > 0 && (
                         <>
-                          <p className="v2-uset-waitlist-subhead">recently approved</p>
+                          <p className="v2-uset-waitlist-subhead">{t('admin.recentlyApproved')}</p>
                           <div className="v2-uset-waitlist-list v2-uset-waitlist-list-mini">
                             {approvedWaitlistEntries.map((entry) => (
                               <div key={entry.id} className="v2-uset-waitlist-row v2-uset-waitlist-row-mini">
                                 <div className="v2-uset-waitlist-info">
                                   <div className="v2-uset-waitlist-email">{entry.email}</div>
                                   <div className="v2-uset-waitlist-meta">
-                                    approved {formatDateTime(entry.approvedAt)}
-                                    {entry.approvedByEmail ? ` by ${entry.approvedByEmail}` : ''}
+                                    {t('admin.approvedAt', { date: formatDateTime(entry.approvedAt) })}
+                                    {entry.approvedByEmail ? t('admin.approvedBy', { email: entry.approvedByEmail }) : ''}
                                   </div>
                                 </div>
                               </div>
@@ -882,13 +944,13 @@ function V2SettingsPageInner() {
               >
                 <header className="v2-uset-section-head">
                   <span className="v2-uset-section-num">X</span>
-                  <span className="v2-uset-section-label">session</span>
+                  <span className="v2-uset-section-label">{t('session.label')}</span>
                   <span className="v2-uset-section-rule" aria-hidden />
-                  <span className="v2-uset-section-hint">Ends this browser&rsquo;s session.</span>
+                  <span className="v2-uset-section-hint">{t('session.hint')}</span>
                 </header>
                 <div className="v2-uset-section-body">
                   <p className="v2-uset-destroy-text">
-                    Signed in as <strong>{displayEmail || '—'}</strong>. Other browsers and the Claude Code MCP connection stay signed in.
+                    {t('session.signedInAs')} <strong>{displayEmail || '—'}</strong>{t('session.signedInRest')}
                   </p>
                   <div className="v2-uset-destroy-actions">
                     {!confirmSignOut ? (
@@ -897,11 +959,11 @@ function V2SettingsPageInner() {
                         className="v2-uset-btn v2-uset-btn-danger-ghost"
                         onClick={() => setConfirmSignOut(true)}
                       >
-                        sign out
+                        {t('session.signOut')}
                       </button>
                     ) : (
                       <>
-                        <span className="v2-uset-destroy-confirm">are you sure?</span>
+                        <span className="v2-uset-destroy-confirm">{t('session.areYouSure')}</span>
                         <span style={{ flex: 1 }} />
                         <button
                           type="button"
@@ -909,7 +971,7 @@ function V2SettingsPageInner() {
                           onClick={() => setConfirmSignOut(false)}
                           disabled={signingOut}
                         >
-                          cancel
+                          {t('common.cancel')}
                         </button>
                         <button
                           type="button"
@@ -917,7 +979,7 @@ function V2SettingsPageInner() {
                           onClick={handleSignOut}
                           disabled={signingOut}
                         >
-                          {signingOut ? <><Spinner /> signing out</> : 'yes — sign out'}
+                          {signingOut ? <><Spinner /> {t('session.signingOut')}</> : t('session.confirmSignOut')}
                         </button>
                       </>
                     )}

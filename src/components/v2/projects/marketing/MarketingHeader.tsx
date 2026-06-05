@@ -1,10 +1,11 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
 import type { Campaign } from './types';
-import { CAMPAIGN_TYPES } from './utils';
+import { CAMPAIGN_TYPES, type MarketingHeroState } from './utils';
 
 interface Props {
-  hero: { lead: string; sub?: string };
+  hero: MarketingHeroState;
   activeCampaign: Campaign | null;
   campaigns: Campaign[];
   isPlanning: boolean;
@@ -24,22 +25,60 @@ export default function MarketingHeader({
   onPickCampaign,
   onNewCampaign,
 }: Props) {
-  const ct = activeCampaign
-    ? CAMPAIGN_TYPES.find((t) => t.id === activeCampaign.type) ?? null
-    : null;
+  const t = useTranslations('marketing');
+  const locale = useLocale();
+
+  // Localized, lowercase campaign-type label. Preserves the deliberate
+  // lowercase aesthetic with locale-aware casing (Turkish dotless ı etc.).
+  const typeLabelLower = (id: string) => {
+    const ct = CAMPAIGN_TYPES.find((c) => c.id === id);
+    return ct ? t(ct.labelKey).toLocaleLowerCase(locale) : t('hero.campaignFallback');
+  };
+
+  // Hero lead + sub resolved from the descriptor state machine.
+  let lead: string;
+  let sub: string | undefined;
+  let chipType: string | null = null;
+  let chipDuration: string | null = null;
+
+  switch (hero.state) {
+    case 'planning':
+      lead = t('hero.draftingLead');
+      sub = t('hero.draftingSub');
+      break;
+    case 'active':
+      lead = hero.campaignName;
+      sub = t('hero.activeSub', {
+        type: typeLabelLower(hero.typeId),
+        duration: hero.duration,
+        count: hero.count,
+      });
+      chipType = typeLabelLower(hero.typeId);
+      chipDuration = hero.duration;
+      break;
+    case 'hasCampaigns':
+      lead = t('hero.plannedLead', { count: hero.count });
+      sub = hero.typeId
+        ? t('hero.plannedSubDrafting', { type: typeLabelLower(hero.typeId), duration: hero.duration })
+        : t('hero.plannedSubPick');
+      break;
+    default:
+      lead = t('hero.firstLead');
+      sub = t('hero.firstSub');
+  }
 
   return (
     <header className="v2-m-head">
       <div>
-        <span className="recgon-label v2-m-eye">› marketing</span>
+        <span className="recgon-label v2-m-eye">{t('eyebrow')}</span>
         <h2 className="v2-m-hero">
-          <span>{hero.lead}</span>
+          <span>{lead}</span>
           {isPlanning && <span className="v2-m-spinner" aria-hidden="true" />}
         </h2>
         <p className="v2-m-sub">
-          {ct && <span className="v2-m-chip">{ct.label.toLowerCase()}</span>}
-          {activeCampaign && <span className="v2-m-chip">{activeCampaign.duration}</span>}
-          {hero.sub && <span>{hero.sub}</span>}
+          {chipType && <span className="v2-m-chip">{chipType}</span>}
+          {chipDuration && <span className="v2-m-chip">{chipDuration}</span>}
+          {sub && <span>{sub}</span>}
         </p>
       </div>
 
@@ -52,10 +91,10 @@ export default function MarketingHeader({
               const id = e.target.value;
               if (id) onPickCampaign(id);
             }}
-            aria-label="Switch active campaign"
+            aria-label={t('header.switcherAria')}
           >
             <option value="" disabled>
-              {campaigns.length === 1 ? '1 campaign' : `${campaigns.length} campaigns`}
+              {t('header.switcherCount', { count: campaigns.length })}
             </option>
             {campaigns.map((c) => (
               <option key={c.id} value={c.id}>
@@ -67,7 +106,7 @@ export default function MarketingHeader({
             type="button"
             className="v2-m-new-btn"
             onClick={onNewCampaign}
-            title="Start a new campaign"
+            title={t('header.newCampaignTitle')}
           >
             <svg
               width="11"
@@ -82,7 +121,7 @@ export default function MarketingHeader({
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            new
+            {t('header.newCampaign')}
           </button>
         </div>
       )}
