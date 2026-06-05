@@ -46,13 +46,13 @@ function makeT(namespace?: string) {
     return typeof v === 'string' ? interpolate(v, values) : full;
   };
   // Minimal surface used across the app's translated components.
-  (t as Record<string, unknown>).rich = (key: string) => {
+  (t as unknown as Record<string, unknown>).rich = (key: string) => {
     const v = lookup(namespace, key);
     return typeof v === 'string' ? v.replace(/<\/?\w+>/g, '') : `${namespace}.${key}`;
   };
-  (t as Record<string, unknown>).markup = (key: string) => t(key);
-  (t as Record<string, unknown>).raw = (key: string) => lookup(namespace, key);
-  (t as Record<string, unknown>).has = (key: string) => lookup(namespace, key) !== undefined;
+  (t as unknown as Record<string, unknown>).markup = (key: string) => t(key);
+  (t as unknown as Record<string, unknown>).raw = (key: string) => lookup(namespace, key);
+  (t as unknown as Record<string, unknown>).has = (key: string) => lookup(namespace, key) !== undefined;
   return t;
 }
 
