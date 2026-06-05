@@ -155,6 +155,7 @@
     "snoozeRange": "days must be an integer between 1 and 30",
     "snoozeFailed": "snooze failed",
     "requestSent": "reschedule request sent",
-    "requestFailed": "request failed"
+    "requestFailed": "request failed",
+    "loadFailed": "couldn't load the calendar"
   }
 }

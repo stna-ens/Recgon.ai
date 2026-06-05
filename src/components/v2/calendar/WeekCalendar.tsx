@@ -52,10 +52,17 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
       const url = `/api/teams/${teamId}/calendar?projectId=${encodeURIComponent(projectId)}`;
       const res = await fetch(url, { cache: 'no-store' });
       if (res.ok) setData(await res.json());
-    } catch { /* swallowed */ }
+      else if (opts.initial) addToast(t('toast.loadFailed'), 'error');
+    } catch {
+      // Surface a toast only on the first load — an empty grid with no
+      // explanation is confusing. Background focus/poll refreshes stay silent
+      // to avoid spamming the user when the network blips; the last-good data
+      // stays on screen.
+      if (opts.initial) addToast(t('toast.loadFailed'), 'error');
+    }
     setLoading(false);
     setRefreshing(false);
-  }, [teamId, projectId]);
+  }, [teamId, projectId, addToast, t]);
 
   useEffect(() => { fetch_({ initial: true }); }, [fetch_]);
 

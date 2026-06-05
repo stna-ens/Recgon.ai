@@ -155,6 +155,7 @@
     "snoozeRange": "gün 1 ile 30 arasında bir tam sayı olmalı",
     "snoozeFailed": "erteleme başarısız oldu",
     "requestSent": "yeniden planlama isteği gönderildi",
-    "requestFailed": "istek başarısız oldu"
+    "requestFailed": "istek başarısız oldu",
+    "loadFailed": "takvim yüklenemedi"
   }
 }

@@ -27,6 +27,8 @@ export default function AvatarMenu() {
     fetch('/api/account')
       .then((r) => r.json())
       .then((d) => { if (d?.avatarUrl) setFetchedAvatarUrl(d.avatarUrl); })
+      // Passive, decorative avatar fetch — on failure we silently fall back to
+      // the initials avatar (rendered below when avatarUrl is absent). No toast.
       .catch(() => {});
   }, [session?.user]);
 
