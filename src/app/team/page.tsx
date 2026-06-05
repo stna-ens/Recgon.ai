@@ -8,6 +8,7 @@ import * as Tabs from '@radix-ui/react-tabs';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
+import { Button } from '@/components/ui';
 import RecgonAdminPanel from '@/components/recgon/RecgonAdminPanel';
 
 type TeamTab = 'profile' | 'members' | 'invites' | 'dispatcher';
@@ -594,16 +595,14 @@ function V2TeamAdminPageInner() {
                         autoFocus
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
                       />
-                      <button type="button" className="rec-btn-tiny" onClick={() => setEditingName(false)} disabled={nameSaving}>{t('admin.actions.cancel')}</button>
-                      <button type="button" className="rec-btn-tiny is-primary" onClick={handleSaveName} disabled={nameSaving}>
-                        {nameSaving ? <><span className="rec-spinner" /> {t('admin.actions.save')}</> : t('admin.actions.save')}
-                      </button>
+                      <Button variant="secondary" size="sm" onClick={() => setEditingName(false)} disabled={nameSaving}>{t('admin.actions.cancel')}</Button>
+                      <Button variant="primary" size="sm" onClick={handleSaveName} loading={nameSaving}>{t('admin.actions.save')}</Button>
                     </div>
                   ) : (
                     <div className="rec-read-row">
                       <span className="rec-read-text">{team?.name ?? '—'}</span>
                       {isOwner && (
-                        <button type="button" className="rec-btn-tiny" onClick={() => { setNameDraft(team?.name ?? ''); setEditingName(true); }}>{t('admin.actions.rename')}</button>
+                        <Button variant="secondary" size="sm" onClick={() => { setNameDraft(team?.name ?? ''); setEditingName(true); }}>{t('admin.actions.rename')}</Button>
                       )}
                     </div>
                   )}
@@ -629,10 +628,8 @@ function V2TeamAdminPageInner() {
                       />
                       <div className="rec-edit-foot">
                         <span className="rec-edit-count">{descDraft.length}/120</span>
-                        <button type="button" className="rec-btn-tiny" onClick={() => setEditingDesc(false)} disabled={descSaving}>{t('admin.actions.cancel')}</button>
-                        <button type="button" className="rec-btn-tiny is-primary" onClick={handleSaveDesc} disabled={descSaving}>
-                          {descSaving ? <><span className="rec-spinner" /> {t('admin.actions.save')}</> : t('admin.actions.save')}
-                        </button>
+                        <Button variant="secondary" size="sm" onClick={() => setEditingDesc(false)} disabled={descSaving}>{t('admin.actions.cancel')}</Button>
+                        <Button variant="primary" size="sm" onClick={handleSaveDesc} loading={descSaving}>{t('admin.actions.save')}</Button>
                       </div>
                     </div>
                   ) : (
@@ -643,9 +640,9 @@ function V2TeamAdminPageInner() {
                         <span className="rec-read-empty">{t('admin.config.noDescription')}</span>
                       )}
                       {isOwner && (
-                        <button type="button" className="rec-btn-tiny" onClick={() => { setDescDraft(team?.description ?? ''); setEditingDesc(true); }}>
+                        <Button variant="secondary" size="sm" onClick={() => { setDescDraft(team?.description ?? ''); setEditingDesc(true); }}>
                           {team?.description ? t('admin.actions.edit') : t('admin.actions.add')}
-                        </button>
+                        </Button>
                       )}
                     </div>
                   )}
@@ -679,7 +676,7 @@ function V2TeamAdminPageInner() {
                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} disabled={avatarUploading} hidden />
                     {isOwner && (
                       <>
-                        <button type="button" className="rec-btn-tiny" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}>{t('admin.config.uploadImage')}</button>
+                        <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}>{t('admin.config.uploadImage')}</Button>
                         <div className="rec-color-row">
                           <span className="rec-color-row-label">{t('admin.config.color')}</span>
                           {AVATAR_COLORS.map((c) => (
@@ -731,11 +728,11 @@ function V2TeamAdminPageInner() {
                 {confirmLeave ? (
                   <div className="rec-confirm">
                     <span className="rec-confirm-text">{t('admin.danger.areYouSure')}</span>
-                    <button type="button" className="rec-btn" onClick={() => setConfirmLeave(false)}>{t('admin.actions.cancel')}</button>
-                    <button type="button" className="rec-btn is-danger" onClick={handleLeaveTeam}>{t('admin.danger.confirmLeave')}</button>
+                    <Button variant="secondary" onClick={() => setConfirmLeave(false)}>{t('admin.actions.cancel')}</Button>
+                    <Button variant="danger" onClick={handleLeaveTeam}>{t('admin.danger.confirmLeave')}</Button>
                   </div>
                 ) : (
-                  <button type="button" className="rec-btn is-danger-ghost" onClick={() => setConfirmLeave(true)}>{t('admin.danger.leaveButton')}</button>
+                  <Button variant="danger-ghost" onClick={() => setConfirmLeave(true)}>{t('admin.danger.leaveButton')}</Button>
                 )}
               </div>
             )}
@@ -749,13 +746,13 @@ function V2TeamAdminPageInner() {
                 {confirmDelete ? (
                   <div className="rec-confirm">
                     <span className="rec-confirm-text">{t('admin.danger.areYouSure')}</span>
-                    <button type="button" className="rec-btn" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t('admin.actions.cancel')}</button>
-                    <button type="button" className="rec-btn is-danger" onClick={handleDeleteTeam} disabled={deleting}>
-                      {deleting ? <><span className="rec-spinner" /> {t('admin.danger.deleting')}</> : t('admin.danger.confirmDelete')}
-                    </button>
+                    <Button variant="secondary" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t('admin.actions.cancel')}</Button>
+                    <Button variant="danger" onClick={handleDeleteTeam} loading={deleting}>
+                      {deleting ? t('admin.danger.deleting') : t('admin.danger.confirmDelete')}
+                    </Button>
                   </div>
                 ) : (
-                  <button type="button" className="rec-btn is-danger-ghost" onClick={() => setConfirmDelete(true)}>{t('admin.danger.deleteButton')}</button>
+                  <Button variant="danger-ghost" onClick={() => setConfirmDelete(true)}>{t('admin.danger.deleteButton')}</Button>
                 )}
               </div>
             )}
@@ -865,8 +862,8 @@ function V2TeamAdminPageInner() {
                       {isConfirmingRemove && (
                         <div className="rec-confirm-strip">
                           <span className="rec-confirm-strip-text">{t.rich('admin.members.removeConfirm', { name: displayName, strong: (chunks) => <strong>{chunks}</strong> })}</span>
-                          <button type="button" className="rec-btn is-danger" onClick={() => handleRemoveMember(m.userId)}>{t('admin.members.remove')}</button>
-                          <button type="button" className="rec-btn" onClick={() => setConfirmRemoveUser(null)}>{t('admin.actions.cancel')}</button>
+                          <Button variant="danger" onClick={() => handleRemoveMember(m.userId)}>{t('admin.members.remove')}</Button>
+                          <Button variant="secondary" onClick={() => setConfirmRemoveUser(null)}>{t('admin.actions.cancel')}</Button>
                         </div>
                       )}
                     </div>
@@ -895,20 +892,21 @@ function V2TeamAdminPageInner() {
                     </button>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  className="rec-btn is-primary is-block"
+                <Button
+                  variant="primary"
+                  style={{ width: '100%' }}
                   onClick={handleGenerateInvite}
-                  disabled={generating || !isOwner}
+                  disabled={!isOwner}
+                  loading={generating}
                   title={isOwner ? undefined : t('admin.invites.ownerOnly')}
                 >
-                  {generating ? <><span className="rec-spinner is-light" /> {t('admin.invites.generating')}</> : t('admin.invites.generateLink')}
-                </button>
+                  {generating ? t('admin.invites.generating') : t('admin.invites.generateLink')}
+                </Button>
                 {generatedLink && (
                   <div className="rec-invite-result">
                     <span className="rec-mini-label">{t('admin.invites.justGenerated')}</span>
                     <code className="rec-invite-code">{generatedLink}</code>
-                    <button type="button" className="rec-btn-tiny" onClick={() => handleCopyLink(generatedLink)}>{t('admin.invites.copy')}</button>
+                    <Button variant="secondary" size="sm" onClick={() => handleCopyLink(generatedLink)}>{t('admin.invites.copy')}</Button>
                   </div>
                 )}
               </div>
@@ -939,7 +937,7 @@ function V2TeamAdminPageInner() {
                               </div>
                             </div>
                             <div className="rec-pending-actions">
-                              <button type="button" className="rec-btn-tiny" onClick={() => handleCopyLink(link)}>{t('admin.invites.copy')}</button>
+                              <Button variant="secondary" size="sm" onClick={() => handleCopyLink(link)}>{t('admin.invites.copy')}</Button>
                               {!isConfirmingRevoke && (
                                 <button type="button" className="rec-roster-remove is-static" onClick={() => setConfirmRevokeInvite(inv.id)} aria-label={t('admin.invites.revoke')}>×</button>
                               )}
@@ -948,8 +946,8 @@ function V2TeamAdminPageInner() {
                           {isConfirmingRevoke && (
                             <div className="rec-confirm-strip">
                               <span className="rec-confirm-strip-text">{t('admin.invites.revokeConfirm')}</span>
-                              <button type="button" className="rec-btn is-danger" onClick={() => handleRevoke(inv.id)}>{t('admin.invites.revoke')}</button>
-                              <button type="button" className="rec-btn" onClick={() => setConfirmRevokeInvite(null)}>{t('admin.actions.cancel')}</button>
+                              <Button variant="danger" onClick={() => handleRevoke(inv.id)}>{t('admin.invites.revoke')}</Button>
+                              <Button variant="secondary" onClick={() => setConfirmRevokeInvite(null)}>{t('admin.actions.cancel')}</Button>
                             </div>
                           )}
                         </li>
@@ -1467,93 +1465,6 @@ function V2TeamAdminPageInner() {
         .rec-color-swatch.is-active {
           box-shadow: 0 0 0 2px var(--bg-deep, #0a0a0c), 0 0 0 3.5px var(--signature);
         }
-
-        /* ───── BUTTONS ───── */
-        .rec-btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 9px 16px;
-          background: transparent;
-          border: 1px solid var(--rule);
-          border-radius: 3px;
-          color: var(--txt-muted);
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 11.5px;
-          font-weight: 600;
-          letter-spacing: 0.4px;
-          text-transform: lowercase;
-          cursor: pointer;
-          transition: color 180ms ease, border-color 180ms ease, background 180ms ease, transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease;
-          white-space: nowrap;
-        }
-        .rec-btn:hover:not(:disabled) {
-          color: var(--txt-pure);
-          border-color: var(--rule-strong, var(--rule));
-        }
-        .rec-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-        .rec-btn.is-primary {
-          background: var(--signature);
-          border-color: var(--signature);
-          color: white;
-        }
-        .rec-btn.is-primary:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 10px 22px -8px rgba(var(--signature-rgb), 0.55);
-        }
-        .rec-btn.is-danger {
-          background: var(--danger);
-          border-color: var(--danger);
-          color: white;
-        }
-        .rec-btn.is-danger:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 10px 22px -8px rgba(248, 113, 113, 0.5);
-        }
-        .rec-btn.is-danger-ghost {
-          background: transparent;
-          border-color: rgba(248, 113, 113, 0.40);
-          color: var(--danger);
-        }
-        .rec-btn.is-danger-ghost:hover:not(:disabled) {
-          background: rgba(248, 113, 113, 0.08);
-        }
-        .rec-btn.is-block { display: flex; width: 100%; padding: 11px 16px; }
-
-        .rec-btn-tiny {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 5px 10px;
-          background: transparent;
-          border: 1px solid var(--rule);
-          border-radius: 3px;
-          color: var(--txt-muted);
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
-          font-weight: 600;
-          letter-spacing: 0.4px;
-          text-transform: lowercase;
-          cursor: pointer;
-          transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
-          flex-shrink: 0;
-        }
-        .rec-btn-tiny:hover:not(:disabled) {
-          color: var(--signature);
-          border-color: rgba(var(--signature-rgb), 0.45);
-        }
-        .rec-btn-tiny.is-primary {
-          background: var(--signature);
-          border-color: var(--signature);
-          color: white;
-        }
-        .rec-btn-tiny.is-primary:hover:not(:disabled) {
-          color: white;
-          border-color: var(--signature);
-          filter: brightness(1.06);
-        }
-        .rec-btn-tiny:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .rec-spinner {
           width: 10px; height: 10px;
