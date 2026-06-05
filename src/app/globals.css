@@ -181,7 +181,8 @@
   /* Hairline rules + scrim + skeleton stops (dark) */
   --rule: rgba(255, 255, 255, 0.06);
   --rule-strong: rgba(255, 255, 255, 0.12);
-  --scrim: rgba(0, 0, 0, 0.55);
+  /* Soft frost, not a blackout — pair with backdrop blur on overlays. */
+  --scrim: rgba(0, 0, 0, 0.42);
   --skel-a: rgba(255, 255, 255, 0.05);
   --skel-b: rgba(255, 255, 255, 0.10);
   --focus-ring: 0 0 0 2px var(--bg-deep), 0 0 0 4px rgba(var(--signature-rgb), 0.6);

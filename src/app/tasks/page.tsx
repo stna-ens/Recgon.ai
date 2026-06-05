@@ -1659,9 +1659,11 @@ function V2TasksInner() {
           position: fixed;
           inset: 0;
           z-index: 80;
-          background: rgba(0,0,0,0.55);
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
+          /* Frosted veil, not a blackout — matches the shared modal scrim so
+             the board stays readable behind the detail drawer. */
+          background: var(--scrim);
+          backdrop-filter: blur(10px) saturate(110%);
+          -webkit-backdrop-filter: blur(10px) saturate(110%);
           display: flex;
           justify-content: flex-end;
           animation: v2overlayIn 200ms ease both;
