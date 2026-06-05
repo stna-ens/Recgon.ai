@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { ArrowLeft, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, ShieldCheck, UploadCloud, XCircle } from 'lucide-react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { useConfirm } from '@/components/ui';
+import { useConfirm, Skeleton } from '@/components/ui';
 import { ProofDropZone } from '@/components/ProofDropZone';
 import type { ProofPayload, VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
 
@@ -429,7 +429,11 @@ function V2VerifyInner() {
       {/* LIST */}
       {loading ? (
         <ul className="v2-vf-list">
-          {[0, 1, 2].map((i) => <li key={i} className="v2-vf-skel glass-card" />)}
+          {[0, 1, 2].map((i) => (
+            <li key={i}>
+              <Skeleton width="100%" height={132} radius={12} />
+            </li>
+          ))}
         </ul>
       ) : visible.length === 0 ? (
         <div className="glass-card v2-vf-empty">
@@ -765,7 +769,7 @@ function V2VerifyInner() {
 
 export default function V2VerifyPage() {
   return (
-    <Suspense fallback={<div className="v2-vf"><div className="v2-vf-skel glass-card" /></div>}>
+    <Suspense fallback={<div className="v2-vf"><Skeleton width="100%" height={132} radius={12} /></div>}>
       <V2VerifyInner />
     </Suspense>
   );
@@ -1478,16 +1482,6 @@ const stylesheet = `
     color: var(--txt-muted);
     line-height: 1.5;
     max-width: 540px;
-  }
-
-  .v2-vf-skel {
-    height: 132px;
-    border-radius: 12px;
-    animation: v2vfSkel 1.6s ease-in-out infinite;
-  }
-  @keyframes v2vfSkel {
-    0%, 100% { opacity: 0.5; }
-    50%      { opacity: 0.85; }
   }
 
   /* Calm triage refresh */

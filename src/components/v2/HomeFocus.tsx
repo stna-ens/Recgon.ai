@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
+import { Skeleton, EmptyState } from '@/components/ui';
 import { cleanText, relTimeShort } from './utils';
 
 // Background canvas effect — lazy-loaded so it doesn't sit on the critical
@@ -108,11 +109,11 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
   const t = useTranslations('home');
   if (loading) {
     return (
-      <section className="v2-fc">
+      <section className="v2-fc" aria-busy="true" aria-live="polite">
         <div className="v2-fc-shell v2-fc-skel">
-          <div className="v2-fc-skel-name" />
-          <div className="v2-fc-skel-line v2-fc-skel-l" />
-          <div className="v2-fc-skel-line v2-fc-skel-m" />
+          <Skeleton width={320} height={50} radius={8} />
+          <Skeleton width="70%" height={14} radius={4} />
+          <Skeleton width="50%" height={14} radius={4} />
         </div>
         <style>{stylesheet}</style>
       </section>
@@ -302,9 +303,12 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
                 </span>
               </div>
               {focus.nextSteps.length === 0 ? (
-                <p className="v2-fc-moves-empty">
-                  {t('focus.noNextSteps')}
-                </p>
+                <EmptyState
+                  compact
+                  icon="◇"
+                  title={t('focus.noMovesTitle')}
+                  description={t('focus.noNextSteps')}
+                />
               ) : (
                 <ol className="v2-fc-moves">
                   {focus.nextSteps.slice(0, 3).map((step, i) => (
@@ -634,15 +638,6 @@ const stylesheet = `
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
   }
-  .v2-fc-moves-empty {
-    margin: 0;
-    font-size: 11.5px;
-    line-height: 1.5;
-    color: var(--txt-faint);
-    opacity: 0.7;
-    font-style: italic;
-  }
-
   /* HEALTH ROW (within middle) */
   .v2-fc-health-row {
     display: flex;
@@ -1073,27 +1068,13 @@ const stylesheet = `
     line-height: 1.55;
   }
 
-  /* SKELETON */
-  .v2-fc-skel { padding: 24px 28px !important; min-height: 200px; }
-  .v2-fc-skel-name {
-    width: 320px;
-    height: 50px;
-    background: rgba(var(--signature-rgb), 0.06);
-    border-radius: 8px;
-    margin-bottom: 18px;
-    animation: v2fcSkel 1.6s ease-in-out infinite;
-  }
-  .v2-fc-skel-line {
-    height: 14px;
-    background: rgba(var(--signature-rgb), 0.05);
-    border-radius: 4px;
-    margin-bottom: 8px;
-    animation: v2fcSkel 1.6s ease-in-out infinite;
-  }
-  .v2-fc-skel-l { width: 70%; }
-  .v2-fc-skel-m { width: 50%; }
-  @keyframes v2fcSkel {
-    0%, 100% { opacity: 0.45; }
-    50%      { opacity: 0.85; }
+  /* SKELETON — shimmer comes from the shared .ui-skeleton primitive; this
+     only owns the shell padding + min-height to avoid layout shift. */
+  .v2-fc-skel {
+    padding: 24px 28px !important;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 `;

@@ -1,7 +1,6 @@
 export { default as MarketingHeader } from './MarketingHeader';
 export { default as MarketingSetup } from './MarketingSetup';
 export { default as MarketingEmpty } from './MarketingEmpty';
-export { default as MarketingSkeleton } from './MarketingSkeleton';
 export { default as CampaignTabs } from './CampaignTabs';
 export { default as CampaignOverview } from './CampaignOverview';
 export { default as CampaignChannels } from './CampaignChannels';

@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
+import { Skeleton } from '@/components/ui';
 import { ProofDropZone } from '@/components/ProofDropZone';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
@@ -649,7 +650,7 @@ function V2TasksInner() {
               </div>
               <div className="v2-tasks-col-body">
                 {[1, 2].map((i) => (
-                  <div key={i} className="v2-tasks-card-skel" />
+                  <Skeleton key={i} width="100%" height={86} radius={10} />
                 ))}
               </div>
             </div>
@@ -1653,18 +1654,6 @@ function V2TasksInner() {
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        .v2-tasks-card-skel {
-          height: 86px;
-          border-radius: 10px;
-          border: 1px solid var(--rule);
-          background: rgba(var(--signature-rgb), 0.04);
-          animation: v2skelPulse 1.6s ease-in-out infinite;
-        }
-        @keyframes v2skelPulse {
-          0%, 100% { opacity: 0.4; }
-          50%      { opacity: 0.9; }
-        }
-
         /* Detail overlay */
         .v2-tasks-overlay {
           position: fixed;

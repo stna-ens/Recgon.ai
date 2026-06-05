@@ -33,7 +33,11 @@
   "loading": "loading week",
   "empty": {
     "noTeammates": "No teammates in this team yet.",
-    "noScheduled": "No scheduled tasks this week."
+    "noScheduled": "No scheduled tasks this week.",
+    "noTeammatesTitle": "No teammates yet",
+    "noTeammatesDesc": "Invite people to this team and their lanes will appear here.",
+    "noScheduledTitle": "Nothing scheduled",
+    "noScheduledDesc": "No tasks land in this week. Use the arrows to browse other weeks."
   },
   "lane": {
     "you": "YOU",
@@ -55,6 +59,7 @@
     "aria": "Unscheduled tasks",
     "title": "UNSCHEDULED",
     "allClear": "all clear",
+    "allClearDesc": "Every task has a day. Drag one here to unschedule it.",
     "kind": {
       "next_step": "next",
       "dev_prompt": "dev",

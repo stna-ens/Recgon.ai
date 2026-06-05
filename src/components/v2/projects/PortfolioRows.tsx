@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Skeleton } from '@/components/ui';
 import {
   relTimeShort,
   pulseShort,
@@ -66,10 +67,9 @@ export default function PortfolioRows({ projects, meta, loading }: Props) {
     return (
       <div className="glass-card is-static v2-pr-card">
         <div className="v2-pr-skel">
-          <span />
-          <span />
-          <span />
-          <span />
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} width="100%" height={56} radius={7} />
+          ))}
         </div>
         <style>{stylesheet}</style>
       </div>
@@ -398,16 +398,6 @@ const stylesheet = `
     flex-direction: column;
     padding: 6px;
     gap: 6px;
-  }
-  .v2-pr-skel span {
-    height: 56px;
-    border-radius: 7px;
-    background: rgba(255, 255, 255, 0.04);
-    animation: v2prSkel 1.4s ease-in-out infinite alternate;
-  }
-  @keyframes v2prSkel {
-    from { opacity: 0.4; }
-    to   { opacity: 0.8; }
   }
 
   @media (max-width: 760px) {

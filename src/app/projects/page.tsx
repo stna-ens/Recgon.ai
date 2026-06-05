@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { Modal, Button } from '@/components/ui';
+import { Modal, Button, EmptyState } from '@/components/ui';
 import SectionIndex from '@/components/v2/SectionIndex';
 import FeaturedNeedsAttention, { pickFeatured } from '@/components/v2/projects/FeaturedNeedsAttention';
 import PortfolioRows, { type RowMeta, type Ownership } from '@/components/v2/projects/PortfolioRows';
@@ -304,20 +304,22 @@ export default function V2ProjectsListPage() {
       </header>
 
       {showEmpty ? (
-        <div className="glass-card is-static is-roomy v2-empty">
-          <div className="v2-empty-mark">+</div>
-          <h2 className="v2-empty-title">
-            <span className="v2-pink">{t('list.empty.titlePrefix')}</span> {t('list.empty.titleRest')}
-          </h2>
-          <p className="v2-empty-text">{t('list.empty.text')}</p>
-          <div className="v2-empty-actions">
-            <button type="button" className="v2-btn v2-btn-primary" onClick={openManual}>
-              {t('list.empty.addFirst')}
-            </button>
-            <button type="button" className="v2-btn v2-btn-ghost" onClick={openGithub}>
-              {t('list.empty.importGithub')}
-            </button>
-          </div>
+        <div className="glass-card is-static is-roomy">
+          <EmptyState
+            icon="◇"
+            title={t('list.empty.heading')}
+            description={t('list.empty.text')}
+            action={
+              <div className="v2-empty-actions">
+                <Button variant="primary" onClick={openManual}>
+                  {t('list.empty.addFirst')}
+                </Button>
+                <Button variant="ghost" onClick={openGithub}>
+                  {t('list.empty.importGithub')}
+                </Button>
+              </div>
+            }
+          />
         </div>
       ) : (
         <div className="v2-projects-stack">
@@ -716,37 +718,8 @@ export default function V2ProjectsListPage() {
           to   { transform: rotate(360deg); }
         }
 
-        /* Empty (no projects) */
-        .v2-empty {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 14px;
-        }
-        .v2-empty-mark {
-          width: 48px; height: 48px;
-          border-radius: 12px;
-          background: rgba(var(--signature-rgb), 0.10);
-          color: var(--signature);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 26px;
-          font-weight: 300;
-        }
-        .v2-empty-title {
-          font-size: clamp(22px, 2.6vw, 28px);
-          font-weight: 600;
-          color: var(--txt-pure);
-          letter-spacing: -0.018em;
-          margin: 0;
-        }
-        .v2-empty-text {
-          font-size: 14.5px;
-          color: var(--txt-muted);
-          margin: 0;
-        }
-        .v2-empty-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+        /* Empty (no projects) — CTA row inside the shared <EmptyState>. */
+        .v2-empty-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 
         /* Modal body */
         .v2-block-eye { display: block; margin: 0; }

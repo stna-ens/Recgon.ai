@@ -248,27 +248,9 @@ html.light .v2-shell .v2-an-tile-spark-bubble,
 .v2-an-delta-danger  { color: var(--danger); }
 .v2-an-delta-faint   { color: var(--txt-faint); }
 
-/* Skeletons */
-.v2-an-skel { height: 92px; }
-.v2-an-skel::after {
-  content: '';
-  display: block;
-  width: 60%;
-  height: 14px;
-  margin-top: 24px;
-  background: rgba(var(--signature-rgb), 0.06);
-  border-radius: 6px;
-  animation: v2skelPulse 1.6s ease-in-out infinite;
-}
-.v2-an-chart-skel {
-  height: 280px;
-  background: rgba(var(--signature-rgb), 0.04);
-  animation: v2skelPulse 1.6s ease-in-out infinite;
-}
-@keyframes v2skelPulse {
-  0%, 100% { opacity: 0.4; }
-  50%      { opacity: 0.9; }
-}
+/* Skeletons — shimmer via shared <Skeleton> (.ui-skeleton); these wrappers
+   only set layout so the placeholder matches real tile/chart dimensions. */
+.v2-an-chart-wrap { padding: 16px; }
 
 /* Stage progress bar */
 .v2-an-stage {

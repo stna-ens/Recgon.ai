@@ -29,6 +29,7 @@
     "empty": {
       "titlePrefix": "Henüz",
       "titleRest": "proje yok.",
+      "heading": "Henüz proje yok",
       "text": "Bir GitHub deposu içe aktar ya da fikrini anlat — gerisini Recgon halleder.",
       "addFirst": "+ ilk projeni ekle",
       "importGithub": "github'dan içe aktar"

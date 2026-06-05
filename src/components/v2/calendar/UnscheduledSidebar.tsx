@@ -3,6 +3,7 @@
 import type { DragEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import type { AgentTask } from '@/lib/recgon/types';
+import { EmptyState } from '@/components/ui';
 import { stripMd } from '@/lib/strings';
 
 const KIND_KEYS = new Set(['next_step', 'dev_prompt', 'marketing', 'analytics', 'research', 'custom']);
@@ -57,8 +58,12 @@ export function UnscheduledSidebar({ tasks, onSelect, canDrag = false, onDragSta
         ))}
         {tasks.length === 0 && (
           <li className="cal-unsched-empty">
-            <span className="cal-unsched-empty-mark">—</span>
-            <span>{t('unsched.allClear')}</span>
+            <EmptyState
+              compact
+              icon="┄"
+              title={t('unsched.allClear')}
+              description={t('unsched.allClearDesc')}
+            />
           </li>
         )}
       </ul>
@@ -184,16 +189,5 @@ const css = `
   align-self: start;
   margin-top: 2px;
 }
-.cal-unsched-empty {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 22px 18px;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--txt-faint);
-}
-.cal-unsched-empty-mark { opacity: 0.5; }
+.cal-unsched-empty { border-bottom: none; }
 `;

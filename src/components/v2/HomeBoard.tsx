@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { Skeleton, EmptyState, Button } from '@/components/ui';
 import { cleanText, relTimeShort } from './utils';
 import { TeammateAvatar } from './TeammateAvatar';
 
@@ -153,7 +154,12 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
           {loading ? (
             <BoardColSkel />
           ) : totalDecisions === 0 ? (
-            <BoardClear text={variant === 'refined' ? t('board.clearRefined') : t('board.clearClassic')} />
+            <EmptyState
+              compact
+              icon="◎"
+              title={t('board.clearTitle')}
+              description={variant === 'refined' ? t('board.clearRefined') : t('board.clearClassic')}
+            />
           ) : (
             <div className="v2-bd-stack">
               {topFailed && (
@@ -236,7 +242,17 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
           {loading ? (
             <BoardColSkel />
           ) : visibleUpdates.length === 0 ? (
-            <BoardClear text={t('board.noCommits')} />
+            <EmptyState
+              compact
+              icon="▢"
+              title={t('board.noCommitsTitle')}
+              description={t('board.noCommits')}
+              action={
+                <Button asChild variant="secondary" size="sm">
+                  <Link href="/projects">{t('board.connectRepo')}</Link>
+                </Button>
+              }
+            />
           ) : (
             <ul className="v2-bd-updates">
               {visibleUpdates.map((u) => (
@@ -327,7 +343,17 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
           {loading ? (
             <BoardColSkel />
           ) : !teamPulse || teamPulse.members.length === 0 ? (
-            <BoardClear text={t('board.noTeammates')} />
+            <EmptyState
+              compact
+              icon="⊘"
+              title={t('board.noTeammatesTitle')}
+              description={t('board.noTeammates')}
+              action={
+                <Button asChild variant="secondary" size="sm">
+                  <Link href="/team">{t('board.addTeammate')}</Link>
+                </Button>
+              }
+            />
           ) : (
             <ul className="v2-bd-loads">
               {topLoaded.map((m) => (
@@ -433,23 +459,10 @@ function DecisionItem({
 
 function BoardColSkel() {
   return (
-    <div className="v2-bd-skel">
-      <div className="v2-bd-skel-line v2-bd-skel-l" />
-      <div className="v2-bd-skel-line v2-bd-skel-m" />
-      <div className="v2-bd-skel-line v2-bd-skel-s" />
-    </div>
-  );
-}
-
-function BoardClear({ text }: { text: string }) {
-  return (
-    <div className="v2-bd-clear">
-      <span className="v2-bd-clear-glyph" aria-hidden="true">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
-          <polyline points="5 12 10 17 19 8" />
-        </svg>
-      </span>
-      <span>{text}</span>
+    <div className="v2-bd-skel" aria-busy="true" aria-live="polite">
+      <Skeleton width="80%" height={12} radius={4} />
+      <Skeleton width="60%" height={12} radius={4} />
+      <Skeleton width="40%" height={12} radius={4} />
     </div>
   );
 }
@@ -1034,42 +1047,6 @@ const stylesheet = `
   .v2-bd-load-trend[data-trend='up']   { color: var(--success, #059669); }
   .v2-bd-load-trend[data-trend='down'] { color: var(--danger, #dc2626); }
   .v2-bd-load-trend[data-trend='flat'] { color: var(--txt-faint); }
-  /* ── All-clear ── */
-  .v2-bd-clear {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 4px 0;
-    font-size: 12px;
-    color: var(--txt-muted);
-    line-height: 1.45;
-  }
-  .v2-bd-clear-glyph {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px; height: 18px;
-    border-radius: 50%;
-    background: rgba(16, 185, 129, 0.12);
-    color: var(--success, #059669);
-    flex-shrink: 0;
-    margin-top: 1px;
-    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25);
-  }
-
-  /* ── Skeleton ── */
+  /* ── Skeleton — shimmer from shared .ui-skeleton; this only owns spacing. ── */
   .v2-bd-skel { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
-  .v2-bd-skel-line {
-    height: 12px;
-    background: rgba(var(--signature-rgb), 0.05);
-    border-radius: 4px;
-    animation: v2bdSkel 1.6s ease-in-out infinite;
-  }
-  .v2-bd-skel-l { width: 80%; }
-  .v2-bd-skel-m { width: 60%; }
-  .v2-bd-skel-s { width: 40%; }
-  @keyframes v2bdSkel {
-    0%, 100% { opacity: 0.45; }
-    50%      { opacity: 0.85; }
-  }
 `;

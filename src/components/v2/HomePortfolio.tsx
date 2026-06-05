@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Skeleton, EmptyState, Button } from '@/components/ui';
 import {
   cleanText,
   relTimeShort,
@@ -161,21 +162,34 @@ export default function HomePortfolio({ projects, loading }: Props) {
 
       <div className="v2-products-shell">
         {loading ? (
-          <div className="v2-products-skel">
-            <span />
-            <span />
-            <span />
+          <div className="v2-products-skel" aria-busy="true" aria-live="polite">
+            <Skeleton height={220} radius={10} />
+            <Skeleton height={220} radius={10} />
+            <Skeleton height={220} radius={10} />
           </div>
         ) : projects.length === 0 ? (
-          <div className="v2-products-empty">
-            <p>{t('portfolio.emptyNoProducts')}</p>
-            <Link href="/projects">{t('portfolio.addProduct')}</Link>
-          </div>
+          <EmptyState
+            icon="▢"
+            title={t('portfolio.emptyNoProductsTitle')}
+            description={t('portfolio.emptyNoProductsDesc')}
+            action={
+              <Button asChild variant="primary" size="sm">
+                <Link href="/projects">{t('portfolio.addProduct')}</Link>
+              </Button>
+            }
+          />
         ) : sorted.length === 0 ? (
-          <div className="v2-products-empty">
-            <p>{t('portfolio.emptyNoStatus')}</p>
-            <button type="button" onClick={() => setFilter('all')}>{t('portfolio.showAll')}</button>
-          </div>
+          <EmptyState
+            compact
+            icon="⊘"
+            title={t('portfolio.emptyNoStatusTitle')}
+            description={t('portfolio.emptyNoStatus')}
+            action={
+              <Button variant="secondary" size="sm" onClick={() => setFilter('all')}>
+                {t('portfolio.showAll')}
+              </Button>
+            }
+          />
         ) : (
           <div className="v2-products-grid">
             {sorted.slice(0, 6).map((project) => (
@@ -503,48 +517,12 @@ const stylesheet = `
     background: rgba(var(--signature-rgb), 0.08);
   }
 
-  .v2-products-empty {
-    min-height: 170px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    color: var(--txt-muted);
-    text-align: center;
-  }
-
-  .v2-products-empty p {
-    margin: 0;
-  }
-
-  .v2-products-empty a,
-  .v2-products-empty button {
-    border: 0;
-    background: transparent;
-    color: var(--signature);
-    font: inherit;
-    font-weight: 800;
-    text-decoration: none;
-    cursor: pointer;
-  }
-
+  /* Skeleton grid — shimmer comes from the shared .ui-skeleton primitive;
+     this wrapper only owns the responsive column layout. */
   .v2-products-skel {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-  }
-
-  .v2-products-skel span {
-    height: 220px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.04);
-    animation: v2ProductsSkel 1.4s ease-in-out infinite alternate;
-  }
-
-  @keyframes v2ProductsSkel {
-    from { opacity: 0.45; }
-    to { opacity: 0.85; }
   }
 
   @media (max-width: 1120px) {

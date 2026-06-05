@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/Toast';
-import { useConfirm } from '@/components/ui';
+import { useConfirm, Skeleton } from '@/components/ui';
 
 type Language = 'en' | 'tr';
 
@@ -1091,12 +1091,12 @@ function Spinner() {
 function SpecSkeleton() {
   return (
     <div className="v2-uset-skel">
-      <div className="v2-uset-skel-bar" style={{ width: '20%', height: 11 }} />
+      <Skeleton width="20%" height={11} />
       <div className="glass-card is-static v2-uset-skel-card">
-        <div className="v2-uset-skel-bar" style={{ width: '32%' }} />
-        <div className="v2-uset-skel-bar" style={{ width: '70%' }} />
-        <div className="v2-uset-skel-bar" style={{ width: '54%' }} />
-        <div className="v2-uset-skel-bar" style={{ width: '60%' }} />
+        <Skeleton width="32%" height={14} />
+        <Skeleton width="70%" height={14} />
+        <Skeleton width="54%" height={14} />
+        <Skeleton width="60%" height={14} />
       </div>
     </div>
   );
@@ -1132,16 +1132,6 @@ const styles = `
 
   .v2-uset-skel { display: flex; flex-direction: column; gap: 14px; }
   .v2-uset-skel-card { display: flex; flex-direction: column; gap: 14px; padding: 24px; }
-  .v2-uset-skel-bar {
-    height: 14px;
-    background: rgba(var(--signature-rgb), 0.06);
-    border-radius: 6px;
-    animation: v2usetSkel 1.6s ease-in-out infinite;
-  }
-  @keyframes v2usetSkel {
-    0%, 100% { opacity: 0.4; }
-    50%      { opacity: 0.9; }
-  }
 
   .v2-uset-band {
     display: flex; align-items: center; gap: 14px;

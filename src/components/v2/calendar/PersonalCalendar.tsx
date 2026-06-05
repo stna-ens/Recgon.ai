@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import useSWR from 'swr';
 import type { AgentTask } from '@/lib/recgon/types';
+import { Skeleton, EmptyState } from '@/components/ui';
 import { WeekHeader } from './WeekHeader';
 import { PersonalLane } from './PersonalLane';
 import type { CalendarCard, WeekRange } from './calendarTypes';
@@ -283,20 +284,29 @@ export function PersonalCalendar() {
       {loading ? (
         <div className="personal-cal-loading" aria-busy="true" aria-live="polite">
           <div className="personal-cal-skel-grid">
-            <div className="personal-cal-skel-corner" />
+            <div className="personal-cal-skel-corner">
+              <Skeleton width="60%" height={11} />
+            </div>
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={`h-${i}`} className="personal-cal-skel-head" />
+              <div key={`h-${i}`} className="personal-cal-skel-head">
+                <Skeleton width={28} height={11} />
+                <Skeleton width={20} height={20} radius={6} />
+              </div>
             ))}
             {[0, 1, 2].map((row) => (
               <Fragment key={`r-${row}`}>
-                <div className="personal-cal-skel-label" />
+                <div className="personal-cal-skel-label">
+                  <Skeleton width={18} height={18} radius={5} />
+                  <Skeleton width="55%" height={11} />
+                </div>
                 {Array.from({ length: 7 }).map((_, ci) => (
-                  <div key={`c-${row}-${ci}`} className="personal-cal-skel-cell" />
+                  <div key={`c-${row}-${ci}`} className="personal-cal-skel-cell">
+                    {(row + ci) % 3 === 0 && <Skeleton width="86%" height={26} radius={8} />}
+                  </div>
                 ))}
               </Fragment>
             ))}
           </div>
-          <span className="personal-cal-skel-shimmer" aria-hidden="true" />
           <span className="personal-cal-skel-loading-label">{t('loading')}</span>
         </div>
       ) : (
@@ -309,7 +319,12 @@ export function PersonalCalendar() {
               <WeekHeader dayDates={days} activeDayIndex={activeDayIndex} rowLabel="project" />
               {projectLanes.length === 0 ? (
                 <div className="personal-cal-empty" style={{ gridColumn: `1 / ${(activeDayIndex !== null ? 1 : 7) + 2}` }}>
-                  {t('empty.noScheduled')}
+                  <EmptyState
+                    compact
+                    icon="◇"
+                    title={t('empty.noScheduledTitle')}
+                    description={t('empty.noScheduledDesc')}
+                  />
                 </div>
               ) : (
                 projectLanes.map((lane) => (
@@ -585,26 +600,23 @@ const css = `
   height: 64px;
   border-right: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 .personal-cal-skel-label,
 .personal-cal-skel-cell {
   height: 96px;
   border-right: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
 }
-.personal-cal-skel-shimmer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(var(--signature-rgb), 0.10) 50%,
-    transparent 100%);
-  background-size: 35% 100%;
-  background-repeat: no-repeat;
-  background-position: -35% 0;
-  animation: personalCalSkelSweep 2400ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
+.personal-cal-skel-cell { justify-content: center; }
 .personal-cal-skel-loading-label {
   position: absolute;
   bottom: 14px;
@@ -617,20 +629,10 @@ const css = `
   color: var(--signature);
   opacity: 0.7;
 }
-@keyframes personalCalSkelSweep {
-  0%   { background-position: -35% 0; }
-  100% { background-position: 135% 0; }
-}
 
 .personal-cal-empty {
-  padding: 56px 24px;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: var(--txt-faint);
-  text-align: center;
+  display: flex;
+  justify-content: center;
 }
 
 @media (max-width: 700px) {

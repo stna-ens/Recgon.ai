@@ -902,27 +902,3 @@ html.light .v2-shell .v2-m-tag,
   to   { transform: rotate(360deg); }
 }
 
-/* ─── Skeleton ─────────────────────────────────────────────────────────── */
-
-.v2-m-skel {
-  height: 80px;
-}
-.v2-m-skel::after {
-  content: '';
-  display: block;
-  width: 60%;
-  height: 14px;
-  margin-top: 22px;
-  background: rgba(var(--signature-rgb), 0.06);
-  border-radius: 6px;
-  animation: v2mskelPulse 1.6s ease-in-out infinite;
-}
-.v2-m-skel-tall {
-  height: 220px;
-  background: rgba(var(--signature-rgb), 0.04);
-  animation: v2mskelPulse 1.6s ease-in-out infinite;
-}
-@keyframes v2mskelPulse {
-  0%, 100% { opacity: 0.4; }
-  50%      { opacity: 0.9; }
-}

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { Skeleton } from '@/components/ui';
 import {
   cleanText,
   relTimeShort,
@@ -50,9 +51,9 @@ export default function FeaturedNeedsAttention({ projects, meta, loading }: Prop
     return (
       <section className="v2-fnp">
         <div className="v2-fnp-skel">
-          <span />
-          <span />
-          <span />
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} width="100%" height={168} radius={10} />
+          ))}
         </div>
         <style>{stylesheet}</style>
       </section>
@@ -285,16 +286,6 @@ const stylesheet = `
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-  }
-  .v2-fnp-skel span {
-    height: 168px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    animation: v2fnpSkel 1.4s ease-in-out infinite alternate;
-  }
-  @keyframes v2fnpSkel {
-    from { opacity: 0.4; }
-    to   { opacity: 0.75; }
   }
   @media (max-width: 1080px) {
     .v2-fnp-skel { grid-template-columns: repeat(2, 1fr); }

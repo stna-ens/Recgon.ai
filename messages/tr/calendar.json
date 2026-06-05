@@ -33,7 +33,11 @@
   "loading": "hafta yükleniyor",
   "empty": {
     "noTeammates": "Bu takımda henüz takım arkadaşı yok.",
-    "noScheduled": "Bu hafta planlanmış görev yok."
+    "noScheduled": "Bu hafta planlanmış görev yok.",
+    "noTeammatesTitle": "Henüz takım arkadaşı yok",
+    "noTeammatesDesc": "Bu takıma kişi davet et; şeritleri burada görünecek.",
+    "noScheduledTitle": "Planlanmış bir şey yok",
+    "noScheduledDesc": "Bu haftaya hiç görev düşmüyor. Diğer haftalara bakmak için okları kullan."
   },
   "lane": {
     "you": "SEN",
@@ -55,6 +59,7 @@
     "aria": "Planlanmamış görevler",
     "title": "PLANLANMAMIŞ",
     "allClear": "her şey tamam",
+    "allClearDesc": "Her görevin bir günü var. Planlamadan çıkarmak için birini buraya sürükle.",
     "kind": {
       "next_step": "sonr",
       "dev_prompt": "gel",

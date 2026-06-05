@@ -29,6 +29,7 @@
     "empty": {
       "titlePrefix": "No",
       "titleRest": "projects yet.",
+      "heading": "No projects yet",
       "text": "Import a GitHub repo or describe your idea — Recgon will take it from there.",
       "addFirst": "+ add your first project",
       "importGithub": "import from github"

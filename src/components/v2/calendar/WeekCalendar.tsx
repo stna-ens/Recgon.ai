@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragE
 import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
+import { Skeleton, EmptyState } from '@/components/ui';
 import type { AgentTask, TeammateWithStats } from '@/lib/recgon/types';
 import { WeekNav } from './WeekNav';
 import { WeekHeader } from './WeekHeader';
@@ -312,20 +313,29 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
       {loading ? (
         <div className="week-cal-loading" aria-busy="true" aria-live="polite">
           <div className="week-cal-skel-grid">
-            <div className="week-cal-skel-corner" />
+            <div className="week-cal-skel-corner">
+              <Skeleton width="60%" height={11} />
+            </div>
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={`h-${i}`} className="week-cal-skel-head" />
+              <div key={`h-${i}`} className="week-cal-skel-head">
+                <Skeleton width={28} height={11} />
+                <Skeleton width={20} height={20} radius={6} />
+              </div>
             ))}
             {[0, 1, 2].map((row) => (
               <Fragment key={`r-${row}`}>
-                <div className="week-cal-skel-label" />
+                <div className="week-cal-skel-label">
+                  <Skeleton width={18} height={18} circle />
+                  <Skeleton width="55%" height={11} />
+                </div>
                 {Array.from({ length: 7 }).map((_, ci) => (
-                  <div key={`c-${row}-${ci}`} className="week-cal-skel-cell" />
+                  <div key={`c-${row}-${ci}`} className="week-cal-skel-cell">
+                    {(row + ci) % 3 === 0 && <Skeleton width="86%" height={26} radius={8} />}
+                  </div>
                 ))}
               </Fragment>
             ))}
           </div>
-          <span className="week-cal-skel-shimmer" aria-hidden="true" />
           <span className="week-cal-skel-loading-label">{t('loading')}</span>
         </div>
       ) : (
@@ -339,7 +349,12 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
 
               {activeTeammates.length === 0 ? (
                 <div className="week-cal-empty" style={{ gridColumn: `1 / ${(activeDayIndex !== null ? 1 : 7) + 2}` }}>
-                  {t('empty.noTeammates')}
+                  <EmptyState
+                    compact
+                    icon="◎"
+                    title={t('empty.noTeammatesTitle')}
+                    description={t('empty.noTeammatesDesc')}
+                  />
                 </div>
               ) : (
                 activeTeammates.map((tm, idx) => (
@@ -450,26 +465,23 @@ const css = `
   height: 64px;
   border-right: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 .week-cal-skel-label,
 .week-cal-skel-cell {
   height: 96px;
   border-right: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
 }
-.week-cal-skel-shimmer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(var(--signature-rgb), 0.10) 50%,
-    transparent 100%);
-  background-size: 35% 100%;
-  background-repeat: no-repeat;
-  background-position: -35% 0;
-  animation: calSkelSweep 2400ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
+.week-cal-skel-cell { justify-content: center; }
 .week-cal-skel-loading-label {
   position: absolute;
   bottom: 14px;
@@ -482,16 +494,8 @@ const css = `
   color: var(--signature);
   opacity: 0.7;
 }
-@keyframes calSkelSweep {
-  0%   { background-position: -35% 0; }
-  100% { background-position: 135% 0; }
-}
 
 .week-cal-empty {
-  padding: 48px 24px;
-  font-size: 14px;
-  color: var(--txt-muted);
-  text-align: center;
   border-bottom: 1px solid var(--rule);
 }
 
