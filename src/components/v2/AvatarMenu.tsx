@@ -197,7 +197,7 @@ export default function AvatarMenu() {
           background: rgba(var(--signature-rgb), 0.08);
           border: 1px solid var(--btn-secondary-border, rgba(255,255,255,0.08));
           cursor: pointer;
-          transition: border-color 160ms ease;
+          transition: border-color var(--dur-fast) ease;
         }
         .v2-avatar-btn:hover { border-color: rgba(var(--signature-rgb), 0.45); }
         .v2-avatar-img { width: 100%; height: 100%; object-fit: cover; }

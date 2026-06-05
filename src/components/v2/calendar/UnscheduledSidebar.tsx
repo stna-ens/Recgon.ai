@@ -84,7 +84,7 @@ const css = `
   /* Hide scrollbar until hover (Firefox) */
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
-  transition: scrollbar-color 240ms ease;
+  transition: scrollbar-color var(--dur-base) ease;
 }
 .cal-unsched-sidebar::-webkit-scrollbar { width: 10px; }
 .cal-unsched-sidebar::-webkit-scrollbar-track { background: transparent; }
@@ -93,7 +93,7 @@ const css = `
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
-  transition: background 240ms ease;
+  transition: background var(--dur-base) ease;
 }
 .cal-unsched-sidebar:hover { scrollbar-color: rgba(var(--signature-rgb), 0.30) transparent; }
 .cal-unsched-sidebar:hover::-webkit-scrollbar-thumb {
@@ -147,7 +147,7 @@ const css = `
   border: none;
   cursor: pointer;
   text-align: left;
-  transition: background 140ms ease;
+  transition: background var(--dur-fast) ease;
   outline: none;
 }
 .cal-unsched-item:hover { background: rgba(var(--signature-rgb), 0.05); }

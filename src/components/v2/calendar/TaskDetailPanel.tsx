@@ -623,7 +623,7 @@ const css = `
   flex-direction: column;
   overflow-y: auto;
   transform: translateX(100%);
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--dur-slow) cubic-bezier(0.16, 1, 0.3, 1);
 }
 .cal-panel.is-open { transform: translateX(0); }
 
@@ -666,7 +666,7 @@ const css = `
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;
-  transition: color 140ms ease;
+  transition: color var(--dur-fast) ease;
 }
 .cal-panel-close:hover { color: var(--txt-pure); }
 .cal-panel-close:focus-visible {
@@ -765,7 +765,7 @@ const css = `
   resize: vertical;
   outline: none;
   box-sizing: border-box;
-  transition: border-color 160ms ease;
+  transition: border-color var(--dur-fast) ease;
 }
 .cal-panel-input::placeholder { color: var(--txt-faint); font-style: italic; }
 .cal-panel-input:focus { border-bottom-color: var(--signature); }

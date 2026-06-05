@@ -496,7 +496,7 @@ const stylesheet = `
         the look, identical to the rest of the app. ── */
   .v2-bd-col.glass-card {
     /* Override glass-card defaults that don't fit a 3-col cockpit grid. */
-    padding: 20px 22px 18px;
+    padding: var(--card-pad);
     border-radius: 12px;
     display: flex;
     flex-direction: column;
@@ -670,7 +670,7 @@ const stylesheet = `
   .v2-bd-col-link svg {
     width: 14px;
     height: 14px;
-    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .v2-bd-col:hover .v2-bd-col-link,
   .v2-bd-col-link:focus-visible {
@@ -718,7 +718,7 @@ const stylesheet = `
     border: 1px solid var(--rule);
     text-decoration: none;
     color: inherit;
-    transition: background 200ms ease, border-color 200ms ease, transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: background var(--dur-base) ease, border-color var(--dur-base) ease, transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1);
     overflow: hidden;
   }
   .v2-bd-dec::before {
@@ -771,7 +771,7 @@ const stylesheet = `
     color: var(--txt-faint);
     opacity: 0;
     transform: translateX(-4px);
-    transition: opacity 200ms ease, transform 200ms ease;
+    transition: opacity var(--dur-base) ease, transform var(--dur-base) ease;
   }
   .v2-bd-dec-top {
     padding-left: 0;
@@ -809,7 +809,7 @@ const stylesheet = `
     border-radius: 7px;
     text-decoration: none;
     color: inherit;
-    transition: background 200ms ease, transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: background var(--dur-base) ease, transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1);
     position: relative;
   }
   .v2-bd-update-link:hover {
@@ -912,7 +912,7 @@ const stylesheet = `
     color: var(--success, #059669);
     opacity: 0;
     transform: translateX(-4px);
-    transition: opacity 200ms ease, transform 200ms ease;
+    transition: opacity var(--dur-base) ease, transform var(--dur-base) ease;
     align-self: center;
     flex-shrink: 0;
   }
@@ -1011,7 +1011,7 @@ const stylesheet = `
     display: block;
     height: 100%;
     border-radius: 2px;
-    transition: width 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: width var(--dur-page) cubic-bezier(0.2, 0.8, 0.2, 1);
     background: var(--success, #059669);
   }
   .v2-bd-load-bar-fill[data-load='high'] {

@@ -152,7 +152,7 @@ const stylesheet = `
     text-decoration: none;
     color: inherit;
     cursor: pointer;
-    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease, border-color 220ms ease;
+    transition: transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow var(--dur-base) ease, border-color var(--dur-base) ease;
   }
   /* v1-style lift on hover: -2px translate, signature pink border tint,
      soft signature pink shadow. */

@@ -238,7 +238,7 @@ const css = `
   padding: 4px 2px;
   cursor: pointer;
   text-align: left;
-  transition: color 140ms ease;
+  transition: color var(--dur-fast) ease;
   align-self: flex-start;
 }
 .cal-day-more:hover { color: var(--signature); }

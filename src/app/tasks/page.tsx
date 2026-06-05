@@ -481,127 +481,8 @@ function V2TasksInner() {
     return () => { cancelled = true; };
   }, [expandedTask?.id]);
 
-  /* REAL lighting — SVG feSpecularLighting with a feDistantLight
-     gives a uniform directional light (top-left, elevation 55°)
-     that produces clean Phong shading on each card's bevels: top
-     and left bevels lit, bottom and right bevels dark, no grazing-
-     angle ghost on bottom corners. Per-card distance variation is
-     added via --dist-alpha on each .v2-tasks-card-bg, computed
-     here from each card's distance to its column dot. Cards close
-     to the dot fade in to full intensity; far cards fade out. */
-  useEffect(() => {
-    if (loading) return;
-    const board = document.querySelector<HTMLElement>('.v2-tasks-board');
-    if (!board) return;
-
-    const DOT_OFFSET_X = 22;
-    const DOT_OFFSET_Y = 22;
-    // Distance (in px from card center to column dot) at which the
-    // card's specular fades to zero. Roughly column body height.
-    const FALLOFF_PX = 700;
-
-    let raf = 0;
-    const compute = () => {
-      raf = 0;
-      board.querySelectorAll<HTMLElement>('.v2-tasks-col').forEach((col) => {
-        const cr = col.getBoundingClientRect();
-        const dotX = cr.left + DOT_OFFSET_X;
-        const dotY = cr.top + DOT_OFFSET_Y;
-        col.querySelectorAll<HTMLElement>('.v2-tasks-card').forEach((card) => {
-          const r = card.getBoundingClientRect();
-          const cx = r.left + r.width / 2;
-          const cy = r.top + r.height / 2;
-          const d = Math.hypot(cx - dotX, cy - dotY);
-          // sqrt curve so close cards punch and far cards still
-          // pick up a hint instead of going pitch black
-          const linear = Math.max(0, 1 - d / FALLOFF_PX);
-          const alpha = Math.sqrt(linear).toFixed(3);
-          const bg = card.querySelector<HTMLElement>('.v2-tasks-card-bg');
-          if (bg) bg.style.setProperty('--dist-alpha', alpha);
-        });
-      });
-    };
-    const schedule = () => { if (!raf) raf = requestAnimationFrame(compute); };
-
-    schedule();
-
-    const ro = new ResizeObserver(schedule);
-    ro.observe(board);
-    board.querySelectorAll<HTMLElement>('.v2-tasks-col, .v2-tasks-col-body').forEach((el) => ro.observe(el));
-
-    const mo = new MutationObserver(() => {
-      board.querySelectorAll<HTMLElement>('.v2-tasks-col-body').forEach((el) => ro.observe(el));
-      schedule();
-    });
-    mo.observe(board, { childList: true, subtree: true });
-
-    const bodies = Array.from(board.querySelectorAll<HTMLElement>('.v2-tasks-col-body'));
-    const onScroll = () => schedule();
-    bodies.forEach((b) => b.addEventListener('scroll', onScroll, { passive: true }));
-    window.addEventListener('resize', schedule);
-    // Page-level scroll moves the columns in viewport space too
-    window.addEventListener('scroll', schedule, { passive: true });
-
-    return () => {
-      ro.disconnect();
-      mo.disconnect();
-      bodies.forEach((b) => b.removeEventListener('scroll', onScroll));
-      window.removeEventListener('resize', schedule);
-      window.removeEventListener('scroll', schedule);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [loading]);
-
   return (
     <div className="v2-tasks">
-      {/* Real lighting via SVG filters. One filter per column; each
-          contains a <fePointLight> whose x/y is moved (in the
-          light-tracking useEffect below) to the live viewport position
-          of that column's dot. primitiveUnits=userSpaceOnUse means the
-          light coords are absolute viewport pixels — same filter
-          applied to every card in a column produces a different
-          highlight on each card because each card's pixels live at
-          different world coords. The filter outputs only the masked
-          specular (no feMerge of SourceGraphic), so the bg div appears
-          as just the highlight; the card's glass body shows through. */}
-      <svg width="0" height="0" aria-hidden="true" style={{ position: 'absolute' }}>
-        <defs>
-          <filter id="lit-glass-assigned" primitiveUnits="userSpaceOnUse"
-                  x="-50%" y="-50%" width="200%" height="200%"
-                  colorInterpolationFilters="sRGB">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" result="bump" />
-            <feSpecularLighting in="bump" result="spec"
-                                surfaceScale="2" specularConstant="0.85"
-                                specularExponent="80" lightingColor="#e8eaed">
-              <feDistantLight azimuth="225" elevation="12" />
-            </feSpecularLighting>
-            <feComposite in="spec" in2="SourceAlpha" operator="in" result="lit" />
-          </filter>
-          <filter id="lit-glass-wip" primitiveUnits="userSpaceOnUse"
-                  x="-50%" y="-50%" width="200%" height="200%"
-                  colorInterpolationFilters="sRGB">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" result="bump" />
-            <feSpecularLighting in="bump" result="spec"
-                                surfaceScale="2" specularConstant="0.85"
-                                specularExponent="80" lightingColor="#e8a8c4">
-              <feDistantLight azimuth="225" elevation="12" />
-            </feSpecularLighting>
-            <feComposite in="spec" in2="SourceAlpha" operator="in" result="lit" />
-          </filter>
-          <filter id="lit-glass-review" primitiveUnits="userSpaceOnUse"
-                  x="-50%" y="-50%" width="200%" height="200%"
-                  colorInterpolationFilters="sRGB">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" result="bump" />
-            <feSpecularLighting in="bump" result="spec"
-                                surfaceScale="2" specularConstant="0.85"
-                                specularExponent="80" lightingColor="#ff9f0a">
-              <feDistantLight azimuth="225" elevation="12" />
-            </feSpecularLighting>
-            <feComposite in="spec" in2="SourceAlpha" operator="in" result="lit" />
-          </filter>
-        </defs>
-      </svg>
-
       <header className="v2-section-head">
         <span className="recgon-label v2-eyebrow">{t('eyebrow')}</span>
 
@@ -731,10 +612,6 @@ function V2TasksInner() {
                           }}
                           title={cleanText(task.description || task.title)}
                         >
-                          {/* Filter target — the SVG specular lighting is
-                              applied to this opaque-white div so it doesn't
-                              filter (and blur) the card's text content. */}
-                          <div className="v2-tasks-card-bg" aria-hidden="true" />
                           <div className="v2-tasks-card-head">
                             <span className="v2-tasks-card-kind">{KIND_LABEL[task.kind] ? t(`kind.${task.kind}`) : task.kind}</span>
                             {chip && (
@@ -1202,17 +1079,14 @@ function V2TasksInner() {
            Pulse syncs with v2colDotPulse so the dot visibly emits the
            light. Top sheen layered on for refraction realism. */
         .v2-tasks-col[data-col="assigned"] {
-          --card-edge-rgb: 230, 235, 245;
           --glow-rgb: 220, 225, 240;
           --glow-alpha: 0.18;
         }
         .v2-tasks-col[data-col="wip"] {
-          --card-edge-rgb: var(--signature-rgb);
           --glow-rgb: var(--signature-rgb);
           --glow-alpha: 0.55;
         }
         .v2-tasks-col[data-col="review"] {
-          --card-edge-rgb: 255, 159, 10;
           --glow-rgb: 255, 159, 10;
           --glow-alpha: 0.48;
         }
@@ -1330,7 +1204,7 @@ function V2TasksInner() {
           border-radius: 999px;
           min-width: 22px;
           text-align: center;
-          transition: color 200ms ease, background 200ms ease, border-color 200ms ease;
+          transition: color var(--dur-base) ease, background var(--dur-base) ease, border-color var(--dur-base) ease;
         }
         .v2-tasks-col.is-droptarget .v2-tasks-col-count {
           color: var(--signature);
@@ -1363,33 +1237,23 @@ function V2TasksInner() {
           background: rgba(255,255,255,0.012);
         }
 
-        /* Glass card — "little glass box" that sits ON TOP of the column.
-           Same liquid-glass formula as .glass-card (gradient border, edge
-           highlight, edge shadow, float shadow). Border gradient picks up
-           the parent column's tone via --card-edge-rgb so cards inside IN
-           PROGRESS wear pink edges, IN REVIEW wear amber, etc. */
+        /* Standard glass card — same glass language as .glass-card:
+           glass substrate, 1px rule border, float shadow, small radius.
+           No SVG specular lighting, no directional bevel, no transform
+           lift. Hover/active are expressed as border-color/background
+           shifts using tokens. */
         .v2-tasks-card {
           position: relative;
           /* Critical: don't let the column's flex layout squash cards when
              many exist — keep their natural height; the column body scrolls
              instead. */
           flex-shrink: 0;
-          background:
-            var(--glass-substrate) padding-box,
-            /* Uniform glass edge — a thin low-alpha bevel that defines
-               the card's outline without painting a fake directional
-               lit/shadow split. The directional bevel light is now
-               computed by the SVG filter, so the border doesn't need
-               to fake it anymore. */
-            linear-gradient(135deg,
-              rgba(255, 255, 255, 0.18) 0%,
-              rgba(var(--card-edge-rgb, 255, 255, 255), 0.10) 50%,
-              rgba(255, 255, 255, 0.18) 100%) border-box;
+          background: var(--glass-substrate);
           backdrop-filter: blur(24px) saturate(160%);
           -webkit-backdrop-filter: blur(24px) saturate(160%);
-          border: 1px solid transparent;
-          animation: v2cardIn 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          border-radius: 10px;
+          border: 1px solid var(--rule);
+          animation: v2cardIn var(--dur-slow) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          border-radius: var(--r-sm);
           padding: 12px 13px;
           display: flex;
           flex-direction: column;
@@ -1397,73 +1261,12 @@ function V2TasksInner() {
           cursor: grab;
           isolation: isolate;
           overflow: hidden;
-          /* Directional drop shadow — light is at top-left of the
-             column, so shadows fall DOWN-RIGHT. Layered: a tight
-             contact shadow + a soft long cast for real grounding. */
-          box-shadow:
-            2px 3px 6px -2px rgba(0, 0, 0, 0.55),
-            6px 12px 24px -10px rgba(0, 0, 0, 0.65),
-            12px 28px 48px -18px rgba(0, 0, 0, 0.45),
-            var(--edge-highlight),
-            var(--edge-shadow);
+          box-shadow: var(--shadow-float);
           opacity: 0;
-          transform: translateY(4px);
-          transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
-                      box-shadow 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
-                      background 240ms ease;
+          transition: border-color var(--dur-base) var(--ease-out),
+                      background var(--dur-base) var(--ease-out);
         }
-        /* Old diagonal sheen pseudo removed — was a hard-coded
-           165deg gradient that didn't respond to light position. The
-           SVG feSpecularLighting on .v2-tasks-card-bg produces the
-           real, light-driven sheen now. */
-        /* Inert ::before — kept as a placeholder so the
-           .v2-tasks-card.is-attn::before attention stripe (defined
-           later) inherits the right inert properties. The actual card
-           lighting is now done by SVG feSpecularLighting on the
-           .v2-tasks-card-bg sibling div below — not by this pseudo. */
-        .v2-tasks-card::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          z-index: -1;
-          border-radius: inherit;
-        }
-
-        /* Filter target — opaque-white sibling div whose alpha shape
-           drives the SVG bump map. The filter outputs only the masked
-           specular highlight (transparent elsewhere), so this div
-           appears as just the highlight; the card's glass body
-           (border, gradient, drop shadow) shows through unaltered.
-           The filter is applied to THIS div, not the article, so card
-           text is never filtered/blurred. */
-        .v2-tasks-card-bg {
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          background: #ffffff;
-          pointer-events: none;
-          z-index: 0;
-          /* Per-card distance falloff. JS sets --dist-alpha (0..1)
-             based on distance from this card's center to the column
-             dot. Cards near the dot reflect strongly, far cards fade. */
-          opacity: var(--dist-alpha, 1);
-          /* Additive blend: filter output ADDS light to the card
-             body (like a real reflection brightening glass), instead
-             of REPLACING the surface (which would turn cards into
-             solid lit tiles). Screen of black = unchanged, screen of
-             white = pure white. */
-          mix-blend-mode: screen;
-          transition: opacity 240ms ease;
-        }
-        /* Light mode — the screen-blended specular reads as muddy
-           gray smudges on white glass. Just turn the whole effect
-           off; light-mode cards are clean frosted glass without
-           reflections. */
-        .light .v2-tasks-card-bg {
-          display: none;
-        }
-        /* Light mode also kills the column's pulsing tone glow —
+        /* Light mode kills the column's pulsing tone glow —
            --glow-alpha drops to 0 (so the radial gradients all
            collapse to transparent) and the pulse animation stops.
            Cards keep their dots (which still pulse) but nothing
@@ -1476,18 +1279,6 @@ function V2TasksInner() {
         .light .v2-tasks-col::before {
           animation: none;
         }
-        .v2-tasks-col[data-col="assigned"] .v2-tasks-card .v2-tasks-card-bg { filter: url(#lit-glass-assigned); }
-        .v2-tasks-col[data-col="wip"]      .v2-tasks-card .v2-tasks-card-bg { filter: url(#lit-glass-wip); }
-        .v2-tasks-col[data-col="review"]   .v2-tasks-card .v2-tasks-card-bg { filter: url(#lit-glass-review); }
-
-        /* Card content sits ABOVE the bg div so text stays crisp on
-           top of the specular highlight. */
-        .v2-tasks-card > .v2-tasks-card-head,
-        .v2-tasks-card > .v2-tasks-card-title,
-        .v2-tasks-card > .v2-tasks-card-foot {
-          position: relative;
-          z-index: 1;
-        }
         @keyframes v2cardIn {
           to { opacity: 1; transform: none; }
         }
@@ -1499,32 +1290,20 @@ function V2TasksInner() {
         .v2-tasks-col-body > .v2-tasks-card:nth-child(n+6) { animation-delay: 230ms; }
 
         .v2-tasks-card:hover {
-          background:
-            var(--glass-hover) padding-box,
-            linear-gradient(135deg,
-              rgba(var(--signature-rgb), 0.38) 0%,
-              rgba(255, 255, 255, 0.10) 50%,
-              rgba(var(--signature-rgb), 0.20) 100%) border-box;
-          transform: translateY(-2px);
-          box-shadow:
-            0 14px 28px -16px rgba(0,0,0,0.55),
-            0 0 0 1px rgba(var(--signature-rgb), 0.10),
-            0 0 24px -4px rgba(var(--signature-rgb), 0.18);
+          background: var(--glass-hover);
+          border-color: rgba(var(--signature-rgb), 0.40);
         }
         .v2-tasks-card:focus-visible {
           outline: none;
-          box-shadow:
-            0 0 0 2px rgba(var(--signature-rgb), 0.55),
-            0 8px 22px -12px rgba(var(--signature-rgb), 0.45);
+          border-color: rgba(var(--signature-rgb), 0.55);
+          box-shadow: var(--shadow-float),
+            0 0 0 2px rgba(var(--signature-rgb), 0.55);
         }
         .v2-tasks-card:active { cursor: grabbing; }
         .v2-tasks-card.is-dragging {
           opacity: 0.55;
-          transform: rotate(-1.5deg) scale(1.02);
           cursor: grabbing;
-          box-shadow:
-            0 22px 44px -18px rgba(0,0,0,0.7),
-            0 0 0 1px rgba(var(--signature-rgb), 0.45);
+          border-color: rgba(var(--signature-rgb), 0.45);
         }
         /* Attention state — single quiet signal, not a full reskin.
            A 2px amber stripe on the left edge is the only deviation from
@@ -1916,7 +1695,6 @@ function V2TasksInner() {
            radial-gradient glow alphas all collapse to 0 so the column
            body stays clean white. */
         .light .v2-tasks-col[data-col="assigned"] {
-          --card-edge-rgb: 60, 60, 67;
           --glow-rgb: 90, 90, 105;
           --glow-alpha: 0;
         }
@@ -1943,12 +1721,7 @@ function V2TasksInner() {
             var(--edge-shadow);
         }
         .light .v2-tasks-card {
-          box-shadow:
-            0 1px 0 rgba(0, 0, 0, 0.04),
-            0 4px 10px -4px rgba(0, 0, 0, 0.10),
-            0 14px 28px -10px rgba(0, 0, 0, 0.10),
-            var(--edge-highlight),
-            var(--edge-shadow);
+          box-shadow: var(--shadow-float);
         }
 
         @media (max-width: 1024px) {

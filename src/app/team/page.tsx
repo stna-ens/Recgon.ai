@@ -1159,7 +1159,7 @@ function V2TeamAdminPageInner() {
           border-right: 1px solid var(--rule);
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           cursor: pointer;
-          transition: background 220ms ease;
+          transition: background var(--dur-base) ease;
           white-space: nowrap;
           flex-shrink: 0;
         }
@@ -1170,14 +1170,14 @@ function V2TeamAdminPageInner() {
           letter-spacing: 0.5px;
           color: var(--txt-faint);
           font-variant-numeric: tabular-nums;
-          transition: color 200ms ease;
+          transition: color var(--dur-base) ease;
         }
         .rec-tab-label {
           font-size: 12.5px;
           font-weight: 500;
           letter-spacing: 0.2px;
           color: var(--txt-muted);
-          transition: color 200ms ease;
+          transition: color var(--dur-base) ease;
           text-transform: lowercase;
         }
         .rec-tab-count {
@@ -1493,7 +1493,7 @@ function V2TeamAdminPageInner() {
           gap: 16px;
           padding: 14px 16px 14px 12px;
           border-bottom: 1px solid var(--rule);
-          transition: background 200ms ease;
+          transition: background var(--dur-base) ease;
         }
         .rec-roster-row::before {
           content: '';
@@ -1639,7 +1639,7 @@ function V2TeamAdminPageInner() {
           font-size: 11px;
           opacity: 0;
           transform: rotate(90deg);
-          transition: opacity 160ms ease;
+          transition: opacity var(--dur-fast) ease;
           margin-left: 2px;
         }
         .rec-roster-row:hover .rec-role-chevron,
@@ -1692,7 +1692,7 @@ function V2TeamAdminPageInner() {
           font-size: 14px;
           line-height: 1;
           cursor: pointer;
-          transition: color 180ms ease, border-color 180ms ease, opacity 160ms ease, background 180ms ease;
+          transition: color 180ms ease, border-color 180ms ease, opacity var(--dur-fast) ease, background 180ms ease;
           opacity: 0;
         }
         .rec-roster-row:hover .rec-roster-remove,
@@ -1898,7 +1898,7 @@ function V2TeamAdminPageInner() {
         .rec-pending-list { list-style: none; padding: 0; margin: 0; }
         .rec-pending-item {
           border-bottom: 1px solid var(--rule);
-          transition: background 200ms ease;
+          transition: background var(--dur-base) ease;
         }
         .rec-pending-item:hover { background: rgba(var(--signature-rgb), 0.02); }
         .rec-pending-item:last-child { border-bottom: none; }

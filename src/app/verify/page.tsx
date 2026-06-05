@@ -824,11 +824,11 @@ const stylesheet = `
     color: var(--txt-faint);
     text-decoration: none;
     font-weight: 700;
-    transition: color 180ms ease, gap 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: color 180ms ease, gap var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .v2-vf-back:hover { color: var(--signature); gap: 10px; }
   .v2-vf-back:hover svg { transform: translateX(-2px); }
-  .v2-vf-back svg { transition: transform 200ms ease; }
+  .v2-vf-back svg { transition: transform var(--dur-base) ease; }
 
   .v2-vf-hero-grid {
     display: grid;
@@ -1203,7 +1203,7 @@ const stylesheet = `
     background: rgba(0, 0, 0, 0.32);
     overflow: hidden;
     cursor: zoom-in;
-    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 180ms ease, box-shadow 200ms ease;
+    transition: transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1), border-color 180ms ease, box-shadow var(--dur-base) ease;
   }
   .v2-vf-submitted-img:hover {
     transform: translateY(-1px);
@@ -1672,7 +1672,7 @@ const stylesheet = `
     transform: rotate(180deg);
   }
   .v2-vf-details summary svg {
-    transition: transform 160ms ease;
+    transition: transform var(--dur-fast) ease;
   }
   .v2-vf-details .v2-vf-desc,
   .v2-vf-details .v2-vf-verdict-meta {

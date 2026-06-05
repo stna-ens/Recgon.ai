@@ -252,7 +252,7 @@ export default function TopNavV2() {
           text-transform: uppercase;
           color: var(--txt-faint);
           text-decoration: none;
-          transition: color 200ms ease;
+          transition: color var(--dur-base) ease;
         }
         .v2-nav-link:hover { color: var(--txt-muted); }
         .v2-nav-link.is-active { color: var(--txt-pure); }
@@ -304,7 +304,7 @@ export default function TopNavV2() {
           font-weight: 500;
           cursor: pointer;
           min-width: 240px;
-          transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+          transition: border-color var(--dur-base) ease, color var(--dur-base) ease, background var(--dur-base) ease;
         }
         .v2-cmdk-trigger:hover {
           color: var(--txt-muted);

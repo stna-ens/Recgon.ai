@@ -208,7 +208,7 @@ const css = `
   line-height: 1;
   padding: 4px 8px;
   cursor: pointer;
-  transition: color 140ms ease;
+  transition: color var(--dur-fast) ease;
 }
 .cal-nav-arrow:hover { color: var(--txt-pure); }
 .cal-nav-arrow:focus-visible {
@@ -227,7 +227,7 @@ const css = `
   color: var(--txt-muted);
   padding: 4px 6px;
   cursor: pointer;
-  transition: color 140ms ease;
+  transition: color var(--dur-fast) ease;
 }
 .cal-nav-today-link:hover { color: var(--signature); }
 .cal-nav-today-link:focus-visible {
@@ -250,7 +250,7 @@ const css = `
   letter-spacing: 1.2px;
   text-transform: uppercase;
   color: var(--warning);
-  transition: opacity 140ms ease;
+  transition: opacity var(--dur-fast) ease;
 }
 .cal-nav-unsched:hover { opacity: 0.75; }
 .cal-nav-unsched.is-active .cal-nav-unsched-text { border-bottom: 1px solid var(--warning); padding-bottom: 1px; }
@@ -283,7 +283,7 @@ const css = `
   text-transform: uppercase;
   color: var(--txt-faint);
   cursor: pointer;
-  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+  transition: border-color var(--dur-base) ease, color var(--dur-base) ease, background var(--dur-base) ease;
 }
 .cal-view-trigger:hover,
 .cal-view-trigger.is-open {
@@ -348,7 +348,7 @@ const css = `
   text-transform: uppercase;
   color: var(--txt-muted);
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 .cal-view-option:hover {
   background: rgba(var(--signature-rgb), 0.06);

@@ -1099,16 +1099,16 @@ const styles = `
     text-decoration: none;
     text-transform: lowercase;
     letter-spacing: 0.4px;
-    transition: color 220ms ease, padding-left 280ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: color var(--dur-base) ease, padding-left 280ms cubic-bezier(0.16, 1, 0.3, 1);
     border-left: 2px solid transparent;
   }
   .v2-pset-toc-num {
     font-weight: 700;
     font-size: 11px;
     color: var(--txt-faint);
-    transition: color 220ms ease;
+    transition: color var(--dur-base) ease;
   }
-  .v2-pset-toc-label { color: inherit; transition: color 220ms ease; }
+  .v2-pset-toc-label { color: inherit; transition: color var(--dur-base) ease; }
   .v2-pset-toc-item:hover {
     color: var(--txt-pure);
   }
@@ -1215,7 +1215,7 @@ const styles = `
     gap: 28px;
     padding: 18px 28px;
     border-bottom: 1px solid var(--rule);
-    transition: background 220ms ease, padding-left 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background var(--dur-base) ease, padding-left var(--dur-base) cubic-bezier(0.16, 1, 0.3, 1);
   }
   .v2-pset-field:last-child { border-bottom: none; }
   .v2-pset-field::before {
@@ -1288,7 +1288,7 @@ const styles = `
     margin-top: 2px;
     opacity: 0;
     transform: translateX(-3px);
-    transition: opacity 200ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity var(--dur-base) ease, transform var(--dur-base) cubic-bezier(0.16, 1, 0.3, 1);
   }
   .v2-pset-field.is-editing .v2-pset-field-action { display: none; }
 
@@ -1375,7 +1375,7 @@ const styles = `
     border-radius: 7px;
     background: rgba(var(--signature-rgb), 0.020);
     font-size: 13px;
-    transition: border-color 200ms ease, color 200ms ease, transform 200ms cubic-bezier(0.16, 1, 0.3, 1), background 200ms ease;
+    transition: border-color var(--dur-base) ease, color var(--dur-base) ease, transform var(--dur-base) cubic-bezier(0.16, 1, 0.3, 1), background var(--dur-base) ease;
     align-self: flex-start;
     width: fit-content;
   }
@@ -1422,7 +1422,7 @@ const styles = `
     gap: 2px;
     align-self: flex-start;
     background: rgba(var(--signature-rgb), 0.020);
-    transition: border-color 200ms ease;
+    transition: border-color var(--dur-base) ease;
   }
   .v2-pset-toggle:hover:not(.is-locked) { border-color: rgba(var(--signature-rgb), 0.40); }
   .v2-pset-toggle-cell {
@@ -1438,14 +1438,14 @@ const styles = `
     cursor: pointer;
     border-radius: 5px;
     display: inline-flex; align-items: center; gap: 8px;
-    transition: background 220ms ease, color 220ms ease;
+    transition: background var(--dur-base) ease, color var(--dur-base) ease;
   }
   .v2-pset-toggle-dot {
     width: 6px; height: 6px;
     border-radius: 50%;
     background: currentColor;
     opacity: 0.35;
-    transition: opacity 220ms ease, box-shadow 220ms ease, background 220ms ease;
+    transition: opacity var(--dur-base) ease, box-shadow var(--dur-base) ease, background var(--dur-base) ease;
   }
   .v2-pset-toggle-cell.is-on {
     background: rgba(var(--signature-rgb), 0.14);
@@ -1473,7 +1473,7 @@ const styles = `
     font-size: 13.5px;
     outline: none;
     width: 100%;
-    transition: border-color 200ms ease, background 200ms ease;
+    transition: border-color var(--dur-base) ease, background var(--dur-base) ease;
   }
   .v2-pset-input:focus {
     border-color: rgba(var(--signature-rgb), 0.50);
@@ -1518,7 +1518,7 @@ const styles = `
     text-transform: uppercase;
     cursor: pointer; text-decoration: none;
     border: 1px solid;
-    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms ease, background 200ms ease, border-color 200ms ease, color 200ms ease;
+    transition: transform var(--dur-base) cubic-bezier(0.16, 1, 0.3, 1), box-shadow var(--dur-base) ease, background var(--dur-base) ease, border-color var(--dur-base) ease, color var(--dur-base) ease;
   }
   .v2-pset-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
   .v2-pset-btn-primary { background: var(--signature); border-color: var(--signature); color: #fff; }

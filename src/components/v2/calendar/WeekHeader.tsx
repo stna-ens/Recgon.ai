@@ -128,7 +128,7 @@ const css = `
   letter-spacing: -0.02em;
   padding-bottom: 4px;
   border-bottom: 2px solid transparent;
-  transition: border-color 160ms ease, color 160ms ease;
+  transition: border-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 .cal-day-header.is-today .cal-day-date-num {
   color: var(--signature);

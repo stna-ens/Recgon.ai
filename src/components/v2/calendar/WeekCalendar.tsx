@@ -435,7 +435,7 @@ const css = `
   overflow: auto;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
-  transition: scrollbar-color 240ms ease;
+  transition: scrollbar-color var(--dur-base) ease;
 }
 .week-cal-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
 .week-cal-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -444,7 +444,7 @@ const css = `
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
-  transition: background 240ms ease;
+  transition: background var(--dur-base) ease;
 }
 .week-cal-scroll:hover { scrollbar-color: rgba(var(--signature-rgb), 0.30) transparent; }
 .week-cal-scroll:hover::-webkit-scrollbar-thumb {

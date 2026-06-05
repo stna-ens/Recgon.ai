@@ -107,14 +107,14 @@ export default function TabPlaceholder({ title, body, fallbackHref, fallbackLabe
           letter-spacing: 0.5px;
           text-transform: uppercase;
           text-decoration: none;
-          transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+          transition: border-color var(--dur-base) ease, color var(--dur-base) ease, background var(--dur-base) ease;
         }
         .v2-stub-link:hover {
           border-color: rgba(var(--signature-rgb), 0.40);
           color: var(--signature);
           background: rgba(var(--signature-rgb), 0.04);
         }
-        .v2-stub-link svg { transition: transform 200ms ease; }
+        .v2-stub-link svg { transition: transform var(--dur-base) ease; }
         .v2-stub-link:hover svg { transform: translateX(3px); }
 
         @media (max-width: 640px) {

@@ -152,7 +152,7 @@ html.light .v2-shell .v2-m-switcher,
   font-family: inherit;
   font-size: 13px;
   outline: none;
-  transition: border-color 200ms ease;
+  transition: border-color var(--dur-base) ease;
   width: 100%;
 }
 .v2-m-input:focus,
@@ -818,7 +818,7 @@ html.light .v2-shell .v2-m-tag,
   height: 100%;
   background: var(--signature);
   border-radius: 999px;
-  transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: width var(--dur-page) cubic-bezier(0.16, 1, 0.3, 1);
 }
 .v2-m-budget-rationale {
   font-size: 11.5px;

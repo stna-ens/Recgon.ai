@@ -193,7 +193,7 @@ const stylesheet = `
     cursor: pointer;
     font-size: 11px;
     font-weight: 700;
-    transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+    transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
   }
   .v2-pr-filters button:hover:not(:disabled):not(.is-active) {
     color: var(--txt-muted);
@@ -242,7 +242,7 @@ const stylesheet = `
     border-radius: 8px;
     text-decoration: none;
     color: inherit;
-    transition: background 160ms ease, transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: background var(--dur-fast) ease, transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1);
     position: relative;
   }
   .v2-pr-link:hover {
@@ -382,7 +382,7 @@ const stylesheet = `
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 14px;
     font-weight: 700;
-    transition: color 200ms ease, transform 200ms ease;
+    transition: color var(--dur-base) ease, transform var(--dur-base) ease;
   }
 
   .v2-pr-empty {

@@ -1201,7 +1201,7 @@ export default function TerminalShell() {
           font-weight: 700;
           flex-shrink: 0;
           text-shadow: 0 0 6px var(--signature);
-          transition: opacity 80ms ease;
+          transition: opacity var(--dur-instant) ease;
         }
         /* Key currently pressed on the input → dot looks turned off (dim, no glow).
            Like an unlit LED — visible silhouette, not vanished. */
@@ -1245,7 +1245,7 @@ export default function TerminalShell() {
           font-weight: 500;
           letter-spacing: 0.2px;
           cursor: pointer;
-          transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+          transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
         }
         .terminal-banner-btn:hover {
           color: var(--txt-pure);
@@ -1290,7 +1290,7 @@ export default function TerminalShell() {
           border-radius: 6px;
           color: var(--txt-muted);
           cursor: pointer;
-          transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+          transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
         }
         .terminal-banner-icon-btn:hover {
           color: var(--signature);
@@ -1539,7 +1539,7 @@ export default function TerminalShell() {
           color: inherit;
           letter-spacing: inherit;
           cursor: pointer;
-          transition: color 140ms ease;
+          transition: color var(--dur-fast) ease;
         }
         .terminal-statusbar-btn:hover { color: var(--signature); }
         .terminal-statusbar-btn:hover .terminal-statusbar-key { color: var(--signature); }

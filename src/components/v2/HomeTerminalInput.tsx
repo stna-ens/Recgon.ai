@@ -96,14 +96,14 @@ export default function HomeTerminalInput({ visible }: Props) {
           letter-spacing: -0.005em;
           cursor: pointer;
           white-space: nowrap;
-          transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease;
+          transition: transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow var(--dur-base) ease;
         }
         .v2-ask-submit:hover {
           transform: translateY(-1px);
           box-shadow: 0 8px 20px -6px rgba(var(--signature-rgb), 0.55);
         }
         .v2-ask-submit:active { transform: translateY(0); }
-        .v2-ask-submit svg { transition: transform 200ms ease; }
+        .v2-ask-submit svg { transition: transform var(--dur-base) ease; }
         .v2-ask-submit:hover svg { transform: translateX(2px); }
 
         @media (max-width: 640px) {

@@ -58,7 +58,7 @@
         align-items: center;
         padding: 11px 0;
         border-bottom: 1px dashed var(--rule);
-        transition: background 200ms ease;
+        transition: background var(--dur-base) ease;
       }
       .v2-cap-row:last-child { border-bottom: none; }
       .v2-cap-row:hover { background: rgba(var(--signature-rgb), 0.03); }
@@ -90,7 +90,7 @@
         width: 3px;
         background: var(--rule);
         border-radius: 1px;
-        transition: background 200ms ease;
+        transition: background var(--dur-base) ease;
       }
       .v2-cap-tick:nth-child(1) { height: 4px; }
       .v2-cap-tick:nth-child(2) { height: 5px; }
@@ -264,7 +264,7 @@
         font-weight: 600;
         letter-spacing: 0.3px;
         cursor: pointer;
-        transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+        transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -564,7 +564,7 @@
         border-radius: 8px;
         background: var(--rule);
         border: 1px solid var(--rule);
-        transition: background 200ms ease, border-color 200ms ease;
+        transition: background var(--dur-base) ease, border-color var(--dur-base) ease;
       }
       .v2-risk-row:last-child { margin-bottom: 0; }
       .v2-risk-row:hover {
@@ -731,7 +731,7 @@
         border: 1px solid rgba(var(--signature-rgb), 0.26);
         padding: 4px 10px;
         border-radius: 999px;
-        transition: background 200ms ease, border-color 200ms ease;
+        transition: background var(--dur-base) ease, border-color var(--dur-base) ease;
       }
       .v2-mkt-signal:hover {
         background: rgba(var(--signature-rgb), 0.16);
@@ -811,7 +811,7 @@
         border: 1px solid rgba(var(--signature-rgb), 0.35);
         padding: 2px 6px;
         border-radius: 4px;
-        transition: background 200ms ease;
+        transition: background var(--dur-base) ease;
       }
       .v2-batt-visit:hover { background: rgba(var(--signature-rgb), 0.08); }
       .v2-batt-tone {
@@ -1274,7 +1274,7 @@
         letter-spacing: 0.3px;
         text-decoration: none;
         cursor: pointer;
-        transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+        transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
       }
       .v2-action-btn:hover {
         color: var(--txt-pure);
@@ -1304,7 +1304,7 @@
         border-radius: 6px;
         color: var(--txt-faint);
         cursor: pointer;
-        transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+        transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
       }
       .v2-action-icon:hover {
         color: var(--txt-pure);
@@ -1362,7 +1362,7 @@
         border-radius: 6px;
         color: var(--txt-faint);
         cursor: pointer;
-        transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+        transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
       }
       .v2-meta-icon-btn:hover {
         color: var(--txt-pure);
@@ -1388,7 +1388,7 @@
         border-radius: 50%;
         background: var(--bg-secondary, transparent);
         border: 1px solid var(--rule-strong, var(--border));
-        transition: background 220ms ease, border-color 220ms ease;
+        transition: background var(--dur-base) ease, border-color var(--dur-base) ease;
       }
       .v2-quota-dot.is-used {
         background: var(--signature);
@@ -1449,7 +1449,7 @@
         text-transform: uppercase;
         padding: 11px 18px;
         border-radius: 8px;
-        transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), background 220ms ease, color 220ms ease;
+        transition: transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1), background var(--dur-base) ease, color var(--dur-base) ease;
       }
       .v2-btn-anal:hover {
         transform: translateY(-1px);
@@ -1704,7 +1704,7 @@
         font-family: inherit;
         font-size: 13.5px;
         outline: none;
-        transition: border-color 200ms ease;
+        transition: border-color var(--dur-base) ease;
       }
       .v2-input:focus { border-color: rgba(var(--signature-rgb), 0.40); }
       .v2-input::placeholder { color: var(--txt-faint); }
@@ -1882,7 +1882,7 @@
         border-radius: 50%;
         background: var(--bg-content, #0a0a0a);
         border: 1.5px solid var(--rule);
-        transition: all 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        transition: all var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1);
       }
       .v2-stage-node.is-passed .v2-stage-dot {
         background: var(--stage-tone);
@@ -2093,7 +2093,7 @@
         border: 1px solid var(--rule);
         border-radius: 10px;
         padding: 14px 14px 12px;
-        transition: border-color 240ms ease, background 240ms ease, transform 240ms ease;
+        transition: border-color var(--dur-base) ease, background var(--dur-base) ease, transform var(--dur-base) ease;
       }
       .v2-inv-cat:hover {
         border-color: color-mix(in srgb, var(--cat-tone) 35%, var(--rule));
@@ -2144,7 +2144,7 @@
         padding: 3px 9px;
         border-radius: 4px;
         letter-spacing: 0.1px;
-        transition: border-color 200ms ease, color 200ms ease;
+        transition: border-color var(--dur-base) ease, color var(--dur-base) ease;
       }
       .v2-inv-cat:hover .v2-inv-chip {
         border-color: color-mix(in srgb, var(--cat-tone) 35%, var(--rule));
@@ -2272,7 +2272,7 @@
         font-weight: 600;
         letter-spacing: -0.005em;
         text-decoration: none;
-        transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease;
+        transition: transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow var(--dur-base) ease;
       }
       .v2-btn-primary:hover {
         transform: translateY(-1px);

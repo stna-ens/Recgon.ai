@@ -510,7 +510,7 @@ const css = `
     0 0 6px rgba(var(--signature-rgb), 0.70),
     0 0 14px rgba(var(--signature-rgb), 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
-  transition: width 200ms ease;
+  transition: width var(--dur-base) ease;
 }
 .cal-day-load-text {
   position: relative;
@@ -540,7 +540,7 @@ const css = `
   padding: 4px 2px;
   cursor: pointer;
   text-align: left;
-  transition: color 140ms ease;
+  transition: color var(--dur-fast) ease;
   align-self: flex-start;
 }
 .cal-day-more:hover { color: var(--signature); }

@@ -443,7 +443,7 @@ const css = `
   line-height: 1;
   padding: 4px 8px;
   cursor: pointer;
-  transition: color 140ms ease;
+  transition: color var(--dur-fast) ease;
 }
 .cal-nav-arrow:hover { color: var(--txt-pure); }
 .cal-nav-arrow:focus-visible { outline: 2px solid var(--signature); outline-offset: 2px; border-radius: 2px; }
@@ -458,7 +458,7 @@ const css = `
   color: var(--txt-muted);
   padding: 4px 6px;
   cursor: pointer;
-  transition: color 140ms ease;
+  transition: color var(--dur-fast) ease;
 }
 .cal-nav-today-link:hover { color: var(--signature); }
 
@@ -480,7 +480,7 @@ const css = `
   text-transform: uppercase;
   color: var(--txt-faint);
   cursor: pointer;
-  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+  transition: border-color var(--dur-base) ease, color var(--dur-base) ease, background var(--dur-base) ease;
 }
 .cal-view-trigger:hover, .cal-view-trigger.is-open {
   color: var(--txt-muted);
@@ -532,7 +532,7 @@ const css = `
   text-transform: uppercase;
   color: var(--txt-muted);
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
   text-align: left;
 }
 .cal-view-option:hover { background: rgba(var(--signature-rgb), 0.06); color: var(--txt-pure); }
@@ -563,7 +563,7 @@ const css = `
   overflow: auto;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
-  transition: scrollbar-color 240ms ease;
+  transition: scrollbar-color var(--dur-base) ease;
 }
 .personal-cal-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
 .personal-cal-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -572,7 +572,7 @@ const css = `
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
-  transition: background 240ms ease;
+  transition: background var(--dur-base) ease;
 }
 .personal-cal-scroll:hover { scrollbar-color: rgba(var(--signature-rgb), 0.30) transparent; }
 .personal-cal-scroll:hover::-webkit-scrollbar-thumb {

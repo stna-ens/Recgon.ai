@@ -610,7 +610,7 @@ const stylesheet = `
     border-radius: 6px;
     background: rgba(var(--signature-rgb), 0.03);
     border: 1px solid rgba(var(--signature-rgb), 0.06);
-    transition: background 200ms ease, border-color 200ms ease;
+    transition: background var(--dur-base) ease, border-color var(--dur-base) ease;
   }
   .v2-fc-move:hover {
     background: rgba(var(--signature-rgb), 0.06);
@@ -893,7 +893,7 @@ const stylesheet = `
     font-weight: 600;
     letter-spacing: -0.005em;
     text-decoration: none;
-    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 200ms ease, background 200ms ease, border-color 200ms ease;
+    transition: transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow var(--dur-base) ease, background var(--dur-base) ease, border-color var(--dur-base) ease;
   }
   .v2-fc-cta-primary {
     background: var(--signature);

@@ -598,7 +598,7 @@ export default function V2ProjectsListPage() {
           font-weight: 700;
           letter-spacing: 0.2px;
           cursor: pointer;
-          transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+          transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
           line-height: 1;
         }
         .v2-scope-chip:hover:not(.is-active) {
@@ -810,7 +810,7 @@ export default function V2ProjectsListPage() {
           font-family: inherit;
           font-size: 13.5px;
           outline: none;
-          transition: border-color 200ms ease;
+          transition: border-color var(--dur-base) ease;
         }
         .v2-input:focus { border-color: rgba(var(--signature-rgb), 0.40); }
         .v2-input::placeholder { color: var(--txt-faint); }

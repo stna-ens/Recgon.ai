@@ -257,7 +257,7 @@ const stylesheet = `
     text-decoration: none;
     font-size: 11px;
     font-weight: 750;
-    transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
+    transition: background var(--dur-fast) ease, transform var(--dur-fast) ease, border-color var(--dur-fast) ease;
   }
 
   .v2-products-all:hover {
@@ -286,7 +286,7 @@ const stylesheet = `
     cursor: pointer;
     font-size: 11px;
     font-weight: 700;
-    transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+    transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease;
   }
 
   .v2-products-filters button:hover:not(:disabled):not(.is-active) {
@@ -509,7 +509,7 @@ const stylesheet = `
     text-decoration: none;
     font-size: 12px;
     font-weight: 800;
-    transition: transform 160ms ease, background 160ms ease;
+    transition: transform var(--dur-fast) ease, background var(--dur-fast) ease;
   }
 
   .v2-products-open:hover {

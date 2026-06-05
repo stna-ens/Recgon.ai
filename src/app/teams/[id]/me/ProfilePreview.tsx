@@ -259,7 +259,7 @@ export default function ProfilePreview({
             var(--signature) 100%
           );
           border-radius: inherit;
-          transition: width 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
+          transition: width var(--dur-base) cubic-bezier(0.22, 0.61, 0.36, 1);
         }
         .profile-preview__capacity-label {
           font-family: var(--font-mono), 'JetBrains Mono', monospace;

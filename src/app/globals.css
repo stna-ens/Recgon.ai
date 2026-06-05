@@ -2879,7 +2879,7 @@ html {
   box-shadow: 0 6px 18px rgba(var(--signature-rgb), 0.28), 0 0 0 1px rgba(255,255,255,0.06) inset;
   z-index: 5;
   animation: pillRise 220ms var(--ease-out) both;
-  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .scroll-to-latest-pill:hover {
   transform: translateX(-50%) translateY(-1px);
@@ -2959,6 +2959,20 @@ button:not(.ui-btn):not(.ui-modal-x):not(.ui-input-toggle):not(.nav-link):not(.t
   text-align: inherit;
   cursor: pointer;
 }
+
+/* --- Line-clamp truncation helpers ---
+   Multi-line ellipsis truncation. Use for future card/list copy that
+   should fade out after N lines. Not mass-applied — opt-in per element. */
+.ui-clamp-1,
+.ui-clamp-2,
+.ui-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ui-clamp-1 { -webkit-line-clamp: 1; }
+.ui-clamp-2 { -webkit-line-clamp: 2; }
+.ui-clamp-3 { -webkit-line-clamp: 3; }
 
 /* --- Button (.ui-btn) — visual base inherited from .cal-panel-btn --- */
 .ui-btn {

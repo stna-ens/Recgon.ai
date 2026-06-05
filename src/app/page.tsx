@@ -388,7 +388,7 @@ function V2HomeInner() {
           border-radius: 7px;
           text-decoration: none;
           color: inherit;
-          transition: background 160ms ease;
+          transition: background var(--dur-fast) ease;
         }
         .v2-home-pf-link:hover {
           background: rgba(255,255,255,0.035);
@@ -516,13 +516,13 @@ function V2HomeInner() {
           font-weight: 600;
           letter-spacing: -0.005em;
           text-decoration: none;
-          transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease;
+          transition: transform var(--dur-base) cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow var(--dur-base) ease;
         }
         .v2-empty-cta:hover {
           transform: translateY(-2px);
           box-shadow: 0 12px 28px -8px rgba(var(--signature-rgb), 0.45);
         }
-        .v2-empty-cta svg { transition: transform 200ms ease; }
+        .v2-empty-cta svg { transition: transform var(--dur-base) ease; }
         .v2-empty-cta:hover svg { transform: translateX(3px); }
 
         @media (max-width: 720px) {

@@ -871,7 +871,7 @@ export default function V2ProjectOverviewPage() {
                       strokeLinecap="round"
                       strokeDasharray={`${(pct / 100) * 2 * Math.PI * 28} ${2 * Math.PI * 28}`}
                       transform="rotate(-90 40 40)"
-                      style={{ transition: 'stroke-dasharray 600ms cubic-bezier(0.2,0.8,0.2,1)' }}
+                      style={{ transition: 'stroke-dasharray var(--dur-page) cubic-bezier(0.2,0.8,0.2,1)' }}
                     />
                   </svg>
                   <div className="v2-acted-ring-pct" style={{ color: tone }}>{pct}%</div>

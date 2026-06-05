@@ -114,7 +114,7 @@ export default function ProjectShell({ projectId }: Props) {
           text-transform: uppercase;
           color: var(--txt-faint);
           text-decoration: none;
-          transition: color 200ms ease, gap 200ms ease;
+          transition: color var(--dur-base) ease, gap var(--dur-base) ease;
         }
         .v2-pshell-crumb:hover {
           color: var(--signature);
@@ -139,7 +139,7 @@ export default function ProjectShell({ projectId }: Props) {
           color: var(--txt-faint);
           text-decoration: none;
           white-space: nowrap;
-          transition: color 200ms ease;
+          transition: color var(--dur-base) ease;
         }
         .v2-pshell-tab:hover { color: var(--txt-muted); }
         .v2-pshell-tab.is-active { color: var(--txt-pure); }

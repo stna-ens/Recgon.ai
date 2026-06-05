@@ -655,7 +655,7 @@ export function ProjectTasksListView() {
           letter-spacing: 0.4px;
           text-transform: uppercase;
           color: var(--txt-muted);
-          transition: color 160ms ease, background 160ms ease;
+          transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
         }
         .v2-facet:hover { color: var(--txt-pure); }
         .v2-facet.is-active {
@@ -706,7 +706,7 @@ export function ProjectTasksListView() {
           font-size: 12px;
           letter-spacing: 0.2px;
           outline: none;
-          transition: border-color 160ms ease;
+          transition: border-color var(--dur-fast) ease;
         }
         .v2-tasks-search::placeholder { color: var(--txt-faint); }
         .v2-tasks-search:focus { border-color: rgba(var(--signature-rgb), 0.45); }
@@ -761,7 +761,7 @@ export function ProjectTasksListView() {
           gap: 18px;
           padding: 16px 22px;
           cursor: pointer;
-          transition: background 160ms ease;
+          transition: background var(--dur-fast) ease;
         }
         .v2-tasks-row:hover {
           background: rgba(var(--signature-rgb), 0.03);
@@ -775,7 +775,7 @@ export function ProjectTasksListView() {
           width: 2px;
           background: transparent;
           border-radius: 0 2px 2px 0;
-          transition: background 200ms ease;
+          transition: background var(--dur-base) ease;
         }
         .v2-tasks-row[data-attention='proof']::before    { background: var(--warning); }
         .v2-tasks-row[data-attention='assigned']::before { background: var(--signature); }
@@ -968,7 +968,7 @@ export function ProjectTasksListView() {
           line-height: 1.55;
           resize: vertical;
           outline: none;
-          transition: border-color 160ms ease;
+          transition: border-color var(--dur-fast) ease;
         }
         .v2-tasks-proof-input:focus { border-color: rgba(var(--signature-rgb), 0.45); }
         .v2-tasks-proof-links {

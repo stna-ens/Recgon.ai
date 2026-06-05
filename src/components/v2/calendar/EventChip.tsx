@@ -160,7 +160,7 @@ const css = `
   cursor: pointer;
   padding: 6px 12px 6px 14px;
   box-sizing: border-box;
-  transition: transform 140ms cubic-bezier(0.16,1,0.3,1), border-color 140ms ease;
+  transition: transform var(--dur-fast) cubic-bezier(0.16,1,0.3,1), border-color var(--dur-fast) ease;
   user-select: none;
   display: flex;
   flex-direction: column;
@@ -270,7 +270,7 @@ const css = `
   background: transparent;
   z-index: 5;
   opacity: 0;
-  transition: opacity 140ms ease, background 140ms ease;
+  transition: opacity var(--dur-fast) ease, background var(--dur-fast) ease;
 }
 .cal-chip:hover .cal-chip-resize { opacity: 1; }
 .cal-chip-resize:hover {
