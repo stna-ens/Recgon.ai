@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
+import { Button } from '@/components/ui';
 import HomeFocus, { type FocusData } from '@/components/v2/HomeFocus';
 import HomeBoard, {
   type BoardDecisions,
@@ -300,7 +301,6 @@ function V2HomeInner() {
           justify-content: flex-end;
           min-height: 24px;
         }
-        .v2-home-action-classic,
         .v2-home-pf-all {
           display: inline-flex;
           align-items: center;
@@ -312,24 +312,10 @@ function V2HomeInner() {
           font-weight: 650;
           text-decoration: none;
           transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
-        }
-        .v2-home-action-primary {
-          color: white;
-          background: var(--signature);
-          border: 1px solid var(--signature);
-        }
-        .v2-home-action-secondary {
-          color: var(--txt-pure);
-          background: rgba(255,255,255,0.045);
-          border: 1px solid var(--rule);
-        }
-        .v2-home-action-classic,
-        .v2-home-pf-all {
           color: var(--txt-faint);
           background: transparent;
           border: 1px solid var(--rule);
         }
-        .v2-home-action-classic:hover,
         .v2-home-pf-all:hover {
           transform: translateY(-1px);
           color: var(--txt-pure);
@@ -558,7 +544,9 @@ function RefinedHome({ overview, loading }: { overview: OverviewPayload; loading
   return (
     <>
       <div className="v2-home-mode">
-        <Link href="/?home=classic" className="v2-home-action-classic">{t('refined.classicView')}</Link>
+        <Button asChild variant="secondary" size="sm">
+          <Link href="/?home=classic">{t('refined.classicView')}</Link>
+        </Button>
       </div>
 
       <SectionIndex idx="01" label={t('sections.nextAction')} sub={t('sections.nextActionSub')} />

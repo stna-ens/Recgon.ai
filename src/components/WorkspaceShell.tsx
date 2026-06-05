@@ -265,11 +265,6 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
         .light .v2-shell .v2-cockpit[data-home-variant='classic'] .v2-bd-dec {
           background: rgba(20, 14, 30, 0.026) !important;
         }
-        html.light .v2-shell .v2-home-action-secondary,
-        .light .v2-shell .v2-home-action-secondary {
-          background: rgba(20, 14, 30, 0.04) !important;
-        }
-
         html.light .v2-shell .v2-tasks-search-wrap,
         .light .v2-shell .v2-tasks-search-wrap {
           background: rgba(255, 255, 255, 0.85) !important;
