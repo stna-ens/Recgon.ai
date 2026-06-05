@@ -1,12 +1,14 @@
 'use client';
 
-import { Suspense, useMemo } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { Button } from '@/components/ui';
+import { shouldShowFirstRun, isFirstRunDismissed, dismissFirstRun } from '@/lib/firstRun';
+import FirstRunChecklist from '@/components/v2/FirstRunChecklist';
 import HomeFocus, { type FocusData } from '@/components/v2/HomeFocus';
 import HomeBoard, {
   type BoardDecisions,
@@ -93,6 +95,27 @@ function V2HomeInner() {
   }, [overviewData, pulseData]);
 
   const showEmpty = !loading && overview.totalProjects === 0;
+
+  // First-run guided checklist. Dismissal is per-team and persisted in
+  // localStorage; we read it once data resolves so the panel never flashes.
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    setDismissed(teamId ? isFirstRunDismissed(teamId) : false);
+  }, [teamId]);
+
+  const handleDismissFirstRun = useCallback(() => {
+    if (teamId) dismissFirstRun(teamId);
+    setDismissed(true);
+  }, [teamId]);
+
+  // GitHub signal is derived cheaply: any commit update means a repo is
+  // connected. No extra fetch. teammateCount comes from the team-pulse SWR.
+  const hasGithub = overview.updates.length > 0;
+  const teammateCount = pulseData?.totalMembers ?? 0;
+  const showFirstRun =
+    !loading &&
+    shouldShowFirstRun({ projectCount: overview.totalProjects, dismissed });
+
   const homeParam = searchParams.get('home');
   const variant =
     homeParam === 'refined' ? 'refined'
@@ -101,7 +124,14 @@ function V2HomeInner() {
 
   return (
     <div className="v2-cockpit" data-home-variant={variant}>
-      {showEmpty ? (
+      {showFirstRun ? (
+        <FirstRunChecklist
+          hasProjects={overview.totalProjects > 0}
+          hasGithub={hasGithub}
+          teammateCount={teammateCount}
+          onDismiss={handleDismissFirstRun}
+        />
+      ) : showEmpty ? (
         <div className="glass-card is-static is-roomy v2-empty-hero">
           <div className="v2-empty-num" aria-hidden="true">01</div>
           <div className="v2-empty-body">

@@ -1,4 +1,29 @@
 {
+  "firstRun": {
+    "ariaLabel": "Başlangıç kontrol listesi",
+    "eyebrow": "BAŞLARKEN",
+    "title": "Recgon'a hoş geldin",
+    "description": "Recgon ekibinin yapay zekâ ürün müdürü — doğru görevi, doğru kişiye, doğru zamanda ulaştırır. Üç hızlı adım at, senin için çalışmaya başlasın.",
+    "done": "Tamam",
+    "skip": "Şimdilik geç",
+    "steps": {
+      "project": {
+        "label": "İlk ürününü ekle",
+        "description": "Bir GitHub reposu içe aktar ya da bir fikri anlat. Recgon bunu bir özete ve görev kuyruğuna dönüştürür.",
+        "cta": "Ürün ekle"
+      },
+      "github": {
+        "label": "GitHub'ı bağla",
+        "description": "Bir repo bağla ki Recgon commit'leri okuyup ekibin çalıştıkça güncellemeleri paylaşabilsin.",
+        "cta": "Bağla"
+      },
+      "team": {
+        "label": "Bir takım arkadaşı davet et",
+        "description": "İşi yapacak kişileri ekle ki Recgon her görevi en uygun kişiye atayabilsin.",
+        "cta": "Davet et"
+      }
+    }
+  },
   "emptyHero": {
     "titlePink": "Bir ürün",
     "titleRest": " ekle. Gerisini Recgon halleder.",

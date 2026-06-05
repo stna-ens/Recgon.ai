@@ -1,4 +1,29 @@
 {
+  "firstRun": {
+    "ariaLabel": "Getting started checklist",
+    "eyebrow": "GETTING STARTED",
+    "title": "Welcome to Recgon",
+    "description": "Recgon is your team's AI product manager — it gets the right task to the right person at the right time. Three quick steps and it starts working for you.",
+    "done": "Done",
+    "skip": "Skip for now",
+    "steps": {
+      "project": {
+        "label": "Add your first product",
+        "description": "Import a GitHub repo or describe an idea. Recgon turns it into a brief and a task queue.",
+        "cta": "Add product"
+      },
+      "github": {
+        "label": "Connect GitHub",
+        "description": "Link a repo so Recgon can read commits and ship updates as your team works.",
+        "cta": "Connect"
+      },
+      "team": {
+        "label": "Invite a teammate",
+        "description": "Add the people who'll do the work, so Recgon can assign each task to the best-fit person.",
+        "cta": "Invite"
+      }
+    }
+  },
   "emptyHero": {
     "titlePink": "Add",
     "titleRest": " a product. Recgon takes it from there.",
