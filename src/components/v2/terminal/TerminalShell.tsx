@@ -14,6 +14,7 @@ import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import MarkdownLine, { cleanText } from '@/components/v2/MarkdownLine';
+import { useTypewriter } from '@/lib/useTypewriter';
 import TerminalConversationDrawer from '@/components/v2/terminal/TerminalConversationDrawer';
 import {
   SLASH_COMMANDS,
@@ -64,6 +65,67 @@ function teamSlug(name: string | undefined): string {
       .replace(/[^a-z0-9-]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 18) || 'team'
+  );
+}
+
+/**
+ * Renders one assistant message body with a smooth, ChatGPT-style reveal.
+ *
+ * `animate` is true only for the live/last assistant turn; historical turns
+ * pass `animate={false}` and render their full content immediately.
+ *
+ * The revealed text is fed back through the same `MarkdownLine` renderer used
+ * for finished messages (it's a cheap per-line regex formatter — bold / italic
+ * / bullets — so re-parsing every frame is inexpensive and flicker-free; no
+ * need to swap between a plain-text and a markdown renderer at completion).
+ *
+ * A blinking caret (▍) sits at the reveal point while text is still being
+ * revealed or the network is still streaming, and disappears when done.
+ */
+function AssistantBody({
+  content,
+  animate,
+  streaming,
+  streamDone,
+  onProgress,
+}: {
+  content: string;
+  animate: boolean;
+  streaming: boolean;
+  streamDone: boolean;
+  onProgress: () => void;
+}) {
+  const { visibleText, isRevealing } = useTypewriter(content, streamDone);
+  const text = animate ? visibleText : content;
+  const showCaret = animate && (isRevealing || streaming);
+
+  // Keep the view pinned to the bottom as characters reveal.
+  useEffect(() => {
+    if (animate) onProgress();
+  }, [text, animate, onProgress]);
+
+  if (!text) {
+    return <span className="terminal-cursor" aria-hidden="true" />;
+  }
+
+  const lines = text.split('\n');
+  return (
+    <>
+      {lines.map((line, j) => (
+        <MarkdownLine
+          key={j}
+          text={cleanText(line)}
+          bulletClassName="terminal-bullet"
+          bulletMarkClassName="terminal-bullet-mark"
+          lineClassName="terminal-text-line"
+        />
+      ))}
+      {showCaret && (
+        <span className="terminal-caret" aria-hidden="true">
+          ▍
+        </span>
+      )}
+    </>
   );
 }
 
@@ -149,6 +211,7 @@ export default function TerminalShell() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   useEffect(() => {
+    setAnimateLastTurn(false);
     if (!activeConvId || !teamId) {
       setMessages([]);
       return;
@@ -179,6 +242,9 @@ export default function TerminalShell() {
   // ── Input + streaming ─────────────────────────────────────────────
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
+  // Only the assistant turn we just streamed should animate. Loaded history
+  // and conversation switches render their last turn instantly.
+  const [animateLastTurn, setAnimateLastTurn] = useState(false);
   const [showScrollPill, setShowScrollPill] = useState(false);
   // Banner status dot — three states:
   // - idle → solid pink with glow (stable on)
@@ -190,50 +256,16 @@ export default function TerminalShell() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Per-character typewriter (preserves the alive feel of the original mentor).
-  const charQueueRef = useRef<string[]>([]);
-  const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const streamDoneRef = useRef(false);
+  // Smooth ChatGPT-style reveal. The network stream appends full chunks to the
+  // last assistant message's `content` immediately; the on-screen reveal is
+  // paced separately by `useTypewriter` (see <AssistantBody>). `streamDone`
+  // flips when the network read finishes so the reveal can fast-flush.
+  const [streamDone, setStreamDone] = useState(true);
 
+  // Reset the reveal-done flag and drop any half-revealed state on abort/clear.
   const stopTypewriter = useCallback(() => {
-    if (typeIntervalRef.current) {
-      clearInterval(typeIntervalRef.current);
-      typeIntervalRef.current = null;
-    }
-    charQueueRef.current = [];
-    streamDoneRef.current = false;
+    setStreamDone(true);
   }, []);
-
-  const startTypewriter = useCallback((onDone: () => void) => {
-    if (typeIntervalRef.current) return;
-    typeIntervalRef.current = setInterval(() => {
-      const queue = charQueueRef.current;
-      if (queue.length === 0) {
-        if (streamDoneRef.current) {
-          if (typeIntervalRef.current) {
-            clearInterval(typeIntervalRef.current);
-            typeIntervalRef.current = null;
-          }
-          onDone();
-        }
-        return;
-      }
-      const batch = streamDoneRef.current ? Math.min(queue.length, 6) : 1;
-      const chars = queue.splice(0, batch).join('');
-      setMessages((prev) => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (!last) return [{ role: 'assistant', content: chars, ts: Date.now() }];
-        updated[updated.length - 1] = {
-          ...last,
-          content: last.content + chars,
-        };
-        return updated;
-      });
-    }, 12);
-  }, []);
-
-  useEffect(() => () => stopTypewriter(), [stopTypewriter]);
 
   const scrollToBottom = useCallback((opts: { force?: boolean } = {}) => {
     const c = messagesContainerRef.current;
@@ -337,6 +369,7 @@ export default function TerminalShell() {
         }
         if (parsed.command.name === '/help') {
           setInput('');
+          setAnimateLastTurn(false);
           const helpLines = SLASH_COMMANDS.map(
             (c) => `- **${c.name}** — ${c.description}`,
           ).join('\n');
@@ -364,6 +397,7 @@ export default function TerminalShell() {
       ]);
       setInput('');
       setStreaming(true);
+      setAnimateLastTurn(true);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -406,17 +440,33 @@ export default function TerminalShell() {
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
-        streamDoneRef.current = false;
-        startTypewriter(() => setStreaming(false));
+        setStreamDone(false);
 
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
-          charQueueRef.current.push(...chunk.split(''));
+          if (!chunk) continue;
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            if (!last) {
+              return [{ role: 'assistant', content: chunk, ts: Date.now() }];
+            }
+            updated[updated.length - 1] = {
+              ...last,
+              content: last.content + chunk,
+            };
+            return updated;
+          });
         }
 
-        streamDoneRef.current = true;
+        // Stream finished arriving — let the reveal fast-flush the remainder.
+        // The on-screen reveal keeps running for a few hundred ms after this;
+        // the caret is driven by the reveal's own `isRevealing` flag, so it's
+        // safe to drop the streaming/input-disabled state now.
+        setStreamDone(true);
+        setStreaming(false);
         loadConversations();
         refreshTerminalProjects();
         refreshProjects();
@@ -448,7 +498,6 @@ export default function TerminalShell() {
       deleteCurrentChat,
       refreshTerminalProjects,
       refreshProjects,
-      startTypewriter,
       stopTypewriter,
       t,
     ],
@@ -793,27 +842,13 @@ export default function TerminalShell() {
                   <div className="terminal-line is-output">
                     <span className="terminal-prompt">→</span>
                     <span className="terminal-line-body">
-                      {t.assistant.content ? (
-                        <>
-                          {t.assistant.content.split('\n').map((line, j) => (
-                            <MarkdownLine
-                              key={j}
-                              text={cleanText(line)}
-                              bulletClassName="terminal-bullet"
-                              bulletMarkClassName="terminal-bullet-mark"
-                              lineClassName="terminal-text-line"
-                            />
-                          ))}
-                          {streaming && i === turns.length - 1 && (
-                            <span
-                              className="terminal-cursor"
-                              aria-hidden="true"
-                            />
-                          )}
-                        </>
-                      ) : (
-                        <span className="terminal-cursor" aria-hidden="true" />
-                      )}
+                      <AssistantBody
+                        content={t.assistant.content}
+                        animate={animateLastTurn && i === turns.length - 1}
+                        streaming={streaming && i === turns.length - 1}
+                        streamDone={streamDone}
+                        onProgress={scrollToBottom}
+                      />
                     </span>
                   </div>
                 )}
@@ -1319,6 +1354,23 @@ export default function TerminalShell() {
           animation: terminal-blink 1.05s steps(2, jump-none) infinite;
         }
         @keyframes terminal-blink {
+          0%, 50% { opacity: 1; }
+          50.01%, 100% { opacity: 0; }
+        }
+
+        /* Reveal caret — sits at the end of the streamed text and blinks
+           while the typewriter is still revealing. Uses the signature color
+           and a token-driven blink cadence. */
+        .terminal-caret {
+          display: inline-block;
+          margin-left: 1px;
+          color: var(--signature);
+          font-weight: 400;
+          line-height: 1;
+          transform: translateY(1px);
+          animation: terminal-caret-blink calc(var(--dur-slow) * 2.6) steps(2, jump-none) infinite;
+        }
+        @keyframes terminal-caret-blink {
           0%, 50% { opacity: 1; }
           50.01%, 100% { opacity: 0; }
         }
