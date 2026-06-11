@@ -32,7 +32,7 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 
-  const isAuthPage = pathname === '/login' || pathname === '/register';
+  const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password';
   const isPublicPage = pathname === '/landing' || pathname.startsWith('/.well-known/');
   const isApiRoute = pathname.startsWith('/api/');
 
@@ -71,7 +71,11 @@ export default auth((req) => {
     if (pathname === '/') {
       return NextResponse.redirect(new URL('/landing', req.url));
     }
-    return NextResponse.redirect(new URL('/login', req.url));
+    // Invite/setup links must survive the login wall: send the visitor to
+    // login but carry the destination so they land back on the invite.
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('callbackUrl', pathname + req.nextUrl.search);
+    return NextResponse.redirect(loginUrl);
   }
 
   // If logged in but on a non-API, non-auth, non-team-setup page,

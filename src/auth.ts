@@ -6,6 +6,12 @@ import { getUserByEmail, findOrCreateOAuthUser, updateUser } from '@/lib/userSto
 import { authConfig } from './auth.config';
 import { validateBootEnv } from '@/lib/env';
 import { canSelfRegister, requestWaitlistAccess } from '@/lib/waitlist';
+import { isRateLimited } from '@/lib/rateLimit';
+
+// Brute-force guard, keyed per target email (no request IP is available in
+// `authorize`). Fail-open: a rate_limits table hiccup must never lock everyone
+// out of sign-in.
+const LOGIN_LIMIT = { limit: 10, windowMs: 15 * 60_000, failMode: 'open' as const };
 
 validateBootEnv();
 
@@ -29,7 +35,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const user = await getUserByEmail(credentials.email as string);
+        const email = (credentials.email as string).trim().toLowerCase();
+        if (await isRateLimited(`login:${email}`, LOGIN_LIMIT)) return null;
+        const user = await getUserByEmail(email);
         if (!user) return null;
         if (!user.passwordHash) return null;
         const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
