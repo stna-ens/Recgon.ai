@@ -76,6 +76,26 @@ export async function sendTeamInviteEmail(input: {
   }
 }
 
+// Sent when a queued LLM job exhausts all retries (status 'dead'). Before
+// this, the failure was silent — the user kept waiting for an analysis that
+// would never arrive.
+export async function sendJobFailedEmail(input: {
+  to: string;
+  jobLabel: string;
+}): Promise<void> {
+  await fireAndForgetSend({
+    to: input.to,
+    subject: `Your ${input.jobLabel} couldn't complete`,
+    body: [
+      `Recgon tried your ${input.jobLabel} several times over the last hours, but it kept failing — usually this means the AI provider was having a rough day.`,
+      '',
+      'Nothing is lost. Open Recgon and start it again whenever you like:',
+      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/projects`,
+    ].join('\n'),
+    context: 'job_dead',
+  });
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')

@@ -131,6 +131,44 @@ export async function failJob(
     status,
     nextRetryAt: next,
   });
+
+  // Out of retries → tell the human who asked. Without this, dead jobs were
+  // a silent black hole: the user just never got their analysis.
+  if (status === 'dead') {
+    void notifyJobOwnerDead(job.id);
+  }
+}
+
+// Human-readable labels for the user-initiated job kinds. Internal jobs
+// (task_reframe, commit_summary, …) fail soft — the product falls back to
+// generic copy — so no email for those.
+const USER_FACING_KINDS: Record<string, string> = {
+  idea_analysis: 'idea analysis',
+  codebase_analysis: 'codebase analysis',
+  competitor_analysis: 'competitor analysis',
+};
+
+async function notifyJobOwnerDead(jobId: string): Promise<void> {
+  try {
+    const job = await getJob(jobId);
+    if (!job || !job.user_id) return;
+    const label = USER_FACING_KINDS[job.kind];
+    if (!label) return;
+    const { data: user } = await supabase
+      .from('users')
+      .select('email')
+      .eq('id', job.user_id)
+      .maybeSingle();
+    const email = (user?.email as string | undefined) ?? null;
+    if (!email) return;
+    const { sendJobFailedEmail } = await import('../email');
+    await sendJobFailedEmail({ to: email, jobLabel: label });
+  } catch (err) {
+    logger.warn('dead-job notification failed', {
+      jobId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 export async function getJob(id: string): Promise<LLMJob | null> {
