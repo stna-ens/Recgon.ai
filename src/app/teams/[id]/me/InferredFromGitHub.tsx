@@ -22,6 +22,7 @@
 // Pure presentational + callback-driven. Page client owns the PATCH wiring.
 
 import { useMemo, useState, useEffect } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { RefreshCw, X, ExternalLink, AlertCircle, Check } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import type { InferredSkill, InferredSkillSource } from '@/lib/recgon/types';
@@ -70,39 +71,36 @@ interface Props {
   onReconnect?: () => void;
 }
 
-// SOURCE → chip text. Locked by UI-SPEC §Right-rail "INFERRED FROM GITHUB"
-// section + §Provenance chip — visual contract table.
-const SOURCE_CHIP: Record<InferredSkillSource, string> = {
-  llm_commit: 'COMMIT-MINED',
-  linguist: 'LANGUAGE STATS',
-  extension: 'EXTENSION',
-  llm_import: 'IMPORTS',
-};
+// SOURCE → chip text + tooltip live in messages/<locale>/teams.json under
+// teams.profile.inferred.sources.<source>. English copy locked by UI-SPEC
+// §Right-rail "INFERRED FROM GITHUB" section + §Provenance chip table.
+type SimpleT = (key: string, values?: Record<string, string | number>) => string;
 
-const SOURCE_TOOLTIP: Record<InferredSkillSource, string> = {
-  llm_commit: 'From commit titles you authored in the last 6 months.',
-  linguist: "From the languages GitHub sees in this team's repos.",
-  extension: 'From file extensions in commits you authored.',
-  llm_import: "From import statements in files you've changed.",
-};
+function sourceChip(t: SimpleT, source: InferredSkillSource): string {
+  return t(`sources.${source}.chip`);
+}
 
-// Locked tooltip strings from UI-SPEC.
-const KEPT_TOOLTIP = "I'm using this when matching tasks to you.";
-const DROP_TOOLTIP = "Drop this from my profile. Permanent — I won't suggest it again.";
+function sourceTooltip(t: SimpleT, source: InferredSkillSource): string {
+  return t(`sources.${source}.tooltip`);
+}
 
-function formatRelative(iso: string | null | undefined): string {
-  if (!iso) return 'Awaiting first scan';
+function formatRelative(
+  iso: string | null | undefined,
+  t: SimpleT,
+  locale: string,
+): string {
+  if (!iso) return t('scanAwaiting');
   const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return 'Last scanned just now';
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  if (ms < 60_000) return t('scanJustNow');
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   const min = Math.round(ms / 60_000);
-  if (min < 60) return `Last scanned ${rtf.format(-min, 'minute')}`;
+  if (min < 60) return t('scanLast', { rel: rtf.format(-min, 'minute') });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `Last scanned ${rtf.format(-hr, 'hour')}`;
+  if (hr < 24) return t('scanLast', { rel: rtf.format(-hr, 'hour') });
   const d = Math.round(hr / 24);
-  if (d < 30) return `Last scanned ${rtf.format(-d, 'day')}`;
+  if (d < 30) return t('scanLast', { rel: rtf.format(-d, 'day') });
   const mo = Math.round(d / 30);
-  return `Last scanned ${rtf.format(-mo, 'month')}`;
+  return t('scanLast', { rel: rtf.format(-mo, 'month') });
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -122,6 +120,7 @@ function PendingDecisionCard({
   onKeep: (id: string) => void;
   onReject: (id: string) => void;
 }) {
+  const t = useTranslations('teams.profile.inferred');
   return (
     <div
       data-skill-id={item.id}
@@ -132,11 +131,11 @@ function PendingDecisionCard({
 
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
-          <span className="pending-card__chip">{SOURCE_CHIP[item.source]}</span>
+          <span className="pending-card__chip">{sourceChip(t, item.source)}</span>
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
-            {SOURCE_TOOLTIP[item.source]}
+            {sourceTooltip(t, item.source)}
           </Tooltip.Content>
         </Tooltip.Portal>
       </Tooltip.Root>
@@ -146,10 +145,10 @@ function PendingDecisionCard({
           type="button"
           className="pending-card__keep"
           onClick={() => onKeep(item.id)}
-          aria-label={`Keep inferred skill ${item.canonicalTag}`}
+          aria-label={t('keepAria', { tag: item.canonicalTag })}
         >
           <Check size={14} aria-hidden="true" />
-          <span>Keep</span>
+          <span>{t('keep')}</span>
         </button>
         <Tooltip.Root>
           <Tooltip.Trigger asChild>
@@ -157,14 +156,14 @@ function PendingDecisionCard({
               type="button"
               className="pending-card__drop"
               onClick={() => onReject(item.id)}
-              aria-label={`Reject inferred skill ${item.canonicalTag}`}
+              aria-label={t('rejectAria', { tag: item.canonicalTag })}
             >
-              <span>Drop</span>
+              <span>{t('drop')}</span>
             </button>
           </Tooltip.Trigger>
           <Tooltip.Portal>
             <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
-              {DROP_TOOLTIP}
+              {t('dropTooltip')}
             </Tooltip.Content>
           </Tooltip.Portal>
         </Tooltip.Root>
@@ -187,6 +186,7 @@ function KeptPill({
   item: InferredSkill;
   onReject: (id: string) => void;
 }) {
+  const t = useTranslations('teams.profile.inferred');
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
@@ -198,7 +198,7 @@ function KeptPill({
         >
           <div className="kept-pill__lines">
             <span className="kept-pill__tag">{item.canonicalTag}</span>
-            <span className="kept-pill__chip">{SOURCE_CHIP[item.source]}</span>
+            <span className="kept-pill__chip">{sourceChip(t, item.source)}</span>
           </div>
           <button
             type="button"
@@ -207,7 +207,7 @@ function KeptPill({
               e.stopPropagation();
               onReject(item.id);
             }}
-            aria-label={`Reject inferred skill ${item.canonicalTag}`}
+            aria-label={t('rejectAria', { tag: item.canonicalTag })}
           >
             <X size={14} aria-hidden="true" />
           </button>
@@ -215,7 +215,7 @@ function KeptPill({
       </Tooltip.Trigger>
       <Tooltip.Portal>
         <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
-          {KEPT_TOOLTIP}
+          {t('keptTooltip')}
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
@@ -237,6 +237,7 @@ function DroppedPill({
   withinUndoWindow: boolean;
   onUndo: (id: string) => void;
 }) {
+  const t = useTranslations('teams.profile.inferred');
   return (
     <div
       data-skill-id={item.id}
@@ -246,16 +247,16 @@ function DroppedPill({
     >
       <div className="dropped-pill__lines">
         <span className="dropped-pill__tag">{item.canonicalTag}</span>
-        <span className="dropped-pill__caption">dropped</span>
+        <span className="dropped-pill__caption">{t('droppedCaption')}</span>
       </div>
       {withinUndoWindow && (
         <button
           type="button"
           className="dropped-pill__undo"
           onClick={() => onUndo(item.id)}
-          aria-label={`Undo drop of ${item.canonicalTag}`}
+          aria-label={t('undoAria', { tag: item.canonicalTag })}
         >
-          Undo
+          {t('undo')}
         </button>
       )}
     </div>
@@ -282,26 +283,33 @@ function EmptyState({
   onRescan?: () => void;
   onReconnect?: () => void;
 }) {
+  const t = useTranslations('teams.profile.inferred');
+  const inlineKey = (chunks: React.ReactNode) => (
+    <span className="inferred-desk__inline-key">{chunks}</span>
+  );
+
   if (!diagnostics) {
     return (
       <p className="inferred-desk__empty">
-        I haven&apos;t scanned your commits yet. Click{' '}
-        <span className="inferred-desk__inline-key">Re-scan</span> to start.
+        {t.rich('empty.default', { key: inlineKey })}
       </p>
     );
   }
 
   const tryAgain = onRescan
-    ? { label: 'Try again', onClick: onRescan, disabled: isRateLimited }
+    ? { label: t('empty.tryAgain'), onClick: onRescan, disabled: isRateLimited }
     : undefined;
-  const who = githubUsername ?? diagnostics.githubLogin ?? 'your account';
+  const reconnectAction = onReconnect
+    ? { label: t('empty.reconnect'), onClick: onReconnect }
+    : undefined;
+  const who = githubUsername ?? diagnostics.githubLogin ?? t('empty.whoFallback');
 
   if (diagnostics.skippedReason === 'no_team_repos') {
     return (
       <EmptyCard
         tone="info"
-        title="No GitHub repos to scan"
-        body="Add a project with a GitHub URL to this team and I'll start mining commits the next time we scan."
+        title={t('empty.noTeamRepos.title')}
+        body={t('empty.noTeamRepos.body')}
       />
     );
   }
@@ -310,13 +318,9 @@ function EmptyState({
     return (
       <EmptyCard
         tone="warn"
-        title="GitHub connection lost"
-        body="I'm consented to mine, but I don't have a valid GitHub token for your account. Reconnect to fix this."
-        primaryAction={
-          onReconnect
-            ? { label: 'Reconnect GitHub', onClick: onReconnect }
-            : undefined
-        }
+        title={t('empty.noToken.title')}
+        body={t('empty.noToken.body')}
+        primaryAction={reconnectAction}
       />
     );
   }
@@ -325,13 +329,9 @@ function EmptyState({
     return (
       <EmptyCard
         tone="warn"
-        title="GitHub mining isn't on"
-        body="I don't have permission to look at your commits. Reconnect to grant it."
-        primaryAction={
-          onReconnect
-            ? { label: 'Reconnect GitHub', onClick: onReconnect }
-            : undefined
-        }
+        title={t('empty.noConsent.title')}
+        body={t('empty.noConsent.body')}
+        primaryAction={reconnectAction}
       />
     );
   }
@@ -340,13 +340,9 @@ function EmptyState({
     return (
       <EmptyCard
         tone="warn"
-        title="I don't know your GitHub username"
-        body="The connection saved your account but not your username. Reconnect to fill it in."
-        primaryAction={
-          onReconnect
-            ? { label: 'Reconnect GitHub', onClick: onReconnect }
-            : undefined
-        }
+        title={t('empty.noAuthor.title')}
+        body={t('empty.noAuthor.body')}
+        primaryAction={reconnectAction}
       />
     );
   }
@@ -355,18 +351,13 @@ function EmptyState({
     return (
       <EmptyCard
         tone="info"
-        title="Couldn't infer skills"
-        body={
-          <>
-            I read{' '}
-            <span className="inferred-desk__inline-key">
-              {diagnostics.commitsFound}
-            </span>{' '}
-            {diagnostics.commitsFound === 1 ? 'commit' : 'commits'} but couldn&apos;t
-            tie them to a clear skill. Descriptive commit messages help —{' '}
-            &ldquo;feat: add Stripe checkout&rdquo; tells me more than &ldquo;fixes&rdquo;.
-          </>
-        }
+        title={t('empty.couldntInfer.title')}
+        body={t.rich(
+          diagnostics.commitsFound === 1
+            ? 'empty.couldntInfer.bodyOne'
+            : 'empty.couldntInfer.bodyOther',
+          { key: inlineKey, count: diagnostics.commitsFound },
+        )}
         secondary={tryAgain}
       />
     );
@@ -379,13 +370,9 @@ function EmptyState({
       return (
         <EmptyCard
           tone="warn"
-          title="Your GitHub connection expired"
-          body="GitHub no longer accepts the token I have for you. Reconnect to start fresh."
-          primaryAction={
-            onReconnect
-              ? { label: 'Reconnect GitHub', onClick: onReconnect }
-              : undefined
-          }
+          title={t('empty.expired.title')}
+          body={t('empty.expired.body')}
+          primaryAction={reconnectAction}
         />
       );
     }
@@ -396,23 +383,9 @@ function EmptyState({
       return (
         <EmptyCard
           tone="warn"
-          title="GitHub didn't grant access to your code"
-          body={
-            <>
-              Your GitHub connection has{' '}
-              <span className="inferred-desk__inline-key">profile</span> and{' '}
-              <span className="inferred-desk__inline-key">email</span>{' '}
-              access, but not{' '}
-              <span className="inferred-desk__inline-key">repositories</span>.
-              Reconnect, and on GitHub&apos;s authorization screen make sure
-              every permission stays checked.
-            </>
-          }
-          primaryAction={
-            onReconnect
-              ? { label: 'Reconnect GitHub', onClick: onReconnect }
-              : undefined
-          }
+          title={t('empty.noRepoScope.title')}
+          body={t.rich('empty.noRepoScope.body', { key: inlineKey })}
+          primaryAction={reconnectAction}
           secondary={tryAgain}
         />
       );
@@ -423,36 +396,37 @@ function EmptyState({
     return (
       <EmptyCard
         tone="warn"
-        title="GitHub blocked every repo"
+        title={t('empty.blocked.title')}
         body={
           <>
-            Your connection has the right permissions, but GitHub refused to
-            list commits for all{' '}
-            <span className="inferred-desk__inline-key">
-              {diagnostics.reposScanned}
-            </span>{' '}
-            of this team&apos;s repos. Most common cause: one of your
-            organizations on GitHub uses single sign-on and hasn&apos;t enabled
-            third-party access for this app.
+            {t.rich('empty.blocked.body', {
+              key: inlineKey,
+              count: diagnostics.reposScanned,
+            })}
             {failed.length > 0 && (
               <>
-                {' '}I tried{' '}
-                {failed.map((r, i) => (
-                  <span key={`${r.owner}/${r.repo}`}>
-                    {i > 0 && ', '}
-                    <span className="inferred-desk__inline-key">
-                      {r.owner}/{r.repo}
-                    </span>{' '}
-                    ({r.status})
-                  </span>
-                ))}
-                .
+                {' '}
+                {t.rich('empty.blocked.tried', {
+                  repos: () => (
+                    <>
+                      {failed.map((r, i) => (
+                        <span key={`${r.owner}/${r.repo}`}>
+                          {i > 0 && ', '}
+                          <span className="inferred-desk__inline-key">
+                            {r.owner}/{r.repo}
+                          </span>{' '}
+                          ({r.status})
+                        </span>
+                      ))}
+                    </>
+                  ),
+                })}
               </>
             )}
           </>
         }
         primary={{
-          label: 'Open authorized OAuth apps',
+          label: t('empty.openOauthApps'),
           href: 'https://github.com/settings/applications',
         }}
         secondary={tryAgain}
@@ -464,17 +438,13 @@ function EmptyState({
     return (
       <EmptyCard
         tone="info"
-        title="No recent commits"
-        body={
-          <>
-            I checked{' '}
-            <span className="inferred-desk__inline-key">
-              {diagnostics.reposScanned}
-            </span>{' '}
-            {diagnostics.reposScanned === 1 ? 'repo' : 'repos'} but saw no
-            commits in the last 6 months. Push something and I&apos;ll re-check.
-          </>
-        }
+        title={t('empty.noRecentCommits.title')}
+        body={t.rich(
+          diagnostics.reposScanned === 1
+            ? 'empty.noRecentCommits.bodyOne'
+            : 'empty.noRecentCommits.bodyOther',
+          { key: inlineKey, count: diagnostics.reposScanned },
+        )}
         secondary={tryAgain}
       />
     );
@@ -484,8 +454,8 @@ function EmptyState({
     return (
       <EmptyCard
         tone="info"
-        title="Almost there — try again"
-        body="GitHub showed me your recent commits, but the filtered query came back empty. This sometimes happens right after a fresh connection. Hit Try again in a minute."
+        title={t('empty.almostThere.title')}
+        body={t('empty.almostThere.body')}
         secondary={tryAgain}
       />
     );
@@ -500,40 +470,32 @@ function EmptyState({
     return (
       <EmptyCard
         tone="warn"
-        title="Your commits don't match your GitHub account"
+        title={t('empty.emailMismatch.title')}
         body={
           <>
-            {sampleEmail ? (
-              <>
-                Your last commit was authored by{' '}
-                <span className="inferred-desk__inline-key">{sampleEmail}</span>
-                . That email isn&apos;t on{' '}
-                <span className="inferred-desk__inline-key">{who}</span>, so GitHub
-                doesn&apos;t link it to you.
-              </>
-            ) : (
-              <>
-                I saw recent commits, but none of them are tied to{' '}
-                <span className="inferred-desk__inline-key">{who}</span>.
-              </>
-            )}
+            {sampleEmail
+              ? t.rich('empty.emailMismatch.bodyWithEmail', {
+                  key: inlineKey,
+                  email: sampleEmail,
+                  who,
+                })
+              : t.rich('empty.emailMismatch.bodyNoEmail', {
+                  key: inlineKey,
+                  who,
+                })}
             {verified.length > 0 && (
               <>
-                {' '}Add it to your GitHub emails, or set{' '}
-                <span className="inferred-desk__inline-key">
-                  git config user.email
-                </span>{' '}
-                to one of:{' '}
-                <span className="inferred-desk__inline-key">
-                  {verified.join(', ')}
-                </span>
-                .
+                {' '}
+                {t.rich('empty.emailMismatch.addEmailHint', {
+                  key: inlineKey,
+                  emails: verified.join(', '),
+                })}
               </>
             )}
           </>
         }
         primary={{
-          label: 'Open email settings',
+          label: t('empty.openEmailSettings'),
           href: 'https://github.com/settings/emails',
         }}
         secondary={tryAgain}
@@ -545,20 +507,10 @@ function EmptyState({
     return (
       <EmptyCard
         tone="warn"
-        title="Your GitHub email is private"
-        body={
-          <>
-            Your commits use one of your verified GitHub emails, but{' '}
-            <span className="inferred-desk__inline-key">
-              Keep my email addresses private
-            </span>{' '}
-            is on — so GitHub stops attributing them to{' '}
-            <span className="inferred-desk__inline-key">{who}</span>. Turn it
-            off and I&apos;ll find your skills.
-          </>
-        }
+        title={t('empty.emailPrivate.title')}
+        body={t.rich('empty.emailPrivate.body', { key: inlineKey, who })}
         primary={{
-          label: 'Open email settings',
+          label: t('empty.openEmailSettings'),
           href: 'https://github.com/settings/emails',
         }}
         secondary={tryAgain}
@@ -569,19 +521,13 @@ function EmptyState({
   return (
     <EmptyCard
       tone="info"
-      title="No commits to read"
-      body={
-        <>
-          I checked{' '}
-          <span className="inferred-desk__inline-key">
-            {diagnostics.reposScanned}
-          </span>{' '}
-          {diagnostics.reposScanned === 1 ? 'repo' : 'repos'} but didn&apos;t see
-          any commits attributed to{' '}
-          <span className="inferred-desk__inline-key">{who}</span>. Push something
-          and I&apos;ll re-check.
-        </>
-      }
+      title={t('empty.noAttributed.title')}
+      body={t.rich(
+        diagnostics.reposScanned === 1
+          ? 'empty.noAttributed.bodyOne'
+          : 'empty.noAttributed.bodyOther',
+        { key: inlineKey, count: diagnostics.reposScanned, who },
+      )}
       secondary={tryAgain}
     />
   );
@@ -665,6 +611,8 @@ export function InferredFromGitHub({
   githubUsername = null,
   onReconnect,
 }: Props) {
+  const t = useTranslations('teams.profile.inferred');
+  const locale = useLocale();
   // Optimistic state — two sets, one per terminal action. Cleared as soon as
   // the parent pushes new server-truth `items` that confirm the action.
   const [optimisticRejects, setOptimisticRejects] = useState<Set<string>>(
@@ -754,22 +702,22 @@ export function InferredFromGitHub({
     <Tooltip.Provider delayDuration={300}>
       <section
         className={`inferred-desk${isScanning ? ' inferred-desk--scanning' : ''}`}
-        aria-label="GitHub-inferred skills"
+        aria-label={t('sectionAria')}
       >
         <header className="inferred-desk__head">
           <div className="inferred-desk__head-text">
-            <span className="inferred-desk__eyebrow">INFERRED FROM GITHUB</span>
+            <span className="inferred-desk__eyebrow">{t('eyebrow')}</span>
             <h2 className="inferred-desk__heading">
-              What GitHub spotted in your code
+              {t('heading')}
             </h2>
             <p className="inferred-desk__helper">
-              Keep what fits, drop what doesn&apos;t — your call.
+              {t('helper')}
             </p>
           </div>
           {consented && (
             <div className="inferred-desk__head-meta">
               <span className="inferred-desk__timestamp">
-                {formatRelative(lastScanAt)}
+                {formatRelative(lastScanAt, t, locale)}
               </span>
               {onRescan && (
                 <Tooltip.Root open={isRateLimited ? undefined : false}>
@@ -779,16 +727,16 @@ export function InferredFromGitHub({
                       className={`inferred-desk__rescan${isScanning ? ' inferred-desk__rescan--spin' : ''}`}
                       onClick={onRescan}
                       disabled={isScanning || isRateLimited}
-                      aria-label="Re-scan GitHub for inferred skills"
+                      aria-label={t('rescanAria')}
                     >
                       <RefreshCw size={14} aria-hidden="true" />
-                      <span>Re-scan</span>
+                      <span>{t('rescan')}</span>
                     </button>
                   </Tooltip.Trigger>
                   {isRateLimited && (
                     <Tooltip.Portal>
                       <Tooltip.Content className="inferred-tooltip" sideOffset={6}>
-                        Already scanned recently. Next scan available in {minutesUntilOk}m.
+                        {t('rateLimitTooltip', { min: minutesUntilOk })}
                       </Tooltip.Content>
                     </Tooltip.Portal>
                   )}
@@ -800,12 +748,11 @@ export function InferredFromGitHub({
 
         {!consented ? (
           <p className="inferred-desk__empty">
-            Once you connect GitHub, I&apos;ll add suggested skills here based on the commits
-            you&apos;ve actually shipped.
+            {t('notConsented')}
           </p>
         ) : isScanning ? (
           <div className="inferred-desk__skeleton" aria-live="polite">
-            <p className="inferred-desk__empty">Looking at your commits…</p>
+            <p className="inferred-desk__empty">{t('scanning')}</p>
             <div className="inferred-desk__skeleton-row" aria-hidden="true" />
             <div className="inferred-desk__skeleton-row" aria-hidden="true" />
             <div className="inferred-desk__skeleton-row" aria-hidden="true" />
@@ -822,7 +769,7 @@ export function InferredFromGitHub({
           <div className="inferred-desk__zones">
             {pending.length > 0 && (
               <div className="inferred-desk__zone">
-                <ZoneDivider label="Pending review" count={pending.length} accent />
+                <ZoneDivider label={t('zones.pending')} count={pending.length} accent />
                 <div className="inferred-desk__pending-grid">
                   {pending.map((item) => (
                     <PendingDecisionCard
@@ -838,7 +785,7 @@ export function InferredFromGitHub({
 
             {kept.length > 0 && (
               <div className="inferred-desk__zone">
-                <ZoneDivider label="Kept" count={kept.length} />
+                <ZoneDivider label={t('zones.kept')} count={kept.length} />
                 <div className="inferred-desk__pill-row">
                   {kept.map((item) => (
                     <KeptPill key={item.id} item={item} onReject={handleRejectClick} />
@@ -849,7 +796,7 @@ export function InferredFromGitHub({
 
             {dropped.length > 0 && (
               <div className="inferred-desk__zone">
-                <ZoneDivider label="Dropped" count={dropped.length} />
+                <ZoneDivider label={t('zones.dropped')} count={dropped.length} />
                 <div className="inferred-desk__pill-row">
                   {visibleDropped.map((item) => (
                     <DroppedPill
@@ -871,7 +818,7 @@ export function InferredFromGitHub({
                     className="inferred-desk__show-more"
                     onClick={() => setShowAllDropped(true)}
                   >
-                    Show {dropped.length - visibleDropped.length} more
+                    {t('showMore', { count: dropped.length - visibleDropped.length })}
                   </button>
                 )}
               </div>

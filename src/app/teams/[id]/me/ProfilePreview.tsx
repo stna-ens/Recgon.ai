@@ -5,6 +5,7 @@
 // preview follows the user as they scroll the form.
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { humanizeTag } from '@/lib/recgon/skillVocabulary';
 import type { InferredSkill } from '@/lib/recgon/types';
 
@@ -38,15 +39,15 @@ function pillLabel(entry: PillEntry): string {
 function suggestTaskKinds(skills: PillEntry[]): string[] {
   const tags = new Set(skills.flatMap((s) => [s.raw, ...s.canonical]));
   const hints: string[] = [];
-  if (tags.has('frontend') || tags.has('react') || tags.has('vue') || tags.has('svelte')) hints.push('Frontend work');
-  if (tags.has('backend') || tags.has('nodejs') || tags.has('django') || tags.has('rails')) hints.push('Backend work');
-  if (tags.has('design') || tags.has('ux_design') || tags.has('figma')) hints.push('Design tasks');
-  if (tags.has('marketing') || tags.has('social_media') || tags.has('content_writing')) hints.push('Marketing & content');
-  if (tags.has('analytics') || tags.has('data') || tags.has('ga4')) hints.push('Analytics & data');
-  if (tags.has('product') || tags.has('strategy') || tags.has('research')) hints.push('Product & strategy');
-  if (tags.has('qa') || tags.has('testing')) hints.push('QA & verification');
-  if (tags.has('mobile') || tags.has('ios') || tags.has('android')) hints.push('Mobile work');
-  if (tags.has('ai') || tags.has('ml') || tags.has('llm')) hints.push('AI & ML tasks');
+  if (tags.has('frontend') || tags.has('react') || tags.has('vue') || tags.has('svelte')) hints.push('frontend');
+  if (tags.has('backend') || tags.has('nodejs') || tags.has('django') || tags.has('rails')) hints.push('backend');
+  if (tags.has('design') || tags.has('ux_design') || tags.has('figma')) hints.push('design');
+  if (tags.has('marketing') || tags.has('social_media') || tags.has('content_writing')) hints.push('marketing');
+  if (tags.has('analytics') || tags.has('data') || tags.has('ga4')) hints.push('analytics');
+  if (tags.has('product') || tags.has('strategy') || tags.has('research')) hints.push('product');
+  if (tags.has('qa') || tags.has('testing')) hints.push('qa');
+  if (tags.has('mobile') || tags.has('ios') || tags.has('android')) hints.push('mobile');
+  if (tags.has('ai') || tags.has('ml') || tags.has('llm')) hints.push('ai');
   return hints.slice(0, 4);
 }
 
@@ -61,6 +62,7 @@ export default function ProfilePreview({
   capacity,
   keptInferredSkills = [],
 }: Props) {
+  const t = useTranslations('teams.profile.preview');
   const initials = (user.nickname || user.email || '?').slice(0, 2).toUpperCase();
   // Merge self-declared skills with kept-inferred skills. De-dupe by raw value
   // (case-insensitive) so a skill the user has both manually added AND kept
@@ -86,8 +88,8 @@ export default function ProfilePreview({
   return (
     <div className="profile-preview">
       <div className="profile-preview__head">
-        <div className="profile-preview__eyebrow">HOW I SEE YOU</div>
-        <h2 className="profile-preview__h2">Live preview</h2>
+        <div className="profile-preview__eyebrow">{t('eyebrow')}</div>
+        <h2 className="profile-preview__h2">{t('title')}</h2>
       </div>
 
       <div className="profile-preview__card">
@@ -101,36 +103,36 @@ export default function ProfilePreview({
             </div>
           )}
           <div className="profile-preview__identity-text">
-            <div className="profile-preview__name">{user.nickname || 'You'}</div>
-            <div className="profile-preview__team">on {teamName}</div>
+            <div className="profile-preview__name">{user.nickname || t('nameFallback')}</div>
+            <div className="profile-preview__team">{t('onTeam', { team: teamName })}</div>
           </div>
         </div>
 
         {totalDeclarations === 0 && capacity === null ? (
           <div className="profile-preview__empty">
-            Start declaring skills on the left and you&apos;ll see what tasks I&apos;d send your way.
+            {t('empty')}
           </div>
         ) : (
           <>
             {mergedSkills.length > 0 && (
-              <PreviewSection label="Skills" count={mergedSkills.length}>
+              <PreviewSection label={t('sections.skills')} count={mergedSkills.length}>
                 <PillList items={mergedSkills} variant="primary" />
               </PreviewSection>
             )}
             {strengths.length > 0 && (
-              <PreviewSection label="Strengths" count={strengths.length}>
+              <PreviewSection label={t('sections.strengths')} count={strengths.length}>
                 <PillList items={strengths} variant="secondary" />
               </PreviewSection>
             )}
             {interests.length > 0 && (
-              <PreviewSection label="Interests" count={interests.length}>
+              <PreviewSection label={t('sections.interests')} count={interests.length}>
                 <PillList items={interests} variant="secondary" />
               </PreviewSection>
             )}
 
-            <PreviewSection label="Weekly capacity">
+            <PreviewSection label={t('sections.capacity')}>
               {capacity === null ? (
-                <div className="profile-preview__capacity-empty">Not set</div>
+                <div className="profile-preview__capacity-empty">{t('notSet')}</div>
               ) : (
                 <div className="profile-preview__capacity">
                   <div className="profile-preview__capacity-bar">
@@ -140,17 +142,19 @@ export default function ProfilePreview({
                     />
                   </div>
                   <div className="profile-preview__capacity-label">
-                    {capacity} {capacity === 1 ? 'hr' : 'hrs'} / week
+                    {capacity === 1
+                      ? t('hoursPerWeekOne', { capacity })
+                      : t('hoursPerWeekOther', { capacity })}
                   </div>
                 </div>
               )}
             </PreviewSection>
 
             {taskHints.length > 0 && (
-              <PreviewSection label="Likely matched to">
+              <PreviewSection label={t('sections.matchedTo')}>
                 <ul className="profile-preview__hints">
                   {taskHints.map((h) => (
-                    <li key={h}>{h}</li>
+                    <li key={h}>{t(`hints.${h}`)}</li>
                   ))}
                 </ul>
               </PreviewSection>

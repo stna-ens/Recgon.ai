@@ -7,6 +7,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import type { InferredSkill, TeammateProfile } from '@/lib/recgon/types';
 import ProfileFormFields, { type PillEntry } from './ProfileForm';
 import ProfilePreview from './ProfilePreview';
@@ -96,6 +97,7 @@ export default function ProfilePageClient({
   // it like this"). Cleared on a fresh consent or a successful skills load.
   const [scanDiagnostics, setScanDiagnostics] =
     useState<ScanDiagnostics | null>(null);
+  const t = useTranslations('teams.profile');
   const { addToast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -115,12 +117,9 @@ export default function ProfilePageClient({
     if (!flag) return;
     if (flag === 'connected') {
       setConsentedAt((prev) => prev ?? new Date().toISOString());
-      addToast(
-        "Connected. I'll start looking at your commits — first results land in a moment.",
-        'success',
-      );
+      addToast(t('toasts.githubConnected'), 'success');
     } else if (flag === 'failed') {
-      addToast('Couldn\'t connect to GitHub. Try again in a moment.', 'error');
+      addToast(t('toasts.githubConnectFailed'), 'error');
     }
     router.replace(pathname);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,7 +134,7 @@ export default function ProfilePageClient({
     if (existing) clearTimeout(existing);
     undoUsedRef.current.delete(skillId);
 
-    addToast("Dropped. Won't suggest it again.", 'info');
+    addToast(t('toasts.dropped'), 'info');
 
     const timer = setTimeout(async () => {
       undoTimersRef.current.delete(skillId);
@@ -156,7 +155,7 @@ export default function ProfilePageClient({
           prev.map((s) => (s.id === skillId ? json.inferredSkill : s)),
         );
       } catch {
-        addToast("Couldn't update. Try again in a moment.", 'error');
+        addToast(t('toasts.updateFailed'), 'error');
         // Re-syncing the optimistic state in the child is a follow-up. For
         // now the toast tells the user to retry.
       }
@@ -168,7 +167,7 @@ export default function ProfilePageClient({
   // window. The optimistic flip is owned by InferredFromGitHub; this PATCH
   // commits the decision to `teammate_profiles.user_reviewed_at`.
   async function handleKeep(skillId: string) {
-    addToast('Kept. Counts when I match tasks.', 'success');
+    addToast(t('toasts.kept'), 'success');
     try {
       const res = await fetch(
         `/api/teams/${teamId}/inferred-skills/${skillId}`,
@@ -185,15 +184,15 @@ export default function ProfilePageClient({
         prev.map((s) => (s.id === skillId ? json.inferredSkill : s)),
       );
     } catch {
-      addToast("Couldn't update. Try again in a moment.", 'error');
+      addToast(t('toasts.updateFailed'), 'error');
     }
   }
 
   async function handleUndoReject(skillId: string) {
     undoUsedRef.current.add(skillId);
-    const t = undoTimersRef.current.get(skillId);
-    if (t) {
-      clearTimeout(t);
+    const pendingTimer = undoTimersRef.current.get(skillId);
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
       undoTimersRef.current.delete(skillId);
     }
     try {
@@ -213,7 +212,7 @@ export default function ProfilePageClient({
         );
       }
     } catch {
-      addToast("Couldn't update. Try again in a moment.", 'error');
+      addToast(t('toasts.updateFailed'), 'error');
     }
   }
 
@@ -231,12 +230,12 @@ export default function ProfilePageClient({
         };
         const min = json.retryAfterMin ?? 60;
         setRescanRateLimitedUntil(Date.now() + min * 60_000);
-        addToast(`Already scanned recently. Try again in ${min}m.`, 'info');
+        addToast(t('toasts.rescanRateLimited', { min }), 'info');
         setIsScanning(false);
         return;
       }
       if (!res.ok) {
-        addToast("Couldn't run a scan. Try again in a moment.", 'error');
+        addToast(t('toasts.scanFailed'), 'error');
         setIsScanning(false);
         return;
       }
@@ -291,9 +290,9 @@ export default function ProfilePageClient({
         };
         setInferredSkills(listJson.inferredSkills);
       }
-      addToast('Scan complete.', 'success');
+      addToast(t('toasts.scanComplete'), 'success');
     } catch {
-      addToast("Couldn't run a scan. Try again in a moment.", 'error');
+      addToast(t('toasts.scanFailed'), 'error');
     } finally {
       setIsScanning(false);
     }
@@ -306,13 +305,13 @@ export default function ProfilePageClient({
         { method: 'POST', credentials: 'include' },
       );
       if (!res.ok) {
-        addToast("Couldn't start GitHub connect. Try again.", 'error');
+        addToast(t('toasts.connectStartFailed'), 'error');
         return;
       }
       const json = (await res.json()) as { redirectUrl: string };
       window.location.assign(json.redirectUrl);
     } catch {
-      addToast("Couldn't start GitHub connect. Try again.", 'error');
+      addToast(t('toasts.connectStartFailed'), 'error');
     }
   }
 
@@ -323,13 +322,13 @@ export default function ProfilePageClient({
         { method: 'DELETE', credentials: 'include' },
       );
       if (!res.ok) {
-        addToast("Couldn't disconnect. Try again in a moment.", 'error');
+        addToast(t('toasts.disconnectFailed'), 'error');
         return;
       }
       setConsentedAt(null);
-      addToast("Stopped. I'll keep the skills you've accepted.", 'success');
+      addToast(t('toasts.miningStopped'), 'success');
     } catch {
-      addToast("Couldn't disconnect. Try again in a moment.", 'error');
+      addToast(t('toasts.disconnectFailed'), 'error');
     }
   }
 
@@ -361,10 +360,10 @@ export default function ProfilePageClient({
             const json = (await res.json().catch(() => ({}))) as { error?: string };
             setOutcome({
               kind: 'error',
-              message: json.error ?? 'Add at least one skill before saving.',
+              message: json.error ?? t('savebar.errorNoSkill'),
             });
           } else {
-            setOutcome({ kind: 'error', message: "Couldn't save just now. Try again." });
+            setOutcome({ kind: 'error', message: t('savebar.errorGeneric') });
           }
           return;
         }
@@ -382,7 +381,7 @@ export default function ProfilePageClient({
         setInterests(json.normalization.interests);
         setOutcome({ kind: 'success', degraded: json.normalization.degraded });
       } catch {
-        setOutcome({ kind: 'error', message: "Couldn't save just now. Try again." });
+        setOutcome({ kind: 'error', message: t('savebar.errorGeneric') });
       }
     });
   }
@@ -430,7 +429,7 @@ export default function ProfilePageClient({
           />
         </main>
 
-        <aside className="profile-page__rail" aria-label="profile preview">
+        <aside className="profile-page__rail" aria-label={t('previewAria')}>
           <div className="profile-page__rail-stick">
             <ProfilePreview
               user={user}
@@ -455,17 +454,17 @@ export default function ProfilePageClient({
               <span className={`profile-savebar__msg profile-savebar__msg--${outcome.kind === 'success' ? 'ok' : 'err'}`}>
                 {outcome.kind === 'success'
                   ? outcome.degraded
-                    ? "Saved. I'll re-match the canonical tags next time the LLM is reachable."
-                    : 'Saved. Recgon will use this on the next run.'
+                    ? t('savebar.savedDegraded')
+                    : t('savebar.saved')
                   : outcome.message}
               </span>
             ) : isDirty ? (
               <span className="profile-savebar__msg profile-savebar__msg--dirty">
                 <span className="profile-savebar__dot" aria-hidden="true" />
-                Unsaved changes
+                {t('savebar.unsavedChanges')}
               </span>
             ) : (
-              <span className="profile-savebar__msg profile-savebar__msg--clean">All changes saved</span>
+              <span className="profile-savebar__msg profile-savebar__msg--clean">{t('savebar.allSaved')}</span>
             )}
           </div>
           <button
@@ -474,7 +473,7 @@ export default function ProfilePageClient({
             onClick={handleSave}
             disabled={isPending || (!isDirty && outcome?.kind !== 'error')}
           >
-            {isPending ? 'Saving…' : 'Save profile'}
+            {isPending ? t('savebar.saving') : t('savebar.saveProfile')}
           </button>
         </div>
       </div>

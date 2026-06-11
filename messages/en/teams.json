@@ -71,7 +71,226 @@
     "eyebrow": "YOUR PROFILE",
     "title": "Tell me what you do",
     "lede": "What you put here is what I'll use to pick which task lands on your desk. The preview on the right updates as you go.",
-    "yourTeamFallback": "your team"
+    "yourTeamFallback": "your team",
+    "previewAria": "profile preview",
+    "toasts": {
+      "githubConnected": "Connected. I'll start looking at your commits — first results land in a moment.",
+      "githubConnectFailed": "Couldn't connect to GitHub. Try again in a moment.",
+      "dropped": "Dropped. Won't suggest it again.",
+      "kept": "Kept. Counts when I match tasks.",
+      "updateFailed": "Couldn't update. Try again in a moment.",
+      "rescanRateLimited": "Already scanned recently. Try again in {min}m.",
+      "scanFailed": "Couldn't run a scan. Try again in a moment.",
+      "scanComplete": "Scan complete.",
+      "connectStartFailed": "Couldn't start GitHub connect. Try again.",
+      "disconnectFailed": "Couldn't disconnect. Try again in a moment.",
+      "miningStopped": "Stopped. I'll keep the skills you've accepted."
+    },
+    "savebar": {
+      "errorNoSkill": "Add at least one skill before saving.",
+      "errorGeneric": "Couldn't save just now. Try again.",
+      "savedDegraded": "Saved. I'll re-match the canonical tags next time the LLM is reachable.",
+      "saved": "Saved. Recgon will use this on the next run.",
+      "unsavedChanges": "Unsaved changes",
+      "allSaved": "All changes saved",
+      "saving": "Saving…",
+      "saveProfile": "Save profile"
+    },
+    "form": {
+      "fields": {
+        "skills": {
+          "label": "Skills",
+          "helper": "Languages, frameworks, areas of expertise.",
+          "placeholder": "Type to search — e.g. React, Python, Figma"
+        },
+        "strengths": {
+          "label": "Strengths",
+          "helper": "What you're known for. Counts the same as skills when I match tasks.",
+          "placeholder": "Type to add — e.g. shipping fast, debugging"
+        },
+        "interests": {
+          "label": "Interests",
+          "helper": "What you'd lean into. Breaks ties when two of you fit equally.",
+          "placeholder": "Type to add — e.g. design systems, AI agents"
+        }
+      },
+      "capacity": {
+        "label": "Weekly capacity",
+        "helper": "How many hours you have for new work in a typical week.",
+        "suffix": "hrs / week"
+      },
+      "addCustomHeading": "ADD AS CUSTOM",
+      "addCustom": "Add “{query}”",
+      "customTag": "custom",
+      "removeAria": "Remove {tag}"
+    },
+    "consent": {
+      "eyebrow": "OPTIONAL",
+      "heading": "What GitHub says about you",
+      "body1": "If you connect GitHub, I'll look at the commits you've authored in this team's repos over the last 6 months and suggest skills that match what you've actually been shipping. You stay in control — every suggestion is yours to keep or reject.",
+      "body2": "I only read commits in repos already connected to this team. Commit titles only. Never your personal repos, never private notes.",
+      "chipsAria": "What I do not read",
+      "chipPersonalRepos": "Personal repos",
+      "chipPrBodies": "Pull request bodies",
+      "chipOutsideCommits": "Anything outside commits",
+      "connectCta": "Connect GitHub for skill mining",
+      "connectedLine": "Connected {who}. I'll re-check weekly and add new suggestions to your preview.",
+      "connectedFallback": "on GitHub",
+      "stopMining": "Stop mining",
+      "dialogTitle": "Stop mining your commits?",
+      "dialogBody": "I'll keep the skills you've already accepted — they're real, even if you don't want me looking at new commits. The ones you've rejected stay rejected.",
+      "keepMining": "Keep mining",
+      "stopping": "Stopping…"
+    },
+    "inferred": {
+      "eyebrow": "INFERRED FROM GITHUB",
+      "heading": "What GitHub spotted in your code",
+      "helper": "Keep what fits, drop what doesn't — your call.",
+      "sectionAria": "GitHub-inferred skills",
+      "scanAwaiting": "Awaiting first scan",
+      "scanJustNow": "Last scanned just now",
+      "scanLast": "Last scanned {rel}",
+      "rescan": "Re-scan",
+      "rescanAria": "Re-scan GitHub for inferred skills",
+      "rateLimitTooltip": "Already scanned recently. Next scan available in {min}m.",
+      "notConsented": "Once you connect GitHub, I'll add suggested skills here based on the commits you've actually shipped.",
+      "scanning": "Looking at your commits…",
+      "zones": {
+        "pending": "Pending review",
+        "kept": "Kept",
+        "dropped": "Dropped"
+      },
+      "keep": "Keep",
+      "drop": "Drop",
+      "keepAria": "Keep inferred skill {tag}",
+      "rejectAria": "Reject inferred skill {tag}",
+      "keptTooltip": "I'm using this when matching tasks to you.",
+      "dropTooltip": "Drop this from my profile. Permanent — I won't suggest it again.",
+      "droppedCaption": "dropped",
+      "undo": "Undo",
+      "undoAria": "Undo drop of {tag}",
+      "showMore": "Show {count} more",
+      "sources": {
+        "llm_commit": {
+          "chip": "COMMIT-MINED",
+          "tooltip": "From commit titles you authored in the last 6 months."
+        },
+        "linguist": {
+          "chip": "LANGUAGE STATS",
+          "tooltip": "From the languages GitHub sees in this team's repos."
+        },
+        "extension": {
+          "chip": "EXTENSION",
+          "tooltip": "From file extensions in commits you authored."
+        },
+        "llm_import": {
+          "chip": "IMPORTS",
+          "tooltip": "From import statements in files you've changed."
+        }
+      },
+      "empty": {
+        "default": "I haven't scanned your commits yet. Click <key>Re-scan</key> to start.",
+        "tryAgain": "Try again",
+        "reconnect": "Reconnect GitHub",
+        "whoFallback": "your account",
+        "openOauthApps": "Open authorized OAuth apps",
+        "openEmailSettings": "Open email settings",
+        "noTeamRepos": {
+          "title": "No GitHub repos to scan",
+          "body": "Add a project with a GitHub URL to this team and I'll start mining commits the next time we scan."
+        },
+        "noToken": {
+          "title": "GitHub connection lost",
+          "body": "I'm consented to mine, but I don't have a valid GitHub token for your account. Reconnect to fix this."
+        },
+        "noConsent": {
+          "title": "GitHub mining isn't on",
+          "body": "I don't have permission to look at your commits. Reconnect to grant it."
+        },
+        "noAuthor": {
+          "title": "I don't know your GitHub username",
+          "body": "The connection saved your account but not your username. Reconnect to fill it in."
+        },
+        "couldntInfer": {
+          "title": "Couldn't infer skills",
+          "bodyOne": "I read <key>{count}</key> commit but couldn't tie them to a clear skill. Descriptive commit messages help — “feat: add Stripe checkout” tells me more than “fixes”.",
+          "bodyOther": "I read <key>{count}</key> commits but couldn't tie them to a clear skill. Descriptive commit messages help — “feat: add Stripe checkout” tells me more than “fixes”."
+        },
+        "expired": {
+          "title": "Your GitHub connection expired",
+          "body": "GitHub no longer accepts the token I have for you. Reconnect to start fresh."
+        },
+        "noRepoScope": {
+          "title": "GitHub didn't grant access to your code",
+          "body": "Your GitHub connection has <key>profile</key> and <key>email</key> access, but not <key>repositories</key>. Reconnect, and on GitHub's authorization screen make sure every permission stays checked."
+        },
+        "blocked": {
+          "title": "GitHub blocked every repo",
+          "body": "Your connection has the right permissions, but GitHub refused to list commits for all <key>{count}</key> of this team's repos. Most common cause: one of your organizations on GitHub uses single sign-on and hasn't enabled third-party access for this app.",
+          "tried": "I tried <repos></repos>."
+        },
+        "noRecentCommits": {
+          "title": "No recent commits",
+          "bodyOne": "I checked <key>{count}</key> repo but saw no commits in the last 6 months. Push something and I'll re-check.",
+          "bodyOther": "I checked <key>{count}</key> repos but saw no commits in the last 6 months. Push something and I'll re-check."
+        },
+        "almostThere": {
+          "title": "Almost there — try again",
+          "body": "GitHub showed me your recent commits, but the filtered query came back empty. This sometimes happens right after a fresh connection. Hit Try again in a minute."
+        },
+        "emailMismatch": {
+          "title": "Your commits don't match your GitHub account",
+          "bodyWithEmail": "Your last commit was authored by <key>{email}</key>. That email isn't on <key>{who}</key>, so GitHub doesn't link it to you.",
+          "bodyNoEmail": "I saw recent commits, but none of them are tied to <key>{who}</key>.",
+          "addEmailHint": "Add it to your GitHub emails, or set <key>git config user.email</key> to one of: <key>{emails}</key>."
+        },
+        "emailPrivate": {
+          "title": "Your GitHub email is private",
+          "body": "Your commits use one of your verified GitHub emails, but <key>Keep my email addresses private</key> is on — so GitHub stops attributing them to <key>{who}</key>. Turn it off and I'll find your skills."
+        },
+        "noAttributed": {
+          "title": "No commits to read",
+          "bodyOne": "I checked <key>{count}</key> repo but didn't see any commits attributed to <key>{who}</key>. Push something and I'll re-check.",
+          "bodyOther": "I checked <key>{count}</key> repos but didn't see any commits attributed to <key>{who}</key>. Push something and I'll re-check."
+        }
+      }
+    },
+    "preview": {
+      "eyebrow": "HOW I SEE YOU",
+      "title": "Live preview",
+      "nameFallback": "You",
+      "onTeam": "on {team}",
+      "empty": "Start declaring skills on the left and you'll see what tasks I'd send your way.",
+      "sections": {
+        "skills": "Skills",
+        "strengths": "Strengths",
+        "interests": "Interests",
+        "capacity": "Weekly capacity",
+        "matchedTo": "Likely matched to"
+      },
+      "notSet": "Not set",
+      "hoursPerWeekOne": "{capacity} hr / week",
+      "hoursPerWeekOther": "{capacity} hrs / week",
+      "hints": {
+        "frontend": "Frontend work",
+        "backend": "Backend work",
+        "design": "Design tasks",
+        "marketing": "Marketing & content",
+        "analytics": "Analytics & data",
+        "product": "Product & strategy",
+        "qa": "QA & verification",
+        "mobile": "Mobile work",
+        "ai": "AI & ML tasks"
+      }
+    },
+    "reviewBanner": {
+      "regionAria": "New inferences",
+      "eyebrow": "NEW INFERENCES",
+      "headingOne": "1 new inferred skill — review",
+      "headingOther": "{count} new inferred skills — review",
+      "review": "Review",
+      "dismissAria": "Dismiss new inferences banner"
+    }
   },
   "admin": {
     "noTeamSelected": "No team selected.",

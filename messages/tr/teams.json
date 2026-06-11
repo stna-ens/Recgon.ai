@@ -71,7 +71,226 @@
     "eyebrow": "PROFİLİN",
     "title": "Bana ne yaptığını anlat",
     "lede": "Buraya yazdıkların, hangi görevin masana geleceğini seçerken kullanacağım şeydir. Sağdaki önizleme yazdıkça güncellenir.",
-    "yourTeamFallback": "takımın"
+    "yourTeamFallback": "takımın",
+    "previewAria": "profil önizlemesi",
+    "toasts": {
+      "githubConnected": "Bağlandı. Commit'lerine bakmaya başlıyorum — ilk sonuçlar birazdan gelir.",
+      "githubConnectFailed": "GitHub'a bağlanılamadı. Birazdan tekrar dene.",
+      "dropped": "Çıkarıldı. Bir daha önermeyeceğim.",
+      "kept": "Tutuldu. Görev eşleştirirken hesaba katacağım.",
+      "updateFailed": "Güncellenemedi. Birazdan tekrar dene.",
+      "rescanRateLimited": "Yakın zamanda taradım zaten. {min} dk sonra tekrar dene.",
+      "scanFailed": "Tarama çalıştırılamadı. Birazdan tekrar dene.",
+      "scanComplete": "Tarama tamamlandı.",
+      "connectStartFailed": "GitHub bağlantısı başlatılamadı. Tekrar dene.",
+      "disconnectFailed": "Bağlantı kesilemedi. Birazdan tekrar dene.",
+      "miningStopped": "Durduruldu. Kabul ettiğin becerileri tutmaya devam edeceğim."
+    },
+    "savebar": {
+      "errorNoSkill": "Kaydetmeden önce en az bir beceri ekle.",
+      "errorGeneric": "Şu an kaydedilemedi. Tekrar dene.",
+      "savedDegraded": "Kaydedildi. LLM'e tekrar ulaşabildiğimde standart etiketleri yeniden eşleştireceğim.",
+      "saved": "Kaydedildi. Recgon bunu bir sonraki çalıştırmada kullanacak.",
+      "unsavedChanges": "Kaydedilmemiş değişiklikler",
+      "allSaved": "Tüm değişiklikler kaydedildi",
+      "saving": "Kaydediliyor…",
+      "saveProfile": "Profili kaydet"
+    },
+    "form": {
+      "fields": {
+        "skills": {
+          "label": "Beceriler",
+          "helper": "Diller, framework'ler, uzmanlık alanların.",
+          "placeholder": "Aramak için yaz — ör. React, Python, Figma"
+        },
+        "strengths": {
+          "label": "Güçlü yönler",
+          "helper": "Neyle tanındığın. Görev eşleştirirken beceriler kadar sayılır.",
+          "placeholder": "Eklemek için yaz — ör. hızlı teslim, hata ayıklama"
+        },
+        "interests": {
+          "label": "İlgi alanları",
+          "helper": "Yönelmek istediğin işler. İki kişi eşit uyduğunda kararı bu belirler.",
+          "placeholder": "Eklemek için yaz — ör. tasarım sistemleri, AI ajanları"
+        }
+      },
+      "capacity": {
+        "label": "Haftalık kapasite",
+        "helper": "Tipik bir haftada yeni işe ayırabileceğin saat sayısı.",
+        "suffix": "sa / hafta"
+      },
+      "addCustomHeading": "ÖZEL OLARAK EKLE",
+      "addCustom": "“{query}” ekle",
+      "customTag": "özel",
+      "removeAria": "{tag} kaldır"
+    },
+    "consent": {
+      "eyebrow": "İSTEĞE BAĞLI",
+      "heading": "GitHub senin hakkında ne söylüyor",
+      "body1": "GitHub'ı bağlarsan, bu takımın repolarında son 6 ayda yazdığın commit'lere bakar ve gerçekten ürettiğin işe uyan beceriler öneririm. Kontrol sende — her öneriyi tutmak ya da reddetmek senin elinde.",
+      "body2": "Yalnızca bu takıma zaten bağlı repolardaki commit'leri okurum. Sadece commit başlıkları. Kişisel repoların asla, özel notların asla.",
+      "chipsAria": "Okumadıklarım",
+      "chipPersonalRepos": "Kişisel repolar",
+      "chipPrBodies": "Pull request içerikleri",
+      "chipOutsideCommits": "Commit dışındaki her şey",
+      "connectCta": "Beceri madenciliği için GitHub'ı bağla",
+      "connectedLine": "{who} bağlandı. Her hafta yeniden bakacağım ve yeni önerileri önizlemene ekleyeceğim.",
+      "connectedFallback": "GitHub hesabın",
+      "stopMining": "Madenciliği durdur",
+      "dialogTitle": "Commit madenciliği durdurulsun mu?",
+      "dialogBody": "Zaten kabul ettiğin becerileri tutacağım — onlar gerçek, yeni commit'lere bakmamı istemesen bile. Reddettiklerin de reddedilmiş kalacak.",
+      "keepMining": "Madenciliğe devam et",
+      "stopping": "Durduruluyor…"
+    },
+    "inferred": {
+      "eyebrow": "GITHUB'DAN ÇIKARILDI",
+      "heading": "GitHub kodunda ne gördü",
+      "helper": "Uyanı tut, uymayanı çıkar — karar senin.",
+      "sectionAria": "GitHub'dan çıkarılan beceriler",
+      "scanAwaiting": "İlk tarama bekleniyor",
+      "scanJustNow": "Az önce tarandı",
+      "scanLast": "Son tarama: {rel}",
+      "rescan": "Yeniden tara",
+      "rescanAria": "Çıkarılan beceriler için GitHub'ı yeniden tara",
+      "rateLimitTooltip": "Yakın zamanda taradım zaten. Sonraki tarama {min} dk sonra.",
+      "notConsented": "GitHub'ı bağladığında, gerçekten attığın commit'lere göre önerilen becerileri buraya ekleyeceğim.",
+      "scanning": "Commit'lerine bakıyorum…",
+      "zones": {
+        "pending": "İnceleme bekliyor",
+        "kept": "Tutulanlar",
+        "dropped": "Çıkarılanlar"
+      },
+      "keep": "Tut",
+      "drop": "Çıkar",
+      "keepAria": "Çıkarılan beceriyi tut: {tag}",
+      "rejectAria": "Çıkarılan beceriyi reddet: {tag}",
+      "keptTooltip": "Sana görev eşleştirirken bunu kullanıyorum.",
+      "dropTooltip": "Bunu profilinden çıkar. Kalıcı — bir daha önermeyeceğim.",
+      "droppedCaption": "çıkarıldı",
+      "undo": "Geri al",
+      "undoAria": "{tag} çıkarmayı geri al",
+      "showMore": "{count} tane daha göster",
+      "sources": {
+        "llm_commit": {
+          "chip": "COMMIT'LERDEN",
+          "tooltip": "Son 6 ayda yazdığın commit başlıklarından."
+        },
+        "linguist": {
+          "chip": "DİL İSTATİSTİKLERİ",
+          "tooltip": "GitHub'ın bu takımın repolarında gördüğü dillerden."
+        },
+        "extension": {
+          "chip": "UZANTILARDAN",
+          "tooltip": "Yazdığın commit'lerdeki dosya uzantılarından."
+        },
+        "llm_import": {
+          "chip": "IMPORT'LARDAN",
+          "tooltip": "Değiştirdiğin dosyalardaki import satırlarından."
+        }
+      },
+      "empty": {
+        "default": "Commit'lerini henüz taramadım. Başlamak için <key>Yeniden tara</key>'ya tıkla.",
+        "tryAgain": "Tekrar dene",
+        "reconnect": "GitHub'ı yeniden bağla",
+        "whoFallback": "hesabın",
+        "openOauthApps": "Yetkili OAuth uygulamalarını aç",
+        "openEmailSettings": "E-posta ayarlarını aç",
+        "noTeamRepos": {
+          "title": "Taranacak GitHub reposu yok",
+          "body": "Bu takıma GitHub adresi olan bir proje ekle; bir sonraki taramada commit madenciliğine başlarım."
+        },
+        "noToken": {
+          "title": "GitHub bağlantısı koptu",
+          "body": "Madencilik iznim var ama hesabın için geçerli bir GitHub token'ım yok. Düzeltmek için yeniden bağlan."
+        },
+        "noConsent": {
+          "title": "GitHub madenciliği açık değil",
+          "body": "Commit'lerine bakma iznim yok. İzin vermek için yeniden bağlan."
+        },
+        "noAuthor": {
+          "title": "GitHub kullanıcı adını bilmiyorum",
+          "body": "Bağlantı hesabını kaydetti ama kullanıcı adını kaydetmedi. Doldurmak için yeniden bağlan."
+        },
+        "couldntInfer": {
+          "title": "Beceri çıkaramadım",
+          "bodyOne": "<key>{count}</key> commit okudum ama net bir beceriye bağlayamadım. Açıklayıcı commit mesajları işime yarar — “feat: add Stripe checkout” bana “fixes”ten daha çok şey söyler.",
+          "bodyOther": "<key>{count}</key> commit okudum ama net bir beceriye bağlayamadım. Açıklayıcı commit mesajları işime yarar — “feat: add Stripe checkout” bana “fixes”ten daha çok şey söyler."
+        },
+        "expired": {
+          "title": "GitHub bağlantının süresi doldu",
+          "body": "GitHub, senin için elimdeki token'ı artık kabul etmiyor. Baştan başlamak için yeniden bağlan."
+        },
+        "noRepoScope": {
+          "title": "GitHub koduna erişim vermedi",
+          "body": "GitHub bağlantında <key>profil</key> ve <key>e-posta</key> erişimi var ama <key>repo</key> erişimi yok. Yeniden bağlan ve GitHub'ın yetkilendirme ekranında tüm izinlerin işaretli kaldığından emin ol."
+        },
+        "blocked": {
+          "title": "GitHub tüm repoları engelledi",
+          "body": "Bağlantının izinleri doğru ama GitHub, bu takımın <key>{count}</key> reposunun tamamı için commit listelemeyi reddetti. En yaygın neden: GitHub'daki organizasyonlarından biri tek oturum açma (SSO) kullanıyor ve bu uygulama için üçüncü taraf erişimini açmamış.",
+          "tried": "Şunları denedim: <repos></repos>."
+        },
+        "noRecentCommits": {
+          "title": "Yakın zamanda commit yok",
+          "bodyOne": "<key>{count}</key> repoya baktım ama son 6 ayda hiç commit görmedim. Bir şeyler push'la, yeniden bakarım.",
+          "bodyOther": "<key>{count}</key> repoya baktım ama son 6 ayda hiç commit görmedim. Bir şeyler push'la, yeniden bakarım."
+        },
+        "almostThere": {
+          "title": "Az kaldı — tekrar dene",
+          "body": "GitHub bana son commit'lerini gösterdi ama filtreli sorgu boş döndü. Bu bazen taze bir bağlantıdan hemen sonra olur. Bir dakika sonra Tekrar dene'ye bas."
+        },
+        "emailMismatch": {
+          "title": "Commit'lerin GitHub hesabınla eşleşmiyor",
+          "bodyWithEmail": "Son commit'inin yazarı <key>{email}</key>. Bu e-posta <key>{who}</key> üzerinde kayıtlı değil, o yüzden GitHub onu sana bağlamıyor.",
+          "bodyNoEmail": "Yakın zamanda commit'ler gördüm ama hiçbiri <key>{who}</key> hesabına bağlı değil.",
+          "addEmailHint": "Onu GitHub e-postalarına ekle ya da <key>git config user.email</key> değerini şunlardan birine ayarla: <key>{emails}</key>."
+        },
+        "emailPrivate": {
+          "title": "GitHub e-postan gizli",
+          "body": "Commit'lerin doğrulanmış GitHub e-postalarından birini kullanıyor ama <key>Keep my email addresses private</key> ayarı açık — bu yüzden GitHub onları <key>{who}</key> hesabına bağlamıyor. Ayarı kapat, becerilerini bulayım."
+        },
+        "noAttributed": {
+          "title": "Okunacak commit yok",
+          "bodyOne": "<key>{count}</key> repoya baktım ama <key>{who}</key> hesabına bağlanan hiç commit görmedim. Bir şeyler push'la, yeniden bakarım.",
+          "bodyOther": "<key>{count}</key> repoya baktım ama <key>{who}</key> hesabına bağlanan hiç commit görmedim. Bir şeyler push'la, yeniden bakarım."
+        }
+      }
+    },
+    "preview": {
+      "eyebrow": "SENİ NASIL GÖRÜYORUM",
+      "title": "Canlı önizleme",
+      "nameFallback": "Sen",
+      "onTeam": "{team} takımında",
+      "empty": "Soldan becerilerini eklemeye başla; sana ne tür görevler göndereceğimi göreceksin.",
+      "sections": {
+        "skills": "Beceriler",
+        "strengths": "Güçlü yönler",
+        "interests": "İlgi alanları",
+        "capacity": "Haftalık kapasite",
+        "matchedTo": "Muhtemel eşleşmeler"
+      },
+      "notSet": "Ayarlanmadı",
+      "hoursPerWeekOne": "{capacity} sa / hafta",
+      "hoursPerWeekOther": "{capacity} sa / hafta",
+      "hints": {
+        "frontend": "Frontend işleri",
+        "backend": "Backend işleri",
+        "design": "Tasarım görevleri",
+        "marketing": "Pazarlama ve içerik",
+        "analytics": "Analitik ve veri",
+        "product": "Ürün ve strateji",
+        "qa": "QA ve doğrulama",
+        "mobile": "Mobil işler",
+        "ai": "AI ve ML görevleri"
+      }
+    },
+    "reviewBanner": {
+      "regionAria": "Yeni çıkarımlar",
+      "eyebrow": "YENİ ÇIKARIMLAR",
+      "headingOne": "1 yeni çıkarılan beceri — incele",
+      "headingOther": "{count} yeni çıkarılan beceri — incele",
+      "review": "İncele",
+      "dismissAria": "Yeni çıkarımlar bildirimini kapat"
+    }
   },
   "admin": {
     "noTeamSelected": "Takım seçilmedi.",

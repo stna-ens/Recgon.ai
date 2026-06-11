@@ -10,6 +10,7 @@
 // Pure presentational: no fetch, callback-driven (parent owns the API call).
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { AlertCircle, X } from 'lucide-react';
 
 interface Props {
@@ -19,18 +20,17 @@ interface Props {
 }
 
 export default function ReviewBanner({ count, onReview, onDismiss }: Props) {
+  const t = useTranslations('teams.profile.reviewBanner');
   const [hidden, setHidden] = useState(false);
   if (count <= 0 || hidden) return null;
 
   const heading =
-    count === 1
-      ? '1 new inferred skill — review'
-      : `${count} new inferred skills — review`;
+    count === 1 ? t('headingOne') : t('headingOther', { count });
 
   return (
     <div
       role="region"
-      aria-label="New inferences"
+      aria-label={t('regionAria')}
       className="review-banner"
     >
       <AlertCircle
@@ -39,7 +39,7 @@ export default function ReviewBanner({ count, onReview, onDismiss }: Props) {
         className="review-banner__icon"
       />
       <div className="review-banner__text">
-        <span className="review-banner__eyebrow">NEW INFERENCES</span>
+        <span className="review-banner__eyebrow">{t('eyebrow')}</span>
         <span className="review-banner__heading">{heading}</span>
       </div>
       <div className="review-banner__actions">
@@ -48,12 +48,12 @@ export default function ReviewBanner({ count, onReview, onDismiss }: Props) {
           className="review-banner__review"
           onClick={onReview}
         >
-          Review
+          {t('review')}
         </button>
         <button
           type="button"
           className="review-banner__dismiss"
-          aria-label="Dismiss new inferences banner"
+          aria-label={t('dismissAria')}
           onClick={async () => {
             setHidden(true);
             try {

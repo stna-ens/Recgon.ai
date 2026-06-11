@@ -13,6 +13,7 @@
 // First-person voice ("I'll re-check weekly").
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 
 // lucide-react dropped the `Github` brand glyph; inline a small mark instead.
@@ -44,31 +45,28 @@ export default function GithubConsentSection({
   onConnect,
   onStopMining,
 }: Props) {
+  const t = useTranslations('teams.profile.consent');
   const [stopOpen, setStopOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const isConnected = consentedAt !== null;
 
   return (
     <section className="glass-card github-consent">
-      <span className="github-consent__eyebrow">OPTIONAL</span>
-      <h2 className="github-consent__heading">What GitHub says about you</h2>
+      <span className="github-consent__eyebrow">{t('eyebrow')}</span>
+      <h2 className="github-consent__heading">{t('heading')}</h2>
 
       <p className="github-consent__body">
-        If you connect GitHub, I&apos;ll look at the commits you&apos;ve authored in
-        this team&apos;s repos over the last 6 months and suggest skills that match
-        what you&apos;ve actually been shipping. You stay in control — every
-        suggestion is yours to keep or reject.
+        {t('body1')}
       </p>
 
       <p className="github-consent__body github-consent__body--muted">
-        I only read commits in repos already connected to this team. Commit
-        titles only. Never your personal repos, never private notes.
+        {t('body2')}
       </p>
 
-      <div className="github-consent__chips" aria-label="What I do not read">
-        <span className="github-consent__chip">Personal repos</span>
-        <span className="github-consent__chip">Pull request bodies</span>
-        <span className="github-consent__chip">Anything outside commits</span>
+      <div className="github-consent__chips" aria-label={t('chipsAria')}>
+        <span className="github-consent__chip">{t('chipPersonalRepos')}</span>
+        <span className="github-consent__chip">{t('chipPrBodies')}</span>
+        <span className="github-consent__chip">{t('chipOutsideCommits')}</span>
       </div>
 
       {!isConnected ? (
@@ -76,42 +74,39 @@ export default function GithubConsentSection({
           type="button"
           className="github-consent__cta"
           onClick={onConnect}
-          aria-label="Connect GitHub for skill mining"
+          aria-label={t('connectCta')}
         >
           <GithubMark size={14} />
-          <span>Connect GitHub for skill mining</span>
+          <span>{t('connectCta')}</span>
         </button>
       ) : (
         <div className="github-consent__connected">
           <span className="github-consent__connected-line">
-            Connected {githubUsername ?? 'on GitHub'}. I&apos;ll re-check weekly and
-            add new suggestions to your preview.
+            {t('connectedLine', { who: githubUsername ?? t('connectedFallback') })}
           </span>
           <AlertDialog.Root open={stopOpen} onOpenChange={setStopOpen}>
             <AlertDialog.Trigger asChild>
               <button
                 type="button"
                 className="github-consent__stop"
-                aria-label="Stop mining"
+                aria-label={t('stopMining')}
               >
-                Stop mining
+                {t('stopMining')}
               </button>
             </AlertDialog.Trigger>
             <AlertDialog.Portal>
               <AlertDialog.Overlay className="github-consent__overlay" />
               <AlertDialog.Content className="github-consent__dialog">
                 <AlertDialog.Title className="github-consent__dialog-title">
-                  Stop mining your commits?
+                  {t('dialogTitle')}
                 </AlertDialog.Title>
                 <AlertDialog.Description className="github-consent__dialog-body">
-                  I&apos;ll keep the skills you&apos;ve already accepted — they&apos;re
-                  real, even if you don&apos;t want me looking at new commits. The
-                  ones you&apos;ve rejected stay rejected.
+                  {t('dialogBody')}
                 </AlertDialog.Description>
                 <div className="github-consent__dialog-actions">
                   <AlertDialog.Cancel asChild>
                     <button type="button" className="github-consent__dialog-cancel">
-                      Keep mining
+                      {t('keepMining')}
                     </button>
                   </AlertDialog.Cancel>
                   <AlertDialog.Action asChild>
@@ -130,7 +125,7 @@ export default function GithubConsentSection({
                         }
                       }}
                     >
-                      {submitting ? 'Stopping…' : 'Stop mining'}
+                      {submitting ? t('stopping') : t('stopMining')}
                     </button>
                   </AlertDialog.Action>
                 </div>

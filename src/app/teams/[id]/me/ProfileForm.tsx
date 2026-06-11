@@ -10,6 +10,7 @@
 // 'use client' component — never imports `@/lib/supabase`.
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Command } from 'cmdk';
 import * as Popover from '@radix-ui/react-popover';
 import { humanizeTag, VOCAB_GROUPS } from '@/lib/recgon/skillVocabulary';
@@ -41,23 +42,7 @@ interface Props {
   inferredSection?: React.ReactNode;
 }
 
-const FIELD_LABEL: Record<FieldKey, string> = {
-  skills: 'Skills',
-  strengths: 'Strengths',
-  interests: 'Interests',
-};
-
-const FIELD_HELPER: Record<FieldKey, string> = {
-  skills: 'Languages, frameworks, areas of expertise.',
-  strengths: "What you're known for. Counts the same as skills when I match tasks.",
-  interests: "What you'd lean into. Breaks ties when two of you fit equally.",
-};
-
-const FIELD_PLACEHOLDER: Record<FieldKey, string> = {
-  skills: 'Type to search — e.g. React, Python, Figma',
-  strengths: 'Type to add — e.g. shipping fast, debugging',
-  interests: 'Type to add — e.g. design systems, AI agents',
-};
+const FIELD_KEYS: FieldKey[] = ['skills', 'strengths', 'interests'];
 
 const FIELD_ICON: Record<FieldKey, React.ReactNode> = {
   skills: (
@@ -99,6 +84,7 @@ export default function ProfileFormFields({
   consentSection,
   inferredSection,
 }: Props) {
+  const t = useTranslations('teams.profile.form');
   const [activeField, setActiveField] = useState<FieldKey | null>(null);
   const [query, setQuery] = useState('');
 
@@ -122,7 +108,7 @@ export default function ProfileFormFields({
   return (
     <div className="profile-fields">
       {inferredSection}
-      {(Object.keys(FIELD_LABEL) as FieldKey[]).map((field) => {
+      {FIELD_KEYS.map((field) => {
         const [items] = fieldState[field];
         return (
           <FieldSection
@@ -147,11 +133,11 @@ export default function ProfileFormFields({
         <div className="profile-section__head">
           <span className="profile-section__icon">{CAPACITY_ICON}</span>
           <label className="profile-section__label" htmlFor="weeklyCapacityHours">
-            Weekly capacity
+            {t('capacity.label')}
           </label>
         </div>
         <p className="profile-section__helper">
-          How many hours you have for new work in a typical week.
+          {t('capacity.helper')}
         </p>
         <div className="profile-capacity">
           <input
@@ -168,7 +154,7 @@ export default function ProfileFormFields({
             }}
             className="profile-input profile-input--narrow"
           />
-          <span className="profile-capacity-suffix">hrs / week</span>
+          <span className="profile-capacity-suffix">{t('capacity.suffix')}</span>
         </div>
       </div>
 
@@ -313,6 +299,7 @@ function FieldSection({
   onAdd,
   onRemove,
 }: FieldSectionProps) {
+  const t = useTranslations('teams.profile.form');
   const groupedMatches = useMemo(() => {
     const q = query.trim().toLowerCase();
     return VOCAB_GROUPS.map((g) => {
@@ -334,13 +321,13 @@ function FieldSection({
       <div className="profile-section__head">
         <span className="profile-section__icon">{FIELD_ICON[field]}</span>
         <label className="profile-section__label" htmlFor={`${field}-input`}>
-          {FIELD_LABEL[field]}
+          {t(`fields.${field}.label`)}
         </label>
         {entries.length > 0 && (
           <span className="profile-section__count">{entries.length}</span>
         )}
       </div>
-      <p className="profile-section__helper">{FIELD_HELPER[field]}</p>
+      <p className="profile-section__helper">{t(`fields.${field}.helper`)}</p>
 
       <Popover.Root open={isOpen} onOpenChange={onOpenChange}>
         <Popover.Anchor asChild>
@@ -369,7 +356,7 @@ function FieldSection({
                 onOpenChange(false);
               }
             }}
-            placeholder={FIELD_PLACEHOLDER[field]}
+            placeholder={t(`fields.${field}.placeholder`)}
             autoComplete="off"
             className="profile-input"
           />
@@ -407,7 +394,7 @@ function FieldSection({
                   </Command.Group>
                 ))}
                 {isCustom && (
-                  <Command.Group heading="ADD AS CUSTOM" className="profile-popover-group">
+                  <Command.Group heading={t('addCustomHeading')} className="profile-popover-group">
                     <Command.Item
                       value={`__custom_${query}`}
                       onSelect={() => {
@@ -417,7 +404,7 @@ function FieldSection({
                       }}
                       className="profile-popover-item profile-popover-item--custom"
                     >
-                      Add &ldquo;{query.trim()}&rdquo;
+                      {t('addCustom', { query: query.trim() })}
                     </Command.Item>
                   </Command.Group>
                 )}
@@ -473,7 +460,7 @@ function FieldSection({
           {entries.map((entry) => {
             const canonicalLabel =
               entry.canonical.length === 0
-                ? 'custom'
+                ? t('customTag')
                 : entry.canonical.length === 1 && entry.canonical[0] === entry.raw
                   ? null
                   : entry.canonical.map(humanizeTag).join(', ');
@@ -485,7 +472,7 @@ function FieldSection({
                 )}
                 <button
                   type="button"
-                  aria-label={`Remove ${entry.raw}`}
+                  aria-label={t('removeAria', { tag: entry.raw })}
                   onClick={() => onRemove(entry.raw)}
                   className="profile-pill-remove"
                 >
