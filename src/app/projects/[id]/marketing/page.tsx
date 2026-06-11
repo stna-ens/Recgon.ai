@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
+import { Button, EmptyState, Skeleton } from '@/components/ui';
 
 import {
   CampaignCalendar,
@@ -41,7 +42,7 @@ export default function V2ProjectMarketingPage() {
   // revalidation is handled by SWRConfig (replaces the old visibilitychange
   // refetch listener).
   const projectsKey = currentTeam ? `/api/projects?teamId=${currentTeam.id}` : null;
-  const { data: projectsData, mutate: mutateProjects } = useSWR<Project[]>(projectsKey);
+  const { data: projectsData, error: projectsError, mutate: mutateProjects } = useSWR<Project[]>(projectsKey);
   const projects = useMemo<Project[]>(
     () => (Array.isArray(projectsData) ? projectsData.filter((p) => p.analysis) : []),
     [projectsData],
@@ -162,6 +163,31 @@ export default function V2ProjectMarketingPage() {
     setGeneratedContents({});
     setContentErrors({});
   };
+
+  // Fetch failed → say so instead of rendering a hero full of blanks.
+  if (currentTeam && projectsError && !hasLoadedProjects) {
+    return (
+      <div className="v2-m" style={{ paddingTop: '15vh' }}>
+        <EmptyState
+          icon="⟨/⟩"
+          title={t('errors.loadFailedTitle')}
+          description={t('errors.loadFailedBody')}
+          action={<Button variant="secondary" onClick={() => void mutateProjects()}>{t('errors.loadRetry')}</Button>}
+        />
+      </div>
+    );
+  }
+
+  // Still fetching → visible skeleton instead of an empty hero.
+  if (currentTeam && !hasLoadedProjects) {
+    return (
+      <div className="v2-m" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '32px clamp(16px, 4vw, 48px)' }}>
+        <Skeleton width="40%" height={32} />
+        <Skeleton width="65%" height={16} />
+        <Skeleton height={220} radius={12} />
+      </div>
+    );
+  }
 
   // Project loaded but not analyzed → inline empty (matches v2 visual style).
   if (currentTeam && hasLoadedProjects && !selectedProject) {

@@ -198,6 +198,14 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
     setRequestDate(toDateInput(task?.rescheduleRequestedDate ?? task?.scheduledDate));
   }, [task?.id, task?.rescheduleRequestedDate, task?.rescheduleRequestNote, task?.scheduledDate]);
 
+  // Keyboard users need a way out — the overlay is click-only.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   const act = useCallback(async (action: 'accept' | 'decline' | 'complete') => {
     if (!task || working) return;
     setWorking(true);
@@ -383,7 +391,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
   return (
     <>
       <div className={`cal-panel-overlay${isOpen ? ' is-open' : ''}`} onClick={onClose} aria-hidden="true" />
-      <aside className={`cal-panel${isOpen ? ' is-open' : ''}`} aria-label={t('panel.aria')}>
+      <aside className={`cal-panel${isOpen ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label={t('panel.aria')}>
         {!task ? null : (<>
         <div className="cal-panel-header">
           <div className="cal-panel-meta">

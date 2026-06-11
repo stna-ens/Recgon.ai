@@ -94,7 +94,7 @@ export default function HelpFeedbackModal({
 
   return createPortal(
     <div className="v2-hf-overlay" role="dialog" aria-modal="true" aria-labelledby="v2-hf-title">
-      <div className="v2-hf-backdrop" onClick={onClose} />
+      <div className="v2-hf-backdrop" onClick={onClose} aria-hidden="true" />
       <div className="v2-hf-card">
         <div className="v2-hf-head">
           <div>

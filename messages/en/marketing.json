@@ -110,6 +110,9 @@
   },
   "errors": {
     "campaignPlanning": "Campaign planning failed",
-    "contentGeneration": "Content generation failed"
+    "contentGeneration": "Content generation failed",
+    "loadFailedTitle": "Couldn't load your projects",
+    "loadFailedBody": "Something went wrong while fetching marketing data. Your campaigns are safe.",
+    "loadRetry": "try again"
   }
 }

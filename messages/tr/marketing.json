@@ -110,6 +110,9 @@
   },
   "errors": {
     "campaignPlanning": "Kampanya planlaması başarısız oldu",
-    "contentGeneration": "İçerik üretimi başarısız oldu"
+    "contentGeneration": "İçerik üretimi başarısız oldu",
+    "loadFailedTitle": "Projeler yüklenemedi",
+    "loadFailedBody": "Pazarlama verileri alınırken bir sorun oluştu. Kampanyaların güvende.",
+    "loadRetry": "yeniden dene"
   }
 }

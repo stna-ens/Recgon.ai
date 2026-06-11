@@ -674,6 +674,7 @@ function V2TasksInner() {
               className="v2-tasks-detail"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
+              aria-modal="true"
               aria-label={t('detail.aria')}
             >
               <button
