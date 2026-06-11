@@ -201,6 +201,7 @@ function V2TeamAdminPageInner() {
 
   // Invite
   const [inviteRole, setInviteRole] = useState<'member' | 'viewer'>('member');
+  const [inviteEmail, setInviteEmail] = useState('');
   const [generating, setGenerating] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string>('');
 
@@ -355,24 +356,30 @@ function V2TeamAdminPageInner() {
     setGenerating(true);
     setGeneratedLink('');
     try {
+      const email = inviteEmail.trim().toLowerCase();
       const res = await fetch(`/api/teams/${teamId}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: inviteRole }),
+        body: JSON.stringify({ role: inviteRole, ...(email ? { email } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'failed to generate');
       const link = `${window.location.origin}/teams/invite/${data.token}`;
       setGeneratedLink(link);
-      try { await navigator.clipboard.writeText(link); addToast(t('admin.toasts.inviteCopied'), 'success'); }
-      catch { addToast(t('admin.toasts.inviteGenerated'), 'info'); }
+      if (data.emailed) {
+        addToast(t('admin.toasts.inviteEmailed', { email }), 'success');
+        setInviteEmail('');
+      } else {
+        try { await navigator.clipboard.writeText(link); addToast(t('admin.toasts.inviteCopied'), 'success'); }
+        catch { addToast(t('admin.toasts.inviteGenerated'), 'info'); }
+      }
       await refresh();
     } catch (err) {
       addToast(err instanceof Error ? err.message : t('admin.toasts.failed'), 'error');
     } finally {
       setGenerating(false);
     }
-  }, [teamId, generating, inviteRole, addToast, refresh, t]);
+  }, [teamId, generating, inviteRole, inviteEmail, addToast, refresh, t]);
 
   const handleRevoke = useCallback(async (inviteId: string) => {
     if (!teamId) return;
@@ -892,6 +899,18 @@ function V2TeamAdminPageInner() {
                     </button>
                   ))}
                 </div>
+                <label className="rec-invite-email">
+                  <span className="rec-mini-label">{t('admin.invites.emailLabel')}</span>
+                  <input
+                    className="ui-input"
+                    type="email"
+                    autoComplete="off"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder={t('admin.invites.emailPlaceholder')}
+                    disabled={!isOwner}
+                  />
+                </label>
                 <Button
                   variant="primary"
                   style={{ width: '100%' }}
@@ -900,7 +919,11 @@ function V2TeamAdminPageInner() {
                   loading={generating}
                   title={isOwner ? undefined : t('admin.invites.ownerOnly')}
                 >
-                  {generating ? t('admin.invites.generating') : t('admin.invites.generateLink')}
+                  {generating
+                    ? t('admin.invites.generating')
+                    : inviteEmail.trim()
+                      ? t('admin.invites.sendInvite')
+                      : t('admin.invites.generateLink')}
                 </Button>
                 {generatedLink && (
                   <div className="rec-invite-result">
@@ -1797,6 +1820,11 @@ function V2TeamAdminPageInner() {
           text-transform: uppercase;
           color: var(--txt-faint);
           margin-bottom: 10px;
+        }
+        .rec-invite-email {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
         }
         .rec-invite-form {
           display: flex;

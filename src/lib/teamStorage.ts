@@ -231,7 +231,8 @@ export async function updateMemberRole(teamId: string, userId: string, role: 'ow
 export async function createInvitation(
   teamId: string,
   role: 'member' | 'viewer',
-  invitedBy: string
+  invitedBy: string,
+  email?: string
 ): Promise<TeamInvitation> {
   const id = generateId();
   const token = crypto.randomBytes(32).toString('hex');
@@ -242,7 +243,8 @@ export async function createInvitation(
     .insert({
       id,
       team_id: teamId,
-      email: null,   // link-only invite — email is no longer collected
+      // Link-only invite unless the inviter chose to email it to someone.
+      email: email ?? null,
       role,
       invited_by: invitedBy,
       token,
