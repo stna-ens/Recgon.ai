@@ -131,3 +131,45 @@ export async function notifyTeammateAssigned(input: {
     });
   }
 }
+
+// Owner heads-up when a dispatch run parks tasks in triage. Without this the
+// triage queue was invisible until someone happened to open the UI. One email
+// per run (not per task), fire-and-forget.
+export async function notifyOwnerTriageSummary(input: {
+  ownerEmail: string;
+  teamName: string;
+  triagedCount: number;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    logger.debug('skipping triage summary email — RESEND_API_KEY not set');
+    return;
+  }
+  const resend = new Resend(apiKey);
+  const tasksUrl = `${appBaseUrl()}/tasks`;
+  const count = input.triagedCount;
+
+  try {
+    const { error } = await resend.emails.send({
+      from: 'Recgon <noreply@recgon.app>',
+      to: input.ownerEmail,
+      subject: `Recgon parked ${count === 1 ? 'a task' : `${count} tasks`} for your review`,
+      html: `
+<div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; padding: 2rem;">
+  <div style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; color: #FF3D7F; margin-bottom: 0.5rem;">RECGON · ADMIN · ${escapeHtml(input.teamName.toUpperCase())}</div>
+  <h2 style="font-size: 1.15rem; font-weight: 700; margin: 0 0 0.75rem; color: #111;">${count === 1 ? 'One task needs' : `${count} tasks need`} your call</h2>
+  <p style="font-size: 0.9rem; color: #555; line-height: 1.55; margin: 0 0 1.25rem;">During today's dispatch Recgon couldn't confidently assign ${count === 1 ? 'one task' : 'some tasks'} — no clear fit, or nobody has capacity before the deadline. ${count === 1 ? 'It is' : 'They are'} parked in triage waiting for you.</p>
+  <a href="${tasksUrl}" style="display: inline-block; padding: 0.7rem 1.25rem; background: #FF3D7F; color: white; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 0.9rem;">Review triage</a>
+  <p style="color: #999; font-size: 0.78rem; margin: 1.5rem 0 0;">You can assign manually, adjust capacity, or drop the task.</p>
+</div>
+      `,
+    });
+    if (error) {
+      logger.warn('triage summary email failed', { error: error.message });
+    }
+  } catch (err) {
+    logger.warn('triage summary email threw', {
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+}

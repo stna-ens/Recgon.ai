@@ -18,6 +18,8 @@
 
 import { logger } from '../logger';
 import { supabase } from '../supabase';
+import { getTeam, getTeamMembers } from '../teamStorage';
+import { notifyOwnerTriageSummary } from '../notifications';
 import { chatViaProviders } from '../llm/providers';
 import { readUnifiedBrain } from './brain';
 import { mintTasksFromBrain } from './taskMint';
@@ -303,6 +305,28 @@ export async function runDispatch(teamId: string): Promise<DispatchResult> {
     closeCalls: closeCalls.length,
     judgePicks: judgeMap.size,
   });
+
+  // Triage is invisible unless someone opens the UI — give the owner one
+  // heads-up email per run when tasks got parked. Fire-and-forget; a Resend
+  // or lookup failure must never fail the dispatch itself.
+  if (triaged > 0) {
+    try {
+      const [team, members] = await Promise.all([getTeam(teamId), getTeamMembers(teamId)]);
+      const ownerEmail = members.find((m) => m.role === 'owner')?.email;
+      if (ownerEmail) {
+        void notifyOwnerTriageSummary({
+          ownerEmail,
+          teamName: team?.name ?? 'your team',
+          triagedCount: triaged,
+        });
+      }
+    } catch (err) {
+      logger.warn('triage summary lookup failed', {
+        teamId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   return {
     brainSnapshot: snapshot,

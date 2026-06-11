@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { verifyTeamWriteAccess } from '@/lib/teamStorage';
+import { verifyTeamWriteAccess, getTeam } from '@/lib/teamStorage';
+import { notifyTeammateAssigned } from '@/lib/notifications';
 import {
   getTask,
   getTeammate,
@@ -83,6 +84,19 @@ export async function POST(
       scheduleNote: schedule?.scheduleNote,
     },
   });
+
+  // Tell the new assignee — previously only first assignment emailed, so a
+  // reassigned task could sit unnoticed until its owner asked about it.
+  // Fire-and-forget: notifyTeammateAssigned logs failures, never throws.
+  if (newTeammate) {
+    const team = await getTeam(teamId);
+    void notifyTeammateAssigned({
+      teammate: newTeammate,
+      task: { ...task, assignedTo: newTeammate.id },
+      teamName: team?.name ?? 'your team',
+      reasoning: null,
+    });
+  }
 
   return NextResponse.json({ success: true });
 }
