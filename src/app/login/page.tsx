@@ -61,6 +61,12 @@ function LoginPageContent() {
   const [error, setError] = useState(URL_ERRORS[searchParams.get('error') ?? ''] ?? '');
   const [loading, setLoading] = useState(false);
 
+  const notice = searchParams.get('reset') === '1'
+    ? t('login.notices.passwordReset')
+    : searchParams.get('registered') === '1'
+      ? t('login.notices.registered')
+      : '';
+
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -117,6 +123,11 @@ function LoginPageContent() {
         <p className="auth-sub">{t('login.subtitle')}</p>
 
         <form onSubmit={handleSubmit} className="auth-form" noValidate>
+          {notice && !error && (
+            <div role="status" className="auth-notice">
+              {notice}
+            </div>
+          )}
           <FormField label={t('login.emailLabel')} htmlFor="login-email" error={emailError || undefined} required>
             <input
               ref={emailRef}
@@ -144,6 +155,9 @@ function LoginPageContent() {
               {error}
             </div>
           )}
+          <p className="auth-forgot">
+            <Link href="/forgot-password" className="auth-foot-link">{t('login.forgotPassword')}</Link>
+          </p>
           <Button type="submit" variant="primary" loading={loading} className="auth-submit">
             {loading ? t('login.signingIn') : t('login.signIn')}
           </Button>
@@ -272,6 +286,20 @@ export const authStyles = `
     color: var(--danger);
     font-size: 0.85rem;
     margin: 0;
+  }
+  .auth-notice {
+    padding: 0.6rem 0.75rem;
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: var(--r-sm);
+    color: var(--success, #22c55e);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+  .auth-forgot {
+    margin: -0.5rem 0 0;
+    font-size: 0.825rem;
+    text-align: right;
   }
   .auth-divider {
     display: flex;

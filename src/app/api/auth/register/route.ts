@@ -6,10 +6,11 @@ import { getUserByEmail, createUser } from '@/lib/userStorage';
 import { isRateLimited, REGISTER_LIMIT } from '@/lib/rateLimit';
 import { logger } from '@/lib/logger';
 import { canSelfRegister, requestWaitlistAccess } from '@/lib/waitlist';
+import { validatePassword, PASSWORD_MAX } from '@/lib/passwordPolicy';
 
 const RegisterSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
-  password: z.string().min(8).max(200),
+  password: z.string().min(1).max(PASSWORD_MAX),
   nickname: z.string().trim().min(2).max(60),
   otp: z.string().length(6).regex(/^\d{6}$/),
 });
@@ -27,6 +28,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     }
     const { email, password, nickname, otp } = parsed.data;
+
+    const policyError = validatePassword(password);
+    if (policyError) {
+      return NextResponse.json({ error: 'Password does not meet requirements', code: policyError }, { status: 400 });
+    }
 
     if (!(await canSelfRegister(email))) {
       await requestWaitlistAccess(email, nickname);

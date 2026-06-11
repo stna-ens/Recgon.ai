@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { auth } from '@/auth';
 import { getUserById, getUserByEmail, updateUser } from '@/lib/userStorage';
 import { isWaitlistAdminEmail } from '@/lib/waitlist';
+import { validatePassword } from '@/lib/passwordPolicy';
 
 export async function GET() {
   const session = await auth();
@@ -72,8 +73,14 @@ export async function PATCH(request: NextRequest) {
     if (!currentPassword || !newPassword) {
       return NextResponse.json({ error: 'Current and new password are required' }, { status: 400 });
     }
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 });
+    const policyError = validatePassword(newPassword);
+    if (policyError) {
+      const message = policyError === 'too_short'
+        ? 'New password must be at least 8 characters'
+        : policyError === 'too_long'
+          ? 'New password is too long'
+          : 'New password is too repetitive';
+      return NextResponse.json({ error: message, code: policyError }, { status: 400 });
     }
 
     const user = await getUserById(session.user.id);
