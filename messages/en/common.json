@@ -13,5 +13,18 @@
   "retry": "retry",
   "create": "create",
   "remove": "remove",
-  "search": "Search or jump to…"
+  "search": "Search or jump to…",
+  "errorPage": {
+    "label": "something broke",
+    "title": "This screen hit an error.",
+    "body": "Your data is fine — the page just failed to render. Try again, or head back home.",
+    "retry": "try again",
+    "home": "go home"
+  },
+  "notFoundPage": {
+    "label": "404",
+    "title": "This page doesn't exist.",
+    "body": "The link may be old, or the thing it pointed to was deleted.",
+    "home": "go home"
+  }
 }

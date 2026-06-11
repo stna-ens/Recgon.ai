@@ -13,5 +13,18 @@
   "retry": "yeniden dene",
   "create": "oluştur",
   "remove": "kaldır",
-  "search": "Ara veya geç…"
+  "search": "Ara veya geç…",
+  "errorPage": {
+    "label": "bir şey bozuldu",
+    "title": "Bu ekran bir hatayla karşılaştı.",
+    "body": "Verilerin güvende — sayfa yalnızca yüklenemedi. Yeniden dene ya da ana sayfaya dön.",
+    "retry": "yeniden dene",
+    "home": "ana sayfaya dön"
+  },
+  "notFoundPage": {
+    "label": "404",
+    "title": "Böyle bir sayfa yok.",
+    "body": "Bağlantı eski olabilir ya da işaret ettiği şey silinmiş olabilir.",
+    "home": "ana sayfaya dön"
+  }
 }
