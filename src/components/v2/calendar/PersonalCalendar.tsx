@@ -7,6 +7,7 @@ import type { AgentTask } from '@/lib/recgon/types';
 import { Skeleton, EmptyState } from '@/components/ui';
 import { WeekHeader } from './WeekHeader';
 import { PersonalLane } from './PersonalLane';
+import { TaskDetailPanel } from './TaskDetailPanel';
 import type { CalendarCard, WeekRange } from './calendarTypes';
 import { addWeeks, buildCards, getWeekRange, localDateKey, weekDays } from './calendarUtils';
 
@@ -39,12 +40,22 @@ export function PersonalCalendar() {
   // viewed paints instantly from cache; only a never-seen range shows the
   // skeleton. Background revalidation (incl. on focus, via SWRConfig) surfaces
   // the small nav spinner instead of the full skeleton.
-  const { data, isValidating } = useSWR<ServerData>(`/api/calendar?from=${fromKey}&to=${toKey}`);
+  const { data, isValidating, mutate } = useSWR<ServerData>(`/api/calendar?from=${fromKey}&to=${toKey}`);
   const loading = data === undefined;
   const refreshing = isValidating && data !== undefined;
   const [activeDayIndex, setActiveDayIndex] = useState<number | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  // Task opened in the detail panel. Stored by id so the panel always reflects
+  // the freshest server data (it re-derives from `data` after a refresh).
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // Personal calendar only ever lists the viewer's own tasks, so the viewer is
+  // always the assignee — currentTeammateId = the task's assignee row.
+  const selectedTask = useMemo(
+    () => (selectedTaskId ? data?.tasks.find((tk) => tk.id === selectedTaskId) ?? null : null),
+    [selectedTaskId, data],
+  );
   const filterMenuRef = useRef<HTMLDivElement>(null);
   // Persist filter choice across reloads.
   useEffect(() => {
@@ -333,7 +344,7 @@ export function PersonalCalendar() {
                     cards={lane.cards}
                     dayDates={days}
                     activeDayIndex={activeDayIndex}
-                    onCardClick={() => {}}
+                    onCardClick={(card) => setSelectedTaskId(card.task.id)}
                     teamBadgeByTeamId={teamBadgeByTeamId}
                     label={lane.project?.name ?? t('lane.noProject')}
                     eyebrow={lane.project ? t('lane.project') : t('lane.noProjectEyebrow')}
@@ -345,6 +356,15 @@ export function PersonalCalendar() {
           </div>
         </div>
       )}
+
+      <TaskDetailPanel
+        task={selectedTask}
+        isOpen={selectedTask != null}
+        currentTeammateId={selectedTask?.assignedTo ?? null}
+        isOwner={false}
+        onClose={() => setSelectedTaskId(null)}
+        onRefresh={() => { void mutate(); }}
+      />
 
       <style>{css}</style>
     </div>

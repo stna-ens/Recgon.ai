@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import { Skeleton, EmptyState } from '@/components/ui';
@@ -9,6 +10,7 @@ import type { AgentTask, TeammateWithStats } from '@/lib/recgon/types';
 import { WeekNav } from './WeekNav';
 import { WeekHeader } from './WeekHeader';
 import { SwimLane } from './SwimLane';
+import { TaskDetailPanel } from './TaskDetailPanel';
 import { UnscheduledSidebar } from './UnscheduledSidebar';
 import type { CalendarCard, WeekRange } from './calendarTypes';
 import { addWeeks, buildCards, daysBetween, getWeekRange, localDateKey, weekDays } from './calendarUtils';
@@ -28,6 +30,8 @@ const TASK_DRAG_MIME = 'application/x-recgon-task';
 export function WeekCalendar({ projectId, onSwitchToList }: Props) {
   const t = useTranslations('calendar');
   const { currentTeam } = useTeam();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id ?? null;
   const { addToast } = useToast();
   const teamId = currentTeam?.id ?? null;
   const isOwner = currentTeam?.role === 'owner';
@@ -39,6 +43,9 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeDayIndex, setActiveDayIndex] = useState<number | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  // Task opened in the detail panel — kept by id so the panel re-derives from
+  // the freshest server data after a refresh (override / cancel / reschedule).
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const verifyingRef = useRef(false);
   // One-time jump to the nearest week containing tasks. Without this, a
   // project whose tasks are all in past/future weeks renders an empty grid
@@ -157,7 +164,21 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
     setWeekRange(getWeekRange(new Date(`${nearest}T00:00:00`)));
   }, [data, cardsByTeammate]);
 
-  const handleCardClick = useCallback((_card: CalendarCard) => {}, []);
+  const handleCardClick = useCallback((card: CalendarCard) => {
+    setSelectedTaskId(card.task.id);
+  }, []);
+
+  // Owner viewing a team-wide board — the viewer's own teammate row (if any)
+  // gates assignee-mode actions when they click their own task; otherwise the
+  // panel shows owner-mode controls.
+  const selectedTask = useMemo(
+    () => (selectedTaskId ? data?.tasks.find((tk) => tk.id === selectedTaskId) ?? null : null),
+    [selectedTaskId, data],
+  );
+  const currentTeammateId = useMemo(
+    () => data?.teammates.find((tm) => tm.userId === currentUserId)?.id ?? null,
+    [data, currentUserId],
+  );
 
   const handlePrev = () => setWeekRange((w) => addWeeks(w, -1));
   const handleNext = () => setWeekRange((w) => addWeeks(w, 1));
@@ -389,7 +410,7 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
           {sidebarOpen && (
             <UnscheduledSidebar
               tasks={unscheduledTasks}
-              onSelect={() => setSidebarOpen(false)}
+              onSelect={(task) => { setSelectedTaskId(task.id); setSidebarOpen(false); }}
               canDrag={isOwner}
               onDragStart={(e, task) => beginTaskDrag(e, task.id)}
               onDragEnd={clearDrag}
@@ -397,6 +418,15 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
           )}
         </div>
       )}
+
+      <TaskDetailPanel
+        task={selectedTask}
+        isOpen={selectedTask != null}
+        currentTeammateId={currentTeammateId}
+        isOwner={isOwner}
+        onClose={() => setSelectedTaskId(null)}
+        onRefresh={() => { void fetch_(); }}
+      />
 
       <style>{css}</style>
     </div>
