@@ -21,6 +21,27 @@
     "whoHeading": "Kimler için",
     "who": "Ürünü bir kurucunun yönettiği küçük ekipler (2-10). Bir ürün yöneticisinin stratejik döngüsüne ve bir proje yöneticisinin atama disiplinine — ekstra kadro olmadan — ihtiyaç duyan indie hacker'lar, erken aşama girişimler ve yan proje ekipleri."
   },
+  "meta": {
+    "title": "Recgon — Küçük ekipler için yapay zekâ Ürün Yöneticisi",
+    "description": "Recgon kod tabanını, GA4 analitiğini ve ekip etkinliğini okur — sonra sırada neyin geliştirileceğine karar verir ve her görevi en uygun ekip arkadaşına atar.",
+    "keywords": "yapay zekâ ürün yöneticisi, AI PM, ürün yönetimi yapay zekâsı, küçük ekip ürün aracı, kod tabanı analizi, otomatik görev atama, yapay zekâ görev atama, girişim ürün aracı, indie hacker pm, ekip görev planlayıcı",
+    "ogDescription": "Tüm ekip için tek bir beyin. Recgon kodu, analitiği ve ekip etkinliğini okur, ardından sıradaki hamleyi doğru ekip arkadaşına atar.",
+    "ogImageAlt": "Recgon — küçük ekipler için yapay zekâ ürün yöneticisi",
+    "twitterDescription": "Kod tabanını, analitiğini ve ekibini okur. Sırada neyin geliştirileceğine karar verir. Doğru ekip arkadaşına atar."
+  },
+  "jsonld": {
+    "orgDescription": "Recgon, küçük ekipler için bir yapay zekâ Ürün Yöneticisidir. Kod tabanını, GA4 analitiğini ve ekip etkinliğini okur, ardından sıradaki hamleyi öne çıkarır ve en uygun ekip arkadaşına atar.",
+    "appDescription": "Küçük ekipler için yapay zekâ Ürün Yöneticisi. Kod tabanını, analitiği ve ekip etkinliğini içeri alır, önceliklendirilmiş sonraki adımlar üretir ve görevleri yetkinlik ile takvim uygunluğuna göre ekip arkadaşlarına otomatik atar.",
+    "feature1": "SWOT, riskler, büyüme kaldıraçları ve sıralı sonraki adımlarla kod tabanı analizi (GitHub)",
+    "feature2": "GA4 analitiği alımı ve yapay zekâ ile özetlenmiş içgörüler",
+    "feature3": "Otomatik üretilen görev hattı (next_step, dev_prompt, marketing, analytics, research)",
+    "feature4": "Ekip arkadaşlarına yetkinlik ve takvim duyarlı görev ataması",
+    "feature5": "Kabul kriterlerine göre yapay zekâ görev doğrulaması",
+    "feature6": "Bugünün odağı, karar destesi ve ekip nabzıyla kokpit ana sayfası",
+    "feature7": "Eğik çizgi komutlu terminal arayüzü",
+    "feature8": "Claude Code MCP entegrasyonu",
+    "faqClaudeQ": "Recgon Claude Code ile entegre oluyor mu?"
+  },
   "nav": {
     "primaryAria": "Ana menü",
     "homeAria": "Recgon ana sayfa",

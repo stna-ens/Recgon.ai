@@ -21,6 +21,27 @@
     "whoHeading": "Who it's for",
     "who": "Small teams (2-10) with a founder running product. Indie hackers, early-stage startups, and side-project teams that need a PM's strategic loop and a project manager's assignment discipline — without the headcount."
   },
+  "meta": {
+    "title": "Recgon — The AI Product Manager for small teams",
+    "description": "Recgon reads your codebase, GA4 analytics, and team activity — then decides what to ship next and assigns each task to the best-fit teammate.",
+    "keywords": "AI product manager, AI PM, product management AI, small team product tool, codebase analysis AI, auto task assignment, ai task assignment, startup product tool, indie hacker pm, team task scheduler",
+    "ogDescription": "One brain for the whole team. Recgon reads code, analytics, and team activity, then assigns the next move to the right teammate.",
+    "ogImageAlt": "Recgon — AI product manager for small teams",
+    "twitterDescription": "Reads your codebase, analytics, and team. Decides what to ship next. Assigns it to the right teammate."
+  },
+  "jsonld": {
+    "orgDescription": "Recgon is an AI Product Manager for small teams. It reads codebase, GA4 analytics, and team activity, then surfaces the next move and assigns it to the best-fit teammate.",
+    "appDescription": "AI Product Manager for small teams. Ingests codebase, analytics, and team activity, generates prioritized next steps, and auto-assigns tasks to teammates by skill and calendar availability.",
+    "feature1": "Codebase analysis (GitHub) with SWOT, risks, growth levers, and ranked next steps",
+    "feature2": "GA4 analytics ingestion and AI-summarized insights",
+    "feature3": "Auto-minted task pipeline (next_step, dev_prompt, marketing, analytics, research)",
+    "feature4": "Skill- and calendar-aware task assignment to teammates",
+    "feature5": "AI task verification against acceptance criteria",
+    "feature6": "Cockpit home with today's focus, decision deck, and team pulse",
+    "feature7": "Slash-command terminal interface",
+    "feature8": "Claude Code MCP integration",
+    "faqClaudeQ": "Does Recgon integrate with Claude Code?"
+  },
   "nav": {
     "primaryAria": "Primary",
     "homeAria": "Recgon home",
