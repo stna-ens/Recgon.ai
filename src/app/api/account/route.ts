@@ -4,6 +4,9 @@ import { auth } from '@/auth';
 import { getUserById, getUserByEmail, updateUser } from '@/lib/userStorage';
 import { isWaitlistAdminEmail } from '@/lib/waitlist';
 import { validatePassword } from '@/lib/passwordPolicy';
+import { getUserTeams, getTeamMembers, deleteTeam } from '@/lib/teamStorage';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   const session = await auth();
@@ -96,4 +99,65 @@ export async function PATCH(request: NextRequest) {
   }
 
   return NextResponse.json({ error: 'Invalid request type' }, { status: 400 });
+}
+
+// Permanent account deletion.
+//
+// Guard: if the user is the ONLY owner of a team that still has other
+// members, deletion is blocked — they must hand the team to someone or
+// delete it first. Solo teams (the user is the only member) are deleted
+// outright. Memberships elsewhere, chat history, quotas, and analytics
+// configs go via FK CASCADE when the users row is deleted.
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const userId = session.user.id;
+
+  try {
+    const teams = await getUserTeams(userId);
+
+    const soloTeams: string[] = [];
+    for (const team of teams) {
+      if (team.role !== 'owner') continue;
+      const members = await getTeamMembers(team.id);
+      const owners = members.filter((m) => m.role === 'owner');
+      if (members.length === 1) {
+        soloTeams.push(team.id);
+      } else if (owners.length === 1 && owners[0].userId === userId) {
+        return NextResponse.json(
+          {
+            error: `You're the only owner of "${team.name}", which still has other members. Make someone else an owner (or delete the team) first.`,
+            code: 'sole_owner',
+            teamId: team.id,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
+    for (const teamId of soloTeams) {
+      await deleteTeam(teamId, userId);
+    }
+
+    const { error } = await supabase.from('users').delete().eq('id', userId);
+    if (error) {
+      logger.error('account deletion failed', { userId, err: error.message });
+      return NextResponse.json(
+        { error: 'Unable to delete the account right now. Please try again or contact support.' },
+        { status: 500 },
+      );
+    }
+
+    logger.info('account deleted', { userId });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    logger.error('account deletion threw', {
+      userId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return NextResponse.json(
+      { error: 'Unable to delete the account right now. Please try again or contact support.' },
+      { status: 500 },
+    );
+  }
 }

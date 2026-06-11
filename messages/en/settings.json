@@ -121,6 +121,14 @@
     "signingOut": "signing out",
     "confirmSignOut": "yes — sign out"
   },
+  "deleteAccount": {
+    "text": "Deleting your account removes your profile, chat history, and solo teams permanently. Teams with other members keep their work.",
+    "button": "delete account",
+    "typeToConfirm": "Type {word} to confirm. This cannot be undone.",
+    "confirm": "delete forever",
+    "deleting": "deleting",
+    "failed": "Couldn't delete the account. Please try again."
+  },
   "common": {
     "saving": "saving",
     "cancel": "cancel",

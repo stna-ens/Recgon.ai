@@ -121,6 +121,14 @@
     "signingOut": "çıkış yapılıyor",
     "confirmSignOut": "evet — çıkış yap"
   },
+  "deleteAccount": {
+    "text": "Hesabını silmek profilini, sohbet geçmişini ve tek kişilik takımlarını kalıcı olarak kaldırır. Başka üyeleri olan takımların çalışmaları korunur.",
+    "button": "hesabı sil",
+    "typeToConfirm": "Onaylamak için {word} yaz. Bu işlem geri alınamaz.",
+    "confirm": "kalıcı olarak sil",
+    "deleting": "siliniyor",
+    "failed": "Hesap silinemedi. Lütfen tekrar dene."
+  },
   "common": {
     "saving": "kaydediliyor",
     "cancel": "vazgeç",

@@ -109,6 +109,12 @@ function V2SettingsPageInner() {
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  // Account deletion — typed confirmation gate
+  const [deleteArmed, setDeleteArmed] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   // TOC scroll-spy
   const [activeSection, setActiveSection] = useState<string>('sect-identity');
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -424,6 +430,25 @@ function V2SettingsPageInner() {
     setSigningOut(true);
     await signOut({ callbackUrl: '/login' });
   }, []);
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      const res = await fetch('/api/account', { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDeleteError(data.error || t('deleteAccount.failed'));
+        setDeleting(false);
+        return;
+      }
+      await signOut({ callbackUrl: '/landing' });
+    } catch {
+      setDeleteError(t('deleteAccount.failed'));
+      setDeleting(false);
+    }
+  }, [deleting, t]);
 
   // Derived
   const pendingWaitlistEntries = useMemo(
@@ -988,6 +1013,54 @@ function V2SettingsPageInner() {
                           {signingOut ? <><Spinner /> {t('session.signingOut')}</> : t('session.confirmSignOut')}
                         </button>
                       </>
+                    )}
+                  </div>
+
+                  <div className="v2-uset-delete-block">
+                    <p className="v2-uset-destroy-text">{t('deleteAccount.text')}</p>
+                    {!deleteArmed ? (
+                      <button
+                        type="button"
+                        className="v2-uset-btn v2-uset-btn-danger-ghost"
+                        onClick={() => { setDeleteArmed(true); setDeleteError(''); }}
+                      >
+                        {t('deleteAccount.button')}
+                      </button>
+                    ) : (
+                      <div className="v2-uset-delete-confirm">
+                        <label className="v2-uset-destroy-text" htmlFor="uset-delete-input">
+                          {t('deleteAccount.typeToConfirm', { word: 'DELETE' })}
+                        </label>
+                        <input
+                          id="uset-delete-input"
+                          className="ui-input"
+                          type="text"
+                          autoComplete="off"
+                          value={deleteInput}
+                          onChange={(e) => setDeleteInput(e.target.value)}
+                          placeholder="DELETE"
+                          disabled={deleting}
+                        />
+                        {deleteError && <p className="v2-uset-delete-error" role="alert">{deleteError}</p>}
+                        <div className="v2-uset-destroy-actions">
+                          <button
+                            type="button"
+                            className="v2-uset-btn v2-uset-btn-ghost"
+                            onClick={() => { setDeleteArmed(false); setDeleteInput(''); setDeleteError(''); }}
+                            disabled={deleting}
+                          >
+                            {t('common.cancel')}
+                          </button>
+                          <button
+                            type="button"
+                            className="v2-uset-btn v2-uset-btn-danger"
+                            onClick={handleDeleteAccount}
+                            disabled={deleting || deleteInput !== 'DELETE'}
+                          >
+                            {deleting ? <><Spinner /> {t('deleteAccount.deleting')}</> : t('deleteAccount.confirm')}
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1733,6 +1806,23 @@ const styles = `
   .v2-uset-destroy-actions {
     display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
     padding: 0 28px 22px;
+  }
+  .v2-uset-delete-block {
+    border-top: 1px solid var(--rule);
+    margin-top: 6px;
+    padding-top: 16px;
+  }
+  .v2-uset-delete-confirm {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 0 28px 22px;
+    max-width: 360px;
+  }
+  .v2-uset-delete-confirm .v2-uset-destroy-actions { padding: 0; }
+  .v2-uset-delete-error {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--danger);
+    line-height: 1.5;
   }
   .v2-uset-destroy-confirm {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
