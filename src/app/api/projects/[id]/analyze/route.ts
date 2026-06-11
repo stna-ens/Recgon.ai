@@ -171,7 +171,6 @@ export async function POST(
 
             if (diff && diff.files.length > 0) {
               const diffStr = formatDiff(diff);
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               const { analyzedAt: _, improvements: _imp, nextStepsTaken: _nst, ...existingAnalysis } = project.analysis! as ProductAnalysis & { improvements?: unknown; nextStepsTaken?: unknown };
               analysis = await analyzeCodebaseUpdate(existingAnalysis, diffStr, (message) => {
                 send({ type: 'progress', message });

@@ -135,7 +135,7 @@ export default async function OpengraphImage() {
               display: 'flex',
             }}
           >
-            // THE COACH SOLO FOUNDERS DON'T HAVE
+            {"// THE COACH SOLO FOUNDERS DON'T HAVE"}
           </div>
 
           {/* Headline */}

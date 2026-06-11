@@ -31,7 +31,9 @@ Next.js 15 (App Router) + TypeScript + Tailwind. AI via multi-provider chain: Ge
 
 ### Auth
 - `src/auth.ts` — NextAuth config
-- `src/middleware.ts` — route protection (public: `/login`, `/register`, `/landing`, `/teams/setup`, `/teams/invite/**`, `/api/auth/**`)
+- `src/proxy.ts` — route protection + CSRF origin check (Next 16 renamed middleware → proxy; there is NO `middleware.ts`). Public: `/login`, `/register`, `/forgot-password`, `/landing`; logged-out `/` → `/landing`; other pages → `/login?callbackUrl=…`. Mobile UAs are blocked to `/landing`.
+- `src/lib/passwordPolicy.ts` — shared password rules (register, reset, change-password)
+- `/forgot-password` page + `/api/auth/forgot-password` + `/api/auth/reset-password` — OTP-based reset, reuses `email_verifications`
 - `src/lib/userStorage.ts` — user CRUD → Supabase `users` table
 
 ### Data
