@@ -98,5 +98,13 @@
     "p1": "low",
     "p2": "normal",
     "p3": "high"
+  },
+  "shortcuts": {
+    "heading": "Keyboard shortcuts",
+    "navigate": "Move between tasks",
+    "open": "Open the selected task",
+    "close": "Close panel / dialog",
+    "palette": "Command palette",
+    "help": "This help"
   }
 }

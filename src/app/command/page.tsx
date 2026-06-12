@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import useSWR from 'swr';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { Skeleton } from '@/components/ui';
+import { Skeleton, Modal } from '@/components/ui';
 import TeamTaskTable from '@/components/v2/command/TeamTaskTable';
 import DecisionStack from '@/components/v2/command/DecisionStack';
 import { TaskDetailPanel } from '@/components/v2/calendar/TaskDetailPanel';
@@ -98,6 +98,20 @@ function CommandPageInner() {
     return data.teammates.find((tm) => tm.userId === uid)?.id ?? null;
   }, [session?.user?.id, data?.teammates]);
 
+  // "?" opens the shortcut help (unless typing in a field).
+  const [helpOpen, setHelpOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+      e.preventDefault();
+      setHelpOpen((v) => !v);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <div className="v2-mc">
       <header className="v2-mc-hero">
@@ -148,9 +162,20 @@ function CommandPageInner() {
             teammates={data?.teammates ?? []}
             projects={data?.projects ?? []}
             onOpen={openTask}
+            shortcutsEnabled={openTaskId == null && !helpOpen}
           />
         </>
       )}
+
+      <Modal open={helpOpen} onOpenChange={setHelpOpen} title={t('shortcuts.heading')} size="sm">
+        <dl className="v2-mc-keys">
+          <div><dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>{t('shortcuts.navigate')}</dd></div>
+          <div><dt><kbd>↵</kbd></dt><dd>{t('shortcuts.open')}</dd></div>
+          <div><dt><kbd>esc</kbd></dt><dd>{t('shortcuts.close')}</dd></div>
+          <div><dt><kbd>⌘K</kbd></dt><dd>{t('shortcuts.palette')}</dd></div>
+          <div><dt><kbd>?</kbd></dt><dd>{t('shortcuts.help')}</dd></div>
+        </dl>
+      </Modal>
 
       <TaskDetailPanel
         task={openedTask ? (openedTask as unknown as AgentTask) : null}
@@ -294,7 +319,21 @@ function CommandPageInner() {
         }
         .v2-mc-sort:hover, .v2-mc-sort[data-active="true"] { color: var(--txt-muted); }
         .v2-mc-row { cursor: pointer; transition: background var(--dur-base, 0.18s) ease; }
-        .v2-mc-row:hover, .v2-mc-row:focus-visible { background: var(--glass-hover, rgba(255,255,255,0.03)); outline: none; }
+        .v2-mc-row:hover, .v2-mc-row:focus-visible, .v2-mc-row.is-kbd-active { background: var(--glass-hover, rgba(255,255,255,0.03)); outline: none; }
+        .v2-mc-row.is-kbd-active td:first-child { box-shadow: inset 2px 0 0 var(--signature); }
+        .v2-mc-keys { display: grid; gap: 10px; margin: 0; }
+        .v2-mc-keys div { display: flex; align-items: baseline; gap: 14px; }
+        .v2-mc-keys dt { min-width: 70px; }
+        .v2-mc-keys dd { margin: 0; color: var(--txt-muted); font-size: 13px; }
+        .v2-mc-keys kbd {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px;
+          font-weight: 600;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid var(--rule, rgba(255,255,255,0.1));
+          border-radius: 4px;
+          padding: 1px 6px;
+        }
         .v2-mc-row td {
           padding: 11px 14px;
           border-bottom: 1px solid var(--rule, rgba(255,255,255,0.05));

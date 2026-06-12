@@ -98,5 +98,13 @@
     "p1": "düşük",
     "p2": "normal",
     "p3": "yüksek"
+  },
+  "shortcuts": {
+    "heading": "Klavye kısayolları",
+    "navigate": "Görevler arasında gez",
+    "open": "Seçili görevi aç",
+    "close": "Paneli / pencereyi kapat",
+    "palette": "Komut paleti",
+    "help": "Bu yardım"
   }
 }

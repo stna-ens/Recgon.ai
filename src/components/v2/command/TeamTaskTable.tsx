@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import Select from '@/components/Select';
 import { EmptyState } from '@/components/ui';
 import { formatDay } from '@/lib/datetime';
+import { useListShortcuts } from '@/lib/useListShortcuts';
 import type { CommandProject, CommandTask, CommandTeammate } from './types';
 
 type T = ReturnType<typeof useTranslations<'command'>>;
@@ -55,9 +56,11 @@ export interface TeamTaskTableProps {
   teammates: CommandTeammate[];
   projects: CommandProject[];
   onOpen: (task: CommandTask) => void;
+  // False while the detail panel is open so j/k don't move under it.
+  shortcutsEnabled?: boolean;
 }
 
-export default function TeamTaskTable({ tasks, teammates, projects, onOpen }: TeamTaskTableProps) {
+export default function TeamTaskTable({ tasks, teammates, projects, onOpen, shortcutsEnabled = true }: TeamTaskTableProps) {
   const t = useTranslations('command');
   const locale = useLocale();
   const [search, setSearch] = useState('');
@@ -120,6 +123,27 @@ export default function TeamTaskTable({ tasks, teammates, projects, onOpen }: Te
     });
     return rows;
   }, [tasks, search, status, kind, assignee, project, priority, sortKey, sortDir]);
+
+  const openByIndex = useCallback(
+    (idx: number) => {
+      const task = filtered[idx];
+      if (task) onOpen(task);
+    },
+    [filtered, onOpen],
+  );
+  const [activeIdx, setActiveIdx] = useListShortcuts({
+    count: filtered.length,
+    enabled: shortcutsEnabled,
+    onOpen: openByIndex,
+  });
+
+  // Keep the keyboard-active row visible.
+  useEffect(() => {
+    if (activeIdx < 0) return;
+    document
+      .querySelector(`.v2-mc-row[data-idx="${activeIdx}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [activeIdx]);
 
   const toggleSort = (key: Exclude<SortKey, 'default'>) => {
     if (sortKey === key) {
@@ -239,15 +263,17 @@ export default function TeamTaskTable({ tasks, teammates, projects, onOpen }: Te
               </tr>
             </thead>
             <tbody>
-              {filtered.map((task) => {
+              {filtered.map((task, idx) => {
                 const tm = task.assignedTo ? teammateById.get(task.assignedTo) : null;
                 const due = task.deadline ?? task.scheduledUntilDate ?? task.scheduledDate;
                 return (
                   <tr
                     key={task.id}
-                    className="v2-mc-row"
+                    className={`v2-mc-row${idx === activeIdx ? ' is-kbd-active' : ''}`}
+                    data-idx={idx}
                     tabIndex={0}
                     onClick={() => onOpen(task)}
+                    onMouseEnter={() => setActiveIdx(idx)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
