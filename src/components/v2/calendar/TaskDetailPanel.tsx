@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { formatDay } from '@/lib/datetime';
 import { ProofDropZone } from '@/components/ProofDropZone';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { AgentTask } from '@/lib/recgon/types';
@@ -21,11 +22,8 @@ function toDateInput(value: string | null | undefined): string {
   return value.slice(0, 10);
 }
 
-function fmtRequestedDay(task: AgentTask): string | null {
-  if (!task.rescheduleRequestedDate) return null;
-  const d = new Date(`${task.rescheduleRequestedDate}T00:00:00`);
-  if (!Number.isFinite(d.getTime())) return null;
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+function fmtRequestedDay(task: AgentTask, locale: string): string | null {
+  return formatDay(task.rescheduleRequestedDate, locale) || null;
 }
 
 // Phase 3 / Plan 03 — the API may decorate `AgentTask` with a pre-rendered
@@ -181,6 +179,7 @@ type Props = {
 
 export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onClose, onRefresh }: Props) {
   const t = useTranslations('calendar');
+  const locale = useLocale();
   const { addToast } = useToast();
   const confirm = useConfirm();
   const [working, setWorking] = useState(false);
@@ -417,11 +416,11 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
               <section className="cal-panel-section">
                 <span className="cal-panel-section-eyebrow">{t('panel.scheduled')}</span>
                 <p className="cal-panel-section-text">
-                  {new Date(`${task.scheduledDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                  {formatDay(task.scheduledDate, locale, 'long')}
                   {task.scheduledUntilDate && task.scheduledUntilDate > task.scheduledDate && (
                     <>
                       {' → '}
-                      {new Date(`${task.scheduledUntilDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                      {formatDay(task.scheduledUntilDate, locale, 'long')}
                     </>
                   )}
                 </p>
@@ -466,8 +465,8 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
             {hasPendingReschedule && (
               <section className="cal-panel-section is-reschedule">
                 <span className="cal-panel-section-eyebrow is-reschedule">{t('panel.rescheduleRequested')}</span>
-                {fmtRequestedDay(task) && (
-                  <p className="cal-panel-section-text">{fmtRequestedDay(task)}</p>
+                {fmtRequestedDay(task, locale) && (
+                  <p className="cal-panel-section-text">{fmtRequestedDay(task, locale)}</p>
                 )}
                 {task.rescheduleRequestNote && (
                   <p className="cal-panel-section-note">{task.rescheduleRequestNote}</p>

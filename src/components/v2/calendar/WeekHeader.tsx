@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { formatDayHeader, isToday } from './calendarUtils';
 
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
 
 export function WeekHeader({ dayDates, activeDayIndex, rowLabel = 'member' }: Props) {
   const t = useTranslations('calendar');
+  const locale = useLocale();
   return (
     <>
       <div className="cal-corner">
@@ -24,7 +25,7 @@ export function WeekHeader({ dayDates, activeDayIndex, rowLabel = 'member' }: Pr
       {dayDates.map((day, di) => {
         const hidden = activeDayIndex !== null && di !== activeDayIndex;
         const today = isToday(day);
-        const { weekday, date } = formatDayHeader(day);
+        const { weekday, date } = formatDayHeader(day, locale);
         return (
           <div
             key={di}

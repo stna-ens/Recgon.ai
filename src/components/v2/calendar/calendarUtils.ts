@@ -56,10 +56,10 @@ export function localDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function formatDayHeader(d: Date): { weekday: string; date: string } {
+export function formatDayHeader(d: Date, locale: string): { weekday: string; date: string } {
   return {
-    weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
-    date: d.toLocaleDateString('en-US', { day: 'numeric' }),
+    weekday: d.toLocaleDateString(locale, { weekday: 'short' }).toUpperCase(),
+    date: d.toLocaleDateString(locale, { day: 'numeric' }),
   };
 }
 

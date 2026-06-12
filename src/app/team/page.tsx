@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { relTimeParts } from '@/lib/datetime';
 import { useSession } from 'next-auth/react';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -61,13 +62,9 @@ function initials(name: string): string {
 type Translator = ReturnType<typeof useTranslations<'teams'>>;
 
 function relTime(iso: string, t: Translator): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(ms / 60_000);
-  if (mins < 1) return t('admin.time.justNow');
-  if (mins < 60) return t('admin.time.minutes', { count: mins });
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return t('admin.time.hours', { count: hrs });
-  return t('admin.time.days', { count: Math.floor(hrs / 24) });
+  const p = relTimeParts(iso);
+  if (!p || p.unit === 'justNow') return t('admin.time.justNow');
+  return t(`admin.time.${p.unit}`, { count: p.count });
 }
 
 // Match v1: "Xh left" / "Xd left" until expiry.

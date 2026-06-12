@@ -5,7 +5,8 @@ import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { formatDay, relTimeParts } from '@/lib/datetime';
 import { useConfirm } from '@/components/ui';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { Teammate, VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
@@ -52,23 +53,19 @@ const KIND_LABEL: Record<string, string> = {
 const LIVE = new Set(['unassigned', 'assigned', 'accepted', 'in_progress', 'awaiting_review']);
 const DONE = new Set(['done', 'completed', 'verified']);
 
-function relTime(iso: string | null): string {
-  if (!iso) return '';
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return 'just now';
-  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m ago`;
-  if (ms < 86_400_000) return `${Math.round(ms / 3_600_000)}h ago`;
-  return `${Math.round(ms / 86_400_000)}d ago`;
+type TasksTranslator = ReturnType<typeof useTranslations<'tasks'>>;
+
+function relTime(iso: string | null, tr: TasksTranslator): string {
+  const p = relTimeParts(iso);
+  if (!p) return '';
+  if (p.unit === 'justNow') return tr('relTime.justNow');
+  return tr(`relTime.${p.unit}`, { count: p.count });
 }
 
-function fmtSchedule(t: Pick<Task, 'scheduledDate' | 'deadline'>): string | null {
-  if (t.scheduledDate) {
-    const d = new Date(`${t.scheduledDate}T00:00:00`);
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
+function fmtSchedule(t: Pick<Task, 'scheduledDate' | 'deadline'>, locale: string, tr: TasksTranslator): string | null {
+  if (t.scheduledDate) return formatDay(t.scheduledDate, locale);
   if (!t.deadline) return null;
-  const due = new Date(t.deadline);
-  return `due ${due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`;
+  return tr('schedule.due', { date: formatDay(t.deadline, locale) });
 }
 
 function priorityChip(p: number): { label: string; color: string } | null {
@@ -117,6 +114,9 @@ export function ProjectTasksListView() {
   const { addToast } = useToast();
   // Same override/cancel flows as the calendar's TaskDetailPanel — reuse its strings.
   const tConfirm = useTranslations('calendar.confirm');
+  // Relative-time + schedule strings shared with the personal tasks page.
+  const tTasks = useTranslations('tasks');
+  const locale = useLocale();
   const confirmDialog = useConfirm();
 
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -335,8 +335,8 @@ export function ProjectTasksListView() {
     const needsProof = t.verificationStatus === 'proof_requested' || t.verificationStatus === 'failed';
     const canVerify = t.status === 'awaiting_review' || needsProof;
     const isOpen = LIVE.has(t.status);
-    const schedule = fmtSchedule(t);
-    const time = relTime(t.assignedAt);
+    const schedule = fmtSchedule(t, locale, tTasks);
+    const time = relTime(t.assignedAt, tTasks);
     const assignee = t.assignedTo ? teammateById.get(t.assignedTo) : undefined;
 
     // Only the rows that block the owner pick up a left-edge accent. Verifying

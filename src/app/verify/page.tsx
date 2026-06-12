@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { relTimeParts } from '@/lib/datetime';
 import { ArrowLeft, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, ShieldCheck, UploadCloud, XCircle } from 'lucide-react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
@@ -93,12 +94,10 @@ function filterLabel(value: FilterKey, t: Translator): string {
 }
 
 function relTime(iso: string | null, t: Translator): string {
-  if (!iso) return '';
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return t('verify.time.justNow');
-  if (ms < 3_600_000) return t('verify.time.minutesAgo', { count: Math.round(ms / 60_000) });
-  if (ms < 86_400_000) return t('verify.time.hoursAgo', { count: Math.round(ms / 3_600_000) });
-  return t('verify.time.daysAgo', { count: Math.round(ms / 86_400_000) });
+  const p = relTimeParts(iso);
+  if (!p) return '';
+  if (p.unit === 'justNow') return t('verify.time.justNow');
+  return t(`verify.time.${p.unit}Ago`, { count: p.count });
 }
 
 function cleanText(s: string): string {

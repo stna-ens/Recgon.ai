@@ -1,7 +1,8 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { formatDay, relTimeParts } from '@/lib/datetime';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useTeam } from '@/components/TeamProvider';
@@ -73,26 +74,14 @@ const KIND_LABEL: Record<string, string> = {
   custom: 'task',
 };
 
-type RelTime = { unit: 'justNow' | 'minutes' | 'hours' | 'days'; count: number };
-function relTime(iso: string | null): RelTime | null {
-  if (!iso) return null;
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return { unit: 'justNow', count: 0 };
-  if (ms < 3_600_000) return { unit: 'minutes', count: Math.round(ms / 60_000) };
-  if (ms < 86_400_000) return { unit: 'hours', count: Math.round(ms / 3_600_000) };
-  return { unit: 'days', count: Math.round(ms / 86_400_000) };
-}
-
 // Returns the localized date string plus whether it represents a deadline
 // (which the caller wraps in the "due {date}" message).
-function fmtSchedule(item: Pick<TaskItem, 'scheduled_date' | 'deadline'>): { date: string; isDeadline: boolean } | null {
+function fmtSchedule(item: Pick<TaskItem, 'scheduled_date' | 'deadline'>, locale: string): { date: string; isDeadline: boolean } | null {
   if (item.scheduled_date) {
-    const d = new Date(`${item.scheduled_date}T00:00:00`);
-    return { date: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), isDeadline: false };
+    return { date: formatDay(item.scheduled_date, locale), isDeadline: false };
   }
   if (!item.deadline) return null;
-  const due = new Date(item.deadline);
-  return { date: due.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), isDeadline: true };
+  return { date: formatDay(item.deadline, locale), isDeadline: true };
 }
 
 function toDateInput(value: string | null | undefined): string {
@@ -101,11 +90,8 @@ function toDateInput(value: string | null | undefined): string {
   return value.slice(0, 10);
 }
 
-function fmtRescheduleRequest(t: Pick<TaskItem, 'reschedule_requested_date'>): string | null {
-  if (!t.reschedule_requested_date) return null;
-  const d = new Date(`${t.reschedule_requested_date}T00:00:00`);
-  if (!Number.isFinite(d.getTime())) return null;
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+function fmtRescheduleRequest(t: Pick<TaskItem, 'reschedule_requested_date'>, locale: string): string | null {
+  return formatDay(t.reschedule_requested_date, locale) || null;
 }
 
 function priorityChip(p: number): { labelKey: 'urgent' | 'high'; color: string } | null {
@@ -140,6 +126,7 @@ function validDrop(from: ColumnKey, to: ColumnKey): 'accept' | 'complete' | null
 
 function V2TasksInner() {
   const t = useTranslations('tasks');
+  const locale = useLocale();
   const { projects: teamProjects } = useTeam();
   const projects = useMemo(() => teamProjects ?? [], [teamProjects]);
   const { addToast } = useToast();
@@ -590,7 +577,7 @@ function V2TasksInner() {
                       const proof = needsProof(task);
                       const reschedulePending = task.reschedule_request_status === 'pending';
                       const isDragging = draggedId === task.id;
-                      const schedule = fmtSchedule(task);
+                      const schedule = fmtSchedule(task, locale);
                       return (
                         <article
                           key={task.id}
@@ -645,7 +632,7 @@ function V2TasksInner() {
                               const tier = ((task.overdue_tier ?? 0) as 0 | 1 | 2 | 3);
                               return <OverdueChip tier={tier} days={days} ownerView={false} />;
                             })()}
-                            <span className="v2-tasks-card-time">{(() => { const r = relTime(task.assigned_at); return r ? (r.unit === 'justNow' ? t('relTime.justNow') : t(`relTime.${r.unit}`, { count: r.count })) : ''; })()}</span>
+                            <span className="v2-tasks-card-time">{(() => { const r = relTimeParts(task.assigned_at); return r ? (r.unit === 'justNow' ? t('relTime.justNow') : t(`relTime.${r.unit}`, { count: r.count })) : ''; })()}</span>
                           </div>
                         </article>
                       );
@@ -666,10 +653,10 @@ function V2TasksInner() {
         const proof = needsProof(task);
         const isAssigned = task.status === 'assigned';
         const isInFlight = task.status === 'accepted' || task.status === 'in_progress';
-        const schedule = fmtSchedule(task);
+        const schedule = fmtSchedule(task, locale);
         const reschedulePending = task.reschedule_request_status === 'pending';
-        const requestedWindow = fmtRescheduleRequest(task);
-        const rel = relTime(task.assigned_at);
+        const requestedWindow = fmtRescheduleRequest(task, locale);
+        const rel = relTimeParts(task.assigned_at);
         return (
           <div className="v2-tasks-overlay" onClick={() => setExpanded(null)}>
             <aside
