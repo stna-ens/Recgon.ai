@@ -276,7 +276,7 @@ export async function POST(request: NextRequest) {
             try {
               text = response.text();
             } catch (e) {
-              console.error('[chat] response.text() threw', e);
+              logger.error('chat: response.text() threw', e);
             }
             if (text) {
               emit(text);
@@ -295,7 +295,10 @@ export async function POST(request: NextRequest) {
             fullResponse += msg;
           }
         } catch (err) {
-          const msg = `\n\n_(error: ${err instanceof Error ? err.message : 'unknown'})_\n`;
+          // Log the real error server-side; never stream raw exception text
+          // (provider/internal details) into the user-visible transcript.
+          logger.error('chat: stream failed', err);
+          const msg = '\n\n_(something went wrong — try again)_\n';
           emit(msg);
           fullResponse += msg;
         } finally {
@@ -334,7 +337,7 @@ export async function POST(request: NextRequest) {
                 : null;
               if (match) await setConversationProject(userId, resolvedConvId, match);
             } catch (err) {
-              console.error('[chat classify] failed', err);
+              logger.error('chat: project classify failed', err);
             }
           }
         }
