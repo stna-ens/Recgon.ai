@@ -15,6 +15,7 @@ const NAV: NavItem[] = [
   { href: '/', key: 'home' },
   { href: '/projects', key: 'projects', matchPrefix: true },
   { href: '/tasks', key: 'tasks', matchPrefix: true },
+  { href: '/command', key: 'command', matchPrefix: true },
   { href: '/calendar', key: 'calendar', matchPrefix: true },
   { href: '/terminal', key: 'terminal', matchPrefix: true },
 ];

@@ -16,6 +16,7 @@ const NAMESPACES = [
   'home',
   'projects',
   'tasks',
+  'command',
   'calendar',
   'teams',
   'settings',

@@ -1,0 +1,101 @@
+{
+  "title": "Komuta",
+  "subtitle": "Ekibinin üzerinde çalıştığı her şey — ve senden karar bekleyenler.",
+  "loadFailed": "Ekibin görevleri yüklenemedi — sayfayı yenilemeyi dene.",
+  "stats": {
+    "active": "aktif",
+    "queued": "sırada",
+    "review": "incelemede",
+    "overdue": "gecikmiş"
+  },
+  "decisions": {
+    "heading": "Kararını bekleyenler",
+    "empty": "Seni bekleyen bir şey yok. Gerisini Recgon hallediyor.",
+    "groups": {
+      "reschedule": "Erteleme istekleri",
+      "overdue": "Ciddi şekilde gecikmiş",
+      "triaged": "Atama bekleyenler",
+      "review": "İnceleme bekleyenler"
+    },
+    "reschedule": {
+      "requestedFor": "{date} tarihine almak istiyor",
+      "noDate": "ertelemek istedi",
+      "approve": "Onayla",
+      "deny": "Reddet",
+      "approved": "Ertelendi",
+      "denied": "İstek reddedildi — takvim değişmedi",
+      "failed": "İstek güncellenemedi — tekrar dene"
+    },
+    "triaged": {
+      "assign": "Şuna ata…",
+      "assigned": "{name} kişisine atandı",
+      "assignFailed": "Atanamadı — tekrar dene",
+      "cancel": "Görevi iptal et",
+      "cancelled": "Görev iptal edildi",
+      "cancelConfirmTitle": "Bu görev iptal edilsin mi?",
+      "cancelConfirmBody": "Görev kuyruktan kaldırılacak. Bu işlem geri alınamaz."
+    },
+    "overdue": {
+      "daysLate": "{count, plural, =1 {1 gün gecikti} other {# gün gecikti}}",
+      "snoozed": "{count} gün ertelendi",
+      "snoozeFailed": "Ertelenemedi — tekrar dene",
+      "snooze1": "+1 gün",
+      "snooze3": "+3 gün",
+      "snooze7": "+7 gün"
+    },
+    "review": {
+      "open": "Doğrulamada aç"
+    }
+  },
+  "table": {
+    "heading": "Tüm görevler",
+    "search": "Görev ara…",
+    "filters": {
+      "status": "Durum",
+      "kind": "Tür",
+      "assignee": "Atanan",
+      "project": "Proje",
+      "priority": "Öncelik",
+      "all": "Tümü",
+      "clear": "Filtreleri temizle"
+    },
+    "columns": {
+      "task": "Görev",
+      "project": "Proje",
+      "assignee": "Atanan",
+      "status": "Durum",
+      "priority": "Öncelik",
+      "due": "Termin",
+      "hours": "Süre"
+    },
+    "unassigned": "Atanmamış",
+    "hoursShort": "{count}s",
+    "empty": "Bu filtrelere uyan görev yok.",
+    "emptyTeam": "Henüz görev yok — Recgon projelerinden görev üretecek; istersen bir projenin görev listesinden de oluşturabilirsin.",
+    "count": "{count, plural, =1 {1 görev} other {# görev}}"
+  },
+  "status": {
+    "unassigned": "sırada",
+    "assigned": "atandı",
+    "accepted": "kabul edildi",
+    "in_progress": "devam ediyor",
+    "awaiting_review": "incelemede",
+    "completed": "tamamlandı",
+    "declined": "reddedildi",
+    "failed": "başarısız",
+    "cancelled": "iptal edildi"
+  },
+  "kind": {
+    "next_step": "sonraki adım",
+    "dev_prompt": "geliştirme",
+    "marketing": "pazarlama",
+    "analytics": "analitik",
+    "research": "araştırma",
+    "custom": "özel"
+  },
+  "priority": {
+    "p1": "düşük",
+    "p2": "normal",
+    "p3": "yüksek"
+  }
+}

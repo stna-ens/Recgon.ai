@@ -1,0 +1,101 @@
+{
+  "title": "Command",
+  "subtitle": "Everything your team is working on — and what needs you.",
+  "loadFailed": "Couldn't load the team's tasks — try refreshing.",
+  "stats": {
+    "active": "active",
+    "queued": "queued",
+    "review": "in review",
+    "overdue": "overdue"
+  },
+  "decisions": {
+    "heading": "Needs your decision",
+    "empty": "Nothing is waiting on you. Recgon is handling the rest.",
+    "groups": {
+      "reschedule": "Reschedule requests",
+      "overdue": "Seriously overdue",
+      "triaged": "Waiting for assignment",
+      "review": "Awaiting review"
+    },
+    "reschedule": {
+      "requestedFor": "wants to move it to {date}",
+      "noDate": "asked to reschedule",
+      "approve": "Approve",
+      "deny": "Deny",
+      "approved": "Rescheduled",
+      "denied": "Request denied — schedule unchanged",
+      "failed": "Couldn't update the request — try again"
+    },
+    "triaged": {
+      "assign": "Assign to…",
+      "assigned": "Assigned to {name}",
+      "assignFailed": "Couldn't assign — try again",
+      "cancel": "Cancel task",
+      "cancelled": "Task cancelled",
+      "cancelConfirmTitle": "Cancel this task?",
+      "cancelConfirmBody": "It will be removed from the queue. This can't be undone."
+    },
+    "overdue": {
+      "daysLate": "{count, plural, =1 {1 day late} other {# days late}}",
+      "snoozed": "Snoozed {count} days",
+      "snoozeFailed": "Couldn't snooze — try again",
+      "snooze1": "+1 day",
+      "snooze3": "+3 days",
+      "snooze7": "+7 days"
+    },
+    "review": {
+      "open": "Open in Verify"
+    }
+  },
+  "table": {
+    "heading": "All tasks",
+    "search": "Search tasks…",
+    "filters": {
+      "status": "Status",
+      "kind": "Type",
+      "assignee": "Assignee",
+      "project": "Project",
+      "priority": "Priority",
+      "all": "All",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "task": "Task",
+      "project": "Project",
+      "assignee": "Assignee",
+      "status": "Status",
+      "priority": "Priority",
+      "due": "Due",
+      "hours": "Est."
+    },
+    "unassigned": "Unassigned",
+    "hoursShort": "{count}h",
+    "empty": "No tasks match these filters.",
+    "emptyTeam": "No tasks yet — Recgon will mint them from your projects, or create one from a project's task list.",
+    "count": "{count, plural, =1 {1 task} other {# tasks}}"
+  },
+  "status": {
+    "unassigned": "queued",
+    "assigned": "assigned",
+    "accepted": "accepted",
+    "in_progress": "in progress",
+    "awaiting_review": "in review",
+    "completed": "done",
+    "declined": "declined",
+    "failed": "failed",
+    "cancelled": "cancelled"
+  },
+  "kind": {
+    "next_step": "next step",
+    "dev_prompt": "dev",
+    "marketing": "marketing",
+    "analytics": "analytics",
+    "research": "research",
+    "custom": "custom"
+  },
+  "priority": {
+    "p1": "low",
+    "p2": "normal",
+    "p3": "high"
+  }
+}

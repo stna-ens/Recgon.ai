@@ -2,6 +2,7 @@
   "home": "Home",
   "projects": "Projects",
   "tasks": "Tasks",
+  "command": "Command",
   "calendar": "Calendar",
   "terminal": "Terminal"
 }
