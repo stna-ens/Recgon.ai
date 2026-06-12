@@ -376,6 +376,10 @@ export type JudgeTaskInput = {
   requiredSkills: string[];
   estimatedHours: number;
   candidates: JudgeCandidateInput[];       // length 2 or 3 only
+  // Phase B6 — bounded, author-anonymized, <user_content>-wrapped comment
+  // block (buildRecentCommentsBlock). Untrusted context about the task's
+  // substance; never carries names (anonymity boundary holds).
+  discussion?: string | null;
 };
 
 // Written to `agent_tasks.assignment_reasoning` JSONB by Plan 03. Plan 01

@@ -150,6 +150,11 @@ async function judgeWithLLM(task: AgentTask, bundle: EvidenceBundle): Promise<Ve
     : bundle.source === 'none' ? 'none'
     : 'proof_payload';
 
+  // Phase B6 — the discussion thread helps interpret evidence ("deployed
+  // it under /v2 instead"), wrapped untrusted and explicitly non-evidence.
+  const { buildRecentCommentsBlock } = await import('./commentStorage');
+  const discussion = await buildRecentCommentsBlock(task.id).catch(() => null);
+
   const raw = await chatViaProviders(
     VERIFY_TASK_SYSTEM,
     verifyTaskUserPrompt({
@@ -158,6 +163,7 @@ async function judgeWithLLM(task: AgentTask, bundle: EvidenceBundle): Promise<Ve
       taskKind: task.kind,
       evidence: bundle.text,
       evidenceSource: promptSource,
+      discussion,
     }),
     { temperature: 0.2, maxTokens: 2048, taskKind: 'task_verification' as never },
   );

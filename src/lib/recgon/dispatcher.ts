@@ -48,6 +48,7 @@ import {
   type WhyYouChatAdapter,
 } from './whyYouLLM';
 import { enqueueReframeJob } from './reframeEnqueue';
+import { buildRecentCommentsBlock } from './commentStorage';
 import {
   checkAndIncrement,
   alertCapExceededOnce,
@@ -511,9 +512,25 @@ async function applyJudgmentIfClose(
     [...candidateUserIds],
   );
 
+  // Phase B6 — discussion context per close-call task. Bounded (≤5
+  // comments, ≤1500 chars each task), author-anonymized, untrusted-wrapped
+  // by buildRecentCommentsBlock. Best-effort: a failed load = no block.
+  const discussionByTaskId = new Map<string, string | null>();
+  await Promise.all(
+    closeCalls.map(async (entry) => {
+      const block = await buildRecentCommentsBlock(entry.task.id).catch(() => null);
+      discussionByTaskId.set(entry.task.id, block);
+    }),
+  );
+
   for (const entry of closeCalls) {
     const topN = entry.ranked.slice(0, 3); // max 3 by CONTEXT JUDGE-01
-    const input = buildJudgeTaskInput(entry.task, topN, recentByUser);
+    const input = buildJudgeTaskInput(
+      entry.task,
+      topN,
+      recentByUser,
+      discussionByTaskId.get(entry.task.id) ?? null,
+    );
 
     // Cache check: skip the LLM for tuples we've already judged. The cache
     // lives only for this dispatch run, but `dispatchTask` (manual single-
@@ -609,6 +626,7 @@ function buildJudgeTaskInput(
   task: AgentTask,
   topN: MatchResult[],
   recentByUser: Map<string, Array<{ kind: string; skills: string[]; avgRating?: number }>>,
+  discussion: string | null = null,
 ): JudgeTaskInput {
   return {
     taskId: task.id,
@@ -616,6 +634,7 @@ function buildJudgeTaskInput(
     kind: task.kind,
     requiredSkills: task.requiredSkills,
     estimatedHours: task.estimatedHours,
+    discussion,
     candidates: topN.map((m) => {
       const uid = (m.teammate as { userId?: string | null }).userId ?? m.teammate.id;
       const interests = ((m.teammate as { interests?: string[] }).interests) ?? [];

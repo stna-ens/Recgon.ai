@@ -474,6 +474,13 @@ export async function runTaskReframe(job: LLMJob): Promise<WorkerResult> {
   //    through to "send email with original description" so the assignee
   //    always hears about the task eventually.
   const { runReframe } = await import('../recgon/reframe');
+
+  // Phase B6 — the moat: feed the task's discussion thread (bounded,
+  // anonymized, untrusted-wrapped) into the reframe context. Best-effort;
+  // a failed load never blocks the reframe.
+  const { buildRecentCommentsBlock } = await import('../recgon/commentStorage');
+  const discussion = await buildRecentCommentsBlock(task.id).catch(() => null);
+
   let result: Awaited<ReturnType<typeof runReframe>>;
   try {
     result = await runReframe({
@@ -492,6 +499,7 @@ export async function runTaskReframe(job: LLMJob): Promise<WorkerResult> {
         (task.assignment_reasoning as import('../recgon/types').AssignmentReasoning | null) ??
         null,
       recentProjectState,
+      discussion,
     });
   } catch (err) {
     // FRAME-05 final-attempt fallback. ReframeError or any throw on the

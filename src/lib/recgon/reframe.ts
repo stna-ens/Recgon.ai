@@ -125,6 +125,10 @@ export type ReframeInputs = {
     recentAnalyticsChange?: string;
     recentTaskTitles?: string[];
   } | null;
+  // Phase B6 — bounded, anonymized, <user_content>-wrapped comment block
+  // (buildRecentCommentsBlock). Context only; the grounding validator still
+  // requires cited signals to come from the declared/recent-state sets.
+  discussion?: string | null;
 };
 
 /**
@@ -508,6 +512,7 @@ function adaptInputsForPrompt(inputs: ReframeInputs): {
     reasonSentence?: string | null;
   } | null;
   recentProjectState: ReframeInputs['recentProjectState'];
+  discussion?: string | null;
 } {
   const reasoning = inputs.assignmentReasoning;
   let block:
@@ -537,6 +542,7 @@ function adaptInputsForPrompt(inputs: ReframeInputs): {
     assignee: inputs.assignee,
     assignmentReasoning: block,
     recentProjectState: inputs.recentProjectState,
+    discussion: inputs.discussion ?? null,
   };
 }
 
