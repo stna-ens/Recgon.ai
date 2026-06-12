@@ -297,28 +297,70 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
     } finally { setWorking(false); }
   }, [task, working, addToast, confirm, onRefresh, t]);
 
-  // Owner reassign — uses the /decline endpoint which unassigns and
-  // re-dispatches via Recgon's matcher.
+  // Owner reassign. Two paths:
+  //   - "Let Recgon pick" → the /decline endpoint, which unassigns and
+  //     re-dispatches via the matcher (the original behavior).
+  //   - A specific teammate → POST /reassign, which replans the schedule
+  //     for that person and notifies them.
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [reassignPick, setReassignPick] = useState('auto');
+  const [reassignChoices, setReassignChoices] = useState<
+    Array<{ id: string; displayName: string }>
+  >([]);
+
+  useEffect(() => {
+    if (!reassignOpen || !task || reassignChoices.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/teams/${task.teamId}/teammates`);
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          teammates?: Array<{ id: string; displayName: string }>;
+        };
+        if (!cancelled && data.teammates) {
+          setReassignChoices(
+            data.teammates
+              .filter((tm) => tm.id !== task.assignedTo)
+              .map((tm) => ({ id: tm.id, displayName: tm.displayName })),
+          );
+        }
+      } catch { /* picker just shows the auto option */ }
+    })();
+    return () => { cancelled = true; };
+  }, [reassignOpen, task, reassignChoices.length]);
+
   const reassignTask = useCallback(async () => {
     if (!task || working) return;
     setWorking(true);
     try {
-      const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}/decline`, {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
-      });
-      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || t('toast.reassignFailed')); }
-      const { reassignedTo, ownerFallback } = await res.json().catch(() => ({}));
-      addToast(
-        ownerFallback ? t('toast.reassignNoMatch')
-        : reassignedTo ? t('toast.reassigned')
-        : t('toast.willReassign'),
-        'success',
-      );
+      if (reassignPick === 'auto') {
+        const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}/decline`, {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+        });
+        if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || t('toast.reassignFailed')); }
+        const { reassignedTo, ownerFallback } = await res.json().catch(() => ({}));
+        addToast(
+          ownerFallback ? t('toast.reassignNoMatch')
+          : reassignedTo ? t('toast.reassigned')
+          : t('toast.willReassign'),
+          'success',
+        );
+      } else {
+        const res = await fetch(`/api/teams/${task.teamId}/tasks/${task.id}/reassign`, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ teammateId: reassignPick }),
+        });
+        if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || t('toast.reassignFailed')); }
+        const name = reassignChoices.find((c) => c.id === reassignPick)?.displayName ?? '';
+        addToast(t('toast.reassignedTo', { name }), 'success');
+      }
+      setReassignOpen(false);
       onRefresh();
     } catch (err) {
       addToast(err instanceof Error ? err.message : t('toast.reassignFailed'), 'error');
     } finally { setWorking(false); }
-  }, [task, working, addToast, onRefresh, t]);
+  }, [task, working, reassignPick, reassignChoices, addToast, onRefresh, t]);
 
   // Owner cancel — keeps the task in history but stops execution.
   const cancelTask = useCallback(async () => {
@@ -513,7 +555,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                     </Button>
                   )}
                   {task.assignedTo && (
-                    <Button onClick={reassignTask} disabled={working}>
+                    <Button onClick={() => setReassignOpen((v) => !v)} disabled={working}>
                       {t('actions.reassign')}
                     </Button>
                   )}
@@ -521,6 +563,26 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                     {t('actions.cancelTask')}
                   </Button>
                 </div>
+                {reassignOpen && (
+                  <div className="cal-panel-reassign-row">
+                    <label className="cal-panel-field" style={{ flex: 1 }}>
+                      <span className="cal-panel-field-label">{t('panel.reassignPick')}</span>
+                      <select
+                        className="cal-panel-input is-mono"
+                        value={reassignPick}
+                        onChange={(e) => setReassignPick(e.target.value)}
+                      >
+                        <option value="auto">{t('panel.reassignAuto')}</option>
+                        {reassignChoices.map((c) => (
+                          <option key={c.id} value={c.id}>{c.displayName}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <Button variant="primary" onClick={reassignTask} loading={working}>
+                      {t('panel.reassignGo')}
+                    </Button>
+                  </div>
+                )}
               </section>
             )}
 
@@ -818,6 +880,12 @@ const css = `
   letter-spacing: 1.1px;
   text-transform: uppercase;
   color: var(--txt-faint);
+}
+.cal-panel-reassign-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 10px;
 }
 @media (max-width: 520px) {
   .cal-panel { width: 100%; }

@@ -11,9 +11,18 @@
     "unscheduled": "planlanmamış"
   },
   "months": {
-    "jan": "OCA", "feb": "ŞUB", "mar": "MAR", "apr": "NİS",
-    "may": "MAY", "jun": "HAZ", "jul": "TEM", "aug": "AĞU",
-    "sep": "EYL", "oct": "EKİ", "nov": "KAS", "dec": "ARA"
+    "jan": "OCA",
+    "feb": "ŞUB",
+    "mar": "MAR",
+    "apr": "NİS",
+    "may": "MAY",
+    "jun": "HAZ",
+    "jul": "TEM",
+    "aug": "AĞU",
+    "sep": "EYL",
+    "oct": "EKİ",
+    "nov": "KAS",
+    "dec": "ARA"
   },
   "view": {
     "menuAria": "Takvim görünümü",
@@ -102,7 +111,10 @@
     "preferredDay": "tercih edilen gün",
     "notePlaceholder": "neden taşınması gerekiyor",
     "describePlaceholder": "ne yaptığını açıkla",
-    "linksPlaceholder": "kanıt bağlantıları (boşlukla ayrılmış)"
+    "linksPlaceholder": "kanıt bağlantıları (boşlukla ayrılmış)",
+    "reassignPick": "Şuna yeniden ata",
+    "reassignAuto": "Recgon seçsin",
+    "reassignGo": "Yeniden ata"
   },
   "actions": {
     "working": "işleniyor",
@@ -156,6 +168,7 @@
     "snoozeFailed": "erteleme başarısız oldu",
     "requestSent": "yeniden planlama isteği gönderildi",
     "requestFailed": "istek başarısız oldu",
-    "loadFailed": "takvim yüklenemedi"
+    "loadFailed": "takvim yüklenemedi",
+    "reassignedTo": "{name} kişisine yeniden atandı"
   }
 }

@@ -11,9 +11,18 @@
     "unscheduled": "unscheduled"
   },
   "months": {
-    "jan": "JAN", "feb": "FEB", "mar": "MAR", "apr": "APR",
-    "may": "MAY", "jun": "JUN", "jul": "JUL", "aug": "AUG",
-    "sep": "SEP", "oct": "OCT", "nov": "NOV", "dec": "DEC"
+    "jan": "JAN",
+    "feb": "FEB",
+    "mar": "MAR",
+    "apr": "APR",
+    "may": "MAY",
+    "jun": "JUN",
+    "jul": "JUL",
+    "aug": "AUG",
+    "sep": "SEP",
+    "oct": "OCT",
+    "nov": "NOV",
+    "dec": "DEC"
   },
   "view": {
     "menuAria": "Calendar view",
@@ -102,7 +111,10 @@
     "preferredDay": "preferred day",
     "notePlaceholder": "why this needs to move",
     "describePlaceholder": "describe what you did",
-    "linksPlaceholder": "proof links (space-separated)"
+    "linksPlaceholder": "proof links (space-separated)",
+    "reassignPick": "Reassign to",
+    "reassignAuto": "Let Recgon pick",
+    "reassignGo": "Reassign"
   },
   "actions": {
     "working": "working",
@@ -156,6 +168,7 @@
     "snoozeFailed": "snooze failed",
     "requestSent": "reschedule request sent",
     "requestFailed": "request failed",
-    "loadFailed": "couldn't load the calendar"
+    "loadFailed": "couldn't load the calendar",
+    "reassignedTo": "Reassigned to {name}"
   }
 }
