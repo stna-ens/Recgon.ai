@@ -40,11 +40,12 @@ export async function GET(request: NextRequest) {
   // for every project the user currently has a scheduled non-terminal task
   // in, even if that project has zero cards in the visible window. Without
   // this, navigating weeks makes lanes appear/disappear.
-  const { data: tmRows } = await supabase
+  const { data: tmRows, error: tmErr } = await supabase
     .from('teammates')
     .select('id')
     .eq('user_id', userId)
     .neq('status', 'retired');
+  if (tmErr) return NextResponse.json({ error: tmErr.message }, { status: 500 });
   const teammateIds = (tmRows ?? []).map((r) => r.id as string);
 
   let projectIds: string[] = [];

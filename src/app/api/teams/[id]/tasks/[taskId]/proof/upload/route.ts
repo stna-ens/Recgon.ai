@@ -60,7 +60,7 @@ export async function POST(
   const uploaded: Array<{ name: string; url: string }> = [];
   for (const file of files) {
     if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: `${file.name}: file exceeds 10 MB limit` }, { status: 400 });
+      return NextResponse.json({ error: `${file.name}: file exceeds 25 MB limit` }, { status: 400 });
     }
     if (!typeAllowed(file.type)) {
       return NextResponse.json({ error: `${file.name}: file type ${file.type || 'unknown'} not allowed` }, { status: 400 });
