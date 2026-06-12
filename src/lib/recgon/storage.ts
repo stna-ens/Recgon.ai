@@ -737,6 +737,33 @@ export async function setTaskRescheduleRequestStatus(
   if (error) throw new Error(`setTaskRescheduleRequestStatus failed: ${error.message}`);
 }
 
+// Task edit (Phase C) — owner/creator changes to title, description,
+// priority, deadline. A description change invalidates the personalized
+// text in the SAME update statement (it was grounded in the old wording —
+// FRAME-04 spirit); the caller re-enqueues a reframe for the assignee.
+export async function updateTaskDetails(
+  taskId: string,
+  fields: {
+    title?: string;
+    description?: string;
+    priority?: number;
+    deadline?: string | null;
+  },
+): Promise<void> {
+  const update: Record<string, unknown> = {};
+  if (fields.title !== undefined) update.title = fields.title;
+  if (fields.description !== undefined) {
+    update.description = fields.description;
+    update.personalized_description = null;
+    update.personalized_description_for_user_id = null;
+  }
+  if (fields.priority !== undefined) update.priority = fields.priority;
+  if (fields.deadline !== undefined) update.deadline = fields.deadline;
+  if (Object.keys(update).length === 0) return;
+  const { error } = await supabase.from('agent_tasks').update(update).eq('id', taskId);
+  if (error) throw new Error(`updateTaskDetails failed: ${error.message}`);
+}
+
 export async function updateTaskRequiredSkills(
   taskId: string,
   skills: string[],
