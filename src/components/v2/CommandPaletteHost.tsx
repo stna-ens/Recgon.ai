@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { useTheme } from 'next-themes';
 import { useTeam } from '@/components/TeamProvider';
+import { useToast } from '@/components/Toast';
 
-type CommandKind = 'nav' | 'project';
+type CommandKind = 'nav' | 'project' | 'action' | 'task';
 
 interface Command {
   id: string;
@@ -33,10 +35,18 @@ const STATIC_NAV: StaticNavItem[] = [
   { id: 'nav-home', labelKey: 'navHome', hint: '/', keywords: ['overview', 'pulse', 'dashboard'] },
   { id: 'nav-projects', labelKey: 'navProjects', hint: '/projects', keywords: ['list'] },
   { id: 'nav-tasks', labelKey: 'navTasks', hint: '/tasks', keywords: ['inbox', 'queue', 'kanban', 'board'] },
+  { id: 'nav-command', labelKey: 'navCommand', hint: '/command', keywords: ['mission', 'control', 'board', 'team', 'decisions', 'triage'] },
+  { id: 'nav-calendar', labelKey: 'navCalendar', hint: '/calendar', keywords: ['week', 'schedule', 'planning'] },
   { id: 'nav-terminal', labelKey: 'navTerminal', hint: '/terminal', keywords: ['chat', 'mentor', 'cli', 'ask', 'console'] },
   { id: 'nav-team', labelKey: 'navTeam', hint: '/team', keywords: ['members', 'invites', 'admin'] },
   { id: 'nav-settings', labelKey: 'navSettings', hint: '/settings', keywords: ['account', 'theme'] },
 ];
+
+interface TaskHit {
+  id: string;
+  title: string;
+  status: string;
+}
 
 function fuzzyScore(query: string, text: string): number {
   if (!query) return 1;
@@ -54,6 +64,9 @@ function fuzzyScore(query: string, text: string): number {
 export default function CommandPaletteHost() {
   const router = useRouter();
   const t = useTranslations('shared');
+  const locale = useLocale();
+  const { resolvedTheme, setTheme } = useTheme();
+  const { addToast } = useToast();
   const { currentTeam } = useTeam();
   const teamId = currentTeam?.id ?? null;
 
@@ -61,6 +74,7 @@ export default function CommandPaletteHost() {
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
   const [projects, setProjects] = useState<ProjectLite[]>([]);
+  const [taskHits, setTaskHits] = useState<TaskHit[]>([]);
   const [panelPos, setPanelPos] = useState<{ top: number; right: number }>({ top: 80, right: 16 });
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -120,6 +134,29 @@ export default function CommandPaletteHost() {
     return () => { cancelled = true; };
   }, [open, teamId]);
 
+  // Live task search — debounced 250ms against the team-scoped search
+  // endpoint once the query is 2+ chars. Results bypass the local fuzzy
+  // matcher (the server already filtered).
+  useEffect(() => {
+    if (!open || !teamId) return;
+    const q = query.trim();
+    if (q.length < 2) {
+      setTaskHits([]);
+      return;
+    }
+    const handle = setTimeout(() => {
+      fetch(`/api/teams/${teamId}/tasks/search?q=${encodeURIComponent(q)}`)
+        .then((r) => (r.ok ? r.json() : { tasks: [] }))
+        .then((data: { tasks?: Array<{ id: string; title: string; status: string }> }) => {
+          setTaskHits(
+            (data.tasks ?? []).map((row) => ({ id: row.id, title: row.title, status: row.status })),
+          );
+        })
+        .catch(() => setTaskHits([]));
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [open, teamId, query]);
+
   const allCommands = useMemo<Command[]>(() => {
     const navCommands: Command[] = STATIC_NAV.map((c) => ({
       id: c.id,
@@ -145,12 +182,69 @@ export default function CommandPaletteHost() {
         setOpen(false);
       },
     }));
-    return [...navCommands, ...projectCommands];
-  }, [projects, router, t]);
+
+    const actionCommands: Command[] = [
+      {
+        id: 'act-dispatch',
+        kind: 'action',
+        label: t('commandPalette.runDispatch'),
+        group: t('commandPalette.actionsGroup'),
+        keywords: ['dispatch', 'brain', 'assign', 'run', 'recgon'],
+        run: () => {
+          setOpen(false);
+          if (!teamId) return;
+          fetch(`/api/teams/${teamId}/recgon/dispatch`, { method: 'POST' })
+            .then((r) => {
+              if (!r.ok) throw new Error(`HTTP ${r.status}`);
+              addToast(t('commandPalette.dispatchDone'), 'success');
+            })
+            .catch(() => addToast(t('commandPalette.dispatchFailed'), 'error'));
+        },
+      },
+      {
+        id: 'act-theme',
+        kind: 'action',
+        label: t('commandPalette.themeToggle'),
+        group: t('commandPalette.actionsGroup'),
+        keywords: ['theme', 'dark', 'light', 'mode', 'tema'],
+        run: () => {
+          setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+          setOpen(false);
+        },
+      },
+      {
+        id: 'act-lang',
+        kind: 'action',
+        label: locale === 'en' ? t('commandPalette.langToTr') : t('commandPalette.langToEn'),
+        group: t('commandPalette.actionsGroup'),
+        keywords: ['language', 'dil', 'english', 'türkçe', 'turkish', 'locale'],
+        run: () => {
+          const next = locale === 'en' ? 'tr' : 'en';
+          document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000; samesite=lax`;
+          window.location.reload();
+        },
+      },
+    ];
+
+    return [...navCommands, ...projectCommands, ...actionCommands];
+  }, [projects, router, t, teamId, addToast, setTheme, resolvedTheme, locale]);
 
   const filtered = useMemo<Command[]>(() => {
+    // Server-side task hits always ride along (already filtered by the
+    // search endpoint); local fuzzy applies to nav/project/action only.
+    const taskCommands: Command[] = taskHits.map((hit) => ({
+      id: `task-${hit.id}`,
+      kind: 'task',
+      label: hit.title,
+      hint: hit.status.replace(/_/g, ' '),
+      group: t('commandPalette.tasksGroup'),
+      run: () => {
+        router.push(`/command?task=${hit.id}`);
+        setOpen(false);
+      },
+    }));
     if (!query.trim()) return allCommands;
-    return allCommands
+    const local = allCommands
       .map((c) => {
         const haystack = [c.label, ...(c.keywords ?? [])].join(' ');
         return { c, score: fuzzyScore(query.trim(), haystack) };
@@ -158,7 +252,8 @@ export default function CommandPaletteHost() {
       .filter(({ score }) => score > 0)
       .sort((a, b) => b.score - a.score)
       .map(({ c }) => c);
-  }, [allCommands, query]);
+    return [...taskCommands, ...local];
+  }, [allCommands, query, taskHits, router, t]);
 
   // Group filtered commands while preserving order.
   const grouped = useMemo(() => {

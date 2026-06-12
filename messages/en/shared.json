@@ -26,7 +26,17 @@
     "navTerminal": "Terminal",
     "navTeam": "Team admin",
     "navSettings": "Settings",
-    "openProject": "Open {name}"
+    "openProject": "Open {name}",
+    "navCommand": "Command",
+    "navCalendar": "Calendar",
+    "tasksGroup": "Tasks",
+    "actionsGroup": "Actions",
+    "runDispatch": "Run Recgon — assign queued tasks",
+    "dispatchDone": "Recgon finished assigning",
+    "dispatchFailed": "Couldn't run Recgon — try again",
+    "themeToggle": "Toggle light / dark theme",
+    "langToEn": "Switch language to English",
+    "langToTr": "Dili Türkçe yap"
   },
   "helpFeedback": {
     "title": "Help & feedback",

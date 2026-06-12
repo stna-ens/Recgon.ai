@@ -26,7 +26,17 @@
     "navTerminal": "Terminal",
     "navTeam": "Takım yönetimi",
     "navSettings": "Ayarlar",
-    "openProject": "{name} projesini aç"
+    "openProject": "{name} projesini aç",
+    "navCommand": "Komuta",
+    "navCalendar": "Takvim",
+    "tasksGroup": "Görevler",
+    "actionsGroup": "Eylemler",
+    "runDispatch": "Recgon'u çalıştır — sıradaki görevleri ata",
+    "dispatchDone": "Recgon atamaları tamamladı",
+    "dispatchFailed": "Recgon çalıştırılamadı — tekrar dene",
+    "themeToggle": "Açık / koyu temayı değiştir",
+    "langToEn": "Switch language to English",
+    "langToTr": "Dili Türkçe yap"
   },
   "helpFeedback": {
     "title": "Yardım & geri bildirim",
