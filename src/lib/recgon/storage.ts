@@ -1045,7 +1045,13 @@ export async function logEvent(input: {
     | 'nudged'
     | 'escalated'
     | 'auto_rescheduled'
-    | 'snoozed';
+    | 'snoozed'
+    // Mission Control — owner denied a pending reschedule request from
+    // the /command decision stack ('rescheduled' would lie: nothing moved).
+    | 'reschedule_dismissed'
+    // Task edit endpoint — owner/creator changed title/description/
+    // priority/deadline after mint.
+    | 'edited';
   payload?: Record<string, unknown>;
 }): Promise<void> {
   await supabase.from('teammate_event_log').insert({

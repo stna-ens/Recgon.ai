@@ -28,6 +28,7 @@
     },
     "triaged": {
       "assign": "Şuna ata…",
+      "assignButton": "Ata",
       "assigned": "{name} kişisine atandı",
       "assignFailed": "Atanamadı — tekrar dene",
       "cancel": "Görevi iptal et",

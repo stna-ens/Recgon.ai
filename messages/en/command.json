@@ -28,6 +28,7 @@
     },
     "triaged": {
       "assign": "Assign to…",
+      "assignButton": "Assign",
       "assigned": "Assigned to {name}",
       "assignFailed": "Couldn't assign — try again",
       "cancel": "Cancel task",

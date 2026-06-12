@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { verifyTeamAccess } from '@/lib/teamStorage';
-import { getTask, getTeammate, logEvent, requestTaskReschedule } from '@/lib/recgon/storage';
+import {
+  getTask,
+  getTeammate,
+  logEvent,
+  requestTaskReschedule,
+  setTaskRescheduleRequestStatus,
+} from '@/lib/recgon/storage';
 
 const TERMINAL_STATUSES = new Set(['completed', 'cancelled', 'declined', 'failed']);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -61,6 +67,52 @@ export async function POST(
       by: session.user.id,
       note,
       requestedDate,
+    },
+  });
+
+  return NextResponse.json({ success: true });
+}
+
+// Owner denies a pending reschedule request: the request is marked
+// dismissed (schedule unchanged) and the audit trail records who said no.
+// Approval has no endpoint of its own — approving IS rescheduling, via
+// POST /schedule, which resolves the pending request as a side effect.
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; taskId: string }> },
+) {
+  const { id: teamId, taskId } = await params;
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const role = await verifyTeamAccess(teamId, session.user.id);
+  if (role !== 'owner') {
+    return NextResponse.json({ error: 'Only team owners can resolve reschedule requests' }, { status: 403 });
+  }
+
+  const task = await getTask(taskId);
+  if (!task || task.teamId !== teamId) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+  if (task.rescheduleRequestStatus !== 'pending') {
+    return NextResponse.json({ error: 'No pending reschedule request' }, { status: 409 });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as { action?: string };
+  if (body.action !== 'dismiss') {
+    return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });
+  }
+
+  await setTaskRescheduleRequestStatus(taskId, 'dismissed');
+  await logEvent({
+    teamId,
+    teammateId: task.assignedTo,
+    taskId,
+    event: 'reschedule_dismissed',
+    payload: {
+      by: session.user.id,
+      requestedDate: task.rescheduleRequestedDate,
+      note: task.rescheduleRequestNote,
     },
   });
 

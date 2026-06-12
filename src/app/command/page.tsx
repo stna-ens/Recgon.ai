@@ -9,6 +9,7 @@ import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import { Skeleton } from '@/components/ui';
 import TeamTaskTable from '@/components/v2/command/TeamTaskTable';
+import DecisionStack from '@/components/v2/command/DecisionStack';
 import { TaskDetailPanel } from '@/components/v2/calendar/TaskDetailPanel';
 import type { AgentTask } from '@/lib/recgon/types';
 import type { CommandResponse, CommandTask } from '@/components/v2/command/types';
@@ -130,12 +131,25 @@ function CommandPageInner() {
           <Skeleton height={320} />
         </div>
       ) : (
-        <TeamTaskTable
-          tasks={tasks}
-          teammates={data?.teammates ?? []}
-          projects={data?.projects ?? []}
-          onOpen={openTask}
-        />
+        <>
+          {data?.decisions && teamId && (
+            <DecisionStack
+              decisions={data.decisions}
+              teammates={data.teammates}
+              teamId={teamId}
+              onChanged={() => {
+                void mutate();
+              }}
+              onOpen={openTask}
+            />
+          )}
+          <TeamTaskTable
+            tasks={tasks}
+            teammates={data?.teammates ?? []}
+            projects={data?.projects ?? []}
+            onOpen={openTask}
+          />
+        </>
       )}
 
       <TaskDetailPanel
