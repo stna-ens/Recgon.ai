@@ -124,5 +124,37 @@
       "queued": "Oluşturuldu — Recgon bir sonraki çalıştırmada atayacak",
       "failed": "Görev oluşturulamadı"
     }
+  },
+  "thread": {
+    "heading": "Akış",
+    "empty": "Henüz hareket yok — ilk yorumu sen yaz.",
+    "placeholder": "Yorum yaz… birini etiketlemek için @isim",
+    "send": "Gönder",
+    "sendFailed": "Yorum gönderilemedi — tekrar dene",
+    "delete": "Sil",
+    "deleted": "Yorum silindi",
+    "deleteFailed": "Yorum silinemedi",
+    "loadFailed": "Akış yüklenemedi",
+    "edited": "düzenlendi",
+    "someone": "bir ekip arkadaşı",
+    "aiNote": "Recgon bu akışı görevi yeniden çerçevelerken, atarken ve doğrularken okur.",
+    "events": {
+      "assigned": "{actor} kişisine atandı",
+      "accepted": "{actor} görevi kabul etti",
+      "declined": "{actor} görevi reddetti",
+      "completed": "{actor} tamamlandı olarak işaretledi",
+      "reassigned": "{actor} kişisine yeniden atandı",
+      "manually_assigned": "sahip görevi {actor} kişisine atadı",
+      "triaged": "Recgon görevi karar için bekletmeye aldı",
+      "deferred": "Recgon görevi ileri bir tarihe erteledi",
+      "nudged": "Recgon {actor} kişisine hatırlatma gönderdi — görev gecikmiş",
+      "escalated": "Recgon durumu sahibe iletti",
+      "auto_rescheduled": "Recgon görevi otomatik olarak yeniden planladı",
+      "snoozed": "{days} gün ertelendi",
+      "rescheduled": "{date} tarihine yeniden planlandı",
+      "reschedule_requested": "{actor} erteleme istedi",
+      "reschedule_dismissed": "sahip erteleme isteğini reddetti",
+      "edited": "görev bilgileri düzenlendi"
+    }
   }
 }

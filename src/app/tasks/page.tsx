@@ -14,6 +14,7 @@ import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
 import { OverdueChip } from '@/components/v2/calendar/OverdueChip';
 import { daysOverdue, isOverdue } from '@/lib/recgon/overduePolicy';
+import TaskThread from '@/components/v2/tasks/TaskThread';
 
 interface TaskItem {
   id: string;
@@ -824,6 +825,8 @@ function V2TasksInner() {
                   </div>
                 </div>
               )}
+
+              <TaskThread teamId={task.team_id} taskId={task.id} />
             </aside>
           </div>
         );

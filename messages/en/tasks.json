@@ -124,5 +124,37 @@
       "queued": "Created — Recgon will assign it on the next run",
       "failed": "Could not create the task"
     }
+  },
+  "thread": {
+    "heading": "Thread",
+    "empty": "No activity yet — be the first to comment.",
+    "placeholder": "Write a comment… use @name to mention someone",
+    "send": "Send",
+    "sendFailed": "Couldn't post the comment — try again",
+    "delete": "Delete",
+    "deleted": "Comment deleted",
+    "deleteFailed": "Couldn't delete the comment",
+    "loadFailed": "Couldn't load the thread",
+    "edited": "edited",
+    "someone": "a teammate",
+    "aiNote": "Recgon reads this thread when it reframes, assigns, and verifies this task.",
+    "events": {
+      "assigned": "assigned to {actor}",
+      "accepted": "{actor} accepted the task",
+      "declined": "{actor} declined the task",
+      "completed": "{actor} marked it done",
+      "reassigned": "reassigned to {actor}",
+      "manually_assigned": "owner assigned it to {actor}",
+      "triaged": "Recgon parked it for a decision",
+      "deferred": "Recgon deferred it to a later window",
+      "nudged": "Recgon nudged {actor} — it's overdue",
+      "escalated": "Recgon escalated to the owner",
+      "auto_rescheduled": "Recgon auto-rescheduled it",
+      "snoozed": "snoozed {days} days",
+      "rescheduled": "rescheduled to {date}",
+      "reschedule_requested": "{actor} asked to reschedule",
+      "reschedule_dismissed": "owner denied the reschedule request",
+      "edited": "task details were edited"
+    }
   }
 }

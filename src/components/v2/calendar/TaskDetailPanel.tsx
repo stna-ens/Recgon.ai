@@ -11,6 +11,7 @@ import { useToast } from '@/components/Toast';
 import { useConfirm, Button } from '@/components/ui';
 import { daysOverdue, isOverdue } from '@/lib/recgon/overduePolicy';
 import { OverdueChip } from './OverdueChip';
+import TaskThread from '@/components/v2/tasks/TaskThread';
 
 const KIND_KEYS = new Set(['next_step', 'dev_prompt', 'marketing', 'analytics', 'research', 'custom']);
 
@@ -599,6 +600,14 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                     {working ? t('actions.sending') : t('actions.submitProof')}
                   </Button>
                 </div>
+              </section>
+            )}
+
+            {/* Phase B — task thread (comments + activity). Mounted only
+                while the panel is open so the 30s poll stops on close. */}
+            {isOpen && (
+              <section className="cal-panel-section">
+                <TaskThread teamId={task.teamId} taskId={task.id} />
               </section>
             )}
         </div>
