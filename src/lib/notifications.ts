@@ -173,3 +173,50 @@ export async function notifyOwnerTriageSummary(input: {
     });
   }
 }
+
+// Phase B task threads — someone @mentioned a user in a task comment.
+// Fire-and-forget like every other notification here; a failed email never
+// fails the comment POST.
+export async function notifyCommentMention(input: {
+  email: string;
+  mentionedByName: string;
+  taskTitle: string;
+  taskId: string;
+  teamName: string;
+  snippet: string;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    logger.debug('skipping mention email — RESEND_API_KEY not set');
+    return;
+  }
+  const resend = new Resend(apiKey);
+  const taskUrl = `${appBaseUrl()}/command?task=${input.taskId}`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from: 'Recgon <noreply@recgon.app>',
+      to: input.email,
+      subject: `${input.mentionedByName} mentioned you on: ${input.taskTitle}`,
+      html: `
+<div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; padding: 2rem;">
+  <div style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; color: #FF3D7F; margin-bottom: 0.5rem;">RECGON · ${escapeHtml(input.teamName.toUpperCase())}</div>
+  <h2 style="font-size: 1.15rem; font-weight: 700; margin: 0 0 0.75rem; color: #111;">${escapeHtml(input.mentionedByName)} mentioned you</h2>
+  <div style="padding: 1rem 1.25rem; background: #fafafa; border: 1px solid #eee; border-radius: 10px; margin: 0 0 1.25rem;">
+    <div style="font-weight: 600; color: #111; margin-bottom: 0.35rem;">${escapeHtml(input.taskTitle)}</div>
+    <div style="font-size: 0.85rem; color: #555;">${escapeHtml(input.snippet)}</div>
+  </div>
+  <a href="${taskUrl}" style="display: inline-block; padding: 0.7rem 1.25rem; background: #FF3D7F; color: white; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 0.9rem;">Open the thread</a>
+</div>
+      `,
+    });
+    if (error) {
+      logger.warn('mention email failed', { error: error.message, taskId: input.taskId });
+    }
+  } catch (err) {
+    logger.warn('mention email threw', {
+      err: err instanceof Error ? err.message : String(err),
+      taskId: input.taskId,
+    });
+  }
+}
