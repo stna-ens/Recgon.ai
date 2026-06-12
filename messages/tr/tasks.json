@@ -102,5 +102,11 @@
     "rescheduleSent": "yeniden planlama isteği gönderildi",
     "rescheduleFailed": "yeniden planlama isteği başarısız oldu",
     "requestFailed": "istek başarısız oldu"
+  },
+  "triage": {
+    "no_clear_fit": "Recgon bu görevle yeterince iyi eşleşen bir takım arkadaşı bulamadı; karar vermenizi bekliyor.",
+    "no_grounded_reason": "Bir takım arkadaşı kağıt üzerinde uygun görünse de Recgon seçimi son çalışmalarıyla gerekçelendiremedi — tahmin etmek yerine bekletti.",
+    "no_capacity_in_window": "Bu iş için uygun kişiler önümüzdeki haftalarda tamamen dolu; kapasite açılana kadar beklemede.",
+    "no_capacity_high_priority": "Bu görev yüksek öncelikli ama uygun herkes şu anda dolu — sırada beklemek yerine sizin kararınızı gerektiriyor."
   }
 }

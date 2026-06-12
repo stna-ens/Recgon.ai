@@ -29,7 +29,17 @@ interface Task {
   result: Record<string, unknown> | null;
   verificationStatus?: VerificationStatus;
   verificationEvidence?: VerificationEvidence | null;
+  triageNote?: string | null;
 }
+
+// Dispatcher refusal codes with a plain-language explanation in tasks.triage.*.
+// Whitelist so an unexpected code never renders a raw i18n key path.
+const TRIAGE_NOTES = new Set([
+  'no_clear_fit',
+  'no_grounded_reason',
+  'no_capacity_in_window',
+  'no_capacity_high_priority',
+]);
 
 type FilterKey = 'all' | 'needs_you' | 'in_progress' | 'in_review' | 'done';
 
@@ -377,6 +387,9 @@ export function ProjectTasksListView() {
                 </>
               )}
             </div>
+            {t.status === 'unassigned' && t.triageNote && TRIAGE_NOTES.has(t.triageNote) && (
+              <p className="v2-tasks-triage-note">{tTasks(`triage.${t.triageNote}`)}</p>
+            )}
           </div>
           <div className="v2-tasks-row__right">
             <span
@@ -815,6 +828,13 @@ export function ProjectTasksListView() {
         }
         .v2-tasks-meta-sep   { opacity: 0.45; }
         .v2-tasks-meta-sched { color: var(--signature); opacity: 0.85; }
+        .v2-tasks-triage-note {
+          margin: 6px 0 0;
+          font-size: 12px;
+          line-height: 1.45;
+          color: var(--txt-faint);
+          font-style: italic;
+        }
 
         .v2-tasks-row__right {
           display: flex;
