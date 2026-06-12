@@ -1,6 +1,7 @@
 // Phase 4 / CR-01 — privacy regression: ensure the four task-returning
 // routes outside the viewer-discriminated /api/recgon/tasks/[id] surface
-// NEVER serialize the personalized columns in any casing.
+// NEVER serialize the personalized columns OR the raw assignment_reasoning
+// envelope in any casing.
 //
 // Routes covered:
 //   1. GET /api/teams/[id]/tasks                  (list within a team)
@@ -103,6 +104,23 @@ const otherMemberUserId = 'user-other-member';
 const PERSONALIZED_DESCRIPTION =
   'Hey, the auth route is squarely in your TypeScript wheelhouse — start with the rotation handler.';
 
+// Non-null judge envelope — the raw JSONB that must never serialize. The
+// distinctive sentence doubles as a value-leak probe.
+const REASONING_SENTENCE = 'Anon candidate_2 edged candidate_1 on recent TypeScript commits.';
+const reasoningEnvelope = {
+  kind: 'llm_tiebreaker' as const,
+  mathScore: 0.78,
+  mathBreakdown: {
+    skillOverlap: 0.8,
+    fitForKind: 0.7,
+    availabilityNow: 0.6,
+    loadHeadroom: 0.5,
+    interestNudge: 0,
+  },
+  judge: { reasonSentence: REASONING_SENTENCE },
+  whyYouSentence: REASONING_SENTENCE,
+};
+
 // AgentTask shape — the mapped row that storage layer returns. We give it
 // NON-NULL personalized fields so any leak surfaces in the assertions.
 const taskWithPersonalized = {
@@ -115,7 +133,7 @@ const taskWithPersonalized = {
   status: 'assigned' as const,
   source: 'brain' as const,
   assignedTo: assigneeTeammateId,
-  assignmentReasoning: null,
+  assignmentReasoning: reasoningEnvelope,
   triageNote: null,
   scheduledDate: '2026-05-21',
   scheduledUntilDate: null,
@@ -135,6 +153,8 @@ const PERSONALIZED_KEY_FORMS = [
   'personalized_description',
   'personalizedDescriptionForUserId',
   'personalized_description_for_user_id',
+  'assignmentReasoning',
+  'assignment_reasoning',
 ];
 
 function expectNoPersonalizedSubstrings(body: unknown): void {
@@ -144,6 +164,7 @@ function expectNoPersonalizedSubstrings(body: unknown): void {
   }
   // Also defend against future telemetry that might log the value text.
   expect(blob).not.toContain(PERSONALIZED_DESCRIPTION);
+  expect(blob).not.toContain(REASONING_SENTENCE);
 }
 
 beforeEach(() => {

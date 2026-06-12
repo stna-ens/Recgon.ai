@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { supabase } from '@/lib/supabase';
 import { listScheduledTasksForUser } from '@/lib/recgon/storage';
+import { sanitizeTaskForClient } from '@/lib/recgon/taskSanitizer';
 
 // Personal calendar: every scheduled task assigned to the signed-in user
 // across every team they belong to. Mirrors the cross-team aggregation in
@@ -78,16 +79,10 @@ export async function GET(request: NextRequest) {
     }));
   }
 
-  // CR-01: strip personalized columns at the route boundary. Personalized
-  // text is only served by the viewer-discriminated route at
+  // CR-01: strip reasoning + personalized columns at the route boundary.
+  // Personalized text is only served by the viewer-discriminated route at
   // /api/recgon/tasks/[id]; the cross-team personal calendar must never
   // leak it (calendar can return tasks the viewer is NOT the assignee of
   // in edge cases — defense in depth).
-  const sanitizedTasks = tasks.map((t) => {
-    const { personalizedDescription: _pd, personalizedDescriptionForUserId: _pdfu, ...rest } = t;
-    void _pd;
-    void _pdfu;
-    return rest;
-  });
-  return NextResponse.json({ tasks: sanitizedTasks, teams, projects });
+  return NextResponse.json({ tasks: tasks.map(sanitizeTaskForClient), teams, projects });
 }

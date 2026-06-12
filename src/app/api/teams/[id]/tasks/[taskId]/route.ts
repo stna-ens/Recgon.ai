@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
 import { getTask, deleteTask, updateTaskStatus } from '@/lib/recgon/storage';
+import { sanitizeTaskForClient } from '@/lib/recgon/taskSanitizer';
 
 export async function GET(
   _request: NextRequest,
@@ -17,13 +18,10 @@ export async function GET(
   if (!task || task.teamId !== teamId) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
-  // CR-01: strip personalized columns at the route boundary. Personalized
-  // text is only served by the viewer-discriminated route at
+  // CR-01: strip reasoning + personalized columns at the route boundary.
+  // Personalized text is only served by the viewer-discriminated route at
   // /api/recgon/tasks/[id]; this listing surface must never leak it.
-  const { personalizedDescription: _pd, personalizedDescriptionForUserId: _pdfu, ...rest } = task;
-  void _pd;
-  void _pdfu;
-  return NextResponse.json({ task: rest });
+  return NextResponse.json({ task: sanitizeTaskForClient(task) });
 }
 
 export async function DELETE(
