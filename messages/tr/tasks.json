@@ -156,5 +156,26 @@
       "reschedule_dismissed": "sahip erteleme isteğini reddetti",
       "edited": "görev bilgileri düzenlendi"
     }
-  }
+  },
+  "editTask": {
+    "button": "Düzenle",
+    "title": "Görevi düzenle",
+    "fields": {
+      "title": "Başlık",
+      "description": "Açıklama",
+      "priority": "Öncelik",
+      "deadline": "Termin",
+      "noDeadline": "Termin yok"
+    },
+    "save": "Kaydet",
+    "saved": "Görev güncellendi",
+    "failed": "Kaydedilemedi — tekrar dene",
+    "reframeNote": "Açıklamayı değiştirirsen Recgon atanan kişi için kişiselleştirilmiş metni yeniden yazar.",
+    "priorityOptions": {
+      "low": "düşük",
+      "normal": "normal",
+      "high": "yüksek"
+    }
+  },
+  "hoursShort": "{count}s"
 }

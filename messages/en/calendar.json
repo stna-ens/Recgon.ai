@@ -114,7 +114,9 @@
     "linksPlaceholder": "proof links (space-separated)",
     "reassignPick": "Reassign to",
     "reassignAuto": "Let Recgon pick",
-    "reassignGo": "Reassign"
+    "reassignGo": "Reassign",
+    "copyLink": "Copy link",
+    "estHours": "{count}h estimated"
   },
   "actions": {
     "working": "working",
@@ -129,7 +131,8 @@
     "updateReschedule": "update reschedule",
     "sending": "sending",
     "sendRequest": "send request",
-    "submitProof": "submit proof"
+    "submitProof": "submit proof",
+    "edit": "Edit"
   },
   "confirm": {
     "overrideTitle": "Complete without verification?",
@@ -169,6 +172,7 @@
     "requestSent": "reschedule request sent",
     "requestFailed": "request failed",
     "loadFailed": "couldn't load the calendar",
-    "reassignedTo": "Reassigned to {name}"
+    "reassignedTo": "Reassigned to {name}",
+    "linkCopied": "Link copied"
   }
 }

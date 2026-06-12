@@ -114,7 +114,9 @@
     "linksPlaceholder": "kanıt bağlantıları (boşlukla ayrılmış)",
     "reassignPick": "Şuna yeniden ata",
     "reassignAuto": "Recgon seçsin",
-    "reassignGo": "Yeniden ata"
+    "reassignGo": "Yeniden ata",
+    "copyLink": "Bağlantıyı kopyala",
+    "estHours": "tahmini {count} saat"
   },
   "actions": {
     "working": "işleniyor",
@@ -129,7 +131,8 @@
     "updateReschedule": "planlamayı güncelle",
     "sending": "gönderiliyor",
     "sendRequest": "istek gönder",
-    "submitProof": "kanıt gönder"
+    "submitProof": "kanıt gönder",
+    "edit": "Düzenle"
   },
   "confirm": {
     "overrideTitle": "Doğrulama olmadan tamamlansın mı?",
@@ -169,6 +172,7 @@
     "requestSent": "yeniden planlama isteği gönderildi",
     "requestFailed": "istek başarısız oldu",
     "loadFailed": "takvim yüklenemedi",
-    "reassignedTo": "{name} kişisine yeniden atandı"
+    "reassignedTo": "{name} kişisine yeniden atandı",
+    "linkCopied": "Bağlantı kopyalandı"
   }
 }

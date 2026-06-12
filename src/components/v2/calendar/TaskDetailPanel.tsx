@@ -12,6 +12,7 @@ import { useConfirm, Button } from '@/components/ui';
 import { daysOverdue, isOverdue } from '@/lib/recgon/overduePolicy';
 import { OverdueChip } from './OverdueChip';
 import TaskThread from '@/components/v2/tasks/TaskThread';
+import { EditTaskModal } from '@/components/v2/tasks/EditTaskModal';
 
 const KIND_KEYS = new Set(['next_step', 'dev_prompt', 'marketing', 'analytics', 'research', 'custom']);
 
@@ -181,6 +182,7 @@ type Props = {
 
 export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onClose, onRefresh }: Props) {
   const t = useTranslations('calendar');
+  const tTasks = useTranslations('tasks');
   const locale = useLocale();
   // Calendar surfaces feed this panel from list APIs that never include
   // whyYouSentence (privacy boundary) — fetch it lazily for the open task.
@@ -188,6 +190,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
   const { addToast } = useToast();
   const confirm = useConfirm();
   const [working, setWorking] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [proofText, setProofText] = useState('');
   const [proofLinks, setProofLinks] = useState('');
   const [attachments, setAttachments] = useState<Array<{ name: string; url: string }>>([]);
@@ -448,8 +451,29 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
               verification={task.verificationStatus}
               evidence={task.verificationEvidence ?? null}
             />
+            {(task.estimatedHours ?? 0) > 0 && (
+              <>
+                <span className="cal-panel-meta-sep" aria-hidden="true">·</span>
+                <span className="cal-panel-kind">{t('panel.estHours', { count: task.estimatedHours })}</span>
+              </>
+            )}
           </div>
-          <button type="button" className="cal-panel-close" onClick={onClose} aria-label={t('panel.close')}>×</button>
+          <div className="cal-panel-header-actions">
+            <button
+              type="button"
+              className="cal-panel-copylink"
+              onClick={() => {
+                const url = `${window.location.origin}/command?task=${task.id}`;
+                void navigator.clipboard?.writeText(url).then(
+                  () => addToast(t('toast.linkCopied'), 'success'),
+                  () => {},
+                );
+              }}
+            >
+              {t('panel.copyLink')}
+            </button>
+            <button type="button" className="cal-panel-close" onClick={onClose} aria-label={t('panel.close')}>×</button>
+          </div>
         </div>
 
         <div className="cal-panel-body">
@@ -554,6 +578,9 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                       {working ? t('actions.working') : t('actions.verify')}
                     </Button>
                   )}
+                  <Button onClick={() => setEditOpen(true)} disabled={working}>
+                    {t('actions.edit')}
+                  </Button>
                   {task.assignedTo && (
                     <Button onClick={() => setReassignOpen((v) => !v)} disabled={working}>
                       {t('actions.reassign')}
@@ -672,6 +699,23 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
                 <TaskThread teamId={task.teamId} taskId={task.id} />
               </section>
             )}
+
+            <EditTaskModal
+              open={editOpen}
+              onOpenChange={setEditOpen}
+              task={{
+                id: task.id,
+                teamId: task.teamId,
+                title: task.title,
+                description: task.description,
+                priority: task.priority,
+                deadline: task.deadline,
+              }}
+              onSaved={() => {
+                addToast(tTasks('editTask.saved'), 'success');
+                onRefresh();
+              }}
+            />
         </div>
         </>)}
       </aside>
@@ -880,6 +924,29 @@ const css = `
   letter-spacing: 1.1px;
   text-transform: uppercase;
   color: var(--txt-faint);
+}
+.cal-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cal-panel-copylink {
+  all: unset;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--txt-faint);
+  border: 1px solid var(--rule, rgba(255,255,255,0.10));
+  border-radius: 999px;
+  padding: 4px 10px;
+  transition: color var(--dur-base, 0.18s) ease, border-color var(--dur-base, 0.18s) ease;
+}
+.cal-panel-copylink:hover {
+  color: var(--signature);
+  border-color: rgba(var(--signature-rgb), 0.4);
 }
 .cal-panel-reassign-row {
   display: flex;

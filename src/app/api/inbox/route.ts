@@ -15,7 +15,7 @@ function isInsightOnlySourceRef(ref: unknown): boolean {
 // fallback select is layered in below so environments that haven't applied
 // the Plan 01 migration yet (`overdue_tier`/`last_overdue_action_at`) still
 // return tasks instead of 500-ing.
-const INBOX_LEGACY_SELECT = 'id, team_id, project_id, title, description, kind, source, source_ref, priority, status, assigned_at, deadline, scheduled_date, schedule_note, result, created_at, completed_at, assigned_to, verification_status, verification_evidence';
+const INBOX_LEGACY_SELECT = 'id, team_id, project_id, title, description, kind, source, source_ref, priority, status, assigned_at, deadline, scheduled_date, schedule_note, result, created_at, completed_at, assigned_to, verification_status, verification_evidence, estimated_hours';
 const INBOX_BASE_SELECT = `${INBOX_LEGACY_SELECT}, scheduled_until_date, overdue_tier, last_overdue_action_at`;
 const INBOX_RESCHEDULE_SELECT = `${INBOX_BASE_SELECT}, reschedule_request_status, reschedule_requested_at, reschedule_requested_by, reschedule_request_note, reschedule_requested_date`;
 
@@ -46,6 +46,7 @@ type InboxTaskRow = {
   assigned_to: string | null;
   verification_status: string | null;
   verification_evidence: Record<string, unknown> | null;
+  estimated_hours?: number | null;
   overdue_tier?: number | null;
   last_overdue_action_at?: string | null;
 };

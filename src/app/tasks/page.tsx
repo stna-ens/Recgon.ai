@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { formatDay, relTimeParts } from '@/lib/datetime';
 import { useWhyYou } from '@/lib/useWhyYou';
@@ -40,6 +41,7 @@ interface TaskItem {
   result: Record<string, unknown> | null;
   verification_status?: VerificationStatus;
   verification_evidence?: VerificationEvidence | null;
+  estimated_hours?: number | null;
   // Phase 3.6 / Plan 04 — derived overdue book-keeping. Tier 0..3 (last
   // action by the daily cron); we derive `isOverdue` state from
   // scheduled_date + status via the shared `overduePolicy` helper.
@@ -179,6 +181,14 @@ function V2TasksInner() {
 
   // Re-pull the inbox after a mutation (accept / complete / proof / reschedule).
   const refresh = useCallback(() => mutateInbox(), [mutateInbox]);
+
+  // Deep link: /tasks?task=ID opens the expanded card once its task is in
+  // the inbox payload (copy-link buttons and mention emails point here).
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const fromUrl = searchParams.get('task');
+    if (fromUrl && tasks.some((task) => task.id === fromUrl)) setExpanded(fromUrl);
+  }, [searchParams, tasks]);
 
   // Mark tasks as "seen" once the user lands here so the nav badge dot
   // clears. Re-stamps on focus too in case a new task arrives while the
@@ -667,6 +677,9 @@ function V2TasksInner() {
                     <span className="v2-tasks-card-chip">{task.teamName}</span>
                   )}
                   {schedule && <span className="v2-tasks-card-schedule" title={task.schedule_note ?? undefined}>{schedule.isDeadline ? t('schedule.due', { date: schedule.date }) : schedule.date}</span>}
+                  {(task.estimated_hours ?? 0) > 0 && (
+                    <span className="v2-tasks-card-chip">{t('hoursShort', { count: task.estimated_hours as number })}</span>
+                  )}
                   {reschedulePending && <span className="v2-tasks-card-flag is-reschedule">{t('flags.moveRequested')}</span>}
                   <span className="v2-tasks-card-time">{rel ? (rel.unit === 'justNow' ? t('relTime.justNow') : t(`relTime.${rel.unit}`, { count: rel.count })) : ''}</span>
                 </div>

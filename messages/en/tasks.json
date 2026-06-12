@@ -156,5 +156,26 @@
       "reschedule_dismissed": "owner denied the reschedule request",
       "edited": "task details were edited"
     }
-  }
+  },
+  "editTask": {
+    "button": "Edit",
+    "title": "Edit task",
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "priority": "Priority",
+      "deadline": "Deadline",
+      "noDeadline": "No deadline"
+    },
+    "save": "Save",
+    "saved": "Task updated",
+    "failed": "Couldn't save — try again",
+    "reframeNote": "Changing the description makes Recgon rewrite the personalized version for the assignee.",
+    "priorityOptions": {
+      "low": "low",
+      "normal": "normal",
+      "high": "high"
+    }
+  },
+  "hoursShort": "{count}h"
 }
