@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, ShieldCheck, UploadCloud, XCircle } from 'lucide-react';
 import { useTeam } from '@/components/TeamProvider';
@@ -148,10 +148,17 @@ function V2VerifyInner() {
   const { addToast } = useToast();
   const confirmDialog = useConfirm();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [data, setData] = useState<VerifyResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>('all');
+
+  // Keep the active filter in the URL so refresh and deep-links preserve it.
+  const selectFilter = useCallback((f: FilterKey) => {
+    setFilter(f);
+    router.replace(f === 'all' ? '/verify' : `/verify?filter=${f}`, { scroll: false });
+  }, [router]);
   const [working, setWorking] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [proofState, setProofState] = useState<Record<string, {
@@ -413,7 +420,7 @@ function V2VerifyInner() {
                   aria-selected={filter === o.value}
                   className={`v2-vf-pill ${filter === o.value ? 'is-active' : ''}`}
                   data-tone={o.tone}
-                  onClick={() => setFilter(o.value)}
+                  onClick={() => selectFilter(o.value)}
                   disabled={n === 0 && o.value !== 'all'}
                 >
                   <span className="v2-vf-pill-dot" />

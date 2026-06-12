@@ -418,6 +418,8 @@ function V2TasksInner() {
       }
       addToast(t('toast.rescheduleSent'), 'success');
       setRescheduleOpen(false);
+      setRescheduleNote('');
+      setRescheduleDate('');
       await refresh();
     } catch (err) {
       addToast(err instanceof Error ? err.message : t('toast.requestFailed'), 'error');

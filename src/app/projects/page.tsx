@@ -81,12 +81,18 @@ export default function V2ProjectsListPage() {
   const teamsKey = teams.map((t) => t.id).join(',');
   const portfolioKey = teams.length ? (['portfolio', teamsKey, currentUserId] as const) : null;
 
-  const { data: portfolioData, mutate: mutatePortfolio } = useSWR(portfolioKey, async () => {
+  const { data: portfolioData, error: portfolioError, mutate: mutatePortfolio } = useSWR(portfolioKey, async () => {
     const results = await Promise.all(
       teams.map((t) =>
         Promise.all([
-          fetch(`/api/overview?teamId=${t.id}`).then((r) => (r.ok ? r.json() : null)),
-          fetch(`/api/projects?teamId=${t.id}`).then((r) => (r.ok ? r.json() : [])),
+          fetch(`/api/overview?teamId=${t.id}`).then((r) => {
+            if (!r.ok) throw new Error(`overview ${r.status}`);
+            return r.json();
+          }),
+          fetch(`/api/projects?teamId=${t.id}`).then((r) => {
+            if (!r.ok) throw new Error(`projects ${r.status}`);
+            return r.json();
+          }),
         ]),
       ),
     );
@@ -132,7 +138,12 @@ export default function V2ProjectsListPage() {
     }
     return out;
   }, [portfolioData, projectUpdateStatuses]);
-  const portfolioLoading = portfolioKey != null && portfolioData === undefined;
+  const portfolioLoading = portfolioKey != null && portfolioData === undefined && !portfolioError;
+
+  // A failed load should say so, not masquerade as an empty portfolio.
+  useEffect(() => {
+    if (portfolioError) addToast(t('list.toast.loadFailed'), 'error');
+  }, [portfolioError, addToast, t]);
 
   // Populate GitHub update statuses (TeamProvider caches these in sessionStorage).
   useEffect(() => { refreshProjects?.(); }, [refreshProjects]);
@@ -278,7 +289,7 @@ export default function V2ProjectsListPage() {
   }, [repos, repoSearch]);
 
   const totalProjects = portfolio.length;
-  const showEmpty = !portfolioLoading && totalProjects === 0;
+  const showEmpty = !portfolioLoading && !portfolioError && totalProjects === 0;
 
   return (
     <div className="v2-projects-page">

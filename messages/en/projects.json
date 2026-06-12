@@ -41,7 +41,8 @@
       "textExtracted": "text extracted",
       "extractFailed": "extract failed",
       "imported": "{name} imported",
-      "importFailed": "import failed"
+      "importFailed": "import failed",
+      "loadFailed": "Could not load your projects — check your connection and refresh."
     },
     "manualModal": {
       "eyebrow": "new project",

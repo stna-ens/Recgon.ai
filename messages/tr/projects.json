@@ -41,7 +41,8 @@
       "textExtracted": "metin çıkarıldı",
       "extractFailed": "metin çıkarılamadı",
       "imported": "{name} içe aktarıldı",
-      "importFailed": "içe aktarılamadı"
+      "importFailed": "içe aktarılamadı",
+      "loadFailed": "Projeleriniz yüklenemedi — bağlantınızı kontrol edip sayfayı yenileyin."
     },
     "manualModal": {
       "eyebrow": "yeni proje",
