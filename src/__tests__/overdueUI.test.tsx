@@ -245,7 +245,11 @@ describe('SnoozeControl (rendered inside TaskDetailPanel)', () => {
     await Promise.resolve();
     const fetchMock = (global as unknown as { fetch: ReturnType<typeof vi.fn> }).fetch;
     expect(fetchMock).toHaveBeenCalled();
-    const [url, init] = fetchMock.mock.calls[0];
+    // The panel also lazily fetches the why-you sentence on open, so locate
+    // the snooze call instead of assuming call order.
+    const snoozeCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('/snooze'));
+    expect(snoozeCall).toBeDefined();
+    const [url, init] = snoozeCall as [string, RequestInit];
     expect(url).toBe('/api/teams/team-Y/tasks/task-X/snooze');
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body as string)).toEqual({ days: 3 });

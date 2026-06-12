@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { formatDay } from '@/lib/datetime';
+import { useWhyYou } from '@/lib/useWhyYou';
 import { ProofDropZone } from '@/components/ProofDropZone';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { AgentTask } from '@/lib/recgon/types';
@@ -180,6 +181,9 @@ type Props = {
 export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onClose, onRefresh }: Props) {
   const t = useTranslations('calendar');
   const locale = useLocale();
+  // Calendar surfaces feed this panel from list APIs that never include
+  // whyYouSentence (privacy boundary) — fetch it lazily for the open task.
+  const fetchedWhyYou = useWhyYou(isOpen ? task?.id : null);
   const { addToast } = useToast();
   const confirm = useConfirm();
   const [working, setWorking] = useState(false);
@@ -410,7 +414,7 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
             {task.description && <p className="cal-panel-desc">{cleanText(task.description)}</p>}
 
             {/* Phase 3 Plan 03 — assignee-only "Why you" line (CR-01 fix). */}
-            <WhyYouBlock sentence={task.whyYouSentence} />
+            <WhyYouBlock sentence={task.whyYouSentence ?? fetchedWhyYou} />
 
             {task.scheduledDate && (
               <section className="cal-panel-section">

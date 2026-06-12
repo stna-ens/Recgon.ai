@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { formatDay, relTimeParts } from '@/lib/datetime';
+import { useWhyYou } from '@/lib/useWhyYou';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useTeam } from '@/components/TeamProvider';
@@ -149,10 +150,6 @@ function V2TasksInner() {
   // Optimistic moves keep the card in the destination column while the API
   // call is in flight, preventing the visible "jump back" before refresh.
   const [optimistic, setOptimistic] = useState<Record<string, ColumnKey>>({});
-  // Phase 3 / Plan 03 — Why you sentence for the currently expanded task.
-  // Fetched lazily from /api/recgon/tasks/[id] when a task panel opens, so
-  // the raw assignment_reasoning JSONB never travels via /api/inbox.
-  const [whyYouMap, setWhyYouMap] = useState<Record<string, string>>({});
 
   // Inbox tasks come from SWR — cached across navigations, so returning to the
   // Tasks tab paints the last board instantly and revalidates in the
@@ -420,6 +417,11 @@ function V2TasksInner() {
     [expanded, tasks],
   );
 
+  // Phase 3 / Plan 03 — Why you sentence for the currently expanded task,
+  // fetched lazily via the shared hook so the raw assignment_reasoning
+  // JSONB never travels via /api/inbox.
+  const whyYouSentence = useWhyYou(expandedTask?.id);
+
   useEffect(() => {
     if (!expandedTask) {
       setRescheduleOpen(false);
@@ -444,31 +446,6 @@ function V2TasksInner() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [expandedTask]);
-
-  // Phase 3 / Plan 03 — fetch the Why-you sentence for the expanded task.
-  // The server-side privacy filter at /api/recgon/tasks/[id] gates which
-  // viewers receive `whyYouSentence` (assignee + team owner only). Raw
-  // assignment_reasoning JSONB never leaves that endpoint, so this fetch is
-  // safe to call for any viewer — non-authorized viewers simply get a
-  // response without the field, and the block below stays hidden.
-  useEffect(() => {
-    if (!expandedTask) return;
-    const taskId = expandedTask.id;
-    if (whyYouMap[taskId] !== undefined) return; // already fetched
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/recgon/tasks/${taskId}`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const data = await res.json();
-        const sentence: string | undefined = data?.task?.whyYouSentence;
-        if (!cancelled && typeof sentence === 'string' && sentence.length > 0) {
-          setWhyYouMap((prev) => ({ ...prev, [taskId]: sentence }));
-        }
-      } catch { /* swallowed — block stays hidden on fetch error */ }
-    })();
-    return () => { cancelled = true; };
-  }, [expandedTask?.id]);
 
   return (
     <div className="v2-tasks">
@@ -702,10 +679,10 @@ function V2TasksInner() {
                 />
               </div>
 
-              {whyYouMap[task.id] && (
+              {expandedTask?.id === task.id && whyYouSentence && (
                 <div className="v2-tasks-detail-whyyou">
                   <span className="recgon-label v2-block-eye">{t('detail.whyYou')}</span>
-                  <p className="v2-tasks-detail-whyyou-sentence">{whyYouMap[task.id]}</p>
+                  <p className="v2-tasks-detail-whyyou-sentence">{whyYouSentence}</p>
                 </div>
               )}
 
