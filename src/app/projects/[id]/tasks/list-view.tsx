@@ -7,7 +7,8 @@ import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import { useLocale, useTranslations } from 'next-intl';
 import { formatDay, relTimeParts } from '@/lib/datetime';
-import { useConfirm } from '@/components/ui';
+import { useConfirm, Button } from '@/components/ui';
+import { NewTaskModal, type CreatedTask } from './new-task-modal';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { Teammate, VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
 
@@ -133,6 +134,7 @@ export function ProjectTasksListView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [working, setWorking] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   // Project tasks + teammates come from SWR — cached across navigations, so
   // returning to this tab paints the last list instantly and revalidates in
@@ -487,7 +489,29 @@ export function ProjectTasksListView() {
             Mentor-minted work for this project. Submit proof inline — no detours.
           </p>
         </div>
+        <Button variant="primary" onClick={() => setNewTaskOpen(true)}>
+          {tTasks('newTask.button')}
+        </Button>
       </header>
+
+      {teamId && projectId && (
+        <NewTaskModal
+          open={newTaskOpen}
+          onOpenChange={setNewTaskOpen}
+          teamId={teamId}
+          projectId={projectId}
+          onCreated={(created: CreatedTask) => {
+            const assignee = created.assignedTo ? teammateById.get(created.assignedTo) : undefined;
+            addToast(
+              assignee
+                ? tTasks('newTask.toast.assigned', { name: assignee.displayName })
+                : tTasks('newTask.toast.queued'),
+              'success',
+            );
+            void refresh();
+          }}
+        />
+      )}
 
       <div className="v2-tasks-controls">
         <nav className="v2-facets" aria-label="Task filters">

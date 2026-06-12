@@ -108,5 +108,21 @@
     "no_grounded_reason": "Bir takım arkadaşı kağıt üzerinde uygun görünse de Recgon seçimi son çalışmalarıyla gerekçelendiremedi — tahmin etmek yerine bekletti.",
     "no_capacity_in_window": "Bu iş için uygun kişiler önümüzdeki haftalarda tamamen dolu; kapasite açılana kadar beklemede.",
     "no_capacity_high_priority": "Bu görev yüksek öncelikli ama uygun herkes şu anda dolu — sırada beklemek yerine sizin kararınızı gerektiriyor."
+  },
+  "newTask": {
+    "button": "yeni görev",
+    "title": "Yeni görev",
+    "subtitle": "Recgon görevi en uygun takım arkadaşına atar veya kararınız için bekletir.",
+    "fields": {
+      "title": "başlık",
+      "description": "açıklama",
+      "deadline": "son tarih",
+      "deadlineHint": "isteğe bağlı — kesin bir tarih yoksa boş bırakın"
+    },
+    "toast": {
+      "assigned": "{name} kişisine oluşturulup atandı",
+      "queued": "Oluşturuldu — Recgon bir sonraki çalıştırmada atayacak",
+      "failed": "Görev oluşturulamadı"
+    }
   }
 }

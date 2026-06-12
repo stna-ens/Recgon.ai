@@ -108,5 +108,21 @@
     "no_grounded_reason": "A teammate matched on paper, but Recgon couldn't justify the pick from their recent work — so it held off rather than guess.",
     "no_capacity_in_window": "The right people for this are fully booked for the next few weeks, so it's parked until capacity opens up.",
     "no_capacity_high_priority": "This is high priority but everyone qualified is booked right now — it needs your call instead of waiting in line."
+  },
+  "newTask": {
+    "button": "new task",
+    "title": "New task",
+    "subtitle": "Recgon assigns it to the best-fit teammate, or holds it for your decision.",
+    "fields": {
+      "title": "title",
+      "description": "description",
+      "deadline": "deadline",
+      "deadlineHint": "optional — leave empty if there is no hard date"
+    },
+    "toast": {
+      "assigned": "Created and assigned to {name}",
+      "queued": "Created — Recgon will assign it on the next run",
+      "failed": "Could not create the task"
+    }
   }
 }

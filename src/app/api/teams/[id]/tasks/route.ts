@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
-import { listTasks } from '@/lib/recgon/storage';
+import { listTasks, getTask } from '@/lib/recgon/storage';
 import { mintUserTask } from '@/lib/recgon/taskMint';
 import { dispatchTask } from '@/lib/recgon/dispatcher';
 import type { TaskKind, TaskStatus } from '@/lib/recgon/types';
@@ -95,5 +95,11 @@ export async function POST(
     /* swallowed — the task is already persisted as unassigned */
   }
 
-  return NextResponse.json({ task });
+  // dispatchTask may have just assigned the task — return the fresh row so
+  // the client can tell "assigned to X" apart from "queued for next run".
+  const fresh = (await getTask(task.id)) ?? task;
+  const { personalizedDescription: _pd, personalizedDescriptionForUserId: _pdfu, ...rest } = fresh;
+  void _pd;
+  void _pdfu;
+  return NextResponse.json({ task: rest });
 }
