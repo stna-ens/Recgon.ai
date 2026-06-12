@@ -10,7 +10,6 @@ export interface SourceMeta {
   category: SourceCategory;
   marketingEligible: boolean;
   availability: 'supported' | 'coming_soon' | 'blocked';
-  feedbackSupported: boolean;
   comingSoon: boolean;
   blocked: boolean;
   domain: string;
@@ -116,7 +115,6 @@ export function getSourceMeta(profile: Pick<SourceProfile, 'platform' | 'url'>):
       category: descriptor.category,
       marketingEligible: descriptor.marketingEligible,
       availability: descriptor.availability,
-      feedbackSupported: descriptor.availability === 'supported',
       comingSoon: descriptor.availability === 'coming_soon',
       blocked: descriptor.availability === 'blocked',
       domain: url?.hostname ?? '',
@@ -129,7 +127,6 @@ export function getSourceMeta(profile: Pick<SourceProfile, 'platform' | 'url'>):
       category: 'review',
       marketingEligible: false,
       availability: 'supported',
-      feedbackSupported: !!sanitized,
       comingSoon: false,
       blocked: false,
       domain: url?.hostname ?? '',
@@ -142,7 +139,6 @@ export function getSourceMeta(profile: Pick<SourceProfile, 'platform' | 'url'>):
       category: 'review',
       marketingEligible: false,
       availability: 'supported',
-      feedbackSupported: !!sanitized,
       comingSoon: false,
       blocked: false,
       domain: url?.hostname ?? '',
@@ -155,7 +151,6 @@ export function getSourceMeta(profile: Pick<SourceProfile, 'platform' | 'url'>):
       category: 'review',
       marketingEligible: false,
       availability: 'supported',
-      feedbackSupported: !!sanitized,
       comingSoon: false,
       blocked: false,
       domain: url?.hostname ?? '',
@@ -167,7 +162,6 @@ export function getSourceMeta(profile: Pick<SourceProfile, 'platform' | 'url'>):
     category: 'web',
     marketingEligible: false,
     availability: 'supported',
-    feedbackSupported: !!sanitized,
     comingSoon: false,
     blocked: false,
     domain: url?.hostname ?? '',
@@ -201,37 +195,10 @@ export function isMarketingEligibleSource(profile: Pick<SourceProfile, 'platform
   return getSourceMeta(profile).marketingEligible;
 }
 
-export function isFeedbackSupportedSource(profile: Pick<SourceProfile, 'platform' | 'url'>): boolean {
-  return getSourceMeta(profile).feedbackSupported;
-}
-
 export function isBlockedSource(profile: Pick<SourceProfile, 'platform' | 'url'>): boolean {
   return getSourceMeta(profile).blocked;
 }
 
 export function isComingSoonSource(profile: Pick<SourceProfile, 'platform' | 'url'>): boolean {
   return getSourceMeta(profile).comingSoon;
-}
-
-export function getFeedbackPlatformAvailability(platform: string): SourceMeta['availability'] {
-  const descriptor = SOURCE_DESCRIPTORS.find((entry) => entry.label === platform);
-  return descriptor?.availability ?? 'supported';
-}
-
-export function isSelectableFeedbackPlatform(platform: string): boolean {
-  return getFeedbackPlatformAvailability(platform) === 'supported';
-}
-
-export function isLikelyFeedbackDiscoveryCandidate(urlStr: string): boolean {
-  const sanitized = sanitizeUrl(urlStr);
-  if (!sanitized) return false;
-
-  const url = new URL(sanitized);
-  const descriptor = findDescriptor(url);
-  if (descriptor) return true;
-
-  const full = `${url.hostname}${url.pathname}`.toLowerCase();
-  if (REVIEW_PATH_RE.test(full) || COMMUNITY_PATH_RE.test(full)) return true;
-
-  return false;
 }

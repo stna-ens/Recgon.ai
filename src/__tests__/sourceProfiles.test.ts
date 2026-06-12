@@ -5,10 +5,7 @@ import {
   inferPlatformFromUrl,
   isComingSoonSource,
   isBlockedSource,
-  isFeedbackSupportedSource,
-  isLikelyFeedbackDiscoveryCandidate,
   isMarketingEligibleSource,
-  isSelectableFeedbackPlatform,
 } from '../lib/sourceProfiles';
 
 describe('sourceProfiles', () => {
@@ -39,27 +36,11 @@ describe('sourceProfiles', () => {
 
     expect(meta.comingSoon).toBe(true);
     expect(isComingSoonSource({ platform: 'Instagram', url: 'https://instagram.com/recgon' })).toBe(true);
-    expect(isFeedbackSupportedSource({ platform: 'Instagram', url: 'https://instagram.com/recgon' })).toBe(false);
-    expect(isFeedbackSupportedSource({ platform: 'YouTube', url: 'https://youtube.com/@recgon' })).toBe(false);
-    expect(isFeedbackSupportedSource({ platform: 'Twitter / X', url: 'https://x.com/recgon' })).toBe(false);
-  });
-
-  it('filters unavailable platforms out of the manual source picker', () => {
-    expect(isSelectableFeedbackPlatform('Twitter / X')).toBe(false);
-    expect(isSelectableFeedbackPlatform('Instagram')).toBe(false);
-    expect(isSelectableFeedbackPlatform('YouTube')).toBe(false);
-    expect(isSelectableFeedbackPlatform('LinkedIn')).toBe(false);
-    expect(isSelectableFeedbackPlatform('Review Page')).toBe(true);
   });
 
   it('flags blocked platforms for automated collection', () => {
     expect(isBlockedSource({ platform: 'LinkedIn', url: 'https://linkedin.com/company/recgon' })).toBe(true);
     expect(isBlockedSource({ platform: 'Reddit', url: 'https://reddit.com/r/startups' })).toBe(false);
-  });
-
-  it('keeps only likely feedback discovery candidates', () => {
-    expect(isLikelyFeedbackDiscoveryCandidate('https://trustpilot.com/review/recgon.com')).toBe(true);
-    expect(isLikelyFeedbackDiscoveryCandidate('https://example.com')).toBe(false);
   });
 
   it('rejects non-public-looking URLs', () => {
