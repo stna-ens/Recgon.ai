@@ -141,11 +141,36 @@ export async function recordAnalysis(userId: string, email?: string): Promise<vo
   }
 
   if (data) {
-    const { error } = await supabase
-      .from('analysis_quotas')
-      .update({ total_count: data.total_count + 1, last_analyzed_at: now })
-      .eq('user_id', userId);
-    if (error) console.error('[analysisQuota] recordAnalysis update failed:', error.message);
+    // Optimistic-concurrency guard: only increment if the count hasn't moved
+    // since we read it, so two concurrent analyses can't collapse into one
+    // recorded use. One retry on conflict; true atomicity would need a
+    // Postgres function, which this soft limit doesn't justify.
+    let current = data.total_count;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const { data: updated, error } = await supabase
+        .from('analysis_quotas')
+        .update({ total_count: current + 1, last_analyzed_at: now })
+        .eq('user_id', userId)
+        .eq('total_count', current)
+        .select('total_count');
+      if (error) {
+        console.error('[analysisQuota] recordAnalysis update failed:', error.message);
+        return;
+      }
+      if (updated && updated.length > 0) return;
+
+      const { data: fresh, error: rereadError } = await supabase
+        .from('analysis_quotas')
+        .select('total_count')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (rereadError || !fresh) {
+        console.error('[analysisQuota] recordAnalysis re-read failed:', rereadError?.message);
+        return;
+      }
+      current = fresh.total_count;
+    }
+    console.error('[analysisQuota] recordAnalysis conflicted twice, giving up');
   } else {
     const { error } = await supabase
       .from('analysis_quotas')

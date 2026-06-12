@@ -246,7 +246,9 @@ export async function chatViaChain(
           promptVersion: options?.promptVersion,
         });
       }
-      void breaker.recordSuccess(provider.name);
+      breaker.recordSuccess(provider.name).catch((e) => {
+        logger.warn('breaker success write failed', { provider: provider.name, e });
+      });
       return result;
     } catch (err) {
       lastErr = err;
@@ -257,7 +259,9 @@ export async function chatViaChain(
           promptVersion: options?.promptVersion,
           reason: err instanceof Error ? err.message.slice(0, 120) : String(err).slice(0, 120),
         });
-        void breaker.recordFailure(provider.name);
+        breaker.recordFailure(provider.name).catch((e) => {
+          logger.warn('breaker failure write failed', { provider: provider.name, e });
+        });
         continue;
       }
       // Non-recoverable (auth, bad request, schema violation) — propagate
