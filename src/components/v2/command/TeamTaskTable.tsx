@@ -339,16 +339,16 @@ export default function TeamTaskTable({
         .v2-mct-search {
           flex: 0 1 220px;
           min-width: 150px;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid var(--rule, rgba(255,255,255,0.1));
-          border-radius: 10px;
+          background: rgba(0, 0, 0, 0.12);
+          border: 1px solid var(--rule);
+          border-radius: 8px;
           padding: 7px 12px;
           color: var(--txt-pure);
           font-size: 13px;
           outline: none;
-          transition: border-color var(--dur-base, 0.18s) ease;
+          transition: border-color 180ms ease;
         }
-        .v2-mct-search:focus { border-color: rgba(var(--signature-rgb), 0.5); }
+        .v2-mct-search:focus { border-color: rgba(var(--signature-rgb), 0.4); }
         .v2-mct-search::placeholder { color: var(--txt-faint); }
         .v2-mct-toolbar-filters {
           display: flex;
@@ -362,17 +362,16 @@ export default function TeamTaskTable({
           cursor: pointer;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 10px;
-          font-weight: 600;
-          letter-spacing: 0.6px;
+          font-weight: 700;
+          letter-spacing: 0.7px;
           text-transform: uppercase;
           color: var(--txt-faint);
-          padding: 6px 10px;
-          border: 1px solid var(--rule, rgba(255,255,255,0.08));
-          border-radius: 999px;
-          transition: color var(--dur-base, 0.18s) ease, border-color var(--dur-base, 0.18s) ease;
+          padding: 7px 10px;
+          border-radius: 5px;
+          transition: background 180ms ease, color 180ms ease;
         }
-        .v2-mct-sort:hover { color: var(--txt-muted); }
-        .v2-mct-sort[data-active="true"] { color: var(--signature); border-color: rgba(var(--signature-rgb), 0.4); }
+        .v2-mct-sort:hover { color: var(--txt-muted); background: rgba(255, 255, 255, 0.03); }
+        .v2-mct-sort[data-active="true"] { color: var(--txt-pure); background: rgba(255, 255, 255, 0.06); }
         .v2-mct-clear {
           all: unset;
           cursor: pointer;
@@ -416,13 +415,23 @@ export default function TeamTaskTable({
           align-items: center;
           gap: 14px;
           width: 100%;
-          padding: 9px 10px 9px 6px;
-          border-radius: 10px;
+          padding: 10px 10px 10px 6px;
+          border-radius: 8px;
           cursor: pointer;
-          transition: background var(--dur-base, 0.18s) ease;
+          outline: none;
+          transition: background var(--dur-fast, 0.12s) ease, transform var(--dur-base, 0.18s) cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .v2-mct-row:hover, .v2-mct-row.is-kbd-active { background: rgba(255,255,255,0.035); }
-        .v2-mct-row.is-kbd-active { box-shadow: inset 2px 0 0 var(--signature); }
+        .v2-mct-list li + li .v2-mct-row { border-top: 1px solid var(--rule); border-radius: 0 0 8px 8px; }
+        .v2-mct-list li + li .v2-mct-row:hover,
+        .v2-mct-list li + li .v2-mct-row.is-kbd-active { border-top-color: transparent; border-radius: 8px; }
+        .v2-mct-row:hover,
+        .v2-mct-row.is-kbd-active,
+        .v2-mct-row:focus-visible {
+          background: rgba(255, 255, 255, 0.035);
+          transform: translateX(2px);
+        }
+        .v2-mct-row:hover .v2-mct-title,
+        .v2-mct-row.is-kbd-active .v2-mct-title { color: var(--signature); }
         .v2-mct-rail { width: 3px; height: 26px; border-radius: 2px; }
         .v2-mct-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
         .v2-mct-title {
@@ -472,22 +481,30 @@ export default function TeamTaskTable({
         }
         .v2-mct-dim { font-size: 12px; color: var(--txt-faint); }
         .v2-mct-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.5px;
+          font-weight: 700;
+          letter-spacing: 0.6px;
           text-transform: uppercase;
-          padding: 3px 8px;
-          border-radius: 999px;
-          border: 1px solid var(--rule, rgba(255,255,255,0.1));
           color: var(--txt-faint);
           white-space: nowrap;
           justify-self: start;
         }
-        .v2-mct-status[data-tone='info'] { border-color: rgba(var(--signature-rgb), 0.4); color: var(--signature); }
-        .v2-mct-status[data-tone='warn'] { border-color: rgba(245,158,11,0.45); color: var(--warning); }
-        .v2-mct-status[data-tone='crit'] { border-color: rgba(239,68,68,0.45); color: var(--danger); }
-        .v2-mct-status[data-tone='ok']   { border-color: rgba(34,197,94,0.4); color: var(--success); }
+        .v2-mct-status::before {
+          content: '';
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          opacity: 0.7;
+        }
+        .v2-mct-status[data-tone='info'] { color: var(--signature); }
+        .v2-mct-status[data-tone='warn'] { color: var(--warning); }
+        .v2-mct-status[data-tone='crit'] { color: var(--danger); }
+        .v2-mct-status[data-tone='ok']   { color: var(--success); }
         .v2-mct-due, .v2-mct-hours {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 11px;
