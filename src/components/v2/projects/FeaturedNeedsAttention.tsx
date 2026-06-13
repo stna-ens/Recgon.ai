@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui';
 import {
@@ -45,7 +45,13 @@ function ownershipShort(
 export default function FeaturedNeedsAttention({ projects, meta, loading }: Props) {
   const t = useTranslations('projects');
   const triage = useMemo(() => pickFeatured(projects), [projects]);
-  const now = Date.now();
+  // Reference timestamp for "time ago" labels — captured outside render
+  // (initializer + effect) so render stays pure; refreshes when the
+  // projects list changes.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+  }, [projects]);
 
   if (loading) {
     return (

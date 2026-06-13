@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Skeleton, EmptyState } from '@/components/ui';
 import { cleanText, relTimeShort } from './utils';
@@ -59,7 +60,7 @@ function RiskCallout({
   statement: string;
   everAnalyzed: boolean;
   analyzedAt: string | null;
-  now: Date | null;
+  now: Date | number;
 }) {
   const t = useTranslations('home');
   const { title, body } = parseStatement(statement);
@@ -93,7 +94,7 @@ function RiskCallout({
       <footer className="v2-fc-callout-foot">
         <span className="v2-fc-callout-source">
           {everAnalyzed && analyzedAt
-            ? t('focus.flaggedAgo', { time: relTimeShort(analyzedAt, now ?? Date.now()) })
+            ? t('focus.flaggedAgo', { time: relTimeShort(analyzedAt, now) })
             : kind === 'risk' ? t('focus.flaggedLatest') : t('focus.identifiedByRecgon')}
         </span>
       </footer>
@@ -107,6 +108,14 @@ function RiskCallout({
 // from risk presence + analysis recency, not from score.
 export default function HomeFocus({ focus, loading, now = null }: Props) {
   const t = useTranslations('home');
+  // Fallback reference timestamp for "time ago" labels — captured outside
+  // render (initializer + effect) so render stays pure; refreshes when the
+  // focus data changes.
+  const [fallbackNow, setFallbackNow] = useState(() => Date.now());
+  useEffect(() => {
+    setFallbackNow(Date.now());
+  }, [focus]);
+  const nowTs = now ?? fallbackNow;
   if (loading) {
     return (
       <section className="v2-fc" aria-busy="true" aria-live="polite">
@@ -220,7 +229,7 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
                 statement={risk}
                 everAnalyzed={everAnalyzed}
                 analyzedAt={focus.analyzedAt}
-                now={now}
+                now={nowTs}
               />
             )}
 
@@ -231,7 +240,7 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
                 statement={nextStep}
                 everAnalyzed={everAnalyzed}
                 analyzedAt={focus.analyzedAt}
-                now={now}
+                now={nowTs}
               />
             )}
 
@@ -276,7 +285,7 @@ export default function HomeFocus({ focus, loading, now = null }: Props) {
                 <div className="v2-fc-meta-cell">
                   <span className="v2-fc-meta-lab">{t('focus.lastAnalyzed')}</span>
                   <span className="v2-fc-meta-val v2-fc-meta-val-mono">
-                    {everAnalyzed ? t('focus.timeAgo', { time: relTimeShort(focus.analyzedAt, now ?? Date.now()) }) : t('focus.never')}
+                    {everAnalyzed ? t('focus.timeAgo', { time: relTimeShort(focus.analyzedAt, nowTs) }) : t('focus.never')}
                   </span>
                 </div>
                 <div className="v2-fc-meta-cell">

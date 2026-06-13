@@ -100,12 +100,16 @@ export function useTypewriter(
   const rafRef = useRef<number | null>(null);
 
   // Latest inputs, read inside the rAF loop without re-subscribing each frame.
+  // Synced in an effect (runs before the rAF-kick effect below) so refs are
+  // never written during render.
   const fullTextRef = useRef(fullText);
   const doneRef = useRef(isStreamDone);
   const cfgRef = useRef(cfg);
-  fullTextRef.current = fullText;
-  doneRef.current = isStreamDone;
-  cfgRef.current = cfg;
+  useEffect(() => {
+    fullTextRef.current = fullText;
+    doneRef.current = isStreamDone;
+    cfgRef.current = cfg;
+  });
 
   // If the text we're revealing into changed shape — the new value is not a
   // superset of the prefix we've already shown (it got shorter, or an error /
@@ -117,7 +121,6 @@ export function useTypewriter(
     if (expected.length > 0 && !fullText.startsWith(expected)) {
       setRevealedCount(0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullText]);
 
   useEffect(() => {
@@ -166,7 +169,14 @@ export function useTypewriter(
   );
 
   const visibleText = fullText.slice(0, revealedCount);
-  shownPrefixRef.current = visibleText;
+
+  // Record the prefix we just showed. Runs after the shape-change effect above
+  // (declaration order), so that effect compares against the previously-shown
+  // prefix rather than one derived from the new `fullText`.
+  useEffect(() => {
+    shownPrefixRef.current = visibleText;
+  });
+
   return { visibleText, isRevealing: revealedCount < fullText.length };
 }
 

@@ -433,22 +433,24 @@ function V2TasksInner() {
   // JSONB never travels via /api/inbox.
   const whyYouSentence = useWhyYou(expandedTask?.id);
 
+  // Primitive snapshots so the effect below depends on values, not the task
+  // object identity (which changes on every refresh and would clobber edits).
+  const expandedTaskId = expandedTask?.id;
+  const expandedRescheduleNote = expandedTask?.reschedule_request_note;
+  const expandedRescheduleDate = expandedTask?.reschedule_requested_date;
+  const expandedScheduledDate = expandedTask?.scheduled_date;
+
   useEffect(() => {
-    if (!expandedTask) {
+    if (!expandedTaskId) {
       setRescheduleOpen(false);
       setRescheduleNote('');
       setRescheduleDate('');
       return;
     }
     setRescheduleOpen(false);
-    setRescheduleNote(expandedTask.reschedule_request_note ?? '');
-    setRescheduleDate(toDateInput(expandedTask.reschedule_requested_date ?? expandedTask.scheduled_date));
-  }, [
-    expandedTask?.id,
-    expandedTask?.reschedule_request_note,
-    expandedTask?.reschedule_requested_date,
-    expandedTask?.scheduled_date,
-  ]);
+    setRescheduleNote(expandedRescheduleNote ?? '');
+    setRescheduleDate(toDateInput(expandedRescheduleDate ?? expandedScheduledDate));
+  }, [expandedTaskId, expandedRescheduleNote, expandedRescheduleDate, expandedScheduledDate]);
 
   // Close detail panel with Escape.
   useEffect(() => {

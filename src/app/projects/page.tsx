@@ -43,7 +43,8 @@ export default function V2ProjectsListPage() {
   const ctx = useTeam();
   const currentTeam = ctx.currentTeam;
   const teams = ctx.teams ?? [];
-  const projectUpdateStatuses = ctx.projectUpdateStatuses ?? {};
+  const ctxProjectUpdateStatuses = ctx.projectUpdateStatuses;
+  const projectUpdateStatuses = useMemo(() => ctxProjectUpdateStatuses ?? {}, [ctxProjectUpdateStatuses]);
   const refreshProjects = ctx.refreshProjects;
   const { addToast } = useToast();
   const { data: session } = useSession();

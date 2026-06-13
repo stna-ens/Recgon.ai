@@ -213,7 +213,7 @@ function V2VerifyInner() {
     return () => clearInterval(id);
   }, [data, refresh]);
 
-  const tasks = data?.tasks ?? [];
+  const tasks = useMemo(() => data?.tasks ?? [], [data]);
   const counts = data?.counts ?? { total: 0, failed: 0, awaiting: 0, stuck: 0 };
   const isOwner = data?.role === 'owner';
   const myTeammateIds = useMemo(

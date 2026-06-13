@@ -55,11 +55,12 @@ function CommandPageInner() {
   const loading = teamId != null && data === undefined && !error;
   const isOwner = data?.role === 'owner';
 
+  const teammates = data?.teammates;
   const currentTeammateId = useMemo(() => {
     const uid = session?.user?.id;
-    if (!uid || !data?.teammates) return null;
-    return data.teammates.find((tm) => tm.userId === uid)?.id ?? null;
-  }, [session?.user?.id, data?.teammates]);
+    if (!uid || !teammates) return null;
+    return teammates.find((tm) => tm.userId === uid)?.id ?? null;
+  }, [session?.user?.id, teammates]);
 
   const counts = useMemo(() => {
     let active = 0;

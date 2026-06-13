@@ -275,6 +275,7 @@ export default function V2ProjectSettingsPage() {
     setEditing('github');
   }, [project?.githubUrl]);
 
+  const projectGithubUrl = project?.githubUrl;
   const handleSavePath = useCallback(async () => {
     const path = pathDraft.trim();
     if (!path || savingPath) return;
@@ -287,14 +288,14 @@ export default function V2ProjectSettingsPage() {
       await patch({ path });
       mutateProject((p) => p ? { ...p, path, githubUrl: path, isGithub: true, sourceType: 'github' } : p, { revalidate: false });
       closeEditor();
-      addToast(project?.githubUrl ? t('settings.toast.repoSwapped') : t('settings.toast.repoConnected'), 'success');
+      addToast(projectGithubUrl ? t('settings.toast.repoSwapped') : t('settings.toast.repoConnected'), 'success');
       refreshProjects?.();
     } catch (err) {
       addToast(err instanceof Error ? err.message : t('settings.toast.failed'), 'error');
     } finally {
       setSavingPath(false);
     }
-  }, [pathDraft, savingPath, patch, addToast, refreshProjects, project?.githubUrl, closeEditor, mutateProject, t]);
+  }, [pathDraft, savingPath, patch, addToast, refreshProjects, projectGithubUrl, closeEditor, mutateProject, t]);
 
   const openGa4 = useCallback(() => {
     setGa4Draft(project?.analyticsPropertyId ?? '');
@@ -382,12 +383,13 @@ export default function V2ProjectSettingsPage() {
     ? t(`settings.sourceLabel.${project.sourceType}`)
     : (project?.sourceType ?? '');
 
+  const creatorId = project?.createdBy;
   const creatorLabel = useMemo(() => {
-    if (!project?.createdBy) return t('settings.creator.none');
-    if (project.createdBy === currentUserId) return t('settings.creator.you');
-    const m = members.find((mb) => mb.userId === project.createdBy);
+    if (!creatorId) return t('settings.creator.none');
+    if (creatorId === currentUserId) return t('settings.creator.you');
+    const m = members.find((mb) => mb.userId === creatorId);
     return m?.nickname || m?.email || t('settings.creator.teammate');
-  }, [project?.createdBy, members, currentUserId, t]);
+  }, [creatorId, members, currentUserId, t]);
 
   // ── Render ──────────────────────────────────────────
   return (

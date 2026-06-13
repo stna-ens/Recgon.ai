@@ -210,6 +210,9 @@ export default function TerminalShell() {
   // ── Messages ──────────────────────────────────────────────────────
   const [messages, setMessages] = useState<Message[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  // Only the assistant turn we just streamed should animate. Loaded history
+  // and conversation switches render their last turn instantly.
+  const [animateLastTurn, setAnimateLastTurn] = useState(false);
   useEffect(() => {
     setAnimateLastTurn(false);
     if (!activeConvId || !teamId) {
@@ -242,9 +245,6 @@ export default function TerminalShell() {
   // ── Input + streaming ─────────────────────────────────────────────
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
-  // Only the assistant turn we just streamed should animate. Loaded history
-  // and conversation switches render their last turn instantly.
-  const [animateLastTurn, setAnimateLastTurn] = useState(false);
   const [showScrollPill, setShowScrollPill] = useState(false);
   // Banner status dot — three states:
   // - idle → solid pink with glow (stable on)

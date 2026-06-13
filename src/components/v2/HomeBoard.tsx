@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Skeleton, EmptyState, Button } from '@/components/ui';
 import { cleanText, relTimeShort } from './utils';
@@ -81,6 +82,14 @@ interface Props {
 // briefing rows.
 export default function HomeBoard({ decisions, updates, teamPulse, loading, now = null, variant = 'classic' }: Props) {
   const t = useTranslations('home');
+  // Fallback reference timestamp for "time ago" labels — captured outside
+  // render (initializer + effect) so render stays pure; refreshes when the
+  // updates list changes.
+  const [fallbackNow, setFallbackNow] = useState(() => Date.now());
+  useEffect(() => {
+    setFallbackNow(Date.now());
+  }, [updates]);
+  const nowTs = now ?? fallbackNow;
   const totalDecisions = decisions.stuckTotal + decisions.failedTotal + decisions.driftTotal;
   const topFailed = decisions.failed[0];
   const topStuck = decisions.stuck[0];
@@ -288,7 +297,7 @@ export default function HomeBoard({ decisions, updates, teamPulse, loading, now 
                           </>
                         )}
                         <span className="v2-bd-update-time">
-                          {u.committedAt ? t('board.timeAgo', { time: relTimeShort(u.committedAt, now ?? Date.now()) }) : t('board.recent')}
+                          {u.committedAt ? t('board.timeAgo', { time: relTimeShort(u.committedAt, nowTs) }) : t('board.recent')}
                         </span>
                       </span>
                     </span>

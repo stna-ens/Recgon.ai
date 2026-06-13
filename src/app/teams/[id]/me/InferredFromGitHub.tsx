@@ -686,10 +686,16 @@ export function InferredFromGitHub({
     };
   }, [items, optimisticRejects, optimisticKept]);
 
+  // Capture "now" outside render (initializer + effect) so render stays
+  // pure; refreshes whenever the rate-limit window changes.
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    setNowTs(Date.now());
+  }, [rescanRateLimitedUntil]);
   const isRateLimited =
-    rescanRateLimitedUntil !== null && rescanRateLimitedUntil > Date.now();
+    rescanRateLimitedUntil !== null && rescanRateLimitedUntil > nowTs;
   const minutesUntilOk = isRateLimited
-    ? Math.max(1, Math.ceil(((rescanRateLimitedUntil ?? 0) - Date.now()) / 60_000))
+    ? Math.max(1, Math.ceil(((rescanRateLimitedUntil ?? 0) - nowTs) / 60_000))
     : 0;
 
   // Dropped-zone collapse — show first 3, gate the rest behind a disclosure.

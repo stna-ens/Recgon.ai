@@ -141,7 +141,9 @@ export default function Aurora({
   lightMode = false,
 }: AuroraProps) {
   const propsRef = useRef<AuroraProps>({ colorStops, amplitude, blend, speed, lightMode });
-  propsRef.current = { colorStops, amplitude, blend, speed, lightMode };
+  useEffect(() => {
+    propsRef.current = { colorStops, amplitude, blend, speed, lightMode };
+  });
 
   const ctnDom = useRef<HTMLDivElement>(null);
 

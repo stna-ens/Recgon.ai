@@ -434,15 +434,17 @@ function V2TeamAdminPageInner() {
     }
   }, [teamId, addToast, t]);
 
+  const myUserId = session?.user?.id;
+
   // Stronger leave-team warning copy: include the project-loss consequence.
   const handleLeaveTeam = useCallback(async () => {
-    if (!teamId || !session?.user?.id) return;
+    if (!teamId || !myUserId) return;
     setConfirmLeave(false);
     try {
       const res = await fetch(`/api/teams/${teamId}/members`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: session.user.id }),
+        body: JSON.stringify({ userId: myUserId }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -454,7 +456,7 @@ function V2TeamAdminPageInner() {
     } catch (err) {
       addToast(err instanceof Error ? err.message : t('admin.toasts.failed'), 'error');
     }
-  }, [teamId, session?.user?.id, refreshTeams, addToast, router, t]);
+  }, [teamId, myUserId, refreshTeams, addToast, router, t]);
 
   const handleDeleteTeam = useCallback(async () => {
     if (!teamId || deleting) return;
@@ -481,7 +483,6 @@ function V2TeamAdminPageInner() {
     );
   };
 
-  const myUserId = session?.user?.id;
   const myRole = members.find((m) => m.userId === myUserId)?.role;
   const isOwner = myRole === 'owner';
   const teamAvatarColor = team?.avatarColor ?? defaultColor(team?.name ?? 'Team');

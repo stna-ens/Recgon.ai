@@ -22,7 +22,6 @@ function currentLevel(): number {
 function emit(level: Level, message: string, meta?: unknown) {
   if (LEVELS[level] < currentLevel()) return;
   const line = meta === undefined ? message : `${message} ${safeStringify(meta)}`;
-  // eslint-disable-next-line no-console
   (console[level === 'debug' ? 'log' : level] as (...args: unknown[]) => void)(`[${level}] ${line}`);
 }
 

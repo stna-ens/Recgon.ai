@@ -188,8 +188,6 @@ export default function TeamTaskTable({
     return 'transparent';
   };
 
-  let lastGroup: number | null = null;
-
   return (
     <section className="glass-card v2-mct" aria-label={t('table.heading')}>
       <div className="v2-mct-toolbar">
@@ -266,8 +264,8 @@ export default function TeamTaskTable({
             const tm = task.assignedTo ? teammateById.get(task.assignedTo) : null;
             const due = task.deadline ?? task.scheduledUntilDate ?? task.scheduledDate;
             const group = STATUS_ORDER[task.status] ?? 9;
-            const header = showGroups && group !== lastGroup;
-            if (header) lastGroup = group;
+            const prevGroup = idx > 0 ? (STATUS_ORDER[filtered[idx - 1].status] ?? 9) : null;
+            const header = showGroups && group !== prevGroup;
             return (
               <li key={task.id}>
                 {header && (

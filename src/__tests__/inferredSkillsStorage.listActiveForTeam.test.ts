@@ -46,7 +46,6 @@ const TM_B = `tmB-${RUN_ID}`;
 const TM_OTHER = `tmOther-${RUN_ID}`;
 
 if (!ENABLED) {
-  // eslint-disable-next-line no-console
   console.warn(`[inferredSkillsStorage.listActiveForTeam.test] ${SKIP_MSG}`);
 }
 

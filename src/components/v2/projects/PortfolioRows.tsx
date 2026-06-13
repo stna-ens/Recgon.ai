@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui';
 import {
@@ -50,7 +50,13 @@ function ownershipShort(
 export default function PortfolioRows({ projects, meta, loading }: Props) {
   const t = useTranslations('projects');
   const [filter, setFilter] = useState<FilterKey>('all');
-  const now = Date.now();
+  // Reference timestamp for "time ago" labels — captured outside render
+  // (initializer + effect) so render stays pure; refreshes when the
+  // projects list changes.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+  }, [projects]);
 
   const sorted = useMemo(() => {
     const list = filter === 'all' ? projects : projects.filter((p) => p.pulse === filter);
