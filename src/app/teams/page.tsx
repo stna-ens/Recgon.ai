@@ -555,7 +555,10 @@ export default function V2TeamsIndexPage() {
             >
               <span className="v2t-row-index">{pad(i + 1)}</span>
               <div className="v2t-avatar" style={{ background: avatarUrl ? 'transparent' : color }}>
-                {avatarUrl ? <img src={avatarUrl} alt={team.name} /> : initials(team.name)}
+                {avatarUrl
+                  // eslint-disable-next-line @next/next/no-img-element -- user-supplied avatar URL; hosts can't be enumerated for next/image
+                  ? <img src={avatarUrl} alt={team.name} />
+                  : initials(team.name)}
               </div>
               <div className="v2t-row-body">
                 <p className="v2t-row-name">

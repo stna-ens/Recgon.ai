@@ -107,6 +107,7 @@ function RosterCard({
           }}
         >
           {t.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- user-supplied avatar URL; hosts can't be enumerated for next/image
             <img src={t.avatarUrl} alt={t.displayName} className="rcg-agent-avatar-img" />
           ) : (
             initials(t.displayName)

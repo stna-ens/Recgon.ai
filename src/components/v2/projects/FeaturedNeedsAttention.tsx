@@ -88,6 +88,7 @@ export default function FeaturedNeedsAttention({ projects, meta, loading }: Prop
               <div className="v2-fnp-card-head">
                 <span className="v2-fnp-logo">
                   {p.logoUrl
+                    // eslint-disable-next-line @next/next/no-img-element -- user-supplied logo URL; hosts can't be enumerated for next/image
                     ? <img src={p.logoUrl} alt="" className="v2-fnp-logo-img"
                         onError={(e) => { (e.currentTarget.parentElement as HTMLElement).textContent = projectInitial(p.name); }} />
                     : projectInitial(p.name)}

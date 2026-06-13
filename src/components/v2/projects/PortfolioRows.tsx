@@ -129,6 +129,7 @@ export default function PortfolioRows({ projects, meta, loading }: Props) {
                   <Link href={`/projects/${p.id}`} className="v2-pr-link">
                     <span className="v2-pr-avatar" aria-hidden="true">
                       {p.logoUrl
+                        // eslint-disable-next-line @next/next/no-img-element -- user-supplied logo URL; hosts can't be enumerated for next/image
                         ? <img src={p.logoUrl} alt="" className="v2-pr-avatar-img" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).textContent = projectInitial(p.name); }} />
                         : projectInitial(p.name)}
                     </span>

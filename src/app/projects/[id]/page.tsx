@@ -516,6 +516,7 @@ export default function V2ProjectOverviewPage() {
             <h2 className="v2-pov-name" style={{ fontSize: 22 }}>
               <span className="v2-pov-name-logo">
                 {project.logoUrl
+                  // eslint-disable-next-line @next/next/no-img-element -- user-supplied logo URL; hosts can't be enumerated for next/image
                   ? <img src={project.logoUrl} alt="" className="v2-pov-name-logo-img"
                       onError={(e) => { (e.currentTarget.parentElement as HTMLElement).textContent = projectInitial(project.name); }} />
                   : projectInitial(project.name)}
