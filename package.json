@@ -14,7 +14,7 @@
     "validate": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@anthropic-ai/sdk": "^0.104.1",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@google-analytics/data": "^5.2.1",
@@ -80,18 +80,22 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20.0.0",
     "@types/pdf-parse": "^1.1.5",
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@types/three": "^0.184.0",
     "@vitest/coverage-v8": "^4.1.6",
-    "eslint": "^8.0.0",
-    "eslint-config-next": "^14.2.0",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.9",
     "jsdom": "^29.1.1",
     "typescript": "^5.5.0",
     "vitest": "^4.1.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }
