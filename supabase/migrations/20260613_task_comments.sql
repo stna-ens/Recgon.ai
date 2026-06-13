@@ -14,11 +14,14 @@
 --
 -- Additive only; IF NOT EXISTS guards throughout.
 
+-- NOTE: teams.id and users.id are TEXT (short codes), not uuids — only
+-- task_id is a real uuid (agent_tasks.id). Applied to prod 2026-06-13
+-- (initial uuid columns corrected via task_comments_text_ids migration).
 CREATE TABLE IF NOT EXISTS task_comments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id uuid NOT NULL,
-  team_id uuid NOT NULL,
-  author_user_id uuid NOT NULL,
+  team_id text NOT NULL,
+  author_user_id text NOT NULL,
   body text NOT NULL CHECK (char_length(body) <= 4000),
   mentions jsonb NOT NULL DEFAULT '[]',
   created_at timestamptz NOT NULL DEFAULT now(),
