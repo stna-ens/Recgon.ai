@@ -35,9 +35,9 @@ export default function TeamSwitcher() {
           background: 'var(--glass-substrate)',
           backdropFilter: 'blur(40px) saturate(180%)',
           WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          border: '1px solid var(--border)',
+          border: '1px solid var(--rule-strong)',
           borderRadius: '10px',
-          color: 'var(--txt)',
+          color: 'var(--txt-pure)',
           fontSize: '0.82rem',
           fontWeight: 600,
           cursor: 'pointer',
@@ -45,11 +45,11 @@ export default function TeamSwitcher() {
           alignItems: 'center',
           gap: '8px',
           transition: 'border-color 0.2s, box-shadow 0.2s',
-          boxShadow: open ? '0 0 0 2px var(--accent-faint)' : 'none',
+          boxShadow: open ? '0 0 0 2px rgba(var(--signature-rgb), 0.15)' : 'none',
         }}
       >
         {/* Team icon */}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth={2} style={{ flexShrink: 0 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--signature)" strokeWidth={2} style={{ flexShrink: 0 }}>
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
           <circle cx="9" cy="7" r="4" />
           <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -85,7 +85,7 @@ export default function TeamSwitcher() {
           minWidth: '220px',
           marginTop: '6px',
           background: 'var(--bg-card)',
-          border: '1px solid var(--border)',
+          border: '1px solid var(--rule-strong)',
           borderRadius: '12px',
           overflow: 'hidden',
           zIndex: 1000,
@@ -115,9 +115,9 @@ export default function TeamSwitcher() {
               style={{
                 width: '100%',
                 padding: '9px 12px',
-                background: team.id === currentTeam.id ? 'var(--accent-faint)' : 'transparent',
+                background: team.id === currentTeam.id ? 'rgba(var(--signature-rgb), 0.15)' : 'transparent',
                 border: 'none',
-                color: 'var(--txt)',
+                color: 'var(--txt-pure)',
                 fontSize: '0.8rem',
                 fontWeight: team.id === currentTeam.id ? 600 : 400,
                 cursor: 'pointer',
@@ -136,7 +136,7 @@ export default function TeamSwitcher() {
                 overflow: 'hidden',
               }}>
                 {team.id === currentTeam.id && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth={3} style={{ flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--signature)" strokeWidth={3} style={{ flexShrink: 0 }}>
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 )}
@@ -166,8 +166,8 @@ export default function TeamSwitcher() {
               justifyContent: 'center',
               gap: '6px',
               padding: '9px 12px',
-              borderTop: '1px solid var(--border)',
-              color: 'var(--accent)',
+              borderTop: '1px solid var(--rule-strong)',
+              color: 'var(--signature)',
               fontSize: '0.75rem',
               fontWeight: 500,
               textDecoration: 'none',

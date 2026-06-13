@@ -228,7 +228,7 @@ export default function HelpFeedbackModal({
         .v2-hf-sub {
           margin-top: 2px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
           letter-spacing: 0.2px;
         }
@@ -297,7 +297,7 @@ export default function HelpFeedbackModal({
           color: var(--txt-pure);
         }
         .v2-hf-cat-label {
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 600;
         }
         .v2-hf-cat-hint {
@@ -336,9 +336,9 @@ export default function HelpFeedbackModal({
         }
         .v2-hf-btn {
           padding: 7px 14px;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 600;
-          border-radius: 7px;
+          border-radius: 8px;
           cursor: pointer;
           transition: background 120ms ease, color 120ms ease, border-color 120ms ease, opacity 120ms ease;
         }

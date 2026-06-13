@@ -46,11 +46,11 @@ export function ProofDropZone({
           justifyContent: 'center',
           gap: 6,
           padding: '18px 12px',
-          background: dragOver ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255,255,255,0.02)',
-          border: `1.5px dashed ${dragOver ? '#f59e0b' : 'var(--btn-secondary-border, rgba(255,255,255,0.18))'}`,
+          background: dragOver ? 'rgba(var(--warning-rgb), 0.12)' : 'rgba(255,255,255,0.02)',
+          border: `1.5px dashed ${dragOver ? 'var(--warning)' : 'var(--btn-secondary-border, rgba(255,255,255,0.18))'}`,
           borderRadius: 10,
           cursor: uploading ? 'wait' : 'pointer',
-          color: dragOver ? '#f59e0b' : 'var(--txt-muted)',
+          color: dragOver ? 'var(--warning)' : 'var(--txt-muted)',
           fontSize: '0.78rem',
           textAlign: 'center',
           opacity: uploading ? 0.6 : 1,
@@ -62,7 +62,7 @@ export function ProofDropZone({
           <polyline points="17 8 12 3 7 8" />
           <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
-        <div style={{ fontWeight: 600, color: dragOver ? '#f59e0b' : 'var(--txt-pure)' }}>
+        <div style={{ fontWeight: 600, color: dragOver ? 'var(--warning)' : 'var(--txt-pure)' }}>
           {uploading ? 'Uploading…' : dragOver ? 'Drop to attach' : 'Drag files here, or click to browse'}
         </div>
         <div style={{ fontSize: '0.7rem' }}>
@@ -88,8 +88,8 @@ export function ProofDropZone({
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '4px 10px', fontSize: '0.72rem',
-                background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b',
-                border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: 'var(--r-pill)',
+                background: 'rgba(var(--warning-rgb), 0.12)', color: 'var(--warning)',
+                border: '1px solid rgba(var(--warning-rgb), 0.4)', borderRadius: 'var(--r-pill)',
                 maxWidth: 240,
               }}
             >

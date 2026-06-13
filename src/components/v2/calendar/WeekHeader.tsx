@@ -60,7 +60,7 @@ const css = `
   top: 8px;
   right: 10px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.2px;
   color: var(--txt-faint);
@@ -71,7 +71,7 @@ const css = `
   bottom: 8px;
   left: 10px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.2px;
   color: var(--txt-faint);
@@ -109,7 +109,7 @@ const css = `
 .cal-day-header.is-hidden { display: none; }
 .cal-day-weekday {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.4px;
   color: var(--txt-faint);

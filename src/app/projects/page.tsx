@@ -660,7 +660,7 @@ export default function V2ProjectsListPage() {
         }
         .v2-sec-idx-sub {
           margin-left: 6px;
-          font-size: 10.5px;
+          font-size: 10px;
           letter-spacing: 0.3px;
           color: var(--txt-muted);
           font-weight: 500;
@@ -736,7 +736,7 @@ export default function V2ProjectsListPage() {
         /* Modal body */
         .v2-block-eye { display: block; margin: 0; }
         .v2-modal-hint {
-          font-size: 13.5px;
+          font-size: 13px;
           color: var(--txt-muted);
           margin: 0;
           line-height: 1.55;
@@ -767,7 +767,7 @@ export default function V2ProjectsListPage() {
           margin: 0;
         }
         .v2-gh-empty-text {
-          font-size: 13.5px;
+          font-size: 13px;
           color: var(--txt-muted);
           margin: 0 0 8px;
           line-height: 1.55;
@@ -800,7 +800,7 @@ export default function V2ProjectsListPage() {
         }
         .v2-field-label {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.6px;
           text-transform: uppercase;
@@ -820,7 +820,7 @@ export default function V2ProjectsListPage() {
           border-radius: 8px;
           color: var(--txt-pure);
           font-family: inherit;
-          font-size: 13.5px;
+          font-size: 13px;
           outline: none;
           transition: border-color var(--dur-base) ease;
         }
@@ -828,7 +828,7 @@ export default function V2ProjectsListPage() {
         .v2-input::placeholder { color: var(--txt-faint); }
         .v2-textarea {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12.5px;
+          font-size: 12px;
           line-height: 1.55;
           resize: vertical;
         }
@@ -883,7 +883,7 @@ export default function V2ProjectsListPage() {
         }
         .v2-repo-badge {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -893,7 +893,7 @@ export default function V2ProjectsListPage() {
           border-radius: 999px;
         }
         .v2-repo-desc {
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-muted);
           line-height: 1.5;
           margin-bottom: 6px;
@@ -905,7 +905,7 @@ export default function V2ProjectsListPage() {
           display: flex;
           gap: 12px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
           letter-spacing: 0.3px;
         }

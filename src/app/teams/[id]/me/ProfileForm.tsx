@@ -188,7 +188,7 @@ export default function ProfileFormFields({
         }
         .profile-section__helper {
           font-family: var(--font-inter), Inter, sans-serif;
-          font-size: 13.5px;
+          font-size: 13px;
           line-height: 1.5;
           color: var(--txt-muted);
           margin: 0;
@@ -197,7 +197,7 @@ export default function ProfileFormFields({
           width: 100%;
           padding: 11px 14px;
           font-family: var(--font-inter), Inter, sans-serif;
-          font-size: 14.5px;
+          font-size: 14px;
           color: var(--txt-pure);
           background: var(--btn-secondary-bg);
           border: 1px solid var(--btn-secondary-border);
@@ -235,7 +235,7 @@ export default function ProfileFormFields({
           gap: 8px;
           padding: 5px 4px 5px 11px;
           font-family: var(--font-inter), Inter, sans-serif;
-          font-size: 13.5px;
+          font-size: 13px;
           color: var(--txt-pure);
           background: var(--btn-secondary-bg);
           border: 1px solid var(--btn-secondary-border);
@@ -427,7 +427,7 @@ function FieldSection({
               .profile-popover-group [cmdk-group-heading] {
                 padding: 8px 10px 4px;
                 font-family: var(--font-mono), 'JetBrains Mono', monospace;
-                font-size: 10.5px;
+                font-size: 10px;
                 font-weight: 500;
                 letter-spacing: 0.08em;
                 color: var(--txt-faint);
@@ -494,7 +494,7 @@ function FieldSection({
           color: var(--signature);
           border-radius: 999px;
           font-family: var(--font-mono), 'JetBrains Mono', monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.04em;
         }

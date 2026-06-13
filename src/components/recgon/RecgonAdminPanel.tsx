@@ -747,7 +747,7 @@ const rcgStyles = `
     position: relative;
     height: 6px;
     background: rgba(0,0,0,0.08);
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
   }
   .rcg-bd-fill {
@@ -917,7 +917,7 @@ const rcgStyles = `
     border-radius: 10px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 12px;
-    color: var(--txt);
+    color: var(--txt-pure);
     transition: background 0.15s;
     animation: rcgFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
@@ -1177,7 +1177,7 @@ const rcgStyles = `
     justify-content: space-between;
     gap: 10px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 1.2px;
     text-transform: uppercase;
   }
@@ -1254,7 +1254,7 @@ const rcgStyles = `
     padding: 2px 7px;
     border-radius: 4px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.8px;
@@ -1281,14 +1281,14 @@ const rcgStyles = `
     min-width: 50px;
     height: 4px;
     background: rgba(0,0,0,0.06);
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
   }
   .rcg-star-fill {
     display: block;
     height: 100%;
     background: linear-gradient(90deg, rgba(var(--signature-rgb), 0.45), var(--signature));
-    border-radius: 3px;
+    border-radius: 4px;
     box-shadow: 0 0 6px rgba(var(--signature-rgb), 0.4);
     transform-origin: left;
     animation: rcgBarGrow 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -1314,7 +1314,7 @@ const rcgStyles = `
   }
   .rcg-skill-chip {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 500;
     padding: 3px 8px;
     border-radius: 6px;
@@ -1326,7 +1326,7 @@ const rcgStyles = `
   }
   .rcg-skill-more {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9px;
+    font-size: 10px;
     color: var(--txt-faint);
     padding: 3px 6px;
     letter-spacing: 0.4px;
@@ -1400,7 +1400,7 @@ const rcgStyles = `
   }
   .rcg-task-kind {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     color: var(--signature);
     text-transform: uppercase;

@@ -74,7 +74,7 @@ export default function FaqSection() {
           width: 100%;
           padding: 18px 22px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 600;
           color: var(--txt-pure);
           letter-spacing: -0.005em;
@@ -107,13 +107,13 @@ export default function FaqSection() {
         }
         .lnd-faq-body {
           padding: 0 22px 18px;
-          font-size: 13.5px;
+          font-size: 13px;
           line-height: 1.65;
           color: var(--txt-muted);
         }
         @media (max-width: 640px) {
           .lnd-faq { padding: 56px 18px; }
-          .lnd-faq-trigger { padding: 16px 18px; font-size: 12.5px; }
+          .lnd-faq-trigger { padding: 16px 18px; font-size: 12px; }
           .lnd-faq-body { padding: 0 18px 16px; }
         }
       `}</style>

@@ -883,7 +883,7 @@ export function InferredFromGitHub({
           }
           .inferred-desk__helper {
             font-family: var(--font-inter), Inter, sans-serif;
-            font-size: 13.5px;
+            font-size: 13px;
             line-height: 1.5;
             color: var(--txt-muted);
             margin: 0;
@@ -934,7 +934,7 @@ export function InferredFromGitHub({
 
           .inferred-desk__empty {
             font-family: var(--font-inter), Inter, sans-serif;
-            font-size: 13.5px;
+            font-size: 13px;
             line-height: 1.5;
             color: var(--txt-muted);
             margin: 0;
@@ -1035,7 +1035,7 @@ export function InferredFromGitHub({
           .zone-divider__count {
             padding: 1px 7px;
             font-family: var(--font-mono), 'JetBrains Mono', monospace;
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 600;
             color: var(--txt-muted);
             background: var(--btn-secondary-bg);
@@ -1089,7 +1089,7 @@ export function InferredFromGitHub({
             grid-row: 1;
             align-self: center;
             font-family: var(--font-mono), 'JetBrains Mono', monospace;
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 500;
             letter-spacing: 0.06em;
             color: var(--txt-muted);
@@ -1112,7 +1112,7 @@ export function InferredFromGitHub({
             gap: 6px;
             min-height: 36px;
             font-family: var(--font-inter), Inter, sans-serif;
-            font-size: 13.5px;
+            font-size: 13px;
             font-weight: 600;
             border-radius: var(--r-sm);
             cursor: pointer;

@@ -285,7 +285,7 @@ function V2HomeInner() {
           letter-spacing: 0;
         }
         .v2-cockpit[data-home-variant='classic'] .v2-bd-dec {
-          border-radius: 7px;
+          border-radius: 8px;
           padding: 10px 12px 10px 14px;
           background: rgba(255,255,255,0.026);
         }
@@ -308,7 +308,7 @@ function V2HomeInner() {
         }
         .v2-sec-idx-sub {
           margin-left: 6px;
-          font-size: 10.5px;
+          font-size: 10px;
           letter-spacing: 0.3px;
           color: var(--txt-faint);
           font-weight: 500;
@@ -337,7 +337,7 @@ function V2HomeInner() {
           justify-content: center;
           min-height: 34px;
           padding: 8px 13px;
-          border-radius: 7px;
+          border-radius: 8px;
           font-size: 12px;
           font-weight: 650;
           text-decoration: none;
@@ -385,7 +385,7 @@ function V2HomeInner() {
           align-items: center;
           min-height: 58px;
           padding: 8px 10px;
-          border-radius: 7px;
+          border-radius: 8px;
           text-decoration: none;
           color: inherit;
           transition: background var(--dur-fast) ease;
@@ -396,7 +396,7 @@ function V2HomeInner() {
         .v2-home-pf-avatar {
           width: 28px;
           height: 28px;
-          border-radius: 7px;
+          border-radius: 8px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -448,10 +448,10 @@ function V2HomeInner() {
         }
         .v2-home-pf-row[data-pulse='stuck'] .v2-home-pf-meta strong,
         .v2-home-pf-row[data-pulse='drifting'] .v2-home-pf-meta strong {
-          color: var(--danger, #dc2626);
+          color: var(--danger);
         }
         .v2-home-pf-row[data-pulse='shipping'] .v2-home-pf-meta strong {
-          color: var(--success, #059669);
+          color: var(--success);
         }
         .v2-home-pf-empty {
           margin: 0;
@@ -467,7 +467,7 @@ function V2HomeInner() {
         }
         .v2-home-pf-skel span {
           height: 42px;
-          border-radius: 7px;
+          border-radius: 8px;
           background: rgba(255,255,255,0.045);
           animation: v2sectionFade 900ms ease-in-out infinite alternate;
         }
@@ -499,7 +499,7 @@ function V2HomeInner() {
         }
         .v2-empty-text {
           max-width: 520px;
-          font-size: 14.5px;
+          font-size: 14px;
           line-height: 1.65;
           color: var(--txt-muted);
           margin: 0 0 22px;

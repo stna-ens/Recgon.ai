@@ -159,7 +159,7 @@ const css = `
 }
 .cal-unsched-priority {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.4px;
   align-self: start;
@@ -180,7 +180,7 @@ const css = `
 }
 .cal-unsched-kind {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.8px;
   text-transform: uppercase;

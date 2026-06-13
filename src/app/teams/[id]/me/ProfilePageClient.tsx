@@ -548,13 +548,13 @@ export default function ProfilePageClient({
           align-items: center;
           gap: 8px;
           font-family: var(--font-inter), Inter, sans-serif;
-          font-size: 13.5px;
+          font-size: 13px;
           line-height: 1.4;
         }
         .profile-savebar__msg--clean { color: var(--txt-faint); }
         .profile-savebar__msg--dirty { color: var(--signature); }
         .profile-savebar__msg--ok { color: var(--txt-muted); }
-        .profile-savebar__msg--err { color: var(--danger, #f87171); }
+        .profile-savebar__msg--err { color: var(--danger); }
         .profile-savebar__dot {
           width: 8px;
           height: 8px;

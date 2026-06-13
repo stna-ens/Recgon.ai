@@ -263,7 +263,7 @@ export default function HeroSection() {
         }
         .lnd-hero-pill-text {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 11.5px;
+          font-size: 11px;
           letter-spacing: 0.4px;
           color: var(--txt-pure);
           font-weight: 600;

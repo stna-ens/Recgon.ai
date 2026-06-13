@@ -141,7 +141,9 @@ export default function V2TeamsIndexPage() {
           background: var(--btn-primary-bg);
           color: var(--btn-primary-txt);
           border: none;
-          border-radius: 999px;
+          /* Match the shared ui/Button primary shape (2px) — pill primaries
+             clashed with the square primaries on sibling pages. */
+          border-radius: 2px;
           font-weight: 600;
           font-size: 13px;
           letter-spacing: -0.1px;
@@ -156,7 +158,7 @@ export default function V2TeamsIndexPage() {
         }
         .v2t-new-btn[data-cancel="1"] {
           background: transparent;
-          color: var(--txt);
+          color: var(--txt-pure);
           border: 1px solid var(--btn-secondary-border);
           box-shadow: none;
         }
@@ -198,7 +200,7 @@ export default function V2TeamsIndexPage() {
           padding: 12px 14px;
           background: var(--btn-secondary-bg);
           border: 1px solid var(--btn-secondary-border);
-          border-radius: 12px;
+          border-radius: 8px;
           color: var(--txt-pure);
           font-size: 15px;
           font-weight: 500;
@@ -217,7 +219,7 @@ export default function V2TeamsIndexPage() {
           background: var(--btn-primary-bg);
           color: var(--btn-primary-txt);
           border: none;
-          border-radius: 12px;
+          border-radius: 2px;
           font-weight: 600;
           font-size: 13px;
           font-family: inherit;
@@ -233,8 +235,8 @@ export default function V2TeamsIndexPage() {
           padding: 10px 14px;
           font-size: 13px;
           color: var(--danger);
-          background: rgba(255, 59, 48, 0.06);
-          border: 1px solid rgba(255, 59, 48, 0.22);
+          background: rgba(var(--danger-rgb), 0.06);
+          border: 1px solid rgba(var(--danger-rgb), 0.22);
           border-radius: 10px;
         }
 
@@ -361,7 +363,7 @@ export default function V2TeamsIndexPage() {
           padding: 3px 8px;
           border-radius: 999px;
           font-family: var(--font-mono);
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.6px;
           text-transform: uppercase;

@@ -232,8 +232,8 @@ const teamSetupStyles = `
   .ts-full { width: 100%; }
   .ts-alert {
     padding: 0.6rem 0.75rem;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(var(--danger-rgb), 0.08);
+    border: 1px solid rgba(var(--danger-rgb), 0.3);
     border-radius: var(--r-sm);
     color: var(--danger);
     font-size: 0.85rem;

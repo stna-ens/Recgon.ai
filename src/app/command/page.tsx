@@ -311,9 +311,9 @@ function CommandPageInner() {
           color: var(--signature);
           margin-bottom: 10px;
         }
-        .v2-mc-hero[data-tone='good'] .v2-mc-tag { color: var(--success, #059669); }
-        .v2-mc-hero[data-tone='warn'] .v2-mc-tag { color: var(--warning, #d97706); }
-        .v2-mc-hero[data-tone='crit'] .v2-mc-tag { color: var(--danger, #dc2626); }
+        .v2-mc-hero[data-tone='good'] .v2-mc-tag { color: var(--success); }
+        .v2-mc-hero[data-tone='warn'] .v2-mc-tag { color: var(--warning); }
+        .v2-mc-hero[data-tone='crit'] .v2-mc-tag { color: var(--danger); }
         .v2-mc-headline {
           margin: 0 0 6px;
           font-size: clamp(22px, 3vw, 30px);
@@ -347,8 +347,8 @@ function CommandPageInner() {
           color: var(--txt-faint);
         }
         .v2-mc-stat[data-tone='sig']  { color: var(--signature); border-color: rgba(var(--signature-rgb), 0.24); }
-        .v2-mc-stat[data-tone='warn'] { color: var(--warning); border-color: rgba(217, 119, 6, 0.24); }
-        .v2-mc-stat[data-tone='crit'] { color: var(--danger); border-color: rgba(220, 38, 38, 0.24); }
+        .v2-mc-stat[data-tone='warn'] { color: var(--warning); border-color: rgba(var(--warning-rgb), 0.24); }
+        .v2-mc-stat[data-tone='crit'] { color: var(--danger); border-color: rgba(var(--danger-rgb), 0.24); }
         .v2-mc-stat-num {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 21px;
@@ -359,7 +359,7 @@ function CommandPageInner() {
         }
         .v2-mc-stat-lab {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.8px;
           text-transform: uppercase;
@@ -381,7 +381,7 @@ function CommandPageInner() {
           padding: 7px 12px;
           background: transparent;
           border: none;
-          border-radius: 5px;
+          border-radius: 6px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 10px;
           font-weight: 700;
@@ -399,11 +399,11 @@ function CommandPageInner() {
         .v2-mc-pill:disabled { opacity: 0.4; cursor: not-allowed; }
         .v2-mc-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--txt-faint); flex-shrink: 0; }
         .v2-mc-pill[data-tone='sig'] .v2-mc-pill-dot  { background: var(--signature); }
-        .v2-mc-pill[data-tone='warn'] .v2-mc-pill-dot { background: var(--warning, #d97706); }
-        .v2-mc-pill[data-tone='crit'] .v2-mc-pill-dot { background: var(--danger, #dc2626); }
+        .v2-mc-pill[data-tone='warn'] .v2-mc-pill-dot { background: var(--warning); }
+        .v2-mc-pill[data-tone='crit'] .v2-mc-pill-dot { background: var(--danger); }
         .v2-mc-pill.is-active[data-tone='sig'] .v2-mc-pill-dot  { box-shadow: 0 0 6px var(--signature); }
-        .v2-mc-pill.is-active[data-tone='warn'] .v2-mc-pill-dot { box-shadow: 0 0 6px var(--warning, #d97706); }
-        .v2-mc-pill.is-active[data-tone='crit'] .v2-mc-pill-dot { box-shadow: 0 0 6px var(--danger, #dc2626); }
+        .v2-mc-pill.is-active[data-tone='warn'] .v2-mc-pill-dot { box-shadow: 0 0 6px var(--warning); }
+        .v2-mc-pill.is-active[data-tone='crit'] .v2-mc-pill-dot { box-shadow: 0 0 6px var(--danger); }
         .v2-mc-pill-num { font-variant-numeric: tabular-nums; color: var(--txt-faint); font-weight: 600; opacity: 0.85; }
         .v2-mc-pill.is-active .v2-mc-pill-num { color: var(--txt-pure); opacity: 1; }
 

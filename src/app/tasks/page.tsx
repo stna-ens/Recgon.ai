@@ -66,7 +66,7 @@ type ColumnKey = 'assigned' | 'wip' | 'review';
 const COLUMNS: { key: ColumnKey; label: string; tone: string; toneRgb: string; status: string[] }[] = [
   { key: 'assigned', label: 'assigned',    tone: 'var(--txt-muted)',  toneRgb: '160, 160, 168',     status: ['assigned'] },
   { key: 'wip',      label: 'in progress', tone: 'var(--signature)',  toneRgb: 'var(--signature-rgb)', status: ['accepted', 'in_progress'] },
-  { key: 'review',   label: 'in review',   tone: 'var(--warning)',    toneRgb: '255, 159, 10',      status: ['awaiting_review'] },
+  { key: 'review',   label: 'in review',   tone: 'var(--warning)',    toneRgb: 'var(--warning-rgb)',      status: ['awaiting_review'] },
 ];
 
 const KIND_LABEL: Record<string, string> = {
@@ -889,7 +889,7 @@ function V2TasksInner() {
         }
         .v2-section-title-tail {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 500;
           color: var(--txt-muted);
           letter-spacing: 0.2px;
@@ -931,7 +931,7 @@ function V2TasksInner() {
           outline: none;
           color: var(--txt-pure);
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12.5px;
+          font-size: 12px;
           letter-spacing: 0.1px;
         }
         .v2-tasks-search::placeholder { color: var(--txt-faint); }
@@ -948,7 +948,7 @@ function V2TasksInner() {
         }
         .v2-tasks-search-clear:hover {
           color: var(--danger);
-          background: rgba(248, 113, 113, 0.10);
+          background: rgba(var(--danger-rgb), 0.10);
         }
 
         /* Phase 3.6 / Plan 04 — overdue filter chip. Inert outline by
@@ -964,7 +964,7 @@ function V2TasksInner() {
           border-radius: 10px;
           cursor: pointer;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 1.2px;
           text-transform: lowercase;
@@ -994,7 +994,7 @@ function V2TasksInner() {
         }
         .v2-tasks-filter-count {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           font-variant-numeric: tabular-nums;
           color: inherit;
@@ -1072,7 +1072,7 @@ function V2TasksInner() {
           --glow-alpha: 0.55;
         }
         .v2-tasks-col[data-col="review"] {
-          --glow-rgb: 255, 159, 10;
+          --glow-rgb: var(--warning-rgb);
           --glow-alpha: 0.48;
         }
         /* Column light pool — monotonically falling off from the dot.
@@ -1171,7 +1171,7 @@ function V2TasksInner() {
         }
         .v2-tasks-col-label {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.7px;
           text-transform: uppercase;
@@ -1179,7 +1179,7 @@ function V2TasksInner() {
         .v2-tasks-col-count {
           margin-left: auto;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           color: var(--txt-faint);
           font-variant-numeric: tabular-nums;
@@ -1301,7 +1301,7 @@ function V2TasksInner() {
           width: 2px;
           background: var(--warning);
           border-radius: 0 2px 2px 0;
-          box-shadow: 0 0 8px rgba(255, 159, 10, 0.45);
+          box-shadow: 0 0 8px rgba(var(--warning-rgb), 0.45);
         }
         .v2-tasks-card-head {
           display: flex;
@@ -1311,7 +1311,7 @@ function V2TasksInner() {
         }
         .v2-tasks-card-kind {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -1319,7 +1319,7 @@ function V2TasksInner() {
         }
         .v2-tasks-card-prio {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -1329,7 +1329,7 @@ function V2TasksInner() {
         }
         .v2-tasks-card-flag {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -1358,7 +1358,7 @@ function V2TasksInner() {
           box-shadow: 0 0 6px var(--signature);
         }
         .v2-tasks-card-title {
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 600;
           line-height: 1.4;
           color: var(--txt-pure);
@@ -1389,7 +1389,7 @@ function V2TasksInner() {
         }
         .v2-tasks-card-chip {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.4px;
           text-transform: uppercase;
@@ -1407,7 +1407,7 @@ function V2TasksInner() {
         }
         .v2-tasks-card-schedule {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           color: var(--signature);
           padding: 2px 7px;
           border-radius: 6px;
@@ -1491,7 +1491,7 @@ function V2TasksInner() {
           gap: 8px;
         }
         .v2-tasks-detail-desc {
-          font-size: 13.5px;
+          font-size: 13px;
           line-height: 1.65;
           color: var(--txt-muted);
           margin: 0;
@@ -1568,7 +1568,7 @@ function V2TasksInner() {
           color: var(--warning);
         }
         .v2-btn-warn:hover:not(:disabled) {
-          background: rgba(255, 159, 10, 0.08);
+          background: rgba(var(--warning-rgb), 0.08);
         }
 
         /* Reschedule */
@@ -1601,7 +1601,7 @@ function V2TasksInner() {
         }
         .v2-tasks-reschedule-field span {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.9px;
           text-transform: uppercase;
@@ -1611,7 +1611,7 @@ function V2TasksInner() {
         /* Proof */
         .v2-tasks-proof {
           padding: 14px 16px;
-          border: 1px dashed rgba(255, 159, 10, 0.30);
+          border: 1px dashed rgba(var(--warning-rgb), 0.30);
           border-radius: 10px;
           display: flex;
           flex-direction: column;
@@ -1631,7 +1631,7 @@ function V2TasksInner() {
           border-radius: 6px;
           color: var(--txt-pure);
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12.5px;
+          font-size: 12px;
           line-height: 1.55;
           resize: vertical;
           outline: none;

@@ -66,7 +66,7 @@
 }
 .v2-an-perf {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: lowercase;
@@ -103,7 +103,7 @@ html.light .v2-shell .v2-an-range,
   border: none;
   border-radius: 6px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -268,7 +268,7 @@ html.light .v2-shell .v2-an-tile-spark-bubble,
   background: rgba(var(--signature-rgb), 0.10);
   position: relative;
   overflow: hidden;
-  border-radius: 99px;
+  border-radius: 999px;
 }
 .v2-an-stage-bar::after {
   content: '';
@@ -302,7 +302,7 @@ html.light .v2-shell .v2-an-tile-spark-bubble,
   align-items: center;
   gap: 16px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--txt-faint);
   letter-spacing: 0.3px;
 }
@@ -482,7 +482,7 @@ html.light .v2-shell .v2-an-tile-spark-bubble,
   padding: 10px 16px 11px;
   margin-bottom: -1px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.6px;
   text-transform: uppercase;
@@ -499,7 +499,7 @@ html.light .v2-shell .v2-an-tile-spark-bubble,
   border-bottom-color: var(--signature);
 }
 .v2-an-tab-count {
-  font-size: 9.5px;
+  font-size: 10px;
   color: var(--txt-faint);
   padding: 1px 6px;
   background: rgba(255, 255, 255, 0.04);
@@ -627,12 +627,12 @@ html.light .v2-shell .v2-an-tab-count,
 .v2-an-toppage-track {
   height: 7px;
   background: rgba(128, 128, 128, 0.06);
-  border-radius: 99px;
+  border-radius: 999px;
   overflow: hidden;
 }
 .v2-an-toppage-fill {
   height: 100%;
-  border-radius: 99px;
+  border-radius: 999px;
   transition: box-shadow var(--dur-fast) ease, opacity var(--dur-fast) ease, width var(--dur-slow) cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -654,7 +654,7 @@ html.light .v2-shell .v2-an-tab-count,
   opacity: 0.92;
 }
 .v2-an-empty-text {
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.65;
   color: var(--txt-muted);
   margin: 0 0 18px;
@@ -664,8 +664,8 @@ html.light .v2-shell .v2-an-tab-count,
 .v2-an-err-card {
   padding: 16px 20px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 69, 58, 0.30);
-  background: rgba(255, 69, 58, 0.04);
+  border: 1px solid rgba(var(--danger-rgb), 0.30);
+  background: rgba(var(--danger-rgb), 0.04);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -687,12 +687,12 @@ html.light .v2-shell .v2-an-tab-count,
 }
 .v2-an-err-steps li {
   color: var(--txt-muted);
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .v2-an-err-step {
   color: var(--txt-muted);
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.6;
   margin: 0;
 }
@@ -717,7 +717,7 @@ html.light .v2-shell .v2-an-tab-count,
 .v2-an-guide summary {
   cursor: pointer;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -740,7 +740,7 @@ html.light .v2-shell .v2-an-tab-count,
 .v2-an-guide-list li { margin-bottom: 4px; }
 .v2-an-guide-list code {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: 11px;
   background: rgba(255, 255, 255, 0.05);
   padding: 1px 6px;
   border-radius: 4px;
@@ -753,7 +753,7 @@ html.light .v2-shell .v2-an-tab-count,
 }
 .v2-an-field-label {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.6px;
   text-transform: uppercase;
@@ -770,7 +770,7 @@ html.light .v2-shell .v2-an-tab-count,
 }
 .v2-an-json {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: 11px;
   line-height: 1.55;
 }
 .v2-an-drop {
@@ -792,7 +792,7 @@ html.light .v2-shell .v2-an-tab-count,
 .v2-an-drop.is-loaded {
   border-color: var(--success);
   border-style: solid;
-  background: rgba(48, 209, 88, 0.04);
+  background: rgba(var(--success-rgb), 0.04);
 }
 .v2-an-drop-prompt { font-size: 13px; color: var(--txt-muted); }
 .v2-an-drop-sub {
@@ -813,12 +813,12 @@ html.light .v2-shell .v2-an-tab-count,
   letter-spacing: 0.2px;
 }
 .v2-an-retry-hint {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--txt-muted);
   line-height: 1.55;
   margin: 4px 0 0;
   padding: 8px 12px;
-  background: rgba(255, 214, 10, 0.06);
+  background: rgba(var(--warning-rgb), 0.06);
   border-left: 2px solid var(--warning);
   border-radius: 4px;
 }
@@ -888,7 +888,7 @@ html.light .v2-shell .v2-an-tab-count,
 
 .v2-an-prop-select {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: 11px;
   padding: 6px 26px 6px 10px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--rule);
@@ -949,7 +949,7 @@ html.light .v2-shell .v2-an-tab-count,
   padding: 5px 10px;
   border-radius: 6px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -966,7 +966,7 @@ html.light .v2-shell .v2-an-tab-count,
 .v2-btn-tiny:disabled { opacity: 0.5; cursor: not-allowed; }
 .v2-an-danger:hover:not(:disabled) {
   color: var(--danger) !important;
-  border-color: rgba(255, 69, 58, 0.40) !important;
+  border-color: rgba(var(--danger-rgb), 0.40) !important;
 }
 .v2-an-spinner {
   width: 9px;
@@ -1017,7 +1017,7 @@ html.light .v2-shell .v2-an-tab-count,
   border: 1px solid var(--rule);
   background: rgba(255, 255, 255, 0.01);
   border-radius: 10px;
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--txt-pure);
   cursor: pointer;
   text-align: left;
@@ -1069,7 +1069,7 @@ html.light .v2-shell .v2-an-history-card,
 .v2-an-history-summary {
   color: var(--txt-muted);
   line-height: 1.45;
-  font-size: 12.5px;
+  font-size: 12px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -1077,7 +1077,7 @@ html.light .v2-shell .v2-an-history-card,
 }
 .v2-an-history-source {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: 10px;
   letter-spacing: 0.4px;
   text-transform: uppercase;
 }

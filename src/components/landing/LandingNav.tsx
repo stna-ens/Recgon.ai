@@ -133,7 +133,7 @@ export default function LandingNav() {
           border-radius: 999px;
           background: var(--signature);
           color: white;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 600;
           letter-spacing: -0.005em;
           text-decoration: none;

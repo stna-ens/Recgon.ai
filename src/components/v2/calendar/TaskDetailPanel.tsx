@@ -817,7 +817,7 @@ const css = `
   margin: 0;
 }
 .cal-panel-desc {
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.65;
   color: var(--txt-muted);
   margin: -8px 0 0;
@@ -852,13 +852,13 @@ const css = `
   line-height: 1.5;
 }
 .cal-panel-section-note {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--txt-muted);
   margin: 0;
   line-height: 1.55;
 }
 .cal-panel-section-foot {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--txt-faint);
   margin: 0;
   line-height: 1.5;
@@ -919,7 +919,7 @@ const css = `
 }
 .cal-panel-field-label {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.1px;
   text-transform: uppercase;
@@ -934,7 +934,7 @@ const css = `
   all: unset;
   cursor: pointer;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.6px;
   text-transform: uppercase;

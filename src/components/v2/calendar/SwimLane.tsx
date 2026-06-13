@@ -387,7 +387,7 @@ const css = `
 .cal-lane-name-wrap { display: flex; flex-direction: column; min-width: 0; }
 .cal-lane-name {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--txt-pure);
   white-space: nowrap;
@@ -398,7 +398,7 @@ const css = `
 }
 .cal-lane-title {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--txt-faint);
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -515,7 +515,7 @@ const css = `
 .cal-day-load-text {
   position: relative;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--txt-pure);
   letter-spacing: 0.6px;
@@ -532,7 +532,7 @@ const css = `
   background: transparent;
   border: none;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.8px;
   text-transform: uppercase;

@@ -280,8 +280,8 @@ export const authStyles = `
   }
   .auth-alert {
     padding: 0.6rem 0.75rem;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(var(--danger-rgb), 0.08);
+    border: 1px solid rgba(var(--danger-rgb), 0.3);
     border-radius: var(--r-sm);
     color: var(--danger);
     font-size: 0.85rem;
@@ -289,10 +289,10 @@ export const authStyles = `
   }
   .auth-notice {
     padding: 0.6rem 0.75rem;
-    background: rgba(34, 197, 94, 0.08);
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    background: rgba(var(--success-rgb), 0.08);
+    border: 1px solid rgba(var(--success-rgb), 0.3);
     border-radius: var(--r-sm);
-    color: var(--success, #22c55e);
+    color: var(--success);
     font-size: 0.85rem;
     margin: 0;
   }

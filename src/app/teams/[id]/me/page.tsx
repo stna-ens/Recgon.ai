@@ -98,7 +98,7 @@ export default async function MyProfilePage({
         }
         .profile-shell__eyebrow {
           font-family: var(--font-mono), 'JetBrains Mono', monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 500;
           letter-spacing: 0.14em;
           color: var(--txt-faint);

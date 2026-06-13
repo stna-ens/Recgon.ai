@@ -86,7 +86,7 @@ export default function TabPlaceholder({ title, body, fallbackHref, fallbackLabe
           font-variant-numeric: tabular-nums;
         }
         .v2-stub-text {
-          font-size: 14.5px;
+          font-size: 14px;
           line-height: 1.65;
           color: var(--txt-muted);
           margin: 0 0 18px;
@@ -102,7 +102,7 @@ export default function TabPlaceholder({ title, body, fallbackHref, fallbackLabe
           color: var(--txt-pure);
           border-radius: 8px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 11.5px;
+          font-size: 11px;
           font-weight: 600;
           letter-spacing: 0.5px;
           text-transform: uppercase;

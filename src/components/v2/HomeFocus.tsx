@@ -378,28 +378,28 @@ const stylesheet = `
     background:
       var(--bg-content) padding-box,
       linear-gradient(135deg,
-        rgba(220, 38, 38, 0.45) 0%,
+        rgba(var(--danger-rgb), 0.45) 0%,
         rgba(var(--signature-rgb), 0.06) 35%,
         rgba(var(--signature-rgb), 0.05) 65%,
-        rgba(220, 38, 38, 0.22) 100%) border-box;
+        rgba(var(--danger-rgb), 0.22) 100%) border-box;
   }
   .v2-fc-shell[data-tone='good'] {
     background:
       var(--bg-content) padding-box,
       linear-gradient(135deg,
-        rgba(16, 185, 129, 0.4) 0%,
+        rgba(var(--success-rgb), 0.4) 0%,
         rgba(var(--signature-rgb), 0.06) 35%,
         rgba(var(--signature-rgb), 0.05) 65%,
-        rgba(16, 185, 129, 0.2) 100%) border-box;
+        rgba(var(--success-rgb), 0.2) 100%) border-box;
   }
   .v2-fc-shell[data-tone='mid'] {
     background:
       var(--bg-content) padding-box,
       linear-gradient(135deg,
-        rgba(217, 119, 6, 0.4) 0%,
+        rgba(var(--warning-rgb), 0.4) 0%,
         rgba(var(--signature-rgb), 0.06) 35%,
         rgba(var(--signature-rgb), 0.05) 65%,
-        rgba(217, 119, 6, 0.2) 100%) border-box;
+        rgba(var(--warning-rgb), 0.2) 100%) border-box;
   }
 
   /* DOTTED BACKPLATE — canvas-rendered. Each dot reacts to the cursor
@@ -476,19 +476,19 @@ const stylesheet = `
     font-weight: 700;
   }
   .v2-fc-status-chip[data-tone='crit'] {
-    color: var(--danger, #dc2626);
-    background: rgba(220, 38, 38, 0.12);
-    border: 1px solid rgba(220, 38, 38, 0.32);
+    color: var(--danger);
+    background: rgba(var(--danger-rgb), 0.12);
+    border: 1px solid rgba(var(--danger-rgb), 0.32);
   }
   .v2-fc-status-chip[data-tone='mid'] {
-    color: var(--warning, #d97706);
-    background: rgba(217, 119, 6, 0.12);
-    border: 1px solid rgba(217, 119, 6, 0.32);
+    color: var(--warning);
+    background: rgba(var(--warning-rgb), 0.12);
+    border: 1px solid rgba(var(--warning-rgb), 0.32);
   }
   .v2-fc-status-chip[data-tone='good'] {
-    color: var(--success, #059669);
-    background: rgba(16, 185, 129, 0.12);
-    border: 1px solid rgba(16, 185, 129, 0.32);
+    color: var(--success);
+    background: rgba(var(--success-rgb), 0.12);
+    border: 1px solid rgba(var(--success-rgb), 0.32);
   }
   .v2-fc-status-chip[data-tone='unknown'] {
     color: var(--txt-muted);
@@ -566,7 +566,7 @@ const stylesheet = `
   }
   .v2-fc-right-tag {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 1.4px;
     text-transform: uppercase;
     color: var(--txt-faint);
@@ -587,14 +587,14 @@ const stylesheet = `
     align-items: center;
     gap: 8px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 0.6px;
     text-transform: uppercase;
     font-weight: 700;
   }
   .v2-fc-right-tally-cell { color: var(--txt-faint); }
-  .v2-fc-right-tally-cell[data-tone='warn'] { color: var(--warning, #d97706); }
-  .v2-fc-right-tally-cell[data-tone='good'] { color: var(--success, #059669); }
+  .v2-fc-right-tally-cell[data-tone='warn'] { color: var(--warning); }
+  .v2-fc-right-tally-cell[data-tone='good'] { color: var(--success); }
   .v2-fc-right-tally-cell + .v2-fc-right-tally-cell::before {
     content: '·';
     margin-right: 8px;
@@ -662,7 +662,7 @@ const stylesheet = `
 
   .v2-fc-voice-empty {
     margin: 0;
-    font-size: 11.5px;
+    font-size: 11px;
     line-height: 1.5;
     color: var(--txt-faint);
     opacity: 0.7;
@@ -699,7 +699,7 @@ const stylesheet = `
     padding: 16px 20px 14px;
     border-radius: 10px;
     background: var(--bg-deep);
-    border: 1px solid rgba(220, 38, 38, 0.22);
+    border: 1px solid rgba(var(--danger-rgb), 0.22);
     overflow: hidden;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
@@ -709,8 +709,8 @@ const stylesheet = `
     top: 0; left: 0; right: 0;
     height: 1px;
     background: linear-gradient(90deg,
-      var(--danger, #dc2626) 0%,
-      rgba(220, 38, 38, 0.4) 50%,
+      var(--danger) 0%,
+      rgba(var(--danger-rgb), 0.4) 50%,
       transparent 100%);
   }
   .v2-fc-callout::after {
@@ -721,7 +721,7 @@ const stylesheet = `
     pointer-events: none;
     background-image: radial-gradient(
       circle,
-      rgba(220, 38, 38, 0.08) 1px,
+      rgba(var(--danger-rgb), 0.08) 1px,
       transparent 1px
     );
     background-size: 12px 12px;
@@ -732,22 +732,22 @@ const stylesheet = `
   }
 
   /* tone variants */
-  .v2-fc-callout[data-tone='mid'] { border-color: rgba(217, 119, 6, 0.22); }
+  .v2-fc-callout[data-tone='mid'] { border-color: rgba(var(--warning-rgb), 0.22); }
   .v2-fc-callout[data-tone='mid']::before {
-    background: linear-gradient(90deg, var(--warning, #d97706) 0%, rgba(217, 119, 6, 0.4) 50%, transparent 100%);
+    background: linear-gradient(90deg, var(--warning) 0%, rgba(var(--warning-rgb), 0.4) 50%, transparent 100%);
   }
   .v2-fc-callout[data-tone='mid']::after {
-    background-image: radial-gradient(circle, rgba(217, 119, 6, 0.08) 1px, transparent 1px);
+    background-image: radial-gradient(circle, rgba(var(--warning-rgb), 0.08) 1px, transparent 1px);
   }
   .v2-fc-callout[data-tone='good'],
-  .v2-fc-callout[data-kind='bet'] { border-color: rgba(16, 185, 129, 0.22); }
+  .v2-fc-callout[data-kind='bet'] { border-color: rgba(var(--success-rgb), 0.22); }
   .v2-fc-callout[data-tone='good']::before,
   .v2-fc-callout[data-kind='bet']::before {
-    background: linear-gradient(90deg, var(--success, #059669) 0%, rgba(16, 185, 129, 0.4) 50%, transparent 100%);
+    background: linear-gradient(90deg, var(--success) 0%, rgba(var(--success-rgb), 0.4) 50%, transparent 100%);
   }
   .v2-fc-callout[data-tone='good']::after,
   .v2-fc-callout[data-kind='bet']::after {
-    background-image: radial-gradient(circle, rgba(16, 185, 129, 0.08) 1px, transparent 1px);
+    background-image: radial-gradient(circle, rgba(var(--success-rgb), 0.08) 1px, transparent 1px);
   }
   .v2-fc-callout[data-tone='unknown'] { border-color: var(--rule); }
   .v2-fc-callout[data-tone='unknown']::before {
@@ -769,21 +769,21 @@ const stylesheet = `
     justify-content: center;
     width: 18px; height: 18px;
     border-radius: 4px;
-    background: rgba(220, 38, 38, 0.12);
-    color: var(--danger, #dc2626);
+    background: rgba(var(--danger-rgb), 0.12);
+    color: var(--danger);
     flex-shrink: 0;
-    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.25);
+    box-shadow: 0 0 0 1px rgba(var(--danger-rgb), 0.25);
   }
   .v2-fc-callout[data-tone='mid'] .v2-fc-callout-sigil {
-    background: rgba(217, 119, 6, 0.12);
-    color: var(--warning, #d97706);
-    box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.25);
+    background: rgba(var(--warning-rgb), 0.12);
+    color: var(--warning);
+    box-shadow: 0 0 0 1px rgba(var(--warning-rgb), 0.25);
   }
   .v2-fc-callout[data-tone='good'] .v2-fc-callout-sigil,
   .v2-fc-callout[data-kind='bet'] .v2-fc-callout-sigil {
-    background: rgba(16, 185, 129, 0.12);
-    color: var(--success, #059669);
-    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25);
+    background: rgba(var(--success-rgb), 0.12);
+    color: var(--success);
+    box-shadow: 0 0 0 1px rgba(var(--success-rgb), 0.25);
   }
   .v2-fc-callout[data-tone='unknown'] .v2-fc-callout-sigil {
     background: rgba(var(--signature-rgb), 0.08);
@@ -793,15 +793,15 @@ const stylesheet = `
 
   .v2-fc-callout-sev {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9.5px;
+    font-size: 10px;
     letter-spacing: 1.4px;
     text-transform: uppercase;
     font-weight: 700;
-    color: var(--danger, #dc2626);
+    color: var(--danger);
   }
-  .v2-fc-callout[data-tone='mid'] .v2-fc-callout-sev { color: var(--warning, #d97706); }
+  .v2-fc-callout[data-tone='mid'] .v2-fc-callout-sev { color: var(--warning); }
   .v2-fc-callout[data-tone='good'] .v2-fc-callout-sev,
-  .v2-fc-callout[data-kind='bet'] .v2-fc-callout-sev { color: var(--success, #059669); }
+  .v2-fc-callout[data-kind='bet'] .v2-fc-callout-sev { color: var(--success); }
   .v2-fc-callout[data-tone='unknown'] .v2-fc-callout-sev { color: var(--txt-muted); }
 
   .v2-fc-callout-rule {
@@ -814,7 +814,7 @@ const stylesheet = `
 
   .v2-fc-callout-priority {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 1.2px;
     text-transform: uppercase;
     color: var(--txt-faint);
@@ -834,7 +834,7 @@ const stylesheet = `
   /* Body prose */
   .v2-fc-callout-body {
     margin: 0;
-    font-size: 13.5px;
+    font-size: 13px;
     line-height: 1.55;
     color: var(--txt-muted);
     letter-spacing: -0.003em;
@@ -867,7 +867,7 @@ const stylesheet = `
   }
   .v2-fc-secondary-tag {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9.5px;
+    font-size: 10px;
     letter-spacing: 1.1px;
     text-transform: uppercase;
     color: var(--signature);
@@ -875,7 +875,7 @@ const stylesheet = `
     flex-shrink: 0;
   }
   .v2-fc-secondary-text {
-    font-size: 12.5px;
+    font-size: 12px;
     color: var(--txt-muted);
     line-height: 1.5;
     overflow: hidden;
@@ -898,7 +898,7 @@ const stylesheet = `
     gap: 8px;
     padding: 9px 16px;
     border-radius: 8px;
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: -0.005em;
     text-decoration: none;
@@ -939,7 +939,7 @@ const stylesheet = `
   }
   .v2-fc-meta-lab {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9.5px;
+    font-size: 10px;
     letter-spacing: 0.7px;
     text-transform: uppercase;
     color: var(--txt-faint);
@@ -961,9 +961,9 @@ const stylesheet = `
     font-weight: 600;
     letter-spacing: 0.2px;
   }
-  .v2-fc-meta-val-tone[data-tone='crit'] { color: var(--danger, #dc2626); }
-  .v2-fc-meta-val-tone[data-tone='mid']  { color: var(--warning, #d97706); }
-  .v2-fc-meta-val-tone[data-tone='good'] { color: var(--success, #059669); }
+  .v2-fc-meta-val-tone[data-tone='crit'] { color: var(--danger); }
+  .v2-fc-meta-val-tone[data-tone='mid']  { color: var(--warning); }
+  .v2-fc-meta-val-tone[data-tone='good'] { color: var(--success); }
   .v2-fc-meta-val-tone[data-tone='unknown'] { color: var(--txt-muted); }
 
   .v2-fc-meta-divider {
@@ -995,35 +995,35 @@ const stylesheet = `
     color: var(--txt-faint);
     letter-spacing: -0.005em;
   }
-  .v2-fc-meta-score[data-tone='crit'] .v2-fc-meta-score-num { color: var(--danger, #dc2626); }
-  .v2-fc-meta-score[data-tone='mid']  .v2-fc-meta-score-num { color: var(--warning, #d97706); }
-  .v2-fc-meta-score[data-tone='good'] .v2-fc-meta-score-num { color: var(--success, #059669); }
+  .v2-fc-meta-score[data-tone='crit'] .v2-fc-meta-score-num { color: var(--danger); }
+  .v2-fc-meta-score[data-tone='mid']  .v2-fc-meta-score-num { color: var(--warning); }
+  .v2-fc-meta-score[data-tone='good'] .v2-fc-meta-score-num { color: var(--success); }
 
   .v2-fc-meta-bar-track {
     height: 5px;
     background: rgba(var(--signature-rgb), 0.08);
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
     position: relative;
     border: 1px solid rgba(var(--signature-rgb), 0.06);
   }
   .v2-fc-meta-bar-fill {
     height: 100%;
-    border-radius: 3px;
+    border-radius: 4px;
     transition: width 800ms cubic-bezier(0.2, 0.8, 0.2, 1);
     background: var(--txt-faint);
   }
   .v2-fc-meta-bar-fill[data-tone='crit'] {
-    background: linear-gradient(90deg, var(--danger, #dc2626), rgba(220, 38, 38, 0.8));
-    box-shadow: 0 0 6px rgba(220, 38, 38, 0.4);
+    background: linear-gradient(90deg, var(--danger), rgba(var(--danger-rgb), 0.8));
+    box-shadow: 0 0 6px rgba(var(--danger-rgb), 0.4);
   }
   .v2-fc-meta-bar-fill[data-tone='mid'] {
-    background: linear-gradient(90deg, var(--warning, #d97706), rgba(217, 119, 6, 0.8));
-    box-shadow: 0 0 6px rgba(217, 119, 6, 0.4);
+    background: linear-gradient(90deg, var(--warning), rgba(var(--warning-rgb), 0.8));
+    box-shadow: 0 0 6px rgba(var(--warning-rgb), 0.4);
   }
   .v2-fc-meta-bar-fill[data-tone='good'] {
-    background: linear-gradient(90deg, var(--success, #059669), rgba(16, 185, 129, 0.8));
-    box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+    background: linear-gradient(90deg, var(--success), rgba(var(--success-rgb), 0.8));
+    box-shadow: 0 0 6px rgba(var(--success-rgb), 0.4);
   }
   .v2-fc-meta-bar-tick {
     position: absolute;
@@ -1041,7 +1041,7 @@ const stylesheet = `
   }
   .v2-fc-voice-text {
     margin: 0;
-    font-size: 12.5px;
+    font-size: 12px;
     line-height: 1.5;
     color: var(--txt-muted);
     font-style: italic;

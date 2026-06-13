@@ -1081,7 +1081,7 @@ function V2TeamAdminPageInner() {
           justify-content: space-between;
           gap: 8px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -1097,7 +1097,7 @@ function V2TeamAdminPageInner() {
         }
         .rec-hero-eyebrow {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.7px;
           text-transform: uppercase;
@@ -1133,7 +1133,7 @@ function V2TeamAdminPageInner() {
         .rec-meta-item { display: flex; flex-direction: column; gap: 3px; margin: 0; }
         .rec-meta-item dt {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.6px;
           text-transform: uppercase;
@@ -1186,7 +1186,7 @@ function V2TeamAdminPageInner() {
         }
         .rec-tab:first-child { border-left: 1px solid var(--rule); }
         .rec-tab-num {
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.5px;
           color: var(--txt-faint);
@@ -1194,7 +1194,7 @@ function V2TeamAdminPageInner() {
           transition: color var(--dur-base) ease;
         }
         .rec-tab-label {
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 500;
           letter-spacing: 0.2px;
           color: var(--txt-muted);
@@ -1208,8 +1208,8 @@ function V2TeamAdminPageInner() {
           min-width: 16px;
           height: 16px;
           padding: 0 5px;
-          border-radius: 3px;
-          font-size: 9.5px;
+          border-radius: 4px;
+          font-size: 10px;
           font-weight: 700;
           background: var(--signature);
           color: white;
@@ -1270,13 +1270,13 @@ function V2TeamAdminPageInner() {
           font-variant-numeric: tabular-nums;
           padding: 3px 8px;
           border: 1px solid rgba(var(--signature-rgb), 0.30);
-          border-radius: 3px;
+          border-radius: 4px;
           background: rgba(var(--signature-rgb), 0.06);
         }
         .rec-block-num.is-danger {
           color: var(--danger);
-          border-color: rgba(248, 113, 113, 0.30);
-          background: rgba(248, 113, 113, 0.06);
+          border-color: rgba(var(--danger-rgb), 0.30);
+          background: rgba(var(--danger-rgb), 0.06);
         }
         .rec-block-title {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -1289,7 +1289,7 @@ function V2TeamAdminPageInner() {
         }
         .rec-block-title.is-danger { color: var(--danger); }
         .rec-block-sub {
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-faint);
           margin: 0;
           letter-spacing: 0.05px;
@@ -1345,7 +1345,7 @@ function V2TeamAdminPageInner() {
           color: var(--txt-pure);
         }
         .rec-config-hint {
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-faint);
           line-height: 1.5;
           letter-spacing: -0.005em;
@@ -1358,24 +1358,24 @@ function V2TeamAdminPageInner() {
           flex-wrap: wrap;
         }
         .rec-read-text {
-          font-size: 14.5px;
+          font-size: 14px;
           color: var(--txt-pure);
           font-weight: 500;
           letter-spacing: -0.005em;
         }
         .rec-read-empty {
-          font-size: 13.5px;
+          font-size: 13px;
           color: var(--txt-faint);
           font-style: italic;
         }
         .rec-read-code {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 600;
           color: var(--txt-muted);
           padding: 4px 9px;
           border: 1px solid var(--rule);
-          border-radius: 3px;
+          border-radius: 4px;
           background: rgba(0,0,0,0.04);
           letter-spacing: 0.2px;
         }
@@ -1412,10 +1412,10 @@ function V2TeamAdminPageInner() {
           padding: 9px 12px;
           background: rgba(255,255,255,0.02);
           border: 1px solid var(--rule);
-          border-radius: 3px;
+          border-radius: 4px;
           color: var(--txt-pure);
           font-family: inherit;
-          font-size: 14.5px;
+          font-size: 14px;
           outline: none;
           transition: border-color 180ms ease, box-shadow 180ms ease;
           letter-spacing: -0.005em;
@@ -1426,7 +1426,7 @@ function V2TeamAdminPageInner() {
         }
         .rec-input.is-textarea {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12.5px;
+          font-size: 12px;
           line-height: 1.55;
           resize: vertical;
           width: 100%;
@@ -1467,7 +1467,7 @@ function V2TeamAdminPageInner() {
         }
         .rec-color-row-label {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.6px;
           text-transform: uppercase;
@@ -1476,7 +1476,7 @@ function V2TeamAdminPageInner() {
         }
         .rec-color-swatch {
           width: 18px; height: 18px;
-          border-radius: 3px;
+          border-radius: 4px;
           border: 1px solid rgba(0,0,0,0.10);
           cursor: pointer;
           padding: 0;
@@ -1578,7 +1578,7 @@ function V2TeamAdminPageInner() {
         }
         .rec-roster-email {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
           letter-spacing: 0.2px;
           overflow: hidden;
@@ -1587,14 +1587,14 @@ function V2TeamAdminPageInner() {
         }
         .rec-roster-joined {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
           letter-spacing: 0.3px;
           white-space: nowrap;
         }
         .rec-you {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.6px;
           text-transform: uppercase;
@@ -1706,7 +1706,7 @@ function V2TeamAdminPageInner() {
         .rec-roster-remove {
           width: 26px;
           height: 26px;
-          border-radius: 3px;
+          border-radius: 4px;
           background: transparent;
           border: 1px solid var(--rule);
           color: var(--txt-faint);
@@ -1721,8 +1721,8 @@ function V2TeamAdminPageInner() {
         .rec-roster-remove.is-static { opacity: 1; }
         .rec-roster-remove:hover {
           color: var(--danger);
-          border-color: rgba(248, 113, 113, 0.50);
-          background: rgba(248, 113, 113, 0.06);
+          border-color: rgba(var(--danger-rgb), 0.50);
+          background: rgba(var(--danger-rgb), 0.06);
         }
         .rec-roster-remove-spacer {
           display: inline-block;
@@ -1732,7 +1732,7 @@ function V2TeamAdminPageInner() {
 
         /* ───── EMPTY ───── */
         .rec-empty {
-          font-size: 13.5px;
+          font-size: 13px;
           color: var(--txt-faint);
           margin: 0;
           padding: 32px 0;
@@ -1745,9 +1745,9 @@ function V2TeamAdminPageInner() {
         .rec-confirm-strip {
           margin: 0 0 0 0;
           padding: 12px 14px 12px 60px;
-          background: rgba(248, 113, 113, 0.05);
-          border-top: 1px solid rgba(248, 113, 113, 0.20);
-          border-bottom: 1px solid rgba(248, 113, 113, 0.20);
+          background: rgba(var(--danger-rgb), 0.05);
+          border-top: 1px solid rgba(var(--danger-rgb), 0.20);
+          border-bottom: 1px solid rgba(var(--danger-rgb), 0.20);
           display: flex;
           align-items: center;
           gap: 10px;
@@ -1766,7 +1766,7 @@ function V2TeamAdminPageInner() {
           flex-wrap: wrap;
         }
         .rec-confirm-text {
-          font-size: 13.5px;
+          font-size: 13px;
           color: var(--txt-pure);
           font-weight: 600;
           margin-right: 4px;
@@ -1780,21 +1780,21 @@ function V2TeamAdminPageInner() {
           justify-content: space-between;
           gap: 16px;
           padding: 16px 18px;
-          border: 1px dashed rgba(248, 113, 113, 0.32);
+          border: 1px dashed rgba(var(--danger-rgb), 0.32);
           border-radius: 4px;
           background:
-            linear-gradient(180deg, rgba(248, 113, 113, 0.03), rgba(248, 113, 113, 0.01));
+            linear-gradient(180deg, rgba(var(--danger-rgb), 0.03), rgba(var(--danger-rgb), 0.01));
           flex-wrap: wrap;
         }
         .rec-danger-title {
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 600;
           color: var(--txt-pure);
           letter-spacing: -0.005em;
           margin-bottom: 4px;
         }
         .rec-danger-hint {
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-muted);
           margin: 0;
           line-height: 1.5;
@@ -1812,7 +1812,7 @@ function V2TeamAdminPageInner() {
         .rec-mini-label {
           display: block;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.7px;
           text-transform: uppercase;
@@ -1858,7 +1858,7 @@ function V2TeamAdminPageInner() {
           display: flex;
           gap: 0;
           border: 1px solid var(--rule);
-          border-radius: 3px;
+          border-radius: 4px;
           overflow: hidden;
         }
         .rec-invite-role-btn {
@@ -1916,7 +1916,7 @@ function V2TeamAdminPageInner() {
         .rec-pending-head .rec-mini-label { margin-bottom: 0; }
         .rec-pending-count {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           color: var(--txt-faint);
           font-variant-numeric: tabular-nums;
@@ -1937,7 +1937,7 @@ function V2TeamAdminPageInner() {
         }
         .rec-pending-info { min-width: 0; }
         .rec-pending-target {
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 600;
           color: var(--txt-pure);
           letter-spacing: -0.005em;
@@ -1958,12 +1958,12 @@ function V2TeamAdminPageInner() {
           align-items: center;
           gap: 6px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
           letter-spacing: 0.2px;
           flex-wrap: wrap;
         }
-        .rec-pending-expiry { color: var(--warning, #f59e0b); }
+        .rec-pending-expiry { color: var(--warning); }
         .rec-pending-actions {
           display: flex;
           align-items: center;
@@ -2009,8 +2009,8 @@ function V2TeamAdminPageInner() {
           .rec-stamp-face { width: 92px; height: 92px; font-size: 26px; }
           .rec-stamp-id { width: 92px; }
           .rec-tab { padding: 12px 14px; gap: 8px; }
-          .rec-tab-num { font-size: 9.5px; }
-          .rec-tab-label { font-size: 11.5px; }
+          .rec-tab-num { font-size: 10px; }
+          .rec-tab-label { font-size: 11px; }
           .rec-config-row { padding: 16px 0; }
           .rec-roster-row { grid-template-columns: 22px 26px minmax(0, 1fr) auto; }
           .rec-roster-row .rec-roster-remove,

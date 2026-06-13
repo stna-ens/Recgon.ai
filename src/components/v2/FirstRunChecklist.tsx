@@ -161,12 +161,12 @@ const css = `
     gap: 2px;
   }
   .fr-label {
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 650;
     color: var(--txt-pure);
   }
   .fr-step-desc {
-    font-size: 12.5px;
+    font-size: 12px;
     line-height: 1.4;
     color: var(--txt-muted);
   }

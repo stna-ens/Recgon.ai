@@ -195,7 +195,7 @@ const css = `
 }
 .cal-chip-title {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--txt-pure);
   letter-spacing: 0.1px;
@@ -211,7 +211,7 @@ const css = `
 }
 .cal-chip-hours {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--txt-faint);
   letter-spacing: 0.4px;
@@ -235,7 +235,7 @@ const css = `
   align-items: center;
   gap: 5px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.8px;
   text-transform: uppercase;

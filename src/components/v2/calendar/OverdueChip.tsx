@@ -89,7 +89,7 @@ const css = `
   border: 1px solid currentColor;
   padding: 1px 6px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.6px;
   text-transform: lowercase;

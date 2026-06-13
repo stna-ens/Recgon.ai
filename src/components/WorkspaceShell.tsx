@@ -29,10 +29,10 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
           --v2-ink-muted:  oklch(72% 0.008 350);
           --v2-ink-faint:  oklch(52% 0.010 350);
           --v2-accent:     var(--signature);
-          --v2-success:    oklch(72% 0.13  150);
-          --v2-warn:       oklch(76% 0.15   65);
-          --v2-danger:     oklch(68% 0.18   25);
-          --v2-info:       oklch(72% 0.10  240);
+          --v2-success:    var(--success);
+          --v2-warn:       var(--warning);
+          --v2-danger:     var(--danger);
+          --v2-info:       var(--info);
 
           --v2-fill-1: rgba(255, 255, 255, 0.026);
           --v2-fill-2: rgba(255, 255, 255, 0.045);
@@ -90,12 +90,12 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
           transform: none;
         }
 
-        .v2-shell input:focus,
-        .v2-shell input:focus-visible,
-        .v2-shell textarea:focus,
-        .v2-shell textarea:focus-visible {
-          box-shadow: none !important;
-          outline: none !important;
+        /* Mouse focus stays chrome-free; keyboard focus keeps the global
+           signature :focus-visible ring defined in globals.css. */
+        .v2-shell input:focus:not(:focus-visible),
+        .v2-shell textarea:focus:not(:focus-visible) {
+          box-shadow: none;
+          outline: none;
         }
         .v2-shell .glass-card.is-tight { padding: 18px 24px; }
         .v2-shell .glass-card.is-roomy { padding: 36px; }

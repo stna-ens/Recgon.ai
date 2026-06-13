@@ -52,10 +52,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 const TYPE_STYLES: Record<Toast['type'], { bg: string; border: string; color: string }> = {
-  error:   { bg: 'rgba(255,59,48,0.08)', border: 'rgba(255,59,48,0.3)', color: '#FF3B30' },
-  success: { bg: 'rgba(52,199,89,0.08)', border: 'rgba(52,199,89,0.3)', color: '#34C759' },
-  warning: { bg: 'rgba(255,159,10,0.08)', border: 'rgba(255,159,10,0.3)', color: '#FF9F0A' },
-  info:    { bg: 'rgba(0,122,255,0.08)', border: 'rgba(0,122,255,0.3)', color: '#007AFF' },
+  error:   { bg: 'rgba(var(--danger-rgb),0.08)', border: 'rgba(var(--danger-rgb),0.3)', color: 'var(--danger)' },
+  success: { bg: 'rgba(var(--success-rgb),0.08)', border: 'rgba(var(--success-rgb),0.3)', color: 'var(--success)' },
+  warning: { bg: 'rgba(var(--warning-rgb),0.08)', border: 'rgba(var(--warning-rgb),0.3)', color: 'var(--warning)' },
+  info:    { bg: 'rgba(var(--info-rgb),0.08)', border: 'rgba(var(--info-rgb),0.3)', color: 'var(--info)' },
 };
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {

@@ -245,7 +245,7 @@ export default function AvatarMenu() {
         }
         .v2-avatar-email {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
           overflow: hidden;
           text-overflow: ellipsis;
@@ -265,7 +265,7 @@ export default function AvatarMenu() {
           background: transparent;
           border: none;
           border-radius: 6px;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 500;
           color: var(--txt-muted);
           text-decoration: none;
@@ -279,10 +279,10 @@ export default function AvatarMenu() {
           color: var(--txt-pure);
         }
         .v2-menu-item-quiet { color: var(--txt-faint); }
-        .v2-menu-item-danger { color: var(--danger, #f87171); }
+        .v2-menu-item-danger { color: var(--danger); }
         .v2-menu-item-danger:hover {
-          background: rgba(248, 113, 113, 0.08);
-          color: var(--danger, #f87171);
+          background: rgba(var(--danger-rgb), 0.08);
+          color: var(--danger);
         }
       `}</style>
     </div>

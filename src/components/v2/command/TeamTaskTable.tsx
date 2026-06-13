@@ -365,7 +365,7 @@ export default function TeamTaskTable({
           text-transform: uppercase;
           color: var(--txt-faint);
           padding: 7px 10px;
-          border-radius: 5px;
+          border-radius: 6px;
           transition: background 180ms ease, color 180ms ease;
         }
         .v2-mct-sort:hover { color: var(--txt-muted); background: rgba(255, 255, 255, 0.03); }
@@ -380,7 +380,7 @@ export default function TeamTaskTable({
         }
         .v2-mct-count {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
           margin-left: auto;
           white-space: nowrap;
@@ -392,7 +392,7 @@ export default function TeamTaskTable({
           align-items: center;
           gap: 8px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 1px;
           text-transform: uppercase;
@@ -434,7 +434,7 @@ export default function TeamTaskTable({
         .v2-mct-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
         .v2-mct-title {
           color: var(--txt-pure);
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 550;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -443,7 +443,7 @@ export default function TeamTaskTable({
         .v2-mct-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
         .v2-mct-kind {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.6px;
           text-transform: uppercase;
@@ -471,7 +471,7 @@ export default function TeamTaskTable({
           color: rgba(0,0,0,0.65);
         }
         .v2-mct-assignee-name {
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-muted);
           overflow: hidden;
           text-overflow: ellipsis;
@@ -483,7 +483,7 @@ export default function TeamTaskTable({
           align-items: center;
           gap: 6px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.6px;
           text-transform: uppercase;

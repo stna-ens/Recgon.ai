@@ -242,7 +242,7 @@ export default function FooterCta() {
           color: var(--txt-pure);
           text-decoration: none;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 700;
           letter-spacing: -0.01em;
         }

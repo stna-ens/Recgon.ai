@@ -76,7 +76,7 @@
         font-variant-numeric: tabular-nums;
       }
       .v2-cap-text {
-        font-size: 13.5px;
+        font-size: 13px;
         line-height: 1.55;
         color: var(--txt-pure);
       }
@@ -89,7 +89,7 @@
       .v2-cap-tick {
         width: 3px;
         background: var(--rule);
-        border-radius: 1px;
+        border-radius: 2px;
         transition: background var(--dur-base) ease;
       }
       .v2-cap-tick:nth-child(1) { height: 4px; }
@@ -240,7 +240,7 @@
         display: inline-flex;
         align-items: center;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 600;
         letter-spacing: 0.3px;
         color: var(--txt-muted);
@@ -317,14 +317,14 @@
       }
       .v2-acted-content { min-width: 0; }
       .v2-acted-step {
-        font-size: 13.5px;
+        font-size: 13px;
         line-height: 1.55;
         color: var(--txt-pure);
       }
       .v2-acted-row.is-taken .v2-acted-step { opacity: 0.85; }
       .v2-acted-evidence {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 11.5px;
+        font-size: 11px;
         color: var(--txt-faint);
         margin-top: 6px;
         line-height: 1.55;
@@ -389,7 +389,7 @@
       }
       .v2-diff-text {
         font-family: ui-sans-serif, system-ui, sans-serif;
-        font-size: 13.5px;
+        font-size: 13px;
         line-height: 1.6;
         color: var(--txt-pure);
       }
@@ -405,7 +405,7 @@
       .v2-swot-axis-y {
         position: absolute;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 9.5px;
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.6px;
         text-transform: uppercase;
@@ -534,7 +534,7 @@
         align-items: center;
         gap: 7px;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 600;
         letter-spacing: 0.5px;
         text-transform: uppercase;
@@ -618,7 +618,7 @@
       .v2-risk-bar {
         width: 5px;
         background: var(--rule);
-        border-radius: 1px;
+        border-radius: 2px;
       }
       .v2-risk-bar:nth-child(1) { height: 6px; }
       .v2-risk-bar:nth-child(2) { height: 11px; }
@@ -627,7 +627,7 @@
       .v2-risk-row.v2-risk-sev-2 .v2-risk-bar.is-on { background: var(--v2-warn); }
       .v2-risk-row.v2-risk-sev-1 .v2-risk-bar.is-on { background: var(--v2-ink-faint); }
       .v2-risk-text {
-        font-size: 13.5px;
+        font-size: 13px;
         line-height: 1.55;
         color: var(--txt-pure);
       }
@@ -652,7 +652,7 @@
         z-index: 1;
       }
       .v2-mkt-body {
-        font-size: 13.5px;
+        font-size: 13px;
         line-height: 1.7;
         color: var(--txt-muted);
         margin: 0;
@@ -804,7 +804,7 @@
         flex: 0 0 auto;
         align-self: center;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         color: var(--signature);
         text-decoration: none;
         letter-spacing: 0.4px;
@@ -869,7 +869,7 @@
       .v2-batt-con .v2-batt-col-glyph { background: color-mix(in oklab, var(--v2-danger) 15%, transparent); color: var(--v2-danger); }
       .v2-batt-col-label {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.5px;
         text-transform: uppercase;
@@ -894,7 +894,7 @@
         gap: 6px;
       }
       .v2-batt-items li {
-        font-size: 12.5px;
+        font-size: 12px;
         line-height: 1.55;
         color: var(--txt-muted);
         padding-left: 12px;
@@ -1056,7 +1056,7 @@
         letter-spacing: -0.012em;
       }
       .v2-grow-body {
-        font-size: 13.5px;
+        font-size: 13px;
         line-height: 1.7;
         color: var(--txt-muted);
         margin: 0;
@@ -1133,7 +1133,7 @@
       }
       .v2-grow-sub-meta {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 600;
         letter-spacing: 0.4px;
         color: var(--txt-faint);
@@ -1160,7 +1160,7 @@
       .v2-funnel-bar { display: none; }
       .v2-funnel-num {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 800;
         color: var(--signature);
         letter-spacing: 0.5px;
@@ -1200,13 +1200,13 @@
       }
       .v2-kpi-id {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 9.5px;
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.5px;
         color: var(--signature);
       }
       .v2-kpi-text {
-        font-size: 12.5px;
+        font-size: 12px;
         line-height: 1.5;
         color: var(--txt-pure);
       }
@@ -1319,7 +1319,7 @@
       }
       .v2-chip {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 600;
         letter-spacing: 0.5px;
         text-transform: uppercase;
@@ -1358,7 +1358,7 @@
         height: 24px;
         padding: 0;
         background: transparent;
-        border: 1px solid var(--rule-strong, var(--border));
+        border: 1px solid var(--rule-strong);
         border-radius: 6px;
         color: var(--txt-faint);
         cursor: pointer;
@@ -1387,7 +1387,7 @@
         height: 10px;
         border-radius: 50%;
         background: var(--bg-secondary, transparent);
-        border: 1px solid var(--rule-strong, var(--border));
+        border: 1px solid var(--rule-strong);
         transition: background var(--dur-base) ease, border-color var(--dur-base) ease;
       }
       .v2-quota-dot.is-used {
@@ -1498,7 +1498,7 @@
       .v2-banner-danger .v2-banner-icon { color: var(--danger); }
       .v2-banner-body { min-width: 0; }
       .v2-banner-title {
-        font-size: 13.5px;
+        font-size: 13px;
         font-weight: 600;
         color: var(--txt-pure);
         letter-spacing: -0.005em;
@@ -1637,7 +1637,7 @@
         border-color: var(--rule-strong);
       }
       .v2-modal-hint {
-        font-size: 13.5px;
+        font-size: 13px;
         color: var(--txt-muted);
         margin: 0;
         line-height: 1.55;
@@ -1689,7 +1689,7 @@
       }
       .v2-field-label {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.6px;
         text-transform: uppercase;
@@ -1702,7 +1702,7 @@
         border-radius: 8px;
         color: var(--txt-pure);
         font-family: inherit;
-        font-size: 13.5px;
+        font-size: 13px;
         outline: none;
         transition: border-color var(--dur-base) ease;
       }
@@ -1710,7 +1710,7 @@
       .v2-input::placeholder { color: var(--txt-faint); }
       .v2-textarea {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 12.5px;
+        font-size: 12px;
         line-height: 1.55;
         resize: vertical;
       }
@@ -1789,7 +1789,7 @@
         line-height: 1;
       }
       .v2-pov-tagline {
-        font-size: 14.5px;
+        font-size: 14px;
         line-height: 1.65;
         color: var(--txt-muted);
         margin: 0;
@@ -1801,7 +1801,7 @@
       .v2-pov-edit { display: flex; flex-direction: column; gap: 10px; max-width: 62ch; }
       .v2-pov-edit-textarea {
         width: 100%;
-        font-size: 14.5px;
+        font-size: 14px;
         line-height: 1.6;
         resize: vertical;
         min-height: 96px;
@@ -1928,7 +1928,7 @@
         min-height: 220px;
       }
       .v2-diag-headline {
-        font-size: 15.5px;
+        font-size: 15px;
         line-height: 1.6;
         font-weight: 500;
         color: var(--txt-pure);
@@ -1936,7 +1936,7 @@
         max-width: 60ch;
       }
       .v2-diag-body {
-        font-size: 13.5px;
+        font-size: 13px;
         line-height: 1.65;
         color: var(--txt-muted);
         margin: 0 0 18px;
@@ -1958,7 +1958,7 @@
       }
       .v2-diag-tag {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 500;
         letter-spacing: 0.3px;
         padding: 3px 8px;
@@ -2045,7 +2045,7 @@
       }
       .v2-inv-bar-label {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 9px;
+        font-size: 10px;
         font-weight: 700;
         color: rgba(0, 0, 0, 0.85);
         letter-spacing: 0.2px;
@@ -2064,7 +2064,7 @@
         align-items: center;
         gap: 7px;
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 600;
         letter-spacing: 0.4px;
         text-transform: uppercase;
@@ -2107,12 +2107,12 @@
       .v2-inv-cat-rule {
         width: 14px;
         height: 2px;
-        border-radius: 1px;
+        border-radius: 2px;
         background: var(--cat-tone);
       }
       .v2-inv-cat-name {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.7px;
         text-transform: uppercase;
@@ -2205,7 +2205,7 @@
       }
       .v2-tech-chip {
         font-family: 'JetBrains Mono', ui-monospace, monospace;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 600;
         letter-spacing: 0.4px;
         text-transform: uppercase;
@@ -2254,7 +2254,7 @@
         margin: 0 0 12px;
       }
       .v2-no-analysis-text {
-        font-size: 14.5px;
+        font-size: 14px;
         line-height: 1.65;
         color: var(--txt-muted);
         margin: 0 0 20px;

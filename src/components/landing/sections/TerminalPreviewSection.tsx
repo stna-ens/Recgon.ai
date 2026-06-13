@@ -65,13 +65,13 @@ export default function TerminalPreviewSection() {
         }
         .lnd-term-sub {
           margin: 0;
-          font-size: 14.5px;
+          font-size: 14px;
           line-height: 1.55;
           color: var(--txt-muted);
         }
         .lnd-term-sub code {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--signature);
           background: rgba(var(--signature-rgb), 0.08);
           padding: 1px 6px;
@@ -107,14 +107,14 @@ export default function TerminalPreviewSection() {
         .lnd-term-title-text {
           margin-left: 12px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 11.5px;
+          font-size: 11px;
           color: var(--txt-faint);
           letter-spacing: 0.3px;
         }
         .lnd-term-body {
           padding: 22px 24px 26px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 12.5px;
+          font-size: 12px;
           line-height: 1.85;
         }
         .lnd-term-line {
@@ -129,7 +129,7 @@ export default function TerminalPreviewSection() {
         .lnd-term-cmd { color: var(--txt-pure); }
         .lnd-term-out { color: var(--txt-muted); padding-left: 18px; }
         .lnd-term-note { color: var(--txt-faint); font-style: italic; padding-left: 18px; opacity: 0.85; }
-        .lnd-term-ok { color: var(--success, #059669); padding-left: 18px; font-weight: 600; }
+        .lnd-term-ok { color: var(--success); padding-left: 18px; font-weight: 600; }
 
         .lnd-term-cursor {
           display: inline-block;
@@ -146,7 +146,7 @@ export default function TerminalPreviewSection() {
 
         @media (max-width: 640px) {
           .lnd-term { padding: 56px 18px; }
-          .lnd-term-body { padding: 18px; font-size: 11.5px; }
+          .lnd-term-body { padding: 18px; font-size: 11px; }
           .lnd-term-out, .lnd-term-note, .lnd-term-ok { padding-left: 12px; }
         }
 

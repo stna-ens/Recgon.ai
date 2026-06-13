@@ -494,7 +494,7 @@ const css = `
   border: 1px solid var(--rule, rgba(255,255,255,0.10));
   border-radius: 8px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.2px;
   text-transform: uppercase;

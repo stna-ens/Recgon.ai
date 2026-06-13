@@ -674,7 +674,7 @@ export function ProjectTasksListView() {
           gap: 0;
           padding: 4px;
           border: 1px solid var(--rule);
-          border-radius: 9px;
+          border-radius: 10px;
           background: rgba(255,255,255,0.02);
         }
         .v2-facet {
@@ -771,7 +771,7 @@ export function ProjectTasksListView() {
         }
         .v2-tasks-section-label {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.7px;
           text-transform: uppercase;
@@ -844,7 +844,7 @@ export function ProjectTasksListView() {
           flex-wrap: wrap;
           gap: 7px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
           letter-spacing: 0.35px;
           text-transform: uppercase;
@@ -868,7 +868,7 @@ export function ProjectTasksListView() {
         }
         .v2-tasks-row__status {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -904,7 +904,7 @@ export function ProjectTasksListView() {
           align-items: center;
           justify-content: center;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           color: white;
           overflow: hidden;
@@ -940,7 +940,7 @@ export function ProjectTasksListView() {
 
         .v2-tasks-prio {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -964,7 +964,7 @@ export function ProjectTasksListView() {
         }
         .v2-tasks-chiprow { display: flex; }
         .v2-tasks-desc {
-          font-size: 13.5px;
+          font-size: 13px;
           line-height: 1.65;
           color: var(--txt-muted);
           margin: 0;
@@ -980,9 +980,9 @@ export function ProjectTasksListView() {
         .v2-tasks-proof {
           margin-top: 6px;
           padding: 16px;
-          border: 1px dashed rgba(255, 159, 10, 0.35);
+          border: 1px dashed rgba(var(--warning-rgb), 0.35);
           border-radius: 10px;
-          background: rgba(255, 159, 10, 0.04);
+          background: rgba(var(--warning-rgb), 0.04);
           display: flex;
           flex-direction: column;
           gap: 10px;
@@ -990,13 +990,13 @@ export function ProjectTasksListView() {
         }
         .v2-tasks-proof-hint {
           margin: 0;
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-muted);
           line-height: 1.55;
         }
         .v2-tasks-proof-foot {
           margin: 0;
-          font-size: 11.5px;
+          font-size: 11px;
           color: var(--txt-faint);
           line-height: 1.5;
         }
@@ -1061,12 +1061,12 @@ export function ProjectTasksListView() {
           border-color: var(--rule-strong);
         }
         .v2-btn-warn {
-          background: rgba(255, 159, 10, 0.12);
-          border-color: rgba(255, 159, 10, 0.45);
+          background: rgba(var(--warning-rgb), 0.12);
+          border-color: rgba(var(--warning-rgb), 0.45);
           color: var(--warning);
         }
         .v2-btn-warn:hover:not(:disabled) {
-          background: rgba(255, 159, 10, 0.18);
+          background: rgba(var(--warning-rgb), 0.18);
           border-color: var(--warning);
           transform: translateY(-1px);
         }

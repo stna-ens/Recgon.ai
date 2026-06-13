@@ -81,7 +81,7 @@ export default function CapabilitiesSection() {
         .lnd-caps-tile-title {
           margin: 0;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 14.5px;
+          font-size: 14px;
           font-weight: 600;
           color: var(--txt-pure);
           letter-spacing: -0.015em;

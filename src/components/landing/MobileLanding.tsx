@@ -835,7 +835,7 @@ export default function MobileLanding() {
         .mlnd-term-body {
           padding: 18px 18px 20px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 11.5px;
+          font-size: 11px;
           line-height: 1.85;
         }
         .mlnd-term-line { display: flex; gap: 8px; }
@@ -843,7 +843,7 @@ export default function MobileLanding() {
         .mlnd-term-cmd { color: var(--txt-pure); }
         .mlnd-term-note { color: var(--txt-faint); font-style: italic; padding-left: 14px; opacity: 0.85; }
         .mlnd-term-out { color: var(--txt-muted); padding-left: 14px; }
-        .mlnd-term-ok { color: var(--success, #34C759); padding-left: 14px; font-weight: 600; }
+        .mlnd-term-ok { color: var(--success); padding-left: 14px; font-weight: 600; }
         .mlnd-term-cursor {
           display: inline-block;
           width: 7px;

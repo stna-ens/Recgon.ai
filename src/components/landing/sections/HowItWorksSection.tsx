@@ -78,14 +78,14 @@ export default function HowItWorksSection() {
         .lnd-how-step-title {
           margin: 0 0 6px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 15.5px;
+          font-size: 15px;
           font-weight: 600;
           color: var(--txt-pure);
           letter-spacing: -0.015em;
         }
         .lnd-how-step-body {
           margin: 0;
-          font-size: 13.5px;
+          font-size: 13px;
           line-height: 1.55;
           color: var(--txt-muted);
         }

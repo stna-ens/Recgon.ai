@@ -70,11 +70,7 @@ export default async function RootLayout({
         <SessionProvider>
           <NextIntlClientProvider>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-              <div className="mesh-bg">
-                <div className="mesh-blob mesh-blob-1"></div>
-                <div className="mesh-blob mesh-blob-2"></div>
-                <div className="mesh-blob mesh-blob-3"></div>
-              </div>
+              <div className="mesh-bg"></div>
               <ToastProvider>
                 <ConfirmProvider>
                   <AppShell>{children}</AppShell>

@@ -1241,7 +1241,7 @@ export default function TerminalShell() {
           border-radius: 6px;
           color: var(--txt-muted);
           font-family: inherit;
-          font-size: 11.5px;
+          font-size: 11px;
           font-weight: 500;
           letter-spacing: 0.2px;
           cursor: pointer;
@@ -1264,13 +1264,13 @@ export default function TerminalShell() {
         }
         .terminal-banner-kbd {
           font-family: inherit;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.4px;
           color: var(--txt-faint);
           background: rgba(255, 255, 255, 0.04);
           border: 1px solid var(--rule, rgba(255, 255, 255, 0.08));
-          border-radius: 3px;
+          border-radius: 4px;
           padding: 1px 4px;
           margin-left: 2px;
         }
@@ -1376,7 +1376,7 @@ export default function TerminalShell() {
         }
 
         .terminal-empty { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 12px; }
-        .terminal-empty-stats { color: var(--txt-faint); font-size: 12.5px; }
+        .terminal-empty-stats { color: var(--txt-faint); font-size: 12px; }
         .terminal-empty-stats strong { color: var(--signature); font-weight: 700; margin-right: 4px; font-variant-numeric: tabular-nums; }
         .terminal-empty-stats strong + span { margin-right: 14px; }
         .terminal-empty-greet { color: var(--txt-pure); }
@@ -1488,7 +1488,7 @@ export default function TerminalShell() {
         .terminal-active-streaming {
           color: var(--txt-faint);
           font-style: normal;
-          font-size: 12.5px;
+          font-size: 12px;
           letter-spacing: 0.2px;
           display: block;
           padding-top: 1px;
@@ -1578,7 +1578,7 @@ export default function TerminalShell() {
         }
         html.light .terminal-slash-head, .light .terminal-slash-head { border-bottom-color: rgba(20, 14, 30, 0.06); }
         .terminal-slash-head-label { font-size: 10px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--signature); }
-        .terminal-slash-head-hint { font-size: 10.5px; color: var(--txt-faint); }
+        .terminal-slash-head-hint { font-size: 10px; color: var(--txt-faint); }
         .terminal-slash-list { list-style: none; margin: 0; padding: 0; }
         .terminal-slash-item {
           width: 100%;
@@ -1602,7 +1602,7 @@ export default function TerminalShell() {
         .terminal-slash-name { color: var(--signature); font-weight: 700; }
         .terminal-slash-desc { color: inherit; }
         .terminal-slash-project-name { color: var(--signature); font-weight: 700; }
-        .terminal-slash-project-meta { color: var(--txt-faint); font-size: 10.5px; }
+        .terminal-slash-project-meta { color: var(--txt-faint); font-size: 10px; }
         .terminal-slash-empty { padding: 16px 12px; color: var(--txt-faint); font-size: 12px; text-align: center; }
 
         .terminal-drawer-backdrop {
@@ -1651,14 +1651,14 @@ export default function TerminalShell() {
         .terminal-drawer-search::placeholder { color: var(--txt-faint); }
         .terminal-drawer-list { flex: 1; overflow-y: auto; padding: 4px; }
         .terminal-drawer-section-label {
-          display: block; padding: 8px 8px 4px; font-size: 9.5px;
+          display: block; padding: 8px 8px 4px; font-size: 10px;
           font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase;
           color: var(--signature);
         }
         .terminal-drawer-row {
           display: grid; grid-template-columns: 1fr auto; gap: 10px;
           align-items: center; width: 100%; padding: 0 8px;
-          color: var(--txt-muted); font-family: inherit; font-size: 12.5px;
+          color: var(--txt-muted); font-family: inherit; font-size: 12px;
           border-radius: 6px;
         }
         .terminal-drawer-row:hover, .terminal-drawer-row.is-active {
@@ -1676,7 +1676,7 @@ export default function TerminalShell() {
           display: inline-flex; align-items: center; gap: 6px;
           padding: 6px 0;
         }
-        .terminal-drawer-row-time { color: var(--txt-faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+        .terminal-drawer-row-time { color: var(--txt-faint); font-size: 10px; font-variant-numeric: tabular-nums; }
         .terminal-drawer-row-current {
           color: var(--signature); font-size: 10px; font-weight: 700;
           letter-spacing: 0.6px; text-transform: uppercase; margin-right: 4px;
@@ -1695,9 +1695,9 @@ export default function TerminalShell() {
           border-color: rgba(var(--signature-rgb), 0.45);
         }
         .terminal-drawer-row-action.is-danger:hover {
-          color: var(--v2-danger, #dc2626);
-          border-color: var(--v2-danger, #dc2626);
-          background: rgba(220, 38, 38, 0.10);
+          color: var(--v2-danger);
+          border-color: var(--v2-danger);
+          background: rgba(var(--danger-rgb), 0.10);
         }
         .terminal-drawer-rename-input {
           width: 100%; padding: 5px 0;
@@ -1730,7 +1730,7 @@ export default function TerminalShell() {
         }
         .terminal-drawer-assign-label {
           padding: 6px 8px 4px;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 1.4px;
           text-transform: uppercase;
@@ -1760,11 +1760,11 @@ export default function TerminalShell() {
           font-size: 11px;
           text-align: center;
         }
-        .terminal-drawer-empty { padding: 22px 12px; text-align: center; color: var(--txt-faint); font-size: 12.5px; }
+        .terminal-drawer-empty { padding: 22px 12px; text-align: center; color: var(--txt-faint); font-size: 12px; }
         .terminal-drawer-foot {
           display: flex; justify-content: space-between; align-items: center;
           padding: 8px 14px; border-top: 1px dashed rgba(255, 255, 255, 0.06);
-          font-size: 10.5px; color: var(--txt-faint);
+          font-size: 10px; color: var(--txt-faint);
         }
         html.light .terminal-drawer-foot, .light .terminal-drawer-foot { border-top-color: rgba(20, 14, 30, 0.08); }
         .terminal-drawer-new {

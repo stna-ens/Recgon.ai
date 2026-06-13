@@ -225,7 +225,7 @@ export default function TopNavV2() {
         }
         .v2-brand-tag {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.6px;
           text-transform: uppercase;
@@ -301,7 +301,7 @@ export default function TopNavV2() {
           border: 1px solid var(--rule, rgba(255,255,255,0.10));
           border-radius: 8px;
           color: var(--txt-faint);
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 500;
           cursor: pointer;
           min-width: 240px;
@@ -353,7 +353,7 @@ export default function TopNavV2() {
           .v2-topnav-inner { gap: 8px; padding: 0 14px; }
           .v2-topnav-right { gap: 6px; }
           .v2-topnav-left { gap: 12px; }
-          .v2-nav-link { padding: 8px 5px; font-size: 9.5px; letter-spacing: 0.4px; }
+          .v2-nav-link { padding: 8px 5px; font-size: 10px; letter-spacing: 0.4px; }
         }
       `}</style>
     </>

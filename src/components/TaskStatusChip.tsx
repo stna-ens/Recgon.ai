@@ -19,12 +19,12 @@ type Tone = 'idle' | 'progress' | 'review' | 'action' | 'ok' | 'warn' | 'fail';
 
 const TONE_COLOR: Record<Tone, string> = {
   idle: 'var(--txt-muted)',
-  progress: '#0ea5e9',
-  review: '#f59e0b',
-  action: '#f59e0b',
-  ok: '#10b981',
-  warn: '#f59e0b',
-  fail: '#ef4444',
+  progress: 'var(--info)',
+  review: 'var(--warning)',
+  action: 'var(--warning)',
+  ok: 'var(--success)',
+  warn: 'var(--warning)',
+  fail: 'var(--danger)',
 };
 
 type ChipResolution = {

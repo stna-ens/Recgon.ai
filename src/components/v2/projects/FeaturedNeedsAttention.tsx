@@ -178,7 +178,7 @@ const stylesheet = `
   .v2-fnp-logo {
     width: 22px;
     height: 22px;
-    border-radius: 5px;
+    border-radius: 6px;
     overflow: hidden;
     flex-shrink: 0;
     display: inline-flex;
@@ -218,7 +218,7 @@ const stylesheet = `
     flex-shrink: 0;
   }
   .v2-fnp-status[data-pulse='drifting']  { color: var(--signature); }
-  .v2-fnp-status[data-pulse='stuck']     { color: var(--warning, #d97706); }
+  .v2-fnp-status[data-pulse='stuck']     { color: var(--warning); }
 
   .v2-fnp-meta-line {
     display: inline-flex;
@@ -226,7 +226,7 @@ const stylesheet = `
     gap: 6px;
     flex-wrap: wrap;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--txt-faint);
     text-transform: lowercase;
     letter-spacing: 0.2px;
@@ -276,7 +276,7 @@ const stylesheet = `
   .v2-fnp-time {
     color: var(--txt-faint);
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.2px;
   }

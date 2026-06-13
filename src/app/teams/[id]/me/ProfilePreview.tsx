@@ -172,7 +172,7 @@ export default function ProfilePreview({
         .profile-preview__head { display: flex; flex-direction: column; gap: 4px; }
         .profile-preview__eyebrow {
           font-family: var(--font-mono), 'JetBrains Mono', monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 500;
           letter-spacing: 0.12em;
           color: var(--txt-faint);
@@ -328,7 +328,7 @@ function PreviewSection({ label, count, children }: PreviewSectionProps) {
           align-items: center;
           gap: 8px;
           font-family: var(--font-mono), 'JetBrains Mono', monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 500;
           letter-spacing: 0.08em;
           color: var(--txt-faint);
@@ -365,7 +365,7 @@ function PillList({ items, variant }: PillListProps) {
         .preview-pill {
           padding: 3px 9px;
           font-family: var(--font-inter), Inter, sans-serif;
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-pure);
           background: var(--btn-secondary-bg);
           border: 1px solid var(--btn-secondary-border);

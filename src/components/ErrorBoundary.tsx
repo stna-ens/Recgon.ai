@@ -60,8 +60,8 @@ function ErrorBoundaryFallback({
       <div style={{
         width: 56, height: 56, borderRadius: 16,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(255, 59, 48, 0.08)',
-        border: '1px solid rgba(255, 59, 48, 0.2)',
+        background: 'rgba(var(--danger-rgb), 0.08)',
+        border: '1px solid rgba(var(--danger-rgb), 0.2)',
         color: 'var(--danger)',
       }}>
         <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24">

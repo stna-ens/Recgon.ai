@@ -1015,7 +1015,7 @@ const styles = `
   .v2-pset-band-meta {
     display: inline-flex; align-items: center; gap: 8px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--txt-faint);
     letter-spacing: 0.4px;
     text-transform: lowercase;
@@ -1069,7 +1069,7 @@ const styles = `
     word-break: break-word;
   }
   .v2-pset-tag-desc {
-    font-size: 12.5px;
+    font-size: 12px;
     line-height: 1.55;
     color: var(--txt-muted);
     margin: 4px 0 0;
@@ -1097,7 +1097,7 @@ const styles = `
     padding: 9px 4px 9px 12px;
     color: var(--txt-faint);
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 11.5px;
+    font-size: 11px;
     text-decoration: none;
     text-transform: lowercase;
     letter-spacing: 0.4px;
@@ -1137,7 +1137,7 @@ const styles = `
   }
   .v2-pset-rail-id {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9.5px;
+    font-size: 10px;
     color: var(--txt-faint);
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -1202,7 +1202,7 @@ const styles = `
     opacity: 0.6;
   }
   .v2-pset-section-hint {
-    font-size: 11.5px;
+    font-size: 11px;
     color: var(--txt-faint);
     letter-spacing: 0.05px;
     flex-shrink: 0;
@@ -1265,7 +1265,7 @@ const styles = `
   }
   .v2-pset-field-label {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1.4px;
@@ -1273,7 +1273,7 @@ const styles = `
     margin: 4px 0 0;
   }
   .v2-pset-field-hint {
-    font-size: 11.5px;
+    font-size: 11px;
     line-height: 1.45;
     color: var(--txt-faint);
     letter-spacing: 0.05px;
@@ -1282,7 +1282,7 @@ const styles = `
   .v2-pset-field-action {
     display: inline-flex; align-items: center; gap: 5px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--signature);
     letter-spacing: 0.5px;
@@ -1300,7 +1300,7 @@ const styles = `
   /* ═════ Value styles ═════ */
   .v2-pset-val {
     margin: 0;
-    font-size: 14.5px;
+    font-size: 14px;
     line-height: 1.55;
     color: var(--txt-pure);
     letter-spacing: -0.005em;
@@ -1330,7 +1330,7 @@ const styles = `
     max-width: 60ch;
   }
   .v2-pset-val-meta { color: var(--txt-faint); font-size: 12px; }
-  .v2-pset-empty { color: var(--txt-faint); font-style: italic; font-size: 14.5px; }
+  .v2-pset-empty { color: var(--txt-faint); font-style: italic; font-size: 14px; }
 
   /* Logo thumb (display) — matches the big rail mark: flat tint, hairline border. */
   .v2-pset-logo-thumb {
@@ -1374,7 +1374,7 @@ const styles = `
     text-decoration: none;
     padding: 6px 11px 6px 9px;
     border: 1px solid var(--rule);
-    border-radius: 7px;
+    border-radius: 8px;
     background: rgba(var(--signature-rgb), 0.020);
     font-size: 13px;
     transition: border-color var(--dur-base) ease, color var(--dur-base) ease, transform var(--dur-base) cubic-bezier(0.16, 1, 0.3, 1), background var(--dur-base) ease;
@@ -1383,7 +1383,7 @@ const styles = `
   }
   .v2-pset-anchor code {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 12.5px;
+    font-size: 12px;
   }
   .v2-pset-anchor:hover {
     border-color: rgba(var(--signature-rgb), 0.50);
@@ -1406,7 +1406,7 @@ const styles = `
   .v2-pset-meta-key { color: var(--txt-faint); }
   .v2-pset-mono {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 11.5px;
+    font-size: 11px;
     padding: 2px 7px;
     border-radius: 4px;
     border: 1px solid var(--rule);
@@ -1438,7 +1438,7 @@ const styles = `
     text-transform: uppercase;
     color: var(--txt-faint);
     cursor: pointer;
-    border-radius: 5px;
+    border-radius: 6px;
     display: inline-flex; align-items: center; gap: 8px;
     transition: background var(--dur-base) ease, color var(--dur-base) ease;
   }
@@ -1472,7 +1472,7 @@ const styles = `
     border-radius: 8px;
     color: var(--txt-pure);
     font-family: inherit;
-    font-size: 13.5px;
+    font-size: 13px;
     outline: none;
     width: 100%;
     transition: border-color var(--dur-base) ease, background var(--dur-base) ease;
@@ -1490,7 +1490,7 @@ const styles = `
   }
   .v2-pset-textarea {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 12.5px;
+    font-size: 12px;
     line-height: 1.65;
     resize: vertical;
   }
@@ -1533,10 +1533,10 @@ const styles = `
   .v2-pset-btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
   .v2-pset-btn-danger:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 12px 26px -10px rgba(255, 59, 48, 0.55);
+    box-shadow: 0 12px 26px -10px rgba(var(--danger-rgb), 0.55);
   }
-  .v2-pset-btn-danger-ghost { background: transparent; border-color: rgba(255, 59, 48, 0.40); color: var(--danger); }
-  .v2-pset-btn-danger-ghost:hover:not(:disabled) { background: rgba(255, 59, 48, 0.08); }
+  .v2-pset-btn-danger-ghost { background: transparent; border-color: rgba(var(--danger-rgb), 0.40); color: var(--danger); }
+  .v2-pset-btn-danger-ghost:hover:not(:disabled) { background: rgba(var(--danger-rgb), 0.08); }
 
   .v2-pset-tiny {
     background: transparent;
@@ -1545,7 +1545,7 @@ const styles = `
     padding: 5px 11px;
     border-radius: 6px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.5px;
     text-transform: lowercase;
@@ -1577,24 +1577,24 @@ const styles = `
     background:
       var(--bg-content) padding-box,
       linear-gradient(135deg,
-        rgba(255, 59, 48, 0.30) 0%,
-        rgba(255, 59, 48, 0.06) 50%,
-        rgba(255, 59, 48, 0.18) 100%) border-box !important;
+        rgba(var(--danger-rgb), 0.30) 0%,
+        rgba(var(--danger-rgb), 0.06) 50%,
+        rgba(var(--danger-rgb), 0.18) 100%) border-box !important;
     transition: box-shadow 280ms ease, transform 280ms ease;
   }
   .v2-pset-destroy.is-armed {
     box-shadow:
-      0 0 0 1px rgba(255, 59, 48, 0.50),
-      0 18px 40px -16px rgba(255, 59, 48, 0.30) !important;
+      0 0 0 1px rgba(var(--danger-rgb), 0.50),
+      0 18px 40px -16px rgba(var(--danger-rgb), 0.30) !important;
   }
   .v2-pset-destroy .v2-pset-section-num {
-    background: rgba(255, 59, 48, 0.08);
-    border-color: rgba(255, 59, 48, 0.40);
+    background: rgba(var(--danger-rgb), 0.08);
+    border-color: rgba(var(--danger-rgb), 0.40);
     color: var(--danger);
   }
   .v2-pset-destroy .v2-pset-section-rule {
     background:
-      repeating-linear-gradient(to right, rgba(255, 59, 48, 0.30) 0 4px, transparent 4px 8px);
+      repeating-linear-gradient(to right, rgba(var(--danger-rgb), 0.30) 0 4px, transparent 4px 8px);
   }
   .v2-pset-destroy-text {
     margin: 0 0 14px;

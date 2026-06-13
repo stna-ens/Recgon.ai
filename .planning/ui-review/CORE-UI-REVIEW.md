@@ -1,0 +1,90 @@
+# Core Workspace — UI Review
+
+**Audited:** 2026-06-13
+**Baseline:** Abstract 6-pillar standards + house design system (glass-card, .recgon-label, JetBrains Mono, signature pink #c2357a/#f0b8d0 sole accent, Unicode glyphs only, no stacked glass)
+**Method:** Code-only audit (pages are auth-gated; per project convention no Playwright login drive)
+**Scope:** `/` (dashboard) · `/tasks` · `/command` · `/verify` · `/terminal` + their `src/components/v2/` trees + `src/components/ui/` primitives
+
+---
+
+## Pillar Scores
+
+| Pillar | Score | Key Finding |
+|--------|-------|-------------|
+| 1. Copywriting | 3/4 | Fully i18n'd, specific empty states; marred by UUID-fragment "hash" chips presented as data and verify strings living in the `auth` namespace |
+| 2. Visuals | 3/4 | Strong, coherent operator-terminal hierarchy; icon system split (lucide vs hand-rolled SVGs), hover-only hidden nav, dead decorative DOM |
+| 3. Color | 2/4 | Systematic mismatch: Apple semantic tokens (#FF3B30/#FF9F0A/#34C759) render text while Tailwind-palette rgba literals (220,38,38 / 217,119,6 / 16,185,129) render the borders/tints of the SAME elements; 3 ambers + 2 greens in active use |
+| 4. Typography | 2/4 | ~20 distinct font sizes (9–22px incl. fractional 9.5/10.5/12.5/13.5/14.5), non-existent weights 550/650/750/850 that synthesize unpredictably; /verify resets letter-spacing wholesale in an override layer |
+| 5. Spacing | 3/4 | Consistent 8/10/12/14/16 rhythm overall; no shared scale tokens, per-page divergence (104px hand-set page padding on /command), one-off values |
+| 6. Experience Design | 2/4 | Skeletons/optimistic-drag/shortcuts/confirms are genuinely good — but two pages render fetch FAILURE as success/limbo, a home deep-link routes to an invisible filter, and three dialogs lack focus traps |
+
+**Overall: 15/24**
+
+Registry audit: no `components.json` — shadcn not initialized, registry audit skipped.
+Emoji audit: clean. Only sanctioned Unicode glyphs found (✕ ✓ ✎ ◈ ▍ ● ↗ → ▲ ▼ ⌘ ↵ ◇ ◎ ⊘ ▢ ›).
+
+---
+
+## Top 5 Priority Fixes
+
+1. **C-01 Unify semantic color tokens** — every tone-tinted element on / , /tasks, /command, /verify mixes two red/amber/green families — add `--danger-rgb` / `--warning-rgb` / `--success-rgb` to globals.css and replace all hardcoded rgba literals.
+2. **C-03/C-04 Error states** — /verify shows "all clear" when its fetch fails; /tasks shows an infinite skeleton. Both must render a designed error card with retry.
+3. **C-05 Broken drift deep-link** — HomeBoard's "couldn't route" card links to `/tasks?filter=drift`, which the tasks page ignores, and unassigned tasks never render there at all.
+4. **C-02 Stacked glass on /tasks** — glass cards (blur 24px) inside glass columns (blur 60px) violates the house "no stacked glass" rule.
+5. **C-06 Hand-rolled dialogs** — task detail panel, terminal drawer, and verify lightbox have no focus trap and bypass the Radix-primitives project rule.
+
+---
+
+## Findings
+
+Severity: **high** = breaks task completion / direct design-contract violation · **med** = degrades quality, fix recommended · **low** = polish.
+
+| ID | Sev | Location | Problem | Fix | Class |
+|----|-----|----------|---------|-----|-------|
+| C-01 | high | `globals.css:45-47,212-214` vs `HomeFocus.tsx:377-1027` (≈30×), `HomeBoard.tsx:740,1027-1028`, `HomePortfolio.tsx:363,446-448,502-504`, `verify/page.tsx:904-916,1011,1037-1038,1097,1438-1444,1472-1475,1709-1716`, `command/page.tsx:314-316,350-351,402-406` | Tokens are Apple palette (`--danger:#FF3B30`, `--warning:#FF9F0A`, `--success:#34C759`; dark `#FF453A/#FFD60A/#30D158`) but components hardcode Tailwind rgba literals `rgba(220,38,38,·)`, `rgba(217,119,6,·)`, `rgba(16,185,129,·)` for the borders/backgrounds/glows of the SAME elements whose text uses `var(--danger)` etc. Result: every crit chip/callout/stat renders iOS-red text inside Tailwind-red tint — two clashing red families per element; ditto amber and green. The `#dc2626`-style var() fallbacks are dead (tokens always defined). | Add `--danger-rgb: 255,59,48` (+ dark variants), `--warning-rgb`, `--success-rgb` to globals.css; mechanical replace of every literal with `rgba(var(--danger-rgb), α)`; delete stale hex fallbacks. | auto-fixable |
+| C-02 | high | `tasks/page.tsx:1030-1043` (col `blur(60px)`) + `1230-1252` (card `blur(24px)` + `--glass-substrate`) | Glass cards nested inside glass columns — direct violation of the "don't stack glass effects" house rule; nested backdrop-filters are also a GPU/scroll-perf tax with many cards. | Remove `backdrop-filter` from `.v2-tasks-card`; give cards an opaque substrate (`var(--bg-content)` or flat rgba tint). Column keeps the single glass layer. | auto-fixable |
+| C-03 | high | `verify/page.tsx:186-196,366-459` | `refresh()` swallows all fetch errors (`catch { /* swallow */ }`, non-ok ignored) then sets `loading=false`. `data` stays null → counts all zero → hero says "Nothing waiting" + green CheckCircle "all clear" empty card. **API failure renders as verified-clean success.** | Track an `error` state (or migrate to SWR like /command); render a designed error card (tone `crit`, retry Button) distinct from the all-clear card. | auto-fixable |
+| C-04 | high | `tasks/page.tsx:162-180,504-518` | `useSWR('/api/inbox')` never destructures `error`; on failure `inboxData` stays `undefined` → `loading` stays true → the 3-column skeleton board renders forever with no message or retry. | `const { data, error } = useSWR(…)`; when `error && !data`, render an error EmptyState with a retry button calling `mutateInbox()`. | auto-fixable |
+| C-05 | high | `HomeBoard.tsx:196-205` → `tasks/page.tsx:187-191 (only reads ?task), 111-114 + 252-259` | The ATTENTION column's "couldn't route" item deep-links to `/tasks?filter=drift`. The tasks page (a) never reads a `filter` param, and (b) `columnFor()` maps no column for `unassigned`, so drift tasks are filtered out of the board entirely. User clicks a red alert and lands on a board where the referenced tasks don't exist. | Either route drift to `/command?view=queued` (which renders unassigned), or add an `unassigned` lane/filter handling to /tasks incl. reading `?filter=`. | needs-design-decision |
+| C-06 | high | `tasks/page.tsx:651-846` (detail panel), `TerminalConversationDrawer.tsx:212-444`, `verify/page.tsx:735-769` (lightbox) | Three hand-rolled modal surfaces: `role="dialog" aria-modal` (drawer lacks even aria-modal) but no focus trap, focus never moved on open, focus not restored on close; tasks overlay doesn't lock body scroll. Violates the CLAUDE.md rule "use Radix primitives for all dialogs" — which `ui/Modal` and `ConfirmDialog` already follow. | Wrap each in `Dialog.Root/Portal/Content` (keep existing classNames on `Dialog.Content`); Radix supplies trap/scroll-lock/Escape/restore for free. | auto-fixable |
+| C-07 | med | `DecisionStack.tsx:335` (`rgba(245,158,11,0.4)` = #f59e0b), `tasks/page.tsx:69` (`'255, 159, 10'`), Tailwind `#d97706` literals everywhere in C-01 | Third amber family (#f59e0b) and an inline toneRgb string constant; with C-01's two this makes **three distinct warning ambers** live in the core workspace. Greens likewise split (#34C759 token vs #059669/#10b981 literals). | Same remedy as C-01; delete `toneRgb` from the `COLUMNS` const (its `label` field is also dead — `t()` is used instead). | auto-fixable |
+| C-08 | med | `tasks/page.tsx:716-839 + 1530-1572` (`.v2-btn*`), `verify/page.tsx:693-725 + 1413-1456` (`.v2-vf-btn*`), `HomeFocus.tsx:256-266,895-926` (`.v2-fc-cta*`), `page.tsx:144-150,507-526` (`.v2-empty-cta`), `HomeTerminalInput.tsx:42-48,85-107` | Four parallel ad-hoc button systems coexist with the shared `ui/Button` (`.ui-btn`, 2px radius, uppercase mono) that DecisionStack/TeamTaskTable/HomeBoard already use. Radii (6/7/8px), casing, fonts and hover physics all differ — the same "primary action" looks different on every page. Violates the polish-pass rule "use Button for ALL new UI". | Migrate to `<Button variant size>` (links via `asChild`). Where the pink-pill CTA look is intentional, add a `cta` variant to `.ui-btn` once instead of five bespoke classes. | auto-fixable |
+| C-09 | med | `HomePortfolio.tsx:69,80` · `HomeFocus.tsx:163,205-213,291-294` | 7-char slices of project UUIDs rendered as `<code>` "hash" chips and as a "Project ID" meta cell — decorative pseudo-data with zero user value (the page's own header comment says deployment-hash chips were "deliberately CUT", page.tsx:62-64). Conflicts with UUID-humanization direction. | Remove the hash chips; the meta cell can show source/repo or be dropped (grid is 2×2 → falls to 3 cells, rebalance to 1×3). | needs-design-decision |
+| C-10 | med | `command/page.tsx:205-222` · `verify/page.tsx:411-431` vs `tasks/page.tsx:491-501` | Filter pills use `role="tablist"/"tab"/aria-selected` but implement none of the tab pattern (no arrow-key nav, no `aria-controls`, no panel). They filter a list — they're toggles. /tasks does the same UI correctly with `aria-pressed`. | Drop tab roles on both pages; use plain buttons with `aria-pressed` for parity with /tasks. | auto-fixable |
+| C-11 | med | `tasks/page.tsx:1726` (`fallback={null}`), `command/page.tsx:439` (`fallback={null}`), `page.tsx:667` (empty div) | Blank viewport during hydration on three of five pages. `terminal/page.tsx:6-17` already documents that `fallback={null}` "left a blank viewport on slow loads" and fixed it with skeletons — the fix was never propagated. | Give each page a Skeleton fallback mirroring its loading layout (board columns / hero + list). | auto-fixable |
+| C-12 | med | `verify/page.tsx:1493-1746` ("Calm triage refresh" block) | The stylesheet redefines ~30 of its own selectors lower in the same string: `.v2-vf-btn-strong` styled danger-red at 1437 then overridden to success-green at 1708; `.v2-vf-tag` needs `!important` (1541); hero padding/headline font redefined. Two full design generations ship to every client; first-pass rules are dead weight and a drift hazard. | Collapse to single definitions (keep the "refresh" values); delete the superseded block. | auto-fixable |
+| C-13 | med | `command/page.tsx:342` (`rgba(0,0,0,0.18)`), `verify/page.tsx:902,934,1387 → overridden 1554,1570,1694`, white-alpha hovers `command/page.tsx:396-398`, `TeamTaskTable.tsx:371-372,428` | Hardcoded dark-mode surfaces with no `.light` override: black-tinted stat chips/inputs go murky on light glass; `rgba(255,255,255,0.03-0.06)` hover/active fills are invisible on white. (/tasks columns DO have a `.light` override — the pattern exists, applied inconsistently.) | Replace with tokens (`--glass-substrate`, rule-based tints) or add `.light` overrides matching the tasks-page approach. | auto-fixable |
+| C-14 | med | `HomePortfolio.tsx:484-491` (+ dead `.v2-products-score` 493-504) | `.v2-products-foot` declares `grid-template-columns: auto auto 1fr` for only two children (time, Open link). The empty 1fr third track means "Open" sits glued to the timestamp on the left instead of the right edge — `justify-self:end` is a no-op inside an auto track. Residue of a removed score chip. | `grid-template-columns: 1fr auto;` and delete the dead score styles. | auto-fixable |
+| C-15 | med | `page.tsx:46,119-123,572-663` (RefinedHome + PortfolioSnapshot), skeleton `462-473`, empty `456-461,633` | A second homepage variant (`?home=refined`) ships in prod: duplicate "03" section, a hand-rolled skeleton that abuses the `v2sectionFade` keyframe as shimmer (cards pulse-translate instead of shimmering), and a bare `<p>` empty state — both violating the shared Skeleton/EmptyState rule. | Delete the refined variant (default is `classic`), or bring it to primitive parity if it's still an active experiment. | needs-design-decision |
+| C-16 | med | `TerminalShell.tsx:718-860` (stream), `976,1016` (slash palettes) | No `aria-live` on the message stream — screen-reader users hear nothing while Recgon answers. Slash palette declares `role="listbox"/option` but the textarea has no `role="combobox"`, `aria-expanded`, `aria-controls`, or `aria-activedescendant`, so arrow-key selection is silent. | Wrap the last assistant turn in `aria-live="polite"`; wire the combobox pattern on the textarea. | auto-fixable |
+| C-17 | med | `HomeBoard.tsx:604-689` | "Review queue / See all updates / View roster" links are `opacity:0; pointer-events:none` until **card hover**. On touch devices there is no hover → primary navigation is unreachable; on desktop it's undiscoverable. `:focus-visible` reveal exists for keyboard only. | Show the control at rest (reduced opacity) or add `@media (hover: none) { .v2-bd-col-link { opacity:1; pointer-events:auto; } }`. | auto-fixable |
+| C-18 | low | `verify/page.tsx:48,144` (`useTranslations('auth')`) | The entire verify surface reads strings from the `auth` i18n namespace (`auth.verify.*`) — misleading ownership for translators and future Phase-B extraction. | Move keys to a `verify` namespace; update `Translator` type. | auto-fixable |
+| C-19 | low | `tasks/page.tsx:1199-1212` | Kanban column bodies scroll (`max-height: calc(100vh - 240px)`) with scrollbars fully hidden across engines — no affordance that more cards exist below the fold. | Use the thin styled scrollbar recipe from `.terminal-stream` (TerminalShell.tsx:1183-1188) instead of hiding it. | auto-fixable |
+| C-20 | low | `TeamTaskTable.tsx:438` (`font-weight:550`), `HomePortfolio.tsx:246,265,294,386,409,442`, `page.tsx:342,419,444` (650/750/800/850) | Font weights 550/650/750/850 don't exist in static JetBrains Mono/Inter cuts — browsers synthesize or snap them differently, so "identical" labels render at different weights cross-platform. | Snap to the real scale: 500/600/700/800. | auto-fixable |
+| C-21 | low | `TerminalConversationDrawer.tsx:327-368` | Row actions (assign ◈ / rename ✎ / delete ×) render only when `isActive && !isCurrent` — the **current** session can never be renamed, deleted, or reassigned from the drawer, even though TerminalShell's onDelete explicitly handles deleting the active conversation (TerminalShell.tsx:1098-1101). | Drop the `!isCurrent` condition; keep the "current" badge alongside the actions. | auto-fixable |
+| C-22 | low | `TerminalShell.tsx:1779-1789` | `.terminal-scroll-pill` is `position:fixed; right:24px` — anchored to the viewport while the terminal window is centered at `min(1280px, 100vw-80px)`. On monitors wider than ~1360px the pill floats outside the terminal frame in empty page background. | Make `.terminal-shell` the positioning context (`position:absolute; right:24px; bottom:60px` inside it). | auto-fixable |
+| C-23 | low | `HomeBoard.tsx:137-138,229-230,331-332 + 542-546` (rendered-then-`display:none` ribbon/backplate spans), `HomeFocus.tsx:650-669,974-1052` (unused health/score/voice CSS), `TerminalShell.tsx:1554+1558` (double border-radius), `1428-1439` (legacy `.terminal-active`), `tasks/page.tsx:66-70` (unused `label` field) | Dead decorative DOM nodes and ~200 lines of orphaned CSS ship on every render. | Delete the hidden spans and orphaned rules. | auto-fixable |
+| C-24 | low | lucide-react: `command/page.tsx:8`, `verify/page.tsx:9` vs hand-rolled SVGs: `HomeBoard.tsx`, `HomeFocus.tsx`, `HomeTerminalInput.tsx`, `page.tsx`, `TerminalShell.tsx` (stroke widths 2 / 2.2 / 2.4 / 2.5 / 2.6 / 3) | Two icon grammars across one workspace; six different stroke weights make icons read as mixed-family at a glance. | Standardize on lucide with a fixed `size`/`strokeWidth` pair (e.g. 14/2.2 inline, 16/2.2 stats); keep bespoke SVGs only where lucide lacks the glyph. | needs-design-decision |
+| C-25 | low | `verify/page.tsx:704-713` | Owner-only "mark complete" conveys its gating solely via `title` on a `disabled` button — tooltips on disabled controls are unreachable by keyboard and touch. The adjacent `roleHint` small-text partially covers this; the tooltip implies more. | Keep the button hidden or rely on the visible role hint; drop the title-on-disabled pattern. | auto-fixable |
+| C-26 | low | `HomeFocus.tsx:948-956` (`text-transform: capitalize` on `.v2-fc-meta-val`) | Stage values are force-capitalized per word — multi-word stages like "pre-launch validation" render as "Pre-launch Validation", inconsistent with the lowercase-mono metadata language used everywhere else (`.v2-products-id span` is `text-transform: lowercase`). | Pick one transform for stage metadata across Home (lowercase mono matches the house idiom) and apply it in both components. | auto-fixable |
+
+---
+
+## What's already strong (do not regress)
+
+- **Primitive discipline where adopted:** DecisionStack and TeamTaskTable are model citizens — `Button`, `useConfirm`, `Select`, `EmptyState`, focus-visible rows, j/k keyboard nav with `useListShortcuts`, `loading` button states.
+- **Global focus-visible safety net** (`globals.css:2933-2943`) covers `all:unset` buttons; keyboard focus is never invisible.
+- **Skeleton coverage** on Home (Focus/Board/Portfolio all pass `loading` to shared `Skeleton` with `aria-busy`/`aria-live`).
+- **Destructive-action confirms** everywhere (override, decline, cancel, delete session) via the branded `useConfirm`.
+- **Optimistic drag-and-drop** on /tasks with rollback + toast on failure, and explicit invalid-drop feedback.
+- **Reduced-motion handling** on HomeBoard's floating link and glass tap-pulse.
+- **No emojis anywhere**; signature pink is genuinely the only accent hue in use.
+
+## Files Audited
+
+- `src/app/page.tsx` · `src/app/tasks/page.tsx` · `src/app/command/page.tsx` · `src/app/verify/page.tsx` · `src/app/terminal/page.tsx`
+- `src/components/v2/HomeBoard.tsx` · `HomeFocus.tsx` · `HomePortfolio.tsx` · `HomeTerminalInput.tsx`
+- `src/components/v2/command/DecisionStack.tsx` · `TeamTaskTable.tsx`
+- `src/components/v2/terminal/TerminalShell.tsx` · `TerminalConversationDrawer.tsx`
+- `src/components/ui/Button.tsx` · `Modal.tsx` · `ConfirmDialog.tsx` · `EmptyState.tsx` · `Skeleton.tsx` · `PageHeader.tsx`
+- `src/app/globals.css` (token, focus-visible, glass-card definitions)

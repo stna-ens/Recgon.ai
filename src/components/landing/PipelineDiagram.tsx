@@ -187,7 +187,7 @@ export default function PipelineDiagram() {
         .lnd-pipe-col-head .recgon-label { margin: 0; }
         .lnd-pipe-col-tag {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           letter-spacing: 1.1px;
           text-transform: uppercase;
           color: var(--txt-faint);
@@ -254,8 +254,8 @@ export default function PipelineDiagram() {
         .lnd-pipe-dot {
           width: 6px; height: 6px;
           border-radius: 50%;
-          background: var(--success, #34C759);
-          box-shadow: 0 0 6px var(--success, #34C759);
+          background: var(--success);
+          box-shadow: 0 0 6px var(--success);
           flex-shrink: 0;
           animation: lndPipeDot 2s ease-in-out infinite;
         }
@@ -297,7 +297,7 @@ export default function PipelineDiagram() {
           padding-top: 12px;
           border-top: 1px solid rgba(var(--signature-rgb), 0.1);
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           letter-spacing: 0.3px;
           color: var(--txt-faint);
         }
@@ -326,7 +326,7 @@ export default function PipelineDiagram() {
         @keyframes lndTaskFade { to { opacity: 1; transform: translateY(0); } }
         .lnd-pipe-task-kind {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.6px;
           text-transform: uppercase;
@@ -337,11 +337,11 @@ export default function PipelineDiagram() {
           border: 1px solid rgba(var(--signature-rgb), 0.2);
           white-space: nowrap;
         }
-        .lnd-pipe-task-kind[data-kind='dev_prompt'] { color: var(--success, #059669); background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.22); }
-        .lnd-pipe-task-kind[data-kind='analytics'] { color: var(--warning, #d97706); background: rgba(217,119,6,0.1); border-color: rgba(217,119,6,0.22); }
+        .lnd-pipe-task-kind[data-kind='dev_prompt'] { color: var(--success); background: rgba(var(--success-rgb),0.1); border-color: rgba(var(--success-rgb),0.22); }
+        .lnd-pipe-task-kind[data-kind='analytics'] { color: var(--warning); background: rgba(var(--warning-rgb),0.1); border-color: rgba(var(--warning-rgb),0.22); }
         .lnd-pipe-task-kind[data-kind='marketing'] { color: #0a7ea4; background: rgba(10,126,164,0.1); border-color: rgba(10,126,164,0.22); }
         .lnd-pipe-task-title {
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-pure);
           font-weight: 500;
           letter-spacing: -0.005em;
@@ -371,7 +371,7 @@ export default function PipelineDiagram() {
         .lnd-pipe-task-owner-name { font-size: 11px; font-weight: 600; color: var(--txt-pure); }
         .lnd-pipe-task-owner-role {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9px;
+          font-size: 10px;
           color: var(--txt-faint);
           letter-spacing: 0.3px;
           text-transform: uppercase;

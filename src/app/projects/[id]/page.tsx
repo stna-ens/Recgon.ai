@@ -850,7 +850,7 @@ export default function V2ProjectOverviewPage() {
         const taken = a.nextStepsTaken.filter((s) => s.taken).length;
         const total = a.nextStepsTaken.length;
         const pct = Math.round((taken / total) * 100);
-        const tone = pct >= 60 ? '#10b981' : pct >= 30 ? '#f59e0b' : '#ef4444';
+        const tone = pct >= 60 ? 'var(--success)' : pct >= 30 ? 'var(--warning)' : 'var(--danger)';
         const r = 44;
         const C = 2 * Math.PI * r;
         const filled = (pct / 100) * C;

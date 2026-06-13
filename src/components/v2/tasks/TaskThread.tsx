@@ -200,7 +200,7 @@ export default function TaskThread({ teamId, taskId }: TaskThreadProps) {
         }
         .v2-thread-lab {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 1px;
           text-transform: uppercase;
@@ -212,7 +212,7 @@ export default function TaskThread({ teamId, taskId }: TaskThreadProps) {
           font-style: italic;
         }
         .v2-thread-empty {
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-faint);
           margin: 0 0 10px;
         }
@@ -230,7 +230,7 @@ export default function TaskThread({ teamId, taskId }: TaskThreadProps) {
           align-items: center;
           gap: 8px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
         }
         .v2-thread-event-dot {
@@ -260,7 +260,7 @@ export default function TaskThread({ teamId, taskId }: TaskThreadProps) {
         .v2-thread-del {
           all: unset;
           cursor: pointer;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
         }
         .v2-thread-del:hover { color: var(--danger); }

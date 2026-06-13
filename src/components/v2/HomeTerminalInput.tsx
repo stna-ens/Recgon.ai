@@ -91,7 +91,7 @@ export default function HomeTerminalInput({ visible }: Props) {
           border: 1px solid var(--signature);
           color: white;
           border-radius: 8px;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 600;
           letter-spacing: -0.005em;
           cursor: pointer;

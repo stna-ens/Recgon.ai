@@ -462,7 +462,7 @@ export default function CommandPaletteHost() {
         }
         .v2-cmd-item-hint {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--txt-faint);
           flex-shrink: 0;
         }
@@ -481,7 +481,7 @@ export default function CommandPaletteHost() {
           font-weight: 600;
           background: rgba(255,255,255,0.04);
           border: 1px solid var(--btn-secondary-border, rgba(255,255,255,0.08));
-          border-radius: 3px;
+          border-radius: 4px;
           padding: 1px 4px;
           margin-right: 4px;
         }

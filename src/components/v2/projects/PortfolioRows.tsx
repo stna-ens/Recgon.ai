@@ -264,7 +264,7 @@ const stylesheet = `
   .v2-pr-avatar {
     width: 30px;
     height: 30px;
-    border-radius: 7px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -293,7 +293,7 @@ const stylesheet = `
   }
   .v2-pr-name {
     color: var(--txt-pure);
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 650;
     letter-spacing: -0.005em;
     display: inline-flex;
@@ -305,15 +305,15 @@ const stylesheet = `
   }
   .v2-pr-warn {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9.5px;
+    font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     padding: 2px 7px;
     border-radius: 999px;
-    color: var(--warning, #d97706);
-    background: rgba(255, 159, 10, 0.08);
-    border: 1px solid rgba(255, 159, 10, 0.30);
+    color: var(--warning);
+    background: rgba(var(--warning-rgb), 0.08);
+    border: 1px solid rgba(var(--warning-rgb), 0.30);
     white-space: nowrap;
   }
   .v2-pr-meta-line {
@@ -322,7 +322,7 @@ const stylesheet = `
     gap: 6px;
     flex-wrap: wrap;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--txt-faint);
     text-transform: lowercase;
     letter-spacing: 0.3px;
@@ -355,7 +355,7 @@ const stylesheet = `
 
   .v2-pr-pulse {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 9.5px;
+    font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.45px;
@@ -370,13 +370,13 @@ const stylesheet = `
   }
   /* Drifting reads as soft / awaiting (signature pink), not alarm. */
   .v2-pr-pulse[data-pulse='drifting']   { color: var(--signature);        border-color: rgba(var(--signature-rgb), 0.26); background: rgba(var(--signature-rgb), 0.06); }
-  .v2-pr-pulse[data-pulse='stuck']      { color: var(--warning, #d97706); border-color: rgba(217, 119, 6, 0.26);          background: rgba(217, 119, 6, 0.06); }
-  .v2-pr-pulse[data-pulse='shipping']   { color: var(--success, #059669); border-color: rgba(16, 185, 129, 0.26);         background: rgba(16, 185, 129, 0.06); }
+  .v2-pr-pulse[data-pulse='stuck']      { color: var(--warning); border-color: rgba(var(--warning-rgb), 0.26);          background: rgba(var(--warning-rgb), 0.06); }
+  .v2-pr-pulse[data-pulse='shipping']   { color: var(--success); border-color: rgba(var(--success-rgb), 0.26);         background: rgba(var(--success-rgb), 0.06); }
   .v2-pr-pulse[data-pulse='converging'] { color: var(--signature);        border-color: rgba(var(--signature-rgb), 0.26); background: rgba(var(--signature-rgb), 0.04); }
 
   .v2-pr-time {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--txt-faint);
     min-width: 64px;

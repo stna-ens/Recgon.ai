@@ -329,10 +329,10 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
         }
         .v2-mc-ds-count {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           color: var(--warning);
-          border: 1px solid rgba(245,158,11,0.4);
+          border: 1px solid rgba(var(--warning-rgb),0.4);
           border-radius: 999px;
           min-width: 20px;
           height: 20px;
@@ -343,7 +343,7 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
         }
         .v2-mc-ds-empty {
           color: var(--txt-faint);
-          font-size: 13.5px;
+          font-size: 13px;
           margin: 0;
           padding: 16px 4px;
         }
@@ -353,7 +353,7 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
           align-items: center;
           gap: 8px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 9.5px;
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 1px;
           text-transform: uppercase;
@@ -390,7 +390,7 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
           cursor: pointer;
           display: block;
           color: var(--txt-pure);
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 600;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -400,14 +400,14 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
         .v2-mc-ds-title:hover { color: var(--signature); }
         .v2-mc-ds-meta {
           margin: 3px 0 0;
-          font-size: 12.5px;
+          font-size: 12px;
           color: var(--txt-muted);
         }
         .v2-mc-ds-meta strong { color: var(--txt-muted); font-weight: 600; }
         .v2-mc-ds-late { color: var(--danger); }
         .v2-mc-ds-note {
           margin: 5px 0 0;
-          font-size: 12.5px;
+          font-size: 12px;
           font-style: italic;
           color: var(--txt-faint);
           max-width: 560px;
