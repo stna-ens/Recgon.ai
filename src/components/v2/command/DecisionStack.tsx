@@ -156,9 +156,9 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
   const teammateOptions = teammates.map((tm) => ({ value: tm.id, label: tm.displayName }));
 
   return (
-    <section className="v2-mc-ds" aria-label={t('decisions.heading')}>
+    <section className="glass-card v2-mc-ds" aria-label={t('decisions.heading')}>
       <div className="v2-mc-ds-head">
-        <h2 className="v2-mc-h2">{t('decisions.heading')}</h2>
+        <h2 className="v2-mc-ds-title-h">{t('decisions.heading')}</h2>
         {total > 0 && <span className="v2-mc-ds-count">{total}</span>}
       </div>
 
@@ -310,22 +310,32 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
       )}
 
       <style>{`
-        .v2-mc-ds { margin-bottom: 34px; }
+        .v2-mc-ds { padding: 22px 24px 14px; }
         .v2-mc-ds-head {
           display: flex;
           align-items: center;
           gap: 10px;
-          margin-bottom: 12px;
+          padding-bottom: 14px;
+          border-bottom: 1px solid var(--rule, rgba(255,255,255,0.07));
+        }
+        .v2-mc-ds-title-h {
+          margin: 0;
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 1.4px;
+          text-transform: uppercase;
+          color: var(--warning);
         }
         .v2-mc-ds-count {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 11px;
+          font-size: 10.5px;
           font-weight: 700;
-          color: var(--signature);
-          border: 1px solid rgba(var(--signature-rgb), 0.4);
+          color: var(--warning);
+          border: 1px solid rgba(245,158,11,0.4);
           border-radius: 999px;
-          min-width: 22px;
-          height: 22px;
+          min-width: 20px;
+          height: 20px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -335,19 +345,20 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
           color: var(--txt-faint);
           font-size: 13.5px;
           margin: 0;
-          padding: 18px 20px;
-          border: 1px dashed var(--rule, rgba(255,255,255,0.10));
-          border-radius: 14px;
+          padding: 16px 4px;
         }
-        .v2-mc-ds-groups { display: grid; gap: 18px; }
+        .v2-mc-ds-groups { display: grid; }
         .v2-mc-ds-group-lab {
+          display: flex;
+          align-items: center;
+          gap: 8px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 9.5px;
           font-weight: 700;
           letter-spacing: 1px;
           text-transform: uppercase;
           color: var(--txt-faint);
-          margin-bottom: 8px;
+          padding: 16px 4px 6px;
         }
         .v2-mc-ds-card {
           display: flex;
@@ -355,15 +366,24 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
           justify-content: space-between;
           gap: 16px;
           flex-wrap: wrap;
-          padding: 14px 16px;
-          border: 1px solid var(--rule, rgba(255,255,255,0.08));
-          border-left-width: 3px;
-          border-radius: 12px;
-          margin-bottom: 8px;
+          padding: 11px 4px 11px 12px;
+          border-radius: 10px;
+          position: relative;
+          transition: background var(--dur-base, 0.18s) ease;
         }
-        .v2-mc-ds-card[data-tone="info"] { border-left-color: var(--signature); }
-        .v2-mc-ds-card[data-tone="warn"] { border-left-color: var(--warning); }
-        .v2-mc-ds-card[data-tone="crit"] { border-left-color: var(--danger); }
+        .v2-mc-ds-card:hover { background: rgba(255,255,255,0.03); }
+        .v2-mc-ds-card::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 12px;
+          bottom: 12px;
+          width: 3px;
+          border-radius: 2px;
+        }
+        .v2-mc-ds-card[data-tone="info"]::before { background: var(--signature); }
+        .v2-mc-ds-card[data-tone="warn"]::before { background: var(--warning); }
+        .v2-mc-ds-card[data-tone="crit"]::before { background: var(--danger); }
         .v2-mc-ds-card-main { min-width: 0; flex: 1 1 280px; }
         .v2-mc-ds-title {
           all: unset;
@@ -379,14 +399,14 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
         }
         .v2-mc-ds-title:hover { color: var(--signature); }
         .v2-mc-ds-meta {
-          margin: 4px 0 0;
+          margin: 3px 0 0;
           font-size: 12.5px;
           color: var(--txt-muted);
         }
         .v2-mc-ds-meta strong { color: var(--txt-muted); font-weight: 600; }
         .v2-mc-ds-late { color: var(--danger); }
         .v2-mc-ds-note {
-          margin: 6px 0 0;
+          margin: 5px 0 0;
           font-size: 12.5px;
           font-style: italic;
           color: var(--txt-faint);
@@ -397,6 +417,9 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
           align-items: center;
           gap: 8px;
           flex-wrap: wrap;
+        }
+        @media (max-width: 760px) {
+          .v2-mc-ds { padding: 18px 16px 10px; }
         }
       `}</style>
     </section>

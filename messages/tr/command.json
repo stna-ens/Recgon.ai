@@ -106,5 +106,24 @@
     "close": "Paneli / pencereyi kapat",
     "palette": "Komut paleti",
     "help": "Bu yardım"
+  },
+  "headline": {
+    "decisions": "{count, plural, =1 {1 karar seni bekliyor} other {# karar seni bekliyor}}",
+    "overdue": "{count, plural, =1 {1 görev gecikiyor} other {# görev gecikiyor}}",
+    "clear": "Her şey yolunda — Recgon ilgileniyor",
+    "empty": "Henüz görev yok"
+  },
+  "sub": {
+    "owner": "Recgon atar, takip eder ve doğrular. Tek başına veremediği kararlar en üstte.",
+    "member": "Ekibinin üzerinde çalıştığı her şey — ve senin payına düşenler.",
+    "empty": "Recgon analiz sonrası projelerinden görev üretir; istersen bir projenin görev listesinden de oluşturabilirsin."
+  },
+  "pills": {
+    "all": "tümü",
+    "mine": "benim",
+    "active": "aktif",
+    "queued": "sırada",
+    "review": "incelemede",
+    "overdue": "gecikmiş"
   }
 }

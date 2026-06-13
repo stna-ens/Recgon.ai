@@ -106,5 +106,24 @@
     "close": "Close panel / dialog",
     "palette": "Command palette",
     "help": "This help"
+  },
+  "headline": {
+    "decisions": "{count, plural, =1 {1 decision needs you} other {# decisions need you}}",
+    "overdue": "{count, plural, =1 {1 task is slipping} other {# tasks are slipping}}",
+    "clear": "All clear — Recgon is on it",
+    "empty": "No tasks yet"
+  },
+  "sub": {
+    "owner": "Recgon assigns, follows up, and verifies. The calls it can't make alone are at the top.",
+    "member": "Everything your team is working on — and where your part fits in.",
+    "empty": "Recgon mints tasks from your projects after an analysis, or create one from a project's task list."
+  },
+  "pills": {
+    "all": "all",
+    "mine": "mine",
+    "active": "active",
+    "queued": "queued",
+    "review": "in review",
+    "overdue": "overdue"
   }
 }
