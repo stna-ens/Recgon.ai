@@ -185,6 +185,17 @@ export default function CommandPaletteHost() {
 
     const actionCommands: Command[] = [
       {
+        id: 'act-create-task',
+        kind: 'action',
+        label: t('commandPalette.createTask'),
+        group: t('commandPalette.actionsGroup'),
+        keywords: ['new', 'task', 'create', 'add', 'görev'],
+        run: () => {
+          setOpen(false);
+          window.dispatchEvent(new CustomEvent('v2:open-create-task'));
+        },
+      },
+      {
         id: 'act-dispatch',
         kind: 'action',
         label: t('commandPalette.runDispatch'),

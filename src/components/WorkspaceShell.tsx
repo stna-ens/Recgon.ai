@@ -1,11 +1,13 @@
 import TopNavV2 from '@/components/v2/TopNavV2';
 import CommandPaletteHost from '@/components/v2/CommandPaletteHost';
+import CreateTaskHost from '@/components/v2/CreateTaskHost';
 
 export default function WorkspaceShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="v2-shell">
       <TopNavV2 />
       <CommandPaletteHost />
+      <CreateTaskHost />
       <main className="v2-main">
         <div className="v2-container">{children}</div>
       </main>

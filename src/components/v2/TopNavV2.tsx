@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import RecgonLogo from '@/components/RecgonLogo';
 import TeamSwitcher from '@/components/TeamSwitcher';
 import AvatarMenu from '@/components/v2/AvatarMenu';
+import { useTeam } from '@/components/TeamProvider';
 
 type NavItem = { href: string; key: string; matchPrefix?: boolean };
 
@@ -36,6 +37,8 @@ export default function TopNavV2() {
   const { data: session } = useSession();
   const t = useTranslations('nav');
   const ts = useTranslations('shared');
+  const { currentTeam } = useTeam();
+  const isOwner = currentTeam?.role === 'owner';
   const [hasNewTask, setHasNewTask] = useState(false);
   const [mac, setMac] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
@@ -90,6 +93,10 @@ export default function TopNavV2() {
     window.dispatchEvent(new CustomEvent('v2:open-command'));
   };
 
+  const openCreateTask = () => {
+    window.dispatchEvent(new CustomEvent('v2:open-create-task'));
+  };
+
   return (
     <>
       <header className="v2-topnav">
@@ -129,6 +136,21 @@ export default function TopNavV2() {
               <div className="v2-clock" title={ts('nav.localTime')} aria-label={ts('nav.currentTime', { time: formatTime(now) })}>
                 {formatTime(now)}
               </div>
+            )}
+
+            {isOwner && (
+              <button
+                type="button"
+                className="v2-newtask-trigger"
+                onClick={openCreateTask}
+                aria-label={t('newTask')}
+              >
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                <span className="v2-newtask-text">{t('newTask')}</span>
+              </button>
             )}
 
             <button
@@ -333,10 +355,35 @@ export default function TopNavV2() {
           font-variant-numeric: tabular-nums;
           padding: 0 2px;
         }
+        .v2-newtask-trigger {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 12px;
+          background: rgba(var(--signature-rgb), 0.10);
+          border: 1px solid rgba(var(--signature-rgb), 0.35);
+          border-radius: 8px;
+          color: var(--signature);
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.4px;
+          text-transform: uppercase;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: border-color var(--dur-base) ease, color var(--dur-base) ease, background var(--dur-base) ease;
+        }
+        .v2-newtask-trigger:hover {
+          background: rgba(var(--signature-rgb), 0.18);
+          border-color: rgba(var(--signature-rgb), 0.55);
+        }
+        .v2-newtask-text { line-height: 1; }
         @media (max-width: 1024px) {
           .v2-cmdk-text { display: none; }
           .v2-cmdk-trigger { min-width: 0; padding: 7px 10px; }
           .v2-clock { display: none; }
+          .v2-newtask-text { display: none; }
+          .v2-newtask-trigger { padding: 7px 9px; }
         }
         @media (max-width: 720px) {
           .v2-topnav { top: 10px; left: 10px; right: 10px; border-radius: 28px; }
