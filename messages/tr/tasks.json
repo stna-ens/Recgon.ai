@@ -16,6 +16,11 @@
   "filters": {
     "overdue": "gecikmiş"
   },
+  "error": {
+    "title": "Görevlerin yüklenemedi",
+    "desc": "Pano sunucudan gelmedi. Bağlantını kontrol edip tekrar dene.",
+    "retry": "Tekrar dene"
+  },
   "columns": {
     "assigned": "atanan",
     "wip": "devam eden",
@@ -175,6 +180,41 @@
       "low": "düşük",
       "normal": "normal",
       "high": "yüksek"
+    }
+  },
+  "createTask": {
+    "title": "Yeni görev",
+    "newButton": "Yeni Görev",
+    "success": "Görev oluşturuldu",
+    "error": "Görev oluşturulamadı",
+    "failed": "Görev oluşturulamadı",
+    "autoAssignee": "Otomatik — kararı Recgon versin",
+    "autoSchedule": "Recgon'un planlaması için boş bırak",
+    "queued": "Recgon için sıraya alındı",
+    "assignedTo": "{name} kişisine atandı",
+    "fields": {
+      "title": "Başlık",
+      "description": "Açıklama",
+      "project": "Proje",
+      "noProject": "Proje yok",
+      "kind": "Tür",
+      "assignee": "Atanan",
+      "priority": "Öncelik",
+      "schedule": "Planlama tarihi",
+      "deadline": "Termin"
+    },
+    "kindOptions": {
+      "next_step": "Sonraki adım",
+      "dev_prompt": "Geliştirme istemi",
+      "marketing": "Pazarlama",
+      "analytics": "Analitik",
+      "research": "Araştırma",
+      "custom": "Özel"
+    },
+    "priorityOptions": {
+      "low": "Düşük",
+      "normal": "Normal",
+      "high": "Yüksek"
     }
   },
   "hoursShort": "{count}s"

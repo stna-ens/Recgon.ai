@@ -36,7 +36,8 @@
     "dispatchFailed": "Recgon çalıştırılamadı — tekrar dene",
     "themeToggle": "Açık / koyu temayı değiştir",
     "langToEn": "Switch language to English",
-    "langToTr": "Dili Türkçe yap"
+    "langToTr": "Dili Türkçe yap",
+    "createTask": "Yeni görev oluştur"
   },
   "helpFeedback": {
     "title": "Yardım & geri bildirim",
@@ -84,6 +85,9 @@
   "recgonPanel": {
     "consoleAria": "Recgon dağıtım konsolu",
     "booting": "recgon konsolu başlatılıyor",
+    "loadFailedTitle": "konsol çevrimdışı",
+    "loadFailedBody": "Konsol yüklenemedi. Bağlantını kontrol edip tekrar dene.",
+    "retry": "yeniden dene",
     "kicker": "recgon · dağıtım konsolu",
     "lastDispatch": "son_dağıtım",
     "never": "hiç",

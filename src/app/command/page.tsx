@@ -8,10 +8,11 @@ import useSWR from 'swr';
 import { Radar, Zap, Inbox, Eye, CircleAlert } from 'lucide-react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { Skeleton, Modal } from '@/components/ui';
+import { Skeleton, Modal, Button } from '@/components/ui';
 import TeamTaskTable, { type CommandView } from '@/components/v2/command/TeamTaskTable';
 import DecisionStack from '@/components/v2/command/DecisionStack';
 import { TaskDetailPanel } from '@/components/v2/calendar/TaskDetailPanel';
+import { CreateTaskModal } from '@/components/v2/tasks/CreateTaskModal';
 import type { AgentTask } from '@/lib/recgon/types';
 import type { CommandResponse, CommandTask } from '@/components/v2/command/types';
 
@@ -34,6 +35,7 @@ const fetcher = async (url: string) => {
 
 function CommandPageInner() {
   const t = useTranslations('command');
+  const tTasks = useTranslations('tasks');
   const { currentTeam } = useTeam();
   const { data: session } = useSession();
   const { addToast } = useToast();
@@ -109,6 +111,17 @@ function CommandPageInner() {
         ? t('sub.owner')
         : t('sub.member');
 
+  // ── Manual create-task (owner-only) ───────────────────────────────────────
+  const [createOpen, setCreateOpen] = useState(false);
+  const createTeammates = useMemo(
+    () => (data?.teammates ?? []).map((tm) => ({ id: tm.id, displayName: tm.displayName })),
+    [data?.teammates],
+  );
+  const createProjects = useMemo(
+    () => (data?.projects ?? []).map((p) => ({ id: p.id, name: p.name })),
+    [data?.projects],
+  );
+
   // ── View pills (drive the list) ───────────────────────────────────────────
   const [view, setView] = useState<CommandView>('all');
   const pills = useMemo(() => {
@@ -178,6 +191,13 @@ function CommandPageInner() {
             <p className="v2-mc-sub">{sub}</p>
           </div>
           <div className="v2-mc-hero-right">
+            {isOwner && (
+              <div className="v2-mc-hero-actions">
+                <Button variant="primary" onClick={() => setCreateOpen(true)}>
+                  {tTasks('createTask.newButton')}
+                </Button>
+              </div>
+            )}
             <div className="v2-mc-stat" data-tone="sig">
               <Zap size={16} strokeWidth={2.2} />
               <div className="v2-mc-stat-num">{loading ? '·' : counts.active}</div>
@@ -264,6 +284,19 @@ function CommandPageInner() {
         }}
       />
 
+      {teamId && (
+        <CreateTaskModal
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          teamId={teamId}
+          teammates={createTeammates}
+          projects={createProjects}
+          onCreated={() => {
+            void mutate();
+          }}
+        />
+      )}
+
       <Modal open={helpOpen} onOpenChange={setHelpOpen} title={t('shortcuts.heading')} size="sm">
         <dl className="v2-mc-keys">
           <div><dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>{t('shortcuts.navigate')}</dd></div>
@@ -333,6 +366,16 @@ function CommandPageInner() {
           display: flex;
           gap: 8px;
           flex-wrap: wrap;
+          align-items: flex-start;
+        }
+        .v2-mc-hero-actions {
+          flex-basis: 100%;
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 4px;
+        }
+        @media (max-width: 860px) {
+          .v2-mc-hero-actions { justify-content: flex-start; }
         }
         .v2-mc-stat {
           min-width: 80px;

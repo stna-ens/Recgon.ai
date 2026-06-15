@@ -4,5 +4,6 @@
   "tasks": "Görevler",
   "command": "Komuta",
   "calendar": "Takvim",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "newTask": "Yeni Görev"
 }

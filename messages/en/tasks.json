@@ -16,6 +16,11 @@
   "filters": {
     "overdue": "overdue"
   },
+  "error": {
+    "title": "Couldn't load your tasks",
+    "desc": "The board didn't come back from the server. Check your connection and try again.",
+    "retry": "Retry"
+  },
   "columns": {
     "assigned": "assigned",
     "wip": "in progress",
@@ -175,6 +180,41 @@
       "low": "low",
       "normal": "normal",
       "high": "high"
+    }
+  },
+  "createTask": {
+    "title": "New task",
+    "newButton": "New Task",
+    "success": "Task created",
+    "error": "Could not create the task",
+    "failed": "Could not create the task",
+    "autoAssignee": "Auto — let Recgon decide",
+    "autoSchedule": "Leave empty to let Recgon schedule it",
+    "queued": "Queued for Recgon",
+    "assignedTo": "Assigned to {name}",
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "project": "Project",
+      "noProject": "No project",
+      "kind": "Type",
+      "assignee": "Assignee",
+      "priority": "Priority",
+      "schedule": "Schedule date",
+      "deadline": "Deadline"
+    },
+    "kindOptions": {
+      "next_step": "Next step",
+      "dev_prompt": "Dev prompt",
+      "marketing": "Marketing",
+      "analytics": "Analytics",
+      "research": "Research",
+      "custom": "Custom"
+    },
+    "priorityOptions": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High"
     }
   },
   "hoursShort": "{count}h"

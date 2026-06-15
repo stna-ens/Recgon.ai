@@ -4,5 +4,6 @@
   "tasks": "Tasks",
   "command": "Command",
   "calendar": "Calendar",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "newTask": "New Task"
 }

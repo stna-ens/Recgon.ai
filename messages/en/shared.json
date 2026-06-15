@@ -36,7 +36,8 @@
     "dispatchFailed": "Couldn't run Recgon — try again",
     "themeToggle": "Toggle light / dark theme",
     "langToEn": "Switch language to English",
-    "langToTr": "Dili Türkçe yap"
+    "langToTr": "Dili Türkçe yap",
+    "createTask": "Create a new task"
   },
   "helpFeedback": {
     "title": "Help & feedback",
@@ -84,6 +85,9 @@
   "recgonPanel": {
     "consoleAria": "Recgon dispatch console",
     "booting": "booting recgon console",
+    "loadFailedTitle": "console offline",
+    "loadFailedBody": "Couldn't load the dispatch console. Check your connection and try again.",
+    "retry": "retry",
     "kicker": "recgon · dispatch console",
     "lastDispatch": "last_dispatch",
     "never": "never",
