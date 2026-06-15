@@ -38,9 +38,7 @@ import {
 import { enqueueReframeJob } from '@/lib/recgon/reframeEnqueue';
 import { verifyTeamAccess } from '@/lib/teamStorage';
 import { logger } from '@/lib/logger';
-import type { AssignmentReasoning } from '@/lib/recgon/types';
-
-const MANUAL_ASSIGN_SENTENCE = 'Owner manually assigned — no automatic fit found.';
+import { buildManualAssignReasoning } from '@/lib/recgon/manualAssign';
 
 export async function POST(
   request: Request,
@@ -105,18 +103,8 @@ export async function POST(
 
   // 7) Build the math_only reasoning. Honest representation: zero math,
   //    zero breakdown, fixed sentence. Manual override = no Recgon signal.
-  const reasoning: AssignmentReasoning = {
-    kind: 'math_only',
-    mathScore: 0,
-    mathBreakdown: {
-      skillOverlap: 0,
-      fitForKind: 0,
-      availabilityNow: 0,
-      loadHeadroom: 0,
-      interestNudge: 0,
-    },
-    whyYouSentence: MANUAL_ASSIGN_SENTENCE,
-  };
+  //    Shared with POST /api/teams/[id]/tasks via the manualAssign helper.
+  const reasoning = buildManualAssignReasoning();
 
   // 8) Assign + clear triage_note. The sequence mirrors the dispatcher's
   //    success path — assign first, then clear the flag, so a mid-flight
