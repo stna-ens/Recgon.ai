@@ -45,7 +45,9 @@ export default function LandingNav() {
               onClick={() => setTheme(current === 'dark' ? 'light' : 'dark')}
               aria-label={t('toggleTheme')}
             >
-              {mounted && current === 'dark' ? (
+              {/* No icon until mounted — a pre-hydration guess can flash
+                  the wrong glyph on dark systems. */}
+              {mounted ? (current === 'dark' ? (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="4" />
                   <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
@@ -54,7 +56,7 @@ export default function LandingNav() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
-              )}
+              )) : null}
             </button>
             <Link href="/login" className="lnd-login">{t('signIn')}</Link>
             <Link href="/register" className="lnd-cta">{t('getStarted')}</Link>
@@ -132,7 +134,7 @@ export default function LandingNav() {
           padding: 9px 16px;
           border-radius: 999px;
           background: var(--signature);
-          color: white;
+          color: var(--signature-ink);
           font-size: 12px;
           font-weight: 600;
           letter-spacing: -0.005em;
@@ -148,7 +150,6 @@ export default function LandingNav() {
         @media (max-width: 820px) {
           .lnd-links { display: none; }
           .lnd-rule { display: none; }
-          .lnd-login { display: none; }
         }
       `}</style>
     </>

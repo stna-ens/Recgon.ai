@@ -6,7 +6,7 @@ import TeamProvider from './TeamProvider';
 import WorkspaceShell from './WorkspaceShell';
 import SwrProvider from './SwrProvider';
 
-const AUTH_PATHS = ['/login', '/register', '/landing'];
+const AUTH_PATHS = ['/login', '/register', '/forgot-password', '/landing'];
 const TEAM_SETUP_PATHS = ['/teams/setup'];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {

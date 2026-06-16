@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import RecgonLogo from '@/components/RecgonLogo';
 import { Button, FormField, PasswordInput } from '@/components/ui';
-import { authStyles } from '@/app/login/page';
+import { authStyles } from '@/components/auth/authStyles';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN = 8;
@@ -252,7 +252,7 @@ function ForgotPasswordContent() {
 
 export default function ForgotPasswordPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div style={{ width: '100vw', minHeight: '100vh' }} />}>
       <ForgotPasswordContent />
     </Suspense>
   );

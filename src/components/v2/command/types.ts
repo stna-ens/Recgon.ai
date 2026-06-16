@@ -37,6 +37,14 @@ export interface CommandTeammate {
   displayName: string;
   avatarColor: string | null;
   avatarUrl: string | null;
+  // Dispatch Floor signals (additive; older payloads omit them).
+  // Load is computed server-side from real hours — see the command route.
+  capacityHours?: number;
+  inFlightHours?: number;
+  loadPct?: number;
+  isIdle?: boolean;
+  skills?: string[];
+  stars?: number;
 }
 
 export interface CommandProject {

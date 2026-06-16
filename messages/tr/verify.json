@@ -1,0 +1,111 @@
+{
+  "backToHome": "ana sayfaya dön",
+  "queueTag": "Doğrulama kuyruğu",
+  "nothingWaiting": "Seni bekleyen bir şey yok.",
+  "submittedProof": "gönderilen kanıt",
+  "byUser": "{user} tarafından",
+  "openFullSize": "{name} dosyasını tam boyutta aç",
+  "taskDetails": "Görev ayrıntıları",
+  "proofNoteLabel": "kısa kanıt notu",
+  "proofNotePlaceholder": "Ne değişti ve Recgon bunu nerede görebilir?",
+  "linksLabel": "bağlantılar",
+  "linksPlaceholder": "Bir veya daha fazla bağlantı yapıştır",
+  "submitProof": "kanıt gönder",
+  "markComplete": "tamamlandı işaretle",
+  "decline": "reddet",
+  "reassign": "yeniden ata",
+  "error": {
+    "headline": "Kuyruk yüklenemedi",
+    "sub": "Doğrulama kuyruğu sunucudan gelmedi.",
+    "title": "Doğrulama kuyruğuna ulaşılamadı",
+    "text": "Recgon inceleme listesini getiremedi. Bağlantını kontrol edip tekrar dene.",
+    "retry": "tekrar dene"
+  },
+  "filters": {
+    "all": "tümü",
+    "failed": "başarısız",
+    "awaiting": "kanıt bekleyen",
+    "stuck": "takılan"
+  },
+  "stats": {
+    "failed": "başarısız",
+    "awaitingProof": "kanıt bekleyen",
+    "stuck": "{hours} sa+ takılan"
+  },
+  "status": {
+    "rejected": "recgon reddetti",
+    "awaitingProof": "kanıt bekleniyor",
+    "inconclusive": "sonuçsuz",
+    "reChecking": "recgon yeniden kontrol ediyor",
+    "checking": "recgon kontrol ediyor",
+    "unknown": "bilinmiyor"
+  },
+  "titles": {
+    "failed": "{count, plural, one {# başarısız görev} other {# başarısız görev}}",
+    "awaiting": "{count} tanesi kanıt bekliyor",
+    "stuck": "{count, plural, one {# takılan görev} other {# takılan görev}}",
+    "review": "{count, plural, one {inceleme gereken # görev} other {inceleme gereken # görev}}"
+  },
+  "help": {
+    "failed": "Buradan başla: gönderilen kanıtı Recgon'un çekincesiyle karşılaştır, sonra onayla ya da reddet.",
+    "awaiting": "Recgon net bir karar verebilmek için bunlara bir not, bağlantı ya da dosya daha gerekiyor.",
+    "stuck": "Bunlar çok uzun süredir kontrol ediliyor. Takımın önünü açmak için sahip geçersiz kılma ya da reddet seçeneğini kullan.",
+    "default": "Otomatik doğrulamanın insan kararı gerektirdiği görevler için odaklı bir kuyruk."
+  },
+  "actionLabel": {
+    "reviewProof": "Kanıtı incele",
+    "addProof": "Kanıt ekle",
+    "unblock": "Önünü aç",
+    "decide": "Karar ver"
+  },
+  "verdict": {
+    "concern": "Recgon çekincesi",
+    "whyStuck": "Neden takıldı",
+    "recgonSaid": "Recgon dedi ki",
+    "stuckText": "Yapay zekâ doğrulaması {hours} saatten uzun süredir çalışıyor.",
+    "noVerdict": "Karar metni kaydedilmemiş."
+  },
+  "roleHint": {
+    "owner": "sahip kontrolleri",
+    "assignee": "senin görevin",
+    "viewer": "yalnızca görüntüleme"
+  },
+  "meta": {
+    "source": "kaynak: {source}",
+    "iterations": "yineleme: {count}"
+  },
+  "empty": {
+    "allClearTitle": "Her şey yolunda.",
+    "allClearText": "Recgon her görevi kendi başına doğruluyor. Senin kararını gerektiren her şeyi burada göreceksin.",
+    "noFilterTitle": "{filter} doğrulaması yok.",
+    "noFilterText": "Farklı bir filtre dene — ya da kontrol paneline geri dön."
+  },
+  "time": {
+    "justNow": "az önce",
+    "minutesAgo": "{count} dk önce",
+    "hoursAgo": "{count} sa önce",
+    "daysAgo": "{count} gün önce"
+  },
+  "lightbox": {
+    "previewLabel": "Tam boyut önizleme: {name}",
+    "close": "Önizlemeyi kapat",
+    "openOriginal": "orijinali aç"
+  },
+  "toasts": {
+    "filesAttached": "{count, plural, one {# dosya eklendi} other {# dosya eklendi}}",
+    "uploadFailed": "yükleme başarısız",
+    "proofRequired": "göndermeden önce bir not, bağlantı ya da dosya ekle",
+    "proofSent": "kanıt gönderildi — recgon yeniden kontrol ediyor",
+    "failed": "başarısız",
+    "overridden": "geçersiz kılındı — görev tamamlandı olarak işaretlendi",
+    "overrideFailed": "geçersiz kılma başarısız",
+    "declined": "reddedildi",
+    "declineFailed": "reddetme başarısız"
+  },
+  "confirm": {
+    "overrideTitle": "\"{title}\" tamamlandı olarak işaretlensin mi?",
+    "overrideBody": "Sahip geçersiz kılması Recgon'un doğrulamasını atlar ve kesindir.",
+    "declineTitle": "\"{title}\" reddedilsin mi?",
+    "declineBody": "Yönlendirme kuyruğuna geri gönderilecek."
+  }
+}

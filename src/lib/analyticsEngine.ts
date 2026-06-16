@@ -1,4 +1,4 @@
-import { BetaAnalyticsDataClient } from '@google-analytics/data';
+import { BetaAnalyticsDataClient, protos } from '@google-analytics/data';
 import { OAuth2Client } from 'google-auth-library';
 import { updateOAuthTokens, type OAuthTokens, type ConfigScope } from './analyticsStorage';
 
@@ -88,6 +88,56 @@ async function refreshOAuthToken(refreshToken: string, scope: ConfigScope): Prom
   return data.access_token;
 }
 
+/**
+ * True when a GA4 API error looks like an expired/rejected access token. The
+ * cached token is valid for an hour; Google can reject it earlier (revocation,
+ * clock skew, early rotation), and the 5-min refresh buffer can miss that. When
+ * this is the cause we refresh once and retry — instead of surfacing a scary
+ * auth error that reads (to a user) like "analytics isn't connected".
+ */
+function isOAuthAuthError(err: unknown): boolean {
+  const e = err as { code?: number | string; message?: string } | null;
+  const code = e?.code;
+  if (code === 16 || code === 401 || code === '401' || code === 'UNAUTHENTICATED') return true;
+  const msg = (e?.message ?? '').toLowerCase();
+  return (
+    msg.includes('unauthenticated') ||
+    msg.includes('invalid authentication') ||
+    msg.includes('invalid credentials') ||
+    msg.includes('access token') ||
+    msg.includes('401')
+  );
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * True when a GA4 error is a transient blip worth retrying — rate limits,
+ * Google 5xx, network resets, gRPC UNAVAILABLE/DEADLINE/RESOURCE_EXHAUSTED.
+ * These are the "works on the next try" failures we never want to surface.
+ */
+function isTransientError(err: unknown): boolean {
+  const e = err as { code?: number | string; message?: string } | null;
+  const code = e?.code;
+  // gRPC: 4=DEADLINE_EXCEEDED, 8=RESOURCE_EXHAUSTED, 13=INTERNAL, 14=UNAVAILABLE
+  if (code === 4 || code === 8 || code === 13 || code === 14) return true;
+  if (code === 429 || code === 500 || code === 502 || code === 503 || code === 504) return true;
+  const msg = (e?.message ?? '').toLowerCase();
+  return (
+    msg.includes('unavailable') ||
+    msg.includes('deadline') ||
+    msg.includes('rate limit') ||
+    msg.includes('quota') ||
+    msg.includes('resource has been exhausted') ||
+    msg.includes('internal error') ||
+    msg.includes('econnreset') ||
+    msg.includes('etimedout') ||
+    msg.includes('socket hang up') ||
+    msg.includes('fetch failed') ||
+    msg.includes('network')
+  );
+}
+
 interface AuthOptions {
   serviceAccountJson?: string;
   oauth?: OAuthTokens;
@@ -100,6 +150,24 @@ export async function fetchAnalyticsData(
   days = 30,
 ): Promise<AnalyticsData> {
   let client: BetaAnalyticsDataClient;
+  // When set, the OAuth token can be force-refreshed and the client rebuilt
+  // so a mid-request auth rejection self-heals with one retry.
+  let oauthRetry: { refreshToken: string; scope: ConfigScope } | null = null;
+
+  // BetaAnalyticsDataClient's `authClient` parameter is typed against an older
+  // google-auth-library AuthClient than the one OAuth2Client extends here —
+  // cast through unknown to bridge the version mismatch.
+  type AnalyticsClientOptions = ConstructorParameters<typeof BetaAnalyticsDataClient>[0];
+  const buildOAuthClient = (accessToken: string): BetaAnalyticsDataClient => {
+    const oauth2Client = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+    );
+    oauth2Client.setCredentials({ access_token: accessToken });
+    return new BetaAnalyticsDataClient({
+      authClient: oauth2Client as unknown as NonNullable<AnalyticsClientOptions>['authClient'],
+    });
+  };
 
   if (typeof authOptions === 'string') {
     // Legacy: service account JSON string
@@ -115,19 +183,10 @@ export async function fetchAnalyticsData(
       }
       accessToken = await refreshOAuthToken(authOptions.oauth.refreshToken, authOptions.scope);
     }
-
-    const oauth2Client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-    );
-    oauth2Client.setCredentials({ access_token: accessToken });
-    // BetaAnalyticsDataClient's `authClient` parameter is typed against an
-    // older google-auth-library AuthClient than the one OAuth2Client extends
-    // here — cast through unknown to bridge the version mismatch.
-    type AnalyticsClientOptions = ConstructorParameters<typeof BetaAnalyticsDataClient>[0];
-    client = new BetaAnalyticsDataClient({
-      authClient: oauth2Client as unknown as NonNullable<AnalyticsClientOptions>['authClient'],
-    });
+    if (authOptions.oauth.refreshToken && authOptions.scope) {
+      oauthRetry = { refreshToken: authOptions.oauth.refreshToken, scope: authOptions.scope };
+    }
+    client = buildOAuthClient(accessToken);
   } else if (authOptions.serviceAccountJson) {
     const credentials = JSON.parse(authOptions.serviceAccountJson);
     client = new BetaAnalyticsDataClient({ credentials });
@@ -137,74 +196,119 @@ export async function fetchAnalyticsData(
   const property = `properties/${propertyId}`;
   const startDate = `${days}daysAgo`;
 
-  const [overviewResp, trendResp, channelResp, pagesResp, deviceResp, countryResp] =
-    await Promise.all([
-      // 1. Overall summary for date range
-      client.runReport({
-        property,
-        metrics: [
-          { name: 'sessions' },
-          { name: 'activeUsers' },
-          { name: 'newUsers' },
-          { name: 'screenPageViews' },
-          { name: 'bounceRate' },
-          { name: 'averageSessionDuration' },
-        ],
-        dateRanges: [{ startDate, endDate: 'today' }],
-      }),
+  // Refresh the OAuth token at most once per fetch (shared across the parallel
+  // reports), rebuilding the client so every in-flight retry picks up the new
+  // token. Resolves false if refresh is impossible/failed (genuinely revoked).
+  let refreshOnce: Promise<boolean> | null = null;
+  const tryRefresh = (): Promise<boolean> => {
+    if (!oauthRetry) return Promise.resolve(false);
+    if (!refreshOnce) {
+      refreshOnce = refreshOAuthToken(oauthRetry.refreshToken, oauthRetry.scope)
+        .then((fresh) => { client = buildOAuthClient(fresh); return true; })
+        .catch(() => false);
+    }
+    return refreshOnce;
+  };
 
-      // 2. Daily trend
-      client.runReport({
-        property,
-        dimensions: [{ name: 'date' }],
-        metrics: [
-          { name: 'sessions' },
-          { name: 'activeUsers' },
-          { name: 'screenPageViews' },
-        ],
-        dateRanges: [{ startDate, endDate: 'today' }],
-        orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
-      }),
+  type ReportParams = protos.google.analytics.data.v1beta.IRunReportRequest;
+  type ReportResult = [protos.google.analytics.data.v1beta.IRunReportResponse, ...unknown[]];
+  const EMPTY_REPORT = [{ rows: [] }] as unknown as ReportResult;
 
-      // 3. Traffic channels
-      client.runReport({
-        property,
-        dimensions: [{ name: 'sessionDefaultChannelGroup' }],
-        metrics: [{ name: 'sessions' }],
-        dateRanges: [{ startDate, endDate: 'today' }],
-        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-        limit: 8,
-      }),
+  // Run one report with full resilience: refresh-and-retry on auth rejection,
+  // exponential backoff on transient Google API errors. Enrichment reports fail
+  // soft to empty so one flaky sub-report can never sink the whole fetch; only
+  // the critical overview report throws — and only when truly unrecoverable.
+  const resilientReport = async (params: ReportParams, critical: boolean): Promise<ReportResult> => {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        return await client.runReport(params);
+      } catch (err) {
+        lastErr = err;
+        if (isOAuthAuthError(err)) {
+          if (await tryRefresh()) continue; // retry immediately with fresh token
+          break; // refresh failed → unrecoverable
+        }
+        if (isTransientError(err) && attempt < 4) {
+          await sleep(250 * 2 ** attempt); // 250ms · 500 · 1000 · 2000
+          continue;
+        }
+        break;
+      }
+    }
+    if (critical) {
+      throw new Error(
+        oauthRetry && isOAuthAuthError(lastErr)
+          ? 'Google sign-in for analytics expired and could not be refreshed — a team owner can reconnect Google in the Analytics tab.'
+          : `Google Analytics is unreachable right now — try again in a moment. (${lastErr instanceof Error ? lastErr.message : String(lastErr)})`,
+      );
+    }
+    return EMPTY_REPORT;
+  };
 
-      // 4. Top pages
-      client.runReport({
-        property,
-        dimensions: [{ name: 'pagePath' }],
-        metrics: [{ name: 'screenPageViews' }, { name: 'sessions' }],
-        dateRanges: [{ startDate, endDate: 'today' }],
-        orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
-        limit: 10,
-      }),
+  const [overviewResp, trendResp, channelResp, pagesResp, deviceResp, countryResp] = await Promise.all([
+    // 1. Overall summary (critical — drives the headline metrics)
+    resilientReport({
+      property,
+      metrics: [
+        { name: 'sessions' },
+        { name: 'activeUsers' },
+        { name: 'newUsers' },
+        { name: 'screenPageViews' },
+        { name: 'bounceRate' },
+        { name: 'averageSessionDuration' },
+      ],
+      dateRanges: [{ startDate, endDate: 'today' }],
+    }, true),
 
-      // 5. Device breakdown
-      client.runReport({
-        property,
-        dimensions: [{ name: 'deviceCategory' }],
-        metrics: [{ name: 'sessions' }],
-        dateRanges: [{ startDate, endDate: 'today' }],
-        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-      }),
+    // 2. Daily trend
+    resilientReport({
+      property,
+      dimensions: [{ name: 'date' }],
+      metrics: [{ name: 'sessions' }, { name: 'activeUsers' }, { name: 'screenPageViews' }],
+      dateRanges: [{ startDate, endDate: 'today' }],
+      orderBys: [{ dimension: { dimensionName: 'date' }, desc: false }],
+    }, false),
 
-      // 6. Top countries
-      client.runReport({
-        property,
-        dimensions: [{ name: 'country' }],
-        metrics: [{ name: 'sessions' }],
-        dateRanges: [{ startDate, endDate: 'today' }],
-        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-        limit: 10,
-      }),
-    ]);
+    // 3. Traffic channels
+    resilientReport({
+      property,
+      dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+      metrics: [{ name: 'sessions' }],
+      dateRanges: [{ startDate, endDate: 'today' }],
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 8,
+    }, false),
+
+    // 4. Top pages
+    resilientReport({
+      property,
+      dimensions: [{ name: 'pagePath' }],
+      metrics: [{ name: 'screenPageViews' }, { name: 'sessions' }],
+      dateRanges: [{ startDate, endDate: 'today' }],
+      orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+      limit: 10,
+    }, false),
+
+    // 5. Device breakdown
+    resilientReport({
+      property,
+      dimensions: [{ name: 'deviceCategory' }],
+      metrics: [{ name: 'sessions' }],
+      dateRanges: [{ startDate, endDate: 'today' }],
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+    }, false),
+
+    // 6. Top countries
+    resilientReport({
+      property,
+      dimensions: [{ name: 'country' }],
+      metrics: [{ name: 'sessions' }],
+      dateRanges: [{ startDate, endDate: 'today' }],
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 10,
+    }, false),
+  ]);
 
   // Parse overview
   const overviewRow = overviewResp[0].rows?.[0];

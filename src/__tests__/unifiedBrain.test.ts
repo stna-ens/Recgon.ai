@@ -13,19 +13,24 @@ describe('unified brain wiring', () => {
 
     expect(names).toEqual(expect.arrayContaining([
       'analyze_code',
-      'generate_content',
-      'generate_campaign',
       'fetch_analytics',
       'get_project_details',
       'list_projects',
+      // Terminal control surface (v3): tasks/teammates/teams/dispatch
+      'task_create',
+      'task_assign',
+      'teammate_list',
+      'dispatch_run',
     ]));
+    // Marketing was removed from the app — its tools must NOT be registered.
+    expect(names).not.toContain('generate_content');
+    expect(names).not.toContain('generate_campaign');
   });
 
   it('exports Gemini-safe function declarations for registered tools', () => {
     const declarations = geminiFunctionDeclarations();
     const names = declarations.map((declaration) => declaration.name);
 
-    expect(names).toContain('generate_campaign');
     expect(names).toContain('analyze_code');
     expect(JSON.stringify(declarations)).not.toContain('"$schema"');
     expect(JSON.stringify(declarations)).not.toContain('"additionalProperties"');

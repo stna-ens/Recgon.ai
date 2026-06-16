@@ -1,15 +1,15 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import * as Dialog from '@radix-ui/react-dialog';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { relTimeParts } from '@/lib/datetime';
 import { ArrowLeft, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, ShieldCheck, UploadCloud, XCircle } from 'lucide-react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { useConfirm, Skeleton } from '@/components/ui';
+import { Button, useConfirm, Skeleton } from '@/components/ui';
 import { ProofDropZone } from '@/components/ProofDropZone';
 import type { ProofPayload, VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
 
@@ -45,7 +45,7 @@ interface VerifyTask {
   proof: ProofPayload | null;
 }
 
-type Translator = ReturnType<typeof useTranslations<'auth'>>;
+type Translator = ReturnType<typeof useTranslations<'verify'>>;
 
 function fmtSubmittedAt(iso: string | undefined, t: Translator): string {
   if (!iso) return '';
@@ -90,14 +90,14 @@ const FILTER_OPTIONS: { value: FilterKey; tone: 'crit' | 'warn' | 'info' | 'mute
 ];
 
 function filterLabel(value: FilterKey, t: Translator): string {
-  return t(`verify.filters.${value}`);
+  return t(`filters.${value}`);
 }
 
 function relTime(iso: string | null, t: Translator): string {
   const p = relTimeParts(iso);
   if (!p) return '';
-  if (p.unit === 'justNow') return t('verify.time.justNow');
-  return t(`verify.time.${p.unit}Ago`, { count: p.count });
+  if (p.unit === 'justNow') return t('time.justNow');
+  return t(`time.${p.unit}Ago`, { count: p.count });
 }
 
 function cleanText(s: string): string {
@@ -110,38 +110,38 @@ function cleanText(s: string): string {
 
 function statusTone(vs: VerificationStatus | undefined, t: Translator): { tone: 'crit' | 'warn' | 'info' | 'mute'; label: string } {
   switch (vs) {
-    case 'failed':            return { tone: 'crit',  label: t('verify.status.rejected') };
-    case 'proof_requested':   return { tone: 'warn',  label: t('verify.status.awaitingProof') };
-    case 'auto_inconclusive': return { tone: 'warn',  label: t('verify.status.inconclusive') };
-    case 'proof_evaluating':  return { tone: 'info',  label: t('verify.status.reChecking') };
-    case 'auto_running':      return { tone: 'info',  label: t('verify.status.checking') };
-    default:                  return { tone: 'mute',  label: vs ?? t('verify.status.unknown') };
+    case 'failed':            return { tone: 'crit',  label: t('status.rejected') };
+    case 'proof_requested':   return { tone: 'warn',  label: t('status.awaitingProof') };
+    case 'auto_inconclusive': return { tone: 'warn',  label: t('status.inconclusive') };
+    case 'proof_evaluating':  return { tone: 'info',  label: t('status.reChecking') };
+    case 'auto_running':      return { tone: 'info',  label: t('status.checking') };
+    default:                  return { tone: 'mute',  label: vs ?? t('status.unknown') };
   }
 }
 
 function filterTitle(filter: FilterKey, count: number, t: Translator): string {
-  if (filter === 'failed') return t('verify.titles.failed', { count });
-  if (filter === 'awaiting') return t('verify.titles.awaiting', { count });
-  if (filter === 'stuck') return t('verify.titles.stuck', { count });
-  return t('verify.titles.review', { count });
+  if (filter === 'failed') return t('titles.failed', { count });
+  if (filter === 'awaiting') return t('titles.awaiting', { count });
+  if (filter === 'stuck') return t('titles.stuck', { count });
+  return t('titles.review', { count });
 }
 
 function filterHelp(filter: FilterKey, t: Translator): string {
-  if (filter === 'failed') return t('verify.help.failed');
-  if (filter === 'awaiting') return t('verify.help.awaiting');
-  if (filter === 'stuck') return t('verify.help.stuck');
-  return t('verify.help.default');
+  if (filter === 'failed') return t('help.failed');
+  if (filter === 'awaiting') return t('help.awaiting');
+  if (filter === 'stuck') return t('help.stuck');
+  return t('help.default');
 }
 
 function taskActionLabel(task: VerifyTask, t: Translator): string {
-  if (task.verification_status === 'failed') return t('verify.actionLabel.reviewProof');
-  if (task.verification_status === 'proof_requested' || task.verification_status === 'auto_inconclusive') return t('verify.actionLabel.addProof');
-  if (task.verification_status === 'auto_running' || task.verification_status === 'proof_evaluating') return t('verify.actionLabel.unblock');
-  return t('verify.actionLabel.decide');
+  if (task.verification_status === 'failed') return t('actionLabel.reviewProof');
+  if (task.verification_status === 'proof_requested' || task.verification_status === 'auto_inconclusive') return t('actionLabel.addProof');
+  if (task.verification_status === 'auto_running' || task.verification_status === 'proof_evaluating') return t('actionLabel.unblock');
+  return t('actionLabel.decide');
 }
 
 function V2VerifyInner() {
-  const t = useTranslations('auth');
+  const t = useTranslations('verify');
   const { currentTeam } = useTeam();
   const teamId = currentTeam?.id ?? null;
   const { addToast } = useToast();
@@ -151,6 +151,9 @@ function V2VerifyInner() {
 
   const [data, setData] = useState<VerifyResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  // Fetch failure must NEVER render as "all clear" — track it explicitly so
+  // the page can show a designed error card with retry (C-03).
+  const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState<FilterKey>('all');
 
   // Keep the active filter in the URL so refresh and deep-links preserve it.
@@ -165,34 +168,23 @@ function V2VerifyInner() {
     links: string;
     attachments: Array<{ name: string; url: string }>;
   }>>({});
-  // Lightbox: when set, a fixed overlay shows the full-size image. Closed by
-  // clicking the backdrop, pressing Esc, or clicking the close button.
+  // Lightbox: when set, a Radix Dialog shows the full-size image. Radix
+  // supplies Esc-to-close, scroll lock, focus trap and focus restore (C-06).
   const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null);
-
-  // Esc-to-close for the lightbox.
-  useEffect(() => {
-    if (!lightbox) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(null); };
-    window.addEventListener('keydown', onKey);
-    // Lock body scroll while open so the page doesn't bleed through.
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [lightbox]);
 
   const refresh = useCallback(async () => {
     if (!teamId) return;
     try {
       const res = await fetch(`/api/verify?teamId=${teamId}`, { cache: 'no-store' });
-      if (res.ok) {
-        const j = (await res.json()) as VerifyResponse;
-        setData(j);
-      }
-    } catch { /* swallow */ }
-    setLoading(false);
+      if (!res.ok) throw new Error(`verify fetch failed: ${res.status}`);
+      const j = (await res.json()) as VerifyResponse;
+      setData(j);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [teamId]);
 
   useEffect(() => {
@@ -230,8 +222,13 @@ function V2VerifyInner() {
     return tasks.filter((t) => bucketFor(t) === filter);
   }, [tasks, filter]);
 
+  // True only while we have nothing to show AND the fetch failed — a stale
+  // cached payload still renders normally while retries happen in background.
+  const loadFailed = loadError && !data;
+
   // Headline tone — drives the cockpit ribbon color.
   const headTone: 'crit' | 'warn' | 'good' = (() => {
+    if (loadFailed) return 'crit';
     if (counts.failed > 0 || counts.stuck > 0) return 'crit';
     if (counts.awaiting > 0) return 'warn';
     return 'good';
@@ -264,9 +261,9 @@ function V2VerifyInner() {
       const { attachments } = (await res.json()) as { attachments: Array<{ name: string; url: string }> };
       const existing = proofState[task.id]?.attachments ?? [];
       updateProofField(task.id, { attachments: [...existing, ...attachments] });
-      addToast(t('verify.toasts.filesAttached', { count: attachments.length }), 'success');
+      addToast(t('toasts.filesAttached', { count: attachments.length }), 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : t('verify.toasts.uploadFailed'), 'error');
+      addToast(err instanceof Error ? err.message : t('toasts.uploadFailed'), 'error');
     } finally {
       setUploadingId(null);
     }
@@ -280,7 +277,7 @@ function V2VerifyInner() {
     const links = linksRaw ? linksRaw.split(/\s+/).filter(Boolean) : [];
     const attachments = s?.attachments ?? [];
     if (!text && links.length === 0 && attachments.length === 0) {
-      addToast(t('verify.toasts.proofRequired'), 'error');
+      addToast(t('toasts.proofRequired'), 'error');
       return;
     }
     setWorking(task.id);
@@ -300,11 +297,11 @@ function V2VerifyInner() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || 'proof submit failed');
       }
-      addToast(t('verify.toasts.proofSent'), 'success');
+      addToast(t('toasts.proofSent'), 'success');
       setProofState((p) => { const c = { ...p }; delete c[task.id]; return c; });
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : t('verify.toasts.failed'), 'error');
+      addToast(err instanceof Error ? err.message : t('toasts.failed'), 'error');
     } finally {
       setWorking(null);
     }
@@ -313,8 +310,8 @@ function V2VerifyInner() {
   const overrideTask = useCallback(async (task: VerifyTask) => {
     if (working === task.id) return;
     if (!(await confirmDialog({
-      title: t('verify.confirm.overrideTitle', { title: task.title }),
-      description: t('verify.confirm.overrideBody'),
+      title: t('confirm.overrideTitle', { title: task.title }),
+      description: t('confirm.overrideBody'),
       destructive: true,
     }))) return;
     setWorking(task.id);
@@ -328,10 +325,10 @@ function V2VerifyInner() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || 'override failed');
       }
-      addToast(t('verify.toasts.overridden'), 'success');
+      addToast(t('toasts.overridden'), 'success');
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : t('verify.toasts.overrideFailed'), 'error');
+      addToast(err instanceof Error ? err.message : t('toasts.overrideFailed'), 'error');
     } finally {
       setWorking(null);
     }
@@ -340,8 +337,8 @@ function V2VerifyInner() {
   const declineTask = useCallback(async (task: VerifyTask) => {
     if (working === task.id) return;
     if (!(await confirmDialog({
-      title: t('verify.confirm.declineTitle', { title: task.title }),
-      description: t('verify.confirm.declineBody'),
+      title: t('confirm.declineTitle', { title: task.title }),
+      description: t('confirm.declineBody'),
       destructive: true,
     }))) return;
     setWorking(task.id);
@@ -354,10 +351,10 @@ function V2VerifyInner() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || 'decline failed');
       }
-      addToast(t('verify.toasts.declined'), 'success');
+      addToast(t('toasts.declined'), 'success');
       await refresh();
     } catch (err) {
-      addToast(err instanceof Error ? err.message : t('verify.toasts.declineFailed'), 'error');
+      addToast(err instanceof Error ? err.message : t('toasts.declineFailed'), 'error');
     } finally {
       setWorking(null);
     }
@@ -368,61 +365,65 @@ function V2VerifyInner() {
       <div className="glass-card v2-vf-hero" data-tone={headTone}>
         <Link href="/" className="v2-vf-back">
           <ArrowLeft size={14} strokeWidth={2.2} />
-          <span>{t('verify.backToHome')}</span>
+          <span>{t('backToHome')}</span>
         </Link>
 
         <div className="v2-vf-hero-grid">
           <div className="v2-vf-hero-left">
             <div className="v2-vf-tag">
               <ShieldCheck size={14} strokeWidth={2.2} />
-              <span>{t('verify.queueTag')}</span>
+              <span>{t('queueTag')}</span>
             </div>
             <h1 className="v2-vf-headline">
               {loading ? '··'
+                : loadFailed
+                ? t('error.headline')
                 : counts.total === 0
-                ? t('verify.nothingWaiting')
+                ? t('nothingWaiting')
                 : filterTitle(filter, visible.length, t)}
             </h1>
             <p className="v2-vf-sub">
-              {filterHelp(filter, t)}
+              {loadFailed ? t('error.sub') : filterHelp(filter, t)}
             </p>
           </div>
 
+          {!loadFailed && (
           <div className="v2-vf-hero-right">
             <div className="v2-vf-stat" data-tone="crit">
               <CircleAlert size={16} strokeWidth={2.2} />
               <div className="v2-vf-stat-num">{counts.failed}</div>
-              <div className="v2-vf-stat-lab">{t('verify.stats.failed')}</div>
+              <div className="v2-vf-stat-lab">{t('stats.failed')}</div>
             </div>
             <div className="v2-vf-stat" data-tone="warn">
               <UploadCloud size={16} strokeWidth={2.2} />
               <div className="v2-vf-stat-num">{counts.awaiting}</div>
-              <div className="v2-vf-stat-lab">{t('verify.stats.awaitingProof')}</div>
+              <div className="v2-vf-stat-lab">{t('stats.awaitingProof')}</div>
             </div>
             <div className="v2-vf-stat" data-tone="crit">
               <CircleDashed size={16} strokeWidth={2.2} />
               <div className="v2-vf-stat-num">{counts.stuck}</div>
-              <div className="v2-vf-stat-lab">{t('verify.stats.stuck', { hours: STUCK_HOURS })}</div>
+              <div className="v2-vf-stat-lab">{t('stats.stuck', { hours: STUCK_HOURS })}</div>
             </div>
           </div>
+          )}
         </div>
 
+        {/* Toggle buttons, not tabs — they filter a list in place, so
+            aria-pressed is the correct pattern (matches /tasks). */}
         {!loading && counts.total > 0 && (
-          <div className="v2-vf-pills" role="tablist">
+          <div className="v2-vf-pills">
             {FILTER_OPTIONS.map((o) => {
               const n = o.value === 'all' ? counts.total : counts[o.value];
               return (
                 <button
                   key={o.value}
                   type="button"
-                  role="tab"
-                  aria-selected={filter === o.value}
+                  aria-pressed={filter === o.value}
                   className={`v2-vf-pill ${filter === o.value ? 'is-active' : ''}`}
                   data-tone={o.tone}
                   onClick={() => selectFilter(o.value)}
                   disabled={n === 0 && o.value !== 'all'}
                 >
-                  <span className="v2-vf-pill-dot" />
                   <span className="v2-vf-pill-lab">{filterLabel(o.value, t)}</span>
                   <span className="v2-vf-pill-num">{n}</span>
                 </button>
@@ -441,19 +442,33 @@ function V2VerifyInner() {
             </li>
           ))}
         </ul>
+      ) : loadFailed ? (
+        <div className="glass-card v2-vf-empty is-error" role="alert">
+          <span className="v2-vf-empty-glyph is-error" aria-hidden="true"><CircleAlert size={22} strokeWidth={2.2} /></span>
+          <div className="v2-vf-empty-body">
+            <p className="v2-vf-empty-title">{t('error.title')}</p>
+            <p className="v2-vf-empty-text">{t('error.text')}</p>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            className="v2-vf-empty-retry"
+            onClick={() => { setLoading(true); void refresh(); }}
+          >{t('error.retry')}</Button>
+        </div>
       ) : visible.length === 0 ? (
         <div className="glass-card v2-vf-empty">
           <span className="v2-vf-empty-glyph" aria-hidden="true"><CheckCircle2 size={22} strokeWidth={2.2} /></span>
           <div className="v2-vf-empty-body">
             <p className="v2-vf-empty-title">
               {counts.total === 0
-                ? t('verify.empty.allClearTitle')
-                : t('verify.empty.noFilterTitle', { filter: filterLabel(filter, t) })}
+                ? t('empty.allClearTitle')
+                : t('empty.noFilterTitle', { filter: filterLabel(filter, t) })}
             </p>
             <p className="v2-vf-empty-text">
               {counts.total === 0
-                ? t('verify.empty.allClearText')
-                : t('verify.empty.noFilterText')}
+                ? t('empty.allClearText')
+                : t('empty.noFilterText')}
             </p>
           </div>
         </div>
@@ -510,7 +525,7 @@ function V2VerifyInner() {
                       <div className="v2-vf-verdict">
                         <div className="v2-vf-verdict-head">
                           <span className="v2-vf-verdict-tag">
-                            {isFailed ? t('verify.verdict.concern') : isStuck ? t('verify.verdict.whyStuck') : t('verify.verdict.recgonSaid')}
+                            {isFailed ? t('verdict.concern') : isStuck ? t('verdict.whyStuck') : t('verdict.recgonSaid')}
                           </span>
                           {typeof ev?.confidence === 'number' && (
                             <span className="v2-vf-verdict-conf">
@@ -522,8 +537,8 @@ function V2VerifyInner() {
                           {ev?.verdict
                             ? cleanText(ev.verdict)
                             : isStuck
-                            ? t('verify.verdict.stuckText', { hours: STUCK_HOURS })
-                            : t('verify.verdict.noVerdict')}
+                            ? t('verdict.stuckText', { hours: STUCK_HOURS })
+                            : t('verdict.noVerdict')}
                         </p>
                       </div>
                     )}
@@ -532,11 +547,11 @@ function V2VerifyInner() {
                     <div className="v2-vf-submitted">
                       <div className="v2-vf-submitted-head">
                         <span className="v2-vf-submitted-tag">
-                          {t('verify.submittedProof')}
+                          {t('submittedProof')}
                         </span>
                         <span className="v2-vf-submitted-meta">
                           {task.proof.submittedBy && task.proof.submittedBy !== 'self' && (
-                            <>{t('verify.byUser', { user: task.proof.submittedBy })} · </>
+                            <>{t('byUser', { user: task.proof.submittedBy })} · </>
                           )}
                           {fmtSubmittedAt(task.proof.submittedAt, t)}
                         </span>
@@ -582,8 +597,8 @@ function V2VerifyInner() {
                                       type="button"
                                       className="v2-vf-submitted-img"
                                       onClick={() => setLightbox({ url: att.url, name: att.name })}
-                                      title={t('verify.openFullSize', { name: att.name })}
-                                      aria-label={t('verify.openFullSize', { name: att.name })}
+                                      title={t('openFullSize', { name: att.name })}
+                                      aria-label={t('openFullSize', { name: att.name })}
                                     >
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img src={att.url} alt={att.name} loading="lazy" />
@@ -622,7 +637,7 @@ function V2VerifyInner() {
                     {(task.description || ev?.routedSource || (typeof ev?.iterations === 'number' && ev.iterations > 0)) && (
                       <details className="v2-vf-details">
                         <summary>
-                          <span>{t('verify.taskDetails')}</span>
+                          <span>{t('taskDetails')}</span>
                           <ChevronDown size={14} strokeWidth={2.2} />
                         </summary>
                         {task.description && (
@@ -630,9 +645,9 @@ function V2VerifyInner() {
                         )}
                         {(ev?.routedSource || (typeof ev?.iterations === 'number' && ev.iterations > 0)) && (
                           <div className="v2-vf-verdict-meta">
-                            {ev?.routedSource && <span>{t('verify.meta.source', { source: ev.routedSource })}</span>}
+                            {ev?.routedSource && <span>{t('meta.source', { source: ev.routedSource })}</span>}
                             {typeof ev?.iterations === 'number' && ev.iterations > 0 && (
-                              <span>{t('verify.meta.iterations', { count: ev.iterations })}</span>
+                              <span>{t('meta.iterations', { count: ev.iterations })}</span>
                             )}
                           </div>
                         )}
@@ -645,32 +660,32 @@ function V2VerifyInner() {
                       <span>{actionLabel}</span>
                       <small>
                         {isOwner
-                          ? t('verify.roleHint.owner')
+                          ? t('roleHint.owner')
                           : isAssignee
-                            ? t('verify.roleHint.assignee')
-                            : t('verify.roleHint.viewer')}
+                            ? t('roleHint.assignee')
+                            : t('roleHint.viewer')}
                       </small>
                     </div>
 
                     {canSubmitProof && (
                       <div className="v2-vf-proof">
                         <label className="v2-vf-field">
-                          <span className="v2-vf-field-lab">{t('verify.proofNoteLabel')}</span>
+                          <span className="v2-vf-field-lab">{t('proofNoteLabel')}</span>
                           <textarea
                             className="v2-vf-textarea"
                             rows={3}
-                            placeholder={t('verify.proofNotePlaceholder')}
+                            placeholder={t('proofNotePlaceholder')}
                             value={proof?.text ?? ''}
                             onChange={(e) => updateProofField(task.id, { text: e.target.value })}
                             disabled={isWorking}
                           />
                         </label>
                         <label className="v2-vf-field">
-                          <span className="v2-vf-field-lab">{t('verify.linksLabel')}</span>
+                          <span className="v2-vf-field-lab">{t('linksLabel')}</span>
                           <input
                             type="text"
                             className="v2-vf-input"
-                            placeholder={t('verify.linksPlaceholder')}
+                            placeholder={t('linksPlaceholder')}
                             value={proof?.links ?? ''}
                             onChange={(e) => updateProofField(task.id, { links: e.target.value })}
                             disabled={isWorking}
@@ -691,37 +706,40 @@ function V2VerifyInner() {
 
                     <footer className="v2-vf-actions">
                       {canSubmitProof && (
-                        <button
-                          type="button"
-                          className="v2-vf-btn v2-vf-btn-primary"
+                        <Button
+                          variant="primary"
+                          size="md"
+                          loading={isWorking}
                           onClick={() => submitProof(task)}
-                          disabled={isWorking}
                         >
                           <UploadCloud size={14} strokeWidth={2.2} />
-                          {isWorking ? t('verify.sending') : t('verify.submitProof')}
-                        </button>
+                          {t('submitProof')}
+                        </Button>
                       )}
-                      <button
-                        type="button"
-                        className="v2-vf-btn v2-vf-btn-strong"
-                        onClick={() => overrideTask(task)}
-                        disabled={isWorking || !isOwner}
-                        title={isOwner ? t('verify.markCompleteTitle') : t('verify.ownerOnlyTitle')}
-                      >
-                        <CheckCircle2 size={14} strokeWidth={2.2} />
-                        {t('verify.markComplete')}
-                      </button>
-                      {(isAssignee || isOwner) && (
-                        <button
-                          type="button"
-                          className="v2-vf-btn v2-vf-btn-ghost"
-                          onClick={() => declineTask(task)}
+                      {/* Owner-only: hidden (not disabled-with-tooltip) for
+                          non-owners — the roleHint small-text above already
+                          explains who can act (C-25). */}
+                      {isOwner && (
+                        <Button
+                          variant="success"
+                          size="md"
                           disabled={isWorking}
-                          title={isAssignee ? t('verify.declineTitle') : t('verify.reassignTitle')}
+                          onClick={() => overrideTask(task)}
+                        >
+                          <CheckCircle2 size={14} strokeWidth={2.2} />
+                          {t('markComplete')}
+                        </Button>
+                      )}
+                      {(isAssignee || isOwner) && (
+                        <Button
+                          variant="secondary"
+                          size="md"
+                          disabled={isWorking}
+                          onClick={() => declineTask(task)}
                         >
                           <XCircle size={14} strokeWidth={2.2} />
-                          {isAssignee ? t('verify.decline') : t('verify.reassign')}
-                        </button>
+                          {isAssignee ? t('decline') : t('reassign')}
+                        </Button>
                       )}
                     </footer>
                   </div>
@@ -732,41 +750,46 @@ function V2VerifyInner() {
         </ul>
       )}
 
-      {lightbox && typeof document !== 'undefined' && createPortal(
-        <div
-          className="v2-vf-lightbox"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('verify.lightbox.previewLabel', { name: lightbox.name })}
-          onClick={() => setLightbox(null)}
-        >
-          <button
-            type="button"
-            className="v2-vf-lightbox-close"
-            onClick={(e) => { e.stopPropagation(); setLightbox(null); }}
-            aria-label={t('verify.lightbox.close')}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-              <line x1="6" y1="6" x2="18" y2="18" />
-              <line x1="18" y1="6" x2="6" y2="18" />
-            </svg>
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightbox.url}
-            alt={lightbox.name}
-            className="v2-vf-lightbox-img"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <div className="v2-vf-lightbox-caption" onClick={(e) => e.stopPropagation()}>
-            <span>{lightbox.name}</span>
-            <a href={lightbox.url} target="_blank" rel="noopener noreferrer" className="v2-vf-lightbox-open">
-              {t('verify.lightbox.openOriginal')}
-            </a>
-          </div>
-        </div>,
-        document.body,
-      )}
+      <Dialog.Root open={lightbox !== null} onOpenChange={(open) => { if (!open) setLightbox(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="v2-vf-lightbox-overlay" />
+          {lightbox && (
+            <Dialog.Content
+              className="v2-vf-lightbox"
+              aria-label={t('lightbox.previewLabel', { name: lightbox.name })}
+              aria-describedby={undefined}
+            >
+              <Dialog.Title className="v2-vf-srtitle">
+                {t('lightbox.previewLabel', { name: lightbox.name })}
+              </Dialog.Title>
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  className="v2-vf-lightbox-close"
+                  aria-label={t('lightbox.close')}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                  </svg>
+                </button>
+              </Dialog.Close>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightbox.url}
+                alt={lightbox.name}
+                className="v2-vf-lightbox-img"
+              />
+              <div className="v2-vf-lightbox-caption">
+                <span>{lightbox.name}</span>
+                <a href={lightbox.url} target="_blank" rel="noopener noreferrer" className="v2-vf-lightbox-open">
+                  {t('lightbox.openOriginal')}
+                </a>
+              </div>
+            </Dialog.Content>
+          )}
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <style>{stylesheet}</style>
     </div>
@@ -785,7 +808,9 @@ const stylesheet = `
   .v2-vf {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
+    max-width: 1180px;
+    margin: 0 auto;
     animation: v2vfFade 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
   @keyframes v2vfFade {
@@ -796,11 +821,11 @@ const stylesheet = `
   /* ── HERO HEADER ─────────────────────────────────────────────────── */
   .v2-vf-hero.glass-card {
     position: relative;
-    padding: 18px 22px 16px;
-    border-radius: 14px;
+    padding: 16px;
+    border-radius: 10px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     overflow: hidden;
   }
   .v2-vf-hero.glass-card:hover {
@@ -812,7 +837,8 @@ const stylesheet = `
     content: '';
     position: absolute;
     left: 0; right: 0; top: 0;
-    height: 2px;
+    height: 1px;
+    opacity: 0.8;
   }
   .v2-vf-hero[data-tone='good']::before { background: linear-gradient(90deg, transparent, var(--success), transparent); }
   .v2-vf-hero[data-tone='warn']::before { background: linear-gradient(90deg, transparent, var(--warning), transparent); }
@@ -826,7 +852,6 @@ const stylesheet = `
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.7px;
     color: var(--txt-faint);
     text-decoration: none;
     font-weight: 700;
@@ -839,7 +864,7 @@ const stylesheet = `
   .v2-vf-hero-grid {
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 24px;
+    gap: 18px;
     align-items: center;
   }
   @media (max-width: 880px) {
@@ -857,58 +882,51 @@ const stylesheet = `
     align-items: center;
     gap: 7px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10px;
-    letter-spacing: 1.4px;
-    text-transform: uppercase;
-    color: var(--txt-faint);
+    font-size: 12px;
+    color: var(--txt-muted);
     font-weight: 700;
     width: fit-content;
   }
-  .v2-vf-hero[data-tone='good'] .v2-vf-tag { color: var(--success); }
-  .v2-vf-hero[data-tone='warn'] .v2-vf-tag { color: var(--warning); }
-  .v2-vf-hero[data-tone='crit'] .v2-vf-tag { color: var(--danger); }
 
   .v2-vf-headline {
     margin: 0;
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: clamp(20px, 2.4vw, 28px);
+    font-size: 24px;
     font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: -0.025em;
+    line-height: 1.18;
     color: var(--txt-pure);
   }
   .v2-vf-sub {
     margin: 0;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--txt-muted);
     line-height: 1.5;
-    max-width: 540px;
-    letter-spacing: -0.005em;
+    max-width: 620px;
   }
 
   .v2-vf-hero-right {
-    display: flex;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(92px, 1fr));
+    min-width: 328px;
     gap: 6px;
   }
   .v2-vf-stat {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 10px 14px;
-    min-width: 76px;
+    padding: 10px;
+    min-width: 0;
     border: 1px solid var(--rule);
     border-radius: 8px;
-    background: rgba(0, 0, 0, 0.18);
+    background: rgba(255, 255, 255, 0.025);
   }
+  .v2-vf-stat svg { color: var(--txt-faint); }
   .v2-vf-stat[data-tone='crit'] { border-color: rgba(var(--danger-rgb), 0.24); }
   .v2-vf-stat[data-tone='warn'] { border-color: rgba(var(--warning-rgb), 0.24); }
   .v2-vf-stat-num {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 22px;
+    font-size: 19px;
     font-weight: 700;
     line-height: 1;
-    letter-spacing: -0.04em;
     color: var(--txt-pure);
     font-variant-numeric: tabular-nums;
   }
@@ -917,11 +935,10 @@ const stylesheet = `
   .v2-vf-stat-lab {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
     color: var(--txt-faint);
     font-weight: 600;
-    white-space: nowrap;
+    white-space: normal;
+    line-height: 1.2;
   }
 
   /* Filter pills row sits inside the hero so the page reads as one unit. */
@@ -931,14 +948,17 @@ const stylesheet = `
     flex-wrap: wrap;
     gap: 4px;
     padding: 4px;
-    background: rgba(0, 0, 0, 0.22);
+    background: rgba(255, 255, 255, 0.025);
     border: 1px solid var(--rule);
     border-radius: 8px;
-    width: fit-content;
+    width: 100%;
   }
   .v2-vf-pill {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    flex: 1 1 130px;
+    min-height: 34px;
     gap: 8px;
     padding: 7px 12px;
     background: transparent;
@@ -946,8 +966,6 @@ const stylesheet = `
     border-radius: 6px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.7px;
     color: var(--txt-faint);
     cursor: pointer;
     font-weight: 700;
@@ -962,16 +980,6 @@ const stylesheet = `
     color: var(--txt-pure);
   }
   .v2-vf-pill:disabled { opacity: 0.4; cursor: not-allowed; }
-  .v2-vf-pill-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--txt-faint);
-    flex-shrink: 0;
-  }
-  .v2-vf-pill[data-tone='crit'] .v2-vf-pill-dot { background: var(--danger); }
-  .v2-vf-pill[data-tone='warn'] .v2-vf-pill-dot { background: var(--warning); }
-  .v2-vf-pill.is-active[data-tone='crit'] .v2-vf-pill-dot { box-shadow: 0 0 6px var(--danger); }
-  .v2-vf-pill.is-active[data-tone='warn'] .v2-vf-pill-dot { box-shadow: 0 0 6px var(--warning); }
   .v2-vf-pill-num {
     font-variant-numeric: tabular-nums;
     color: var(--txt-faint);
@@ -992,11 +1000,11 @@ const stylesheet = `
 
   .v2-vf-card.glass-card {
     position: relative;
-    padding: 16px 18px 16px 22px;
-    border-radius: 12px;
+    padding: 0;
+    border-radius: 10px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 12px;
   }
   .v2-vf-card.glass-card:hover {
     transform: translateZ(0);
@@ -1020,7 +1028,6 @@ const stylesheet = `
     gap: 10px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
-    letter-spacing: 0.6px;
     text-transform: uppercase;
     font-weight: 700;
   }
@@ -1066,18 +1073,16 @@ const stylesheet = `
 
   .v2-vf-title {
     margin: 0;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
     color: var(--txt-pure);
     line-height: 1.35;
-    letter-spacing: -0.01em;
   }
   .v2-vf-desc {
     margin: 0;
     font-size: 12px;
     line-height: 1.55;
     color: var(--txt-muted);
-    letter-spacing: -0.005em;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -1087,24 +1092,23 @@ const stylesheet = `
   .v2-vf-verdict {
     margin: 0;
     padding: 11px 13px;
-    background: rgba(0, 0, 0, 0.22);
+    background: rgba(255, 255, 255, 0.028);
     border: 1px solid var(--rule);
     border-radius: 8px;
     display: flex;
     flex-direction: column;
     gap: 7px;
   }
-  .v2-vf-card[data-tone='crit'] .v2-vf-verdict { background: rgba(var(--danger-rgb), 0.05); border-color: rgba(var(--danger-rgb), 0.18); }
+  .v2-vf-card[data-tone='crit'] .v2-vf-verdict { background: rgba(var(--danger-rgb), 0.055); border-color: rgba(var(--danger-rgb), 0.2); }
   .v2-vf-verdict-head {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
   }
   .v2-vf-verdict-tag {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
-    letter-spacing: 0.7px;
     text-transform: uppercase;
     color: var(--txt-faint);
     font-weight: 700;
@@ -1113,7 +1117,6 @@ const stylesheet = `
   .v2-vf-verdict-conf {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
-    letter-spacing: 0.4px;
     color: var(--txt-faint);
     font-variant-numeric: tabular-nums;
   }
@@ -1122,7 +1125,6 @@ const stylesheet = `
     font-size: 12px;
     line-height: 1.55;
     color: var(--txt-pure);
-    letter-spacing: -0.005em;
   }
   .v2-vf-verdict-meta {
     display: inline-flex;
@@ -1151,14 +1153,13 @@ const stylesheet = `
   }
   .v2-vf-submitted-head {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
   }
   .v2-vf-submitted-tag {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
-    letter-spacing: 0.7px;
     text-transform: uppercase;
     color: var(--txt-muted);
     font-weight: 700;
@@ -1166,7 +1167,6 @@ const stylesheet = `
   .v2-vf-submitted-meta {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
-    letter-spacing: 0.4px;
     color: var(--txt-faint);
     text-transform: uppercase;
   }
@@ -1175,7 +1175,6 @@ const stylesheet = `
     font-size: 12px;
     line-height: 1.55;
     color: var(--txt-pure);
-    letter-spacing: -0.005em;
     white-space: pre-wrap;
     word-break: break-word;
   }
@@ -1195,7 +1194,7 @@ const stylesheet = `
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
     gap: 8px;
   }
   .v2-vf-submitted-img {
@@ -1245,22 +1244,44 @@ const stylesheet = `
     transform: translateY(0);
   }
 
-  /* Lightbox — full-viewport overlay, click backdrop or Esc to close. */
-  .v2-vf-lightbox {
+  /* Lightbox — Radix Dialog. Overlay carries the dimmed backdrop; the
+     Content layer is click-through except for its children, so clicking
+     the backdrop closes via Radix's outside-pointer handling. */
+  .v2-vf-lightbox-overlay {
     position: fixed;
     inset: 0;
     z-index: 1000;
     background: rgba(0, 0, 0, 0.86);
     backdrop-filter: blur(8px) saturate(120%);
     -webkit-backdrop-filter: blur(8px) saturate(120%);
+    cursor: zoom-out;
+    animation: v2vfLbFade 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .v2-vf-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1001;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 14px;
     padding: 48px 24px 24px;
-    cursor: zoom-out;
+    pointer-events: none;
     animation: v2vfLbFade 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .v2-vf-lightbox > * { pointer-events: auto; }
+  /* Screen-reader-only dialog title (Radix requires one). */
+  .v2-vf-srtitle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    clip: rect(0 0 0 0);
+    overflow: hidden;
+    white-space: nowrap;
   }
   @keyframes v2vfLbFade {
     from { opacity: 0; }
@@ -1363,10 +1384,6 @@ const stylesheet = `
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 14px;
-    border: 1px dashed var(--rule);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.02);
   }
   .v2-vf-field {
     display: flex;
@@ -1376,7 +1393,6 @@ const stylesheet = `
   .v2-vf-field-lab {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
-    letter-spacing: 0.7px;
     text-transform: uppercase;
     color: var(--txt-faint);
     font-weight: 700;
@@ -1384,7 +1400,7 @@ const stylesheet = `
   .v2-vf-textarea, .v2-vf-input {
     width: 100%;
     padding: 9px 11px;
-    background: rgba(0, 0, 0, 0.28);
+    background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--rule);
     border-radius: 6px;
     color: var(--txt-pure);
@@ -1403,56 +1419,16 @@ const stylesheet = `
     color: var(--txt-faint);
   }
 
+  /* Actions stack the shared ui/Button full-width inside the decision rail. */
   .v2-vf-actions {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
-    padding-top: 4px;
   }
-  .v2-vf-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-radius: 6px;
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10px;
-    letter-spacing: 0.7px;
-    text-transform: uppercase;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease;
-  }
-  .v2-vf-btn:disabled { opacity: 0.42; cursor: not-allowed; }
-  .v2-vf-btn-primary {
-    background: var(--signature);
-    color: white;
-    border: 1px solid var(--signature);
-  }
-  .v2-vf-btn-primary:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 18px rgba(var(--signature-rgb), 0.36);
-  }
-  .v2-vf-btn-strong {
-    background: rgba(var(--danger-rgb), 0.08);
-    color: var(--danger);
-    border: 1px solid rgba(var(--danger-rgb), 0.32);
-  }
-  .v2-vf-btn-strong:hover:not(:disabled) {
-    background: rgba(var(--danger-rgb), 0.16);
-    border-color: rgba(var(--danger-rgb), 0.55);
-    transform: translateY(-1px);
-  }
-  .v2-vf-btn-ghost {
-    background: transparent;
-    color: var(--txt-muted);
-    border: 1px solid var(--rule);
-  }
-  .v2-vf-btn-ghost:hover:not(:disabled) {
-    color: var(--txt-pure);
-    border-color: rgba(255, 255, 255, 0.22);
-    background: rgba(255, 255, 255, 0.04);
+  .v2-vf-actions .ui-btn {
+    width: 100%;
+    min-height: 36px;
   }
 
   /* ── EMPTY + SKELETON ───────────────────────────────────────────── */
@@ -1489,101 +1465,20 @@ const stylesheet = `
     line-height: 1.5;
     max-width: 540px;
   }
+  /* Fetch-failure variant — same anatomy as the all-clear card but
+     unmistakably crit-toned, with a retry action (C-03). */
+  .v2-vf-empty.is-error { flex-wrap: wrap; }
+  .v2-vf-empty-glyph.is-error {
+    background: rgba(var(--danger-rgb), 0.12);
+    color: var(--danger);
+    box-shadow: 0 0 0 1px rgba(var(--danger-rgb), 0.3), 0 6px 18px rgba(var(--danger-rgb), 0.14);
+  }
+  .v2-vf-empty-retry {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
 
-  /* Calm triage refresh */
-  .v2-vf {
-    gap: 12px;
-    max-width: 1180px;
-    margin: 0 auto;
-  }
-  .v2-vf-hero.glass-card {
-    padding: 16px;
-    border-radius: 10px;
-    gap: 14px;
-  }
-  .v2-vf-hero::before {
-    height: 1px;
-    opacity: 0.8;
-  }
-  .v2-vf-hero-grid {
-    gap: 18px;
-  }
-  .v2-vf-headline {
-    font-family: inherit;
-    font-size: 24px;
-    line-height: 1.18;
-    letter-spacing: 0;
-  }
-  .v2-vf-sub {
-    max-width: 620px;
-    font-size: 13px;
-    letter-spacing: 0;
-  }
-  .v2-vf-tag,
-  .v2-vf-back,
-  .v2-vf-card-head,
-  .v2-vf-status,
-  .v2-vf-project,
-  .v2-vf-time,
-  .v2-vf-verdict-tag,
-  .v2-vf-verdict-conf,
-  .v2-vf-submitted-tag,
-  .v2-vf-submitted-meta,
-  .v2-vf-field-lab,
-  .v2-vf-pill,
-  .v2-vf-stat-lab,
-  .v2-vf-btn,
-  .v2-vf-details summary,
-  .v2-vf-decision-head {
-    letter-spacing: 0;
-  }
-  .v2-vf-tag {
-    color: var(--txt-muted) !important;
-    text-transform: none;
-    font-size: 12px;
-  }
-  .v2-vf-hero-right {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(92px, 1fr));
-    min-width: 328px;
-  }
-  .v2-vf-stat {
-    min-width: 0;
-    padding: 10px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.025);
-  }
-  .v2-vf-stat svg {
-    color: var(--txt-faint);
-  }
-  .v2-vf-stat-num {
-    font-size: 19px;
-    letter-spacing: 0;
-  }
-  .v2-vf-stat-lab {
-    white-space: normal;
-    line-height: 1.2;
-    text-transform: none;
-  }
-  .v2-vf-pills {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.025);
-    border-radius: 8px;
-  }
-  .v2-vf-pill {
-    flex: 1 1 130px;
-    justify-content: center;
-    min-height: 34px;
-    text-transform: none;
-  }
-  .v2-vf-pill-dot {
-    display: none;
-  }
-  .v2-vf-card.glass-card {
-    padding: 0;
-    border-radius: 10px;
-    overflow: hidden;
-  }
+  /* ── CARD GRID: decision rail + collapsible details ─────────────── */
   .v2-vf-card-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
@@ -1621,38 +1516,6 @@ const stylesheet = `
     font-weight: 600;
     text-transform: none;
   }
-  .v2-vf-title {
-    font-size: 16px;
-    line-height: 1.35;
-    letter-spacing: 0;
-  }
-  .v2-vf-desc,
-  .v2-vf-verdict-text,
-  .v2-vf-submitted-text {
-    letter-spacing: 0;
-  }
-  .v2-vf-verdict,
-  .v2-vf-submitted,
-  .v2-vf-proof {
-    border-radius: 8px;
-  }
-  .v2-vf-verdict {
-    background: rgba(255, 255, 255, 0.028);
-  }
-  .v2-vf-card[data-tone='crit'] .v2-vf-verdict {
-    background: rgba(var(--danger-rgb), 0.055);
-    border-color: rgba(var(--danger-rgb), 0.2);
-  }
-  .v2-vf-verdict-head,
-  .v2-vf-submitted-head {
-    align-items: flex-start;
-  }
-  .v2-vf-verdict-conf {
-    text-transform: none;
-  }
-  .v2-vf-submitted-imgs {
-    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  }
   .v2-vf-details {
     border: 1px solid var(--rule);
     border-radius: 8px;
@@ -1684,36 +1547,25 @@ const stylesheet = `
   .v2-vf-details .v2-vf-verdict-meta {
     padding: 0 12px 12px;
   }
-  .v2-vf-proof {
-    padding: 0;
-    border: none;
-    background: transparent;
-  }
-  .v2-vf-textarea,
-  .v2-vf-input {
-    background: rgba(0, 0, 0, 0.2);
-  }
-  .v2-vf-actions {
-    padding-top: 0;
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .v2-vf-btn {
-    width: 100%;
-    justify-content: center;
-    min-height: 38px;
-    border-radius: 8px;
-    text-transform: none;
-  }
-  .v2-vf-btn-strong {
-    background: rgba(var(--success-rgb), 0.1);
-    color: var(--success);
-    border-color: rgba(var(--success-rgb), 0.28);
-  }
-  .v2-vf-btn-strong:hover:not(:disabled) {
-    background: rgba(var(--success-rgb), 0.16);
-    border-color: rgba(var(--success-rgb), 0.46);
-  }
+
+  /* ── LIGHT MODE ─────────────────────────────────────────────────────
+     Dark-hardcoded and white-alpha surfaces need explicit light-theme
+     fills, mirroring the tasks-page approach (C-13). */
+  .light .v2-vf-stat { background: rgba(20, 14, 30, 0.03); }
+  .light .v2-vf-pills { background: rgba(20, 14, 30, 0.04); }
+  .light .v2-vf-pill:hover:not(:disabled):not(.is-active) { background: rgba(20, 14, 30, 0.05); }
+  .light .v2-vf-pill.is-active { background: rgba(20, 14, 30, 0.08); }
+  .light .v2-vf-verdict { background: rgba(20, 14, 30, 0.03); }
+  .light .v2-vf-submitted { background: rgba(20, 14, 30, 0.03); }
+  .light .v2-vf-submitted-link,
+  .light .v2-vf-submitted-file { background: rgba(20, 14, 30, 0.04); }
+  .light .v2-vf-textarea,
+  .light .v2-vf-input { background: rgba(20, 14, 30, 0.04); }
+  .light .v2-vf-textarea:focus,
+  .light .v2-vf-input:focus { background: rgba(20, 14, 30, 0.07); }
+  .light .v2-vf-decision { background: rgba(20, 14, 30, 0.02); }
+  .light .v2-vf-details { background: rgba(20, 14, 30, 0.02); }
+
   @media (max-width: 920px) {
     .v2-vf-hero-right {
       min-width: 0;

@@ -5,9 +5,10 @@ import useSWR from 'swr';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
+import { Button, EmptyState, Skeleton } from '@/components/ui';
 import SwotMatrixSection from '@/components/v2/projects/overview/SwotMatrixSection';
 import RisksSection from '@/components/v2/projects/overview/RisksSection';
 import MarketSection from '@/components/v2/projects/overview/MarketSection';
@@ -30,6 +31,7 @@ import './overview.css';
 export default function V2ProjectOverviewPage() {
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const projectId = params?.id;
@@ -236,28 +238,37 @@ export default function V2ProjectOverviewPage() {
     }
   }, [codebasePath, project, teamId, connectLoading, addToast, handleAnalyze, mutateProject, t]);
 
-  // Esc closes modals
-  useEffect(() => {
-    if (!editingDescription && !connectingCodebase) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setEditingDescription(false);
-        setConnectingCodebase(false);
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [editingDescription, connectingCodebase]);
-
   const a = project?.analysis;
 
   if (loading) {
     return (
       <div className="v2-overview">
-        <div className="glass-card is-static is-roomy v2-skel-card">
-          <div className="v2-skel-line" style={{ width: '40%' }} />
-          <div className="v2-skel-line" style={{ width: '70%' }} />
-          <div className="v2-skel-line" style={{ width: '60%' }} />
+        <div className="glass-card is-static is-roomy v2-skel-card" aria-busy="true">
+          <Skeleton width="40%" height={14} radius={4} />
+          <Skeleton width="70%" height={14} radius={4} />
+          <Skeleton width="60%" height={14} radius={4} />
+        </div>
+      </div>
+    );
+  }
+
+  // A network failure or server error is not a missing project — give it a
+  // designed error state with retry; reserve "not found" for an actual 404.
+  const isNotFound = projectError instanceof Response && projectError.status === 404;
+  if (projectError && !isNotFound) {
+    return (
+      <div className="v2-overview">
+        <div className="glass-card is-static is-roomy">
+          <EmptyState
+            icon="!"
+            title={t('detail.loadError.title')}
+            description={t('detail.loadError.desc')}
+            action={
+              <Button variant="secondary" onClick={() => mutateProject()}>
+                {tCommon('retry')}
+              </Button>
+            }
+          />
         </div>
       </div>
     );
@@ -521,7 +532,7 @@ export default function V2ProjectOverviewPage() {
                       onError={(e) => { (e.currentTarget.parentElement as HTMLElement).textContent = projectInitial(project.name); }} />
                   : projectInitial(project.name)}
               </span>
-              <span className="v2-pov-name-text">{(a.name ?? '').toLocaleLowerCase('tr')}</span>
+              <span className="v2-pov-name-text">{(a.name ?? '').toLocaleLowerCase(locale)}</span>
             </h2>
             {editingDescription ? (
               <div className="v2-pov-edit">
@@ -721,7 +732,7 @@ export default function V2ProjectOverviewPage() {
                     </div>
                     <div className="v2-inv-cat-items">
                       {g.items.map((it) => (
-                        <span key={it} className="v2-inv-chip">{it.toLocaleLowerCase('tr')}</span>
+                        <span key={it} className="v2-inv-chip">{it.toLocaleLowerCase(locale)}</span>
                       ))}
                     </div>
                   </div>

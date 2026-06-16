@@ -130,6 +130,10 @@
   },
   "detail": {
     "notFound": "Project not found.",
+    "loadError": {
+      "title": "Couldn't load this project.",
+      "desc": "Something went wrong while fetching the project. Your data is fine — try again."
+    },
     "noAnalysis": {
       "titlePrefix": "No",
       "titleRest": "analysis yet.",

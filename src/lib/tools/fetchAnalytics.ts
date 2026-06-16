@@ -60,7 +60,23 @@ export const fetchAnalyticsTool: ToolDefinition<Input, AnalyticsOutput> = {
       throw new Error('GA4 auth method is not configured. Re-connect in the Analytics tab.');
     }
 
-    const data = await fetchAnalyticsData(project.analyticsPropertyId, authOptions, input.days);
+    let data;
+    try {
+      data = await fetchAnalyticsData(project.analyticsPropertyId, authOptions, input.days);
+    } catch (err) {
+      // GA4 IS connected (property + credentials checked above) — this is a
+      // live-fetch failure (expired/revoked token, Google API hiccup). Surface
+      // it as such so it isn't reported as "analytics not connected".
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/reconnect|refresh|token|auth/i.test(msg)) {
+        throw new Error(
+          `GA4 is connected to ${project.name} (property ${project.analyticsPropertyId}), but the Google sign-in needs reconnecting. A team owner can reconnect Google in the Analytics tab. (${msg})`,
+        );
+      }
+      throw new Error(
+        `GA4 is connected to ${project.name}, but fetching live data just failed — try again in a moment. (${msg})`,
+      );
+    }
 
     // Run AI insights on the raw data
     const insights = await generateStructuredOutput({

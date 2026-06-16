@@ -7,9 +7,10 @@ import { formatDay, relTimeParts } from '@/lib/datetime';
 import { useWhyYou } from '@/lib/useWhyYou';
 import useSWR from 'swr';
 import Link from 'next/link';
+import * as Dialog from '@radix-ui/react-dialog';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { Skeleton } from '@/components/ui';
+import { Button, EmptyState, Skeleton } from '@/components/ui';
 import { ProofDropZone } from '@/components/ProofDropZone';
 import { TaskStatusChip } from '@/components/TaskStatusChip';
 import type { VerificationEvidence, VerificationStatus } from '@/lib/recgon/types';
@@ -63,10 +64,10 @@ function taskItemToOverdueShape(t: TaskItem) {
 
 type ColumnKey = 'assigned' | 'wip' | 'review';
 
-const COLUMNS: { key: ColumnKey; label: string; tone: string; toneRgb: string; status: string[] }[] = [
-  { key: 'assigned', label: 'assigned',    tone: 'var(--txt-muted)',  toneRgb: '160, 160, 168',     status: ['assigned'] },
-  { key: 'wip',      label: 'in progress', tone: 'var(--signature)',  toneRgb: 'var(--signature-rgb)', status: ['accepted', 'in_progress'] },
-  { key: 'review',   label: 'in review',   tone: 'var(--warning)',    toneRgb: 'var(--warning-rgb)',      status: ['awaiting_review'] },
+const COLUMNS: { key: ColumnKey; tone: string; status: string[] }[] = [
+  { key: 'assigned', tone: 'var(--txt-muted)', status: ['assigned'] },
+  { key: 'wip',      tone: 'var(--signature)', status: ['accepted', 'in_progress'] },
+  { key: 'review',   tone: 'var(--warning)',   status: ['awaiting_review'] },
 ];
 
 const KIND_LABEL: Record<string, string> = {
@@ -159,7 +160,7 @@ function V2TasksInner() {
   // background (no skeleton). While a verification is mid-flight we poll every
   // 1.5s via a dynamic refreshInterval (same cadence as the old manual timer);
   // otherwise polling is off. Focus revalidation is handled by SWRConfig.
-  const { data: inboxData, mutate: mutateInbox } = useSWR<{ tasks?: TaskItem[] }>(
+  const { data: inboxData, error: inboxError, mutate: mutateInbox } = useSWR<{ tasks?: TaskItem[] }>(
     '/api/inbox',
     {
       refreshInterval: (latest) => {
@@ -177,7 +178,11 @@ function V2TasksInner() {
     const LIVE = new Set(['unassigned', 'assigned', 'accepted', 'in_progress', 'awaiting_review']);
     return list.filter((t) => LIVE.has(t.status));
   }, [inboxData]);
-  const loading = inboxData === undefined;
+  // Distinguish "still fetching" from "fetch failed with no cached board" —
+  // the latter renders a designed error card with retry, never an endless
+  // skeleton (C-04).
+  const loadFailed = inboxData === undefined && inboxError !== undefined;
+  const loading = inboxData === undefined && !loadFailed;
 
   // Re-pull the inbox after a mutation (accept / complete / proof / reschedule).
   const refresh = useCallback(() => mutateInbox(), [mutateInbox]);
@@ -452,14 +457,6 @@ function V2TasksInner() {
     setRescheduleDate(toDateInput(expandedRescheduleDate ?? expandedScheduledDate));
   }, [expandedTaskId, expandedRescheduleNote, expandedRescheduleDate, expandedScheduledDate]);
 
-  // Close detail panel with Escape.
-  useEffect(() => {
-    if (!expandedTask) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(null); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [expandedTask]);
-
   return (
     <div className="v2-tasks">
       <header className="v2-section-head">
@@ -501,7 +498,20 @@ function V2TasksInner() {
         </button>
       </header>
 
-      {loading ? (
+      {loadFailed ? (
+        <div className="v2-tasks-error glass-card">
+          <EmptyState
+            icon={<span aria-hidden="true">⊘</span>}
+            title={t('error.title')}
+            description={t('error.desc')}
+            action={
+              <Button variant="primary" size="sm" onClick={() => void mutateInbox()}>
+                {t('error.retry')}
+              </Button>
+            }
+          />
+        </div>
+      ) : loading ? (
         <div className="v2-tasks-board">
           {COLUMNS.map((col) => (
             <div key={col.key} className="v2-tasks-col">
@@ -648,20 +658,23 @@ function V2TasksInner() {
         const requestedWindow = fmtRescheduleRequest(task, locale);
         const rel = relTimeParts(task.assigned_at);
         return (
-          <div className="v2-tasks-overlay" onClick={() => setExpanded(null)}>
-            <aside
-              className="v2-tasks-detail"
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-label={t('detail.aria')}
-            >
-              <button
-                type="button"
-                className="v2-tasks-detail-close"
-                onClick={() => setExpanded(null)}
-                aria-label={t('detail.close')}
-              >×</button>
+          // Radix Dialog supplies the focus trap, scroll lock, Escape-to-close
+          // and focus restore the hand-rolled panel lacked (C-06).
+          <Dialog.Root open onOpenChange={(open) => { if (!open) setExpanded(null); }}>
+            <Dialog.Portal>
+              <Dialog.Overlay className="v2-tasks-overlay" />
+              <Dialog.Content
+                className="v2-tasks-detail"
+                aria-label={t('detail.aria')}
+                aria-describedby={undefined}
+              >
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  className="v2-tasks-detail-close"
+                  aria-label={t('detail.close')}
+                >×</button>
+              </Dialog.Close>
 
               <div className="v2-tasks-detail-head">
                 <div className="v2-tasks-detail-kindrow">
@@ -672,7 +685,9 @@ function V2TasksInner() {
                     </span>
                   )}
                 </div>
-                <h2 className="v2-tasks-detail-title">{cleanText(task.title)}</h2>
+                <Dialog.Title asChild>
+                  <h2 className="v2-tasks-detail-title">{cleanText(task.title)}</h2>
+                </Dialog.Title>
                 <div className="v2-tasks-detail-meta">
                   {projectName && <span className="v2-tasks-card-chip">{projectName}</span>}
                   {!projectName && task.teamName && (
@@ -715,57 +730,52 @@ function V2TasksInner() {
               <div className="v2-tasks-detail-actions">
                 {isAssigned && (
                   <>
-                    <button
-                      type="button"
-                      className="v2-btn v2-btn-primary"
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={isWorking}
                       onClick={() => act(task, 'accept')}
+                    >{t('actions.accept')}</Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       disabled={isWorking}
-                    >
-                      {isWorking ? <><span className="v2-inline-spinner" aria-hidden="true" />{t('actions.working')}</> : t('actions.accept')}
-                    </button>
-                    <button
-                      type="button"
-                      className="v2-btn v2-btn-ghost"
                       onClick={() => act(task, 'decline')}
-                      disabled={isWorking}
-                    >{t('actions.decline')}</button>
+                    >{t('actions.decline')}</Button>
                   </>
                 )}
 
                 {isInFlight && !proof && (
                   <>
-                    <button
-                      type="button"
-                      className="v2-btn v2-btn-primary"
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={isWorking}
                       onClick={() => act(task, 'complete')}
+                    >{t('actions.markDone')}</Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       disabled={isWorking}
-                    >
-                      {isWorking ? <><span className="v2-inline-spinner" aria-hidden="true" />{t('actions.working')}</> : t('actions.markDone')}
-                    </button>
-                    <button
-                      type="button"
-                      className="v2-btn v2-btn-ghost"
                       onClick={() => act(task, 'decline')}
-                      disabled={isWorking}
-                    >{t('actions.handBack')}</button>
+                    >{t('actions.handBack')}</Button>
                   </>
                 )}
 
                 {task.project_id && (
-                  <Link
-                    href={`/projects/${task.project_id}/tasks`}
-                    className="v2-btn v2-btn-ghost"
-                  >{t('actions.openProject')}</Link>
+                  <Button variant="secondary" size="sm" asChild>
+                    <Link href={`/projects/${task.project_id}/tasks`}>{t('actions.openProject')}</Link>
+                  </Button>
                 )}
 
-                <button
-                  type="button"
-                  className={`v2-btn ${reschedulePending ? 'v2-btn-primary' : 'v2-btn-ghost'}`}
-                  onClick={() => setRescheduleOpen((v) => !v)}
+                <Button
+                  variant={reschedulePending ? 'primary' : 'secondary'}
+                  size="sm"
                   disabled={isWorking}
+                  onClick={() => setRescheduleOpen((v) => !v)}
                 >
                   {reschedulePending ? t('actions.updateReschedule') : t('actions.requestReschedule')}
-                </button>
+                </Button>
               </div>
 
               {rescheduleOpen && (
@@ -789,14 +799,12 @@ function V2TasksInner() {
                     rows={3}
                   />
                   <div className="v2-tasks-proof-actions">
-                    <button
-                      type="button"
-                      className="v2-btn v2-btn-primary"
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={isWorking}
                       onClick={() => submitRescheduleRequest(task)}
-                      disabled={isWorking}
-                    >
-                      {isWorking ? t('reschedule.sending') : t('reschedule.sendRequest')}
-                    </button>
+                    >{t('reschedule.sendRequest')}</Button>
                   </div>
                 </div>
               )}
@@ -831,19 +839,20 @@ function V2TasksInner() {
                     {t('proof.foot')}
                   </p>
                   <div className="v2-tasks-proof-actions">
-                    <button
-                      type="button"
-                      className="v2-btn v2-btn-warn"
+                    <Button
+                      variant="warn"
+                      size="sm"
+                      loading={isWorking}
                       onClick={() => submitProof(task)}
-                      disabled={isWorking}
-                    >{isWorking ? t('proof.sending') : t('proof.submit')}</button>
+                    >{t('proof.submit')}</Button>
                   </div>
                 </div>
               )}
 
               <TaskThread teamId={task.team_id} taskId={task.id} />
-            </aside>
-          </div>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
         );
       })()}
 
@@ -1205,11 +1214,17 @@ function V2TasksInner() {
           overflow-y: auto;
           max-height: calc(100vh - 240px);
           scroll-behavior: smooth;
-          /* Hide scrollbars across engines — scroll still works. */
-          scrollbar-width: none;
-          -ms-overflow-style: none;
+          /* Thin styled scrollbar (same recipe as .terminal-stream) — keeps
+             the affordance that more cards exist below the fold (C-19). */
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
         }
-        .v2-tasks-col-body::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        .v2-tasks-col-body::-webkit-scrollbar { width: 8px; }
+        .v2-tasks-col-body::-webkit-scrollbar-track { background: transparent; }
+        .v2-tasks-col-body::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.06); border-radius: 4px; }
+        .v2-tasks-col-body::-webkit-scrollbar-thumb:hover { background: rgba(var(--signature-rgb), 0.3); }
+        .light .v2-tasks-col-body { scrollbar-color: rgba(20, 14, 30, 0.08) transparent; }
+        .light .v2-tasks-col-body::-webkit-scrollbar-thumb { background: rgba(20, 14, 30, 0.08); }
         .v2-tasks-col-empty {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 11px;
@@ -1222,10 +1237,10 @@ function V2TasksInner() {
           background: rgba(255,255,255,0.012);
         }
 
-        /* Standard glass card — same glass language as .glass-card:
-           glass substrate, 1px rule border, float shadow, small radius.
-           No SVG specular lighting, no directional bevel, no transform
-           lift. Hover/active are expressed as border-color/background
+        /* Task card — flat substrate tint, NO backdrop-filter. The column
+           already provides the single glass layer; nesting blur-in-blur
+           violates the house "no stacked glass" rule and taxes the GPU
+           (C-02). Hover/active are expressed as border-color/background
            shifts using tokens. */
         .v2-tasks-card {
           position: relative;
@@ -1234,8 +1249,6 @@ function V2TasksInner() {
              instead. */
           flex-shrink: 0;
           background: var(--glass-substrate);
-          backdrop-filter: blur(24px) saturate(160%);
-          -webkit-backdrop-filter: blur(24px) saturate(160%);
           border: 1px solid var(--rule);
           animation: v2cardIn var(--dur-slow) cubic-bezier(0.16, 1, 0.3, 1) forwards;
           border-radius: var(--r-sm);
@@ -1418,7 +1431,9 @@ function V2TasksInner() {
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-        /* Detail overlay */
+        /* Detail overlay — Radix Overlay/Content render as siblings in a
+           portal, so the panel positions itself instead of relying on a
+           flex parent. */
         .v2-tasks-overlay {
           position: fixed;
           inset: 0;
@@ -1428,12 +1443,14 @@ function V2TasksInner() {
           background: var(--scrim);
           backdrop-filter: blur(10px) saturate(110%);
           -webkit-backdrop-filter: blur(10px) saturate(110%);
-          display: flex;
-          justify-content: flex-end;
           animation: v2overlayIn 200ms ease both;
         }
         @keyframes v2overlayIn { from { opacity: 0; } to { opacity: 1; } }
         .v2-tasks-detail {
+          position: fixed;
+          top: 0;
+          right: 0;
+          z-index: 81;
           width: min(560px, 100%);
           height: 100%;
           background: var(--bg-deep, #0b0b0e);
@@ -1526,51 +1543,6 @@ function V2TasksInner() {
           margin: 0;
         }
 
-        /* Buttons (mirror old inbox) */
-        .v2-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 14px;
-          border-radius: 8px;
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          cursor: pointer;
-          text-decoration: none;
-          transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease, background 180ms ease, border-color 180ms ease, color 180ms ease;
-          border: 1px solid;
-        }
-        .v2-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-        .v2-btn-primary {
-          background: var(--signature);
-          border-color: var(--signature);
-          color: white;
-        }
-        .v2-btn-primary:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 8px 18px -6px rgba(var(--signature-rgb), 0.55);
-        }
-        .v2-btn-ghost {
-          background: transparent;
-          border-color: var(--rule);
-          color: var(--txt-muted);
-        }
-        .v2-btn-ghost:hover:not(:disabled) {
-          color: var(--txt-pure);
-          border-color: var(--rule-strong);
-        }
-        .v2-btn-warn {
-          background: transparent;
-          border-color: var(--warning);
-          color: var(--warning);
-        }
-        .v2-btn-warn:hover:not(:disabled) {
-          background: rgba(var(--warning-rgb), 0.08);
-        }
-
         /* Reschedule */
         .v2-tasks-reschedule-note,
         .v2-tasks-reschedule-form {
@@ -1652,18 +1624,10 @@ function V2TasksInner() {
           line-height: 1.55;
           letter-spacing: 0.2px;
         }
-        .v2-inline-spinner {
-          width: 10px; height: 10px;
-          border-radius: 50%;
-          border: 2px solid rgba(255, 255, 255, 0.40);
-          border-top-color: white;
-          animation: v2spin 700ms linear infinite;
-          display: inline-block;
-          margin-right: 6px;
-        }
-        @keyframes v2spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
+        /* Fetch-failure card — single glass surface hosting the shared
+           EmptyState; the retry Button comes from ui/ (C-04). */
+        .v2-tasks-error {
+          padding: 36px 24px;
         }
 
         /* Light mode uses the SAME radial lighting recipe as dark mode —
@@ -1721,9 +1685,40 @@ function V2TasksInner() {
   );
 }
 
+// Hydration fallback — mirrors the three-column board skeleton so slow loads
+// never leave a blank viewport (C-11). Styles are inline because the page's
+// <style> block only mounts with the inner component.
+function TasksBoardFallback() {
+  return (
+    <div
+      aria-busy="true"
+      style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14 }}
+    >
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            border: '1px solid var(--rule)',
+            borderRadius: 14,
+            padding: 12,
+            minHeight: 320,
+          }}
+        >
+          <Skeleton width={92} height={10} />
+          <Skeleton width="100%" height={86} radius={10} />
+          <Skeleton width="100%" height={86} radius={10} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function V2TasksPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<TasksBoardFallback />}>
       <V2TasksInner />
     </Suspense>
   );

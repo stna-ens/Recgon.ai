@@ -181,7 +181,7 @@ export default function FooterCta() {
           padding: 15px 32px;
           border-radius: 10px;
           background: var(--signature);
-          color: #fff;
+          color: var(--signature-ink);
           font-size: 15px;
           font-weight: 700;
           text-decoration: none;

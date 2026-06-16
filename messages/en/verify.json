@@ -1,0 +1,111 @@
+{
+  "backToHome": "back to home",
+  "queueTag": "Verification queue",
+  "nothingWaiting": "Nothing waiting on you.",
+  "submittedProof": "submitted proof",
+  "byUser": "by {user}",
+  "openFullSize": "Open {name} full-size",
+  "taskDetails": "Task details",
+  "proofNoteLabel": "short proof note",
+  "proofNotePlaceholder": "What changed, and where can Recgon see it?",
+  "linksLabel": "links",
+  "linksPlaceholder": "Paste one or more links",
+  "submitProof": "submit proof",
+  "markComplete": "mark complete",
+  "decline": "decline",
+  "reassign": "reassign",
+  "error": {
+    "headline": "Couldn't load the queue",
+    "sub": "The verification queue didn't come back from the server.",
+    "title": "Verification queue unavailable",
+    "text": "Recgon couldn't fetch the triage list. Check your connection and try again.",
+    "retry": "retry"
+  },
+  "filters": {
+    "all": "all",
+    "failed": "failed",
+    "awaiting": "awaiting proof",
+    "stuck": "stuck"
+  },
+  "stats": {
+    "failed": "failed",
+    "awaitingProof": "awaiting proof",
+    "stuck": "stuck >{hours}h"
+  },
+  "status": {
+    "rejected": "recgon rejected",
+    "awaitingProof": "awaiting proof",
+    "inconclusive": "inconclusive",
+    "reChecking": "recgon re-checking",
+    "checking": "recgon checking",
+    "unknown": "unknown"
+  },
+  "titles": {
+    "failed": "{count, plural, one {# failed task} other {# failed tasks}}",
+    "awaiting": "{count} awaiting proof",
+    "stuck": "{count, plural, one {# stuck task} other {# stuck tasks}}",
+    "review": "{count, plural, one {# task needing review} other {# tasks needing review}}"
+  },
+  "help": {
+    "failed": "Start here: compare the submitted proof with Recgon's concern, then approve or decline.",
+    "awaiting": "These need one more note, link, or file before Recgon can make a clean call.",
+    "stuck": "These have been checking too long. Use owner override or decline to unblock the team.",
+    "default": "A focused queue for tasks where automatic verification needs a human decision."
+  },
+  "actionLabel": {
+    "reviewProof": "Review proof",
+    "addProof": "Add proof",
+    "unblock": "Unblock",
+    "decide": "Decide"
+  },
+  "verdict": {
+    "concern": "Recgon concern",
+    "whyStuck": "Why this is stuck",
+    "recgonSaid": "Recgon said",
+    "stuckText": "AI verification has been running for over {hours}h.",
+    "noVerdict": "No verdict text recorded."
+  },
+  "roleHint": {
+    "owner": "owner controls",
+    "assignee": "your task",
+    "viewer": "view-only"
+  },
+  "meta": {
+    "source": "source: {source}",
+    "iterations": "iterations: {count}"
+  },
+  "empty": {
+    "allClearTitle": "All clear.",
+    "allClearText": "Recgon is verifying every task on its own. You'll see anything that needs your call here.",
+    "noFilterTitle": "No {filter} verifications.",
+    "noFilterText": "Try a different filter — or head back to the cockpit."
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
+  },
+  "lightbox": {
+    "previewLabel": "Full-size preview: {name}",
+    "close": "Close preview",
+    "openOriginal": "open original"
+  },
+  "toasts": {
+    "filesAttached": "{count, plural, one {# file attached} other {# files attached}}",
+    "uploadFailed": "upload failed",
+    "proofRequired": "add a note, a link, or a file before submitting",
+    "proofSent": "proof sent — recgon is re-checking",
+    "failed": "failed",
+    "overridden": "overridden — task marked complete",
+    "overrideFailed": "override failed",
+    "declined": "declined",
+    "declineFailed": "decline failed"
+  },
+  "confirm": {
+    "overrideTitle": "Mark \"{title}\" complete?",
+    "overrideBody": "Owner override bypasses Recgon's verification and is final.",
+    "declineTitle": "Decline \"{title}\"?",
+    "declineBody": "It will be sent back to the routing queue."
+  }
+}

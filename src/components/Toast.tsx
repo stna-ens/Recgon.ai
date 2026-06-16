@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
 
 interface Toast {
   id: string;
@@ -33,7 +33,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div style={{
+      <div role="status" aria-live="polite" style={{
         position: 'fixed',
         bottom: 24,
         right: 24,
@@ -60,15 +60,27 @@ const TYPE_STYLES: Record<Toast['type'], { bg: string; border: string; color: st
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
   const [visible, setVisible] = useState(false);
+  // Auto-dismiss pauses while hovered so the message stays readable.
+  const [paused, setPaused] = useState(false);
+  const remainingRef = useRef(5000);
+  const startedAtRef = useRef(0);
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
+  }, []);
+
+  useEffect(() => {
+    if (paused) return;
+    startedAtRef.current = Date.now();
     const timer = setTimeout(() => {
       setVisible(false);
       setTimeout(() => onDismiss(toast.id), 400);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [toast.id, onDismiss]);
+    }, remainingRef.current);
+    return () => {
+      clearTimeout(timer);
+      remainingRef.current = Math.max(0, remainingRef.current - (Date.now() - startedAtRef.current));
+    };
+  }, [paused, toast.id, onDismiss]);
 
   const s = TYPE_STYLES[toast.type];
 
@@ -99,6 +111,8 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
         setVisible(false);
         setTimeout(() => onDismiss(toast.id), 400);
       }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
     >
       {toast.type === 'error' && (
         <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>

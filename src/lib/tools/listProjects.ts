@@ -21,6 +21,19 @@ export const listProjectsTool: ToolDefinition<Input, { projects: ProjectSummary[
     'List all projects in the current team with a short summary (name, stage, whether analysis and GA4 analytics are configured). Use this when the user asks what projects they have, or to disambiguate which project they mean before running another tool.',
   parameters,
   summarize: (_input, output) => `${output.projects.length} project(s)`,
+  display: (_input, output) => ({
+    kind: 'projects',
+    items: output.projects.map((p) => ({
+      id: p.id,
+      title: p.name,
+      subtitle: p.stage ? `Stage: ${p.stage}` : undefined,
+      badges: [
+        p.hasAnalysis ? 'analyzed' : 'no analysis',
+        ...(p.hasAnalytics ? ['GA4'] : []),
+      ],
+      href: `/projects/${p.id}`,
+    })),
+  }),
   handler: async (_input, ctx) => {
     const projects = await getAllProjects(ctx.teamId, ctx.userId);
     return {

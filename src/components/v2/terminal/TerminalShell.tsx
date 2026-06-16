@@ -16,6 +16,7 @@ import { useToast } from '@/components/Toast';
 import MarkdownLine, { cleanText } from '@/components/v2/MarkdownLine';
 import { useTypewriter } from '@/lib/useTypewriter';
 import TerminalConversationDrawer from '@/components/v2/terminal/TerminalConversationDrawer';
+import TerminalCards, { type TerminalCardData } from '@/components/v2/terminal/TerminalCards';
 import {
   SLASH_COMMANDS,
   filterCommands,
@@ -95,38 +96,92 @@ function AssistantBody({
   streamDone: boolean;
   onProgress: () => void;
 }) {
-  const { visibleText, isRevealing } = useTypewriter(content, streamDone);
-  const text = animate ? visibleText : content;
+  // Strip the invisible destructive-confirm marker the server persists on the
+  // assistant message (it authorizes the next-turn confirm; never user-facing).
+  const cleaned = content.replace(/<!--recgon:confirm:[^>]*-->/g, '');
+  const segments = segmentTerminalContent(cleaned);
+  const hasCards = segments.some((s) => s.kind === 'cards');
+
+  // Only animate pure-text responses. Responses with structured cards render
+  // immediately (instant tool results read naturally in a CLI, and it sidesteps
+  // typing-out raw JSON mid-stream).
+  const { visibleText, isRevealing } = useTypewriter(cleaned, streamDone);
+  const animateText = animate && !hasCards;
   const showCaret = animate && (isRevealing || streaming);
 
   // Keep the view pinned to the bottom as characters reveal.
   useEffect(() => {
     if (animate) onProgress();
-  }, [text, animate, onProgress]);
+  }, [visibleText, segments.length, animate, onProgress]);
 
-  if (!text) {
+  const renderTextLines = (text: string, keyBase: string) =>
+    text.split('\n').map((line, j) => (
+      <MarkdownLine
+        key={`${keyBase}-${j}`}
+        text={cleanText(line)}
+        bulletClassName="terminal-bullet"
+        bulletMarkClassName="terminal-bullet-mark"
+        lineClassName="terminal-text-line"
+      />
+    ));
+
+  if (animateText) {
+    const text = visibleText;
+    if (!text) return <span className="terminal-cursor" aria-hidden="true" />;
+    return (
+      <>
+        {renderTextLines(text, 'a')}
+        {showCaret && <span className="terminal-caret" aria-hidden="true">▍</span>}
+      </>
+    );
+  }
+
+  if (!cleaned && !hasCards) {
     return <span className="terminal-cursor" aria-hidden="true" />;
   }
 
-  const lines = text.split('\n');
   return (
     <>
-      {lines.map((line, j) => (
-        <MarkdownLine
-          key={j}
-          text={cleanText(line)}
-          bulletClassName="terminal-bullet"
-          bulletMarkClassName="terminal-bullet-mark"
-          lineClassName="terminal-text-line"
-        />
-      ))}
-      {showCaret && (
-        <span className="terminal-caret" aria-hidden="true">
-          ▍
-        </span>
+      {segments.map((seg, i) =>
+        seg.kind === 'cards' ? (
+          <TerminalCards key={`c-${i}`} data={seg.data} />
+        ) : (
+          <div key={`t-${i}`}>{renderTextLines(seg.text, `t-${i}`)}</div>
+        ),
       )}
+      {showCaret && <span className="terminal-caret" aria-hidden="true">▍</span>}
     </>
   );
+}
+
+type TerminalSegment =
+  | { kind: 'text'; text: string }
+  | { kind: 'cards'; data: TerminalCardData };
+
+/**
+ * Split streamed assistant content into text runs and ```recgon:cards``` blocks.
+ * An unclosed trailing card fence (chunk boundary mid-stream) is hidden until
+ * its closing fence arrives, so raw JSON never flashes on screen.
+ */
+function segmentTerminalContent(content: string): TerminalSegment[] {
+  const re = /```recgon:cards\n([\s\S]*?)\n```/g;
+  const segs: TerminalSegment[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(content))) {
+    if (m.index > last) segs.push({ kind: 'text', text: content.slice(last, m.index) });
+    try {
+      segs.push({ kind: 'cards', data: JSON.parse(m[1]) as TerminalCardData });
+    } catch {
+      /* malformed — drop it rather than dumping JSON */
+    }
+    last = re.lastIndex;
+  }
+  let tail = content.slice(last);
+  const dangling = tail.indexOf('```recgon:cards');
+  if (dangling !== -1) tail = tail.slice(0, dangling);
+  if (tail) segs.push({ kind: 'text', text: tail });
+  return segs;
 }
 
 export default function TerminalShell() {
@@ -188,6 +243,7 @@ export default function TerminalShell() {
     [convData],
   );
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const skipHistoryLoadForConvIdRef = useRef<string | null>(null);
   const loadConversations = useCallback(() => mutateConversations(), [mutateConversations]);
 
   // Deep-link from / home: ?c=<convId>&projectId=<id>
@@ -214,11 +270,18 @@ export default function TerminalShell() {
   // and conversation switches render their last turn instantly.
   const [animateLastTurn, setAnimateLastTurn] = useState(false);
   useEffect(() => {
-    setAnimateLastTurn(false);
     if (!activeConvId || !teamId) {
+      setAnimateLastTurn(false);
       setMessages([]);
+      setHistoryLoading(false);
       return;
     }
+    if (skipHistoryLoadForConvIdRef.current === activeConvId) {
+      skipHistoryLoadForConvIdRef.current = null;
+      setHistoryLoading(false);
+      return;
+    }
+    setAnimateLastTurn(false);
     let cancelled = false;
     setHistoryLoading(true);
     fetch(
@@ -244,6 +307,7 @@ export default function TerminalShell() {
 
   // ── Input + streaming ─────────────────────────────────────────────
   const [input, setInput] = useState('');
+  const [inputCaretIndex, setInputCaretIndex] = useState(0);
   const [streaming, setStreaming] = useState(false);
   const [showScrollPill, setShowScrollPill] = useState(false);
   // Banner status dot — three states:
@@ -255,6 +319,14 @@ export default function TerminalShell() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const setTerminalInput = useCallback((value: string, caretIndex = value.length) => {
+    setInput(value);
+    setInputCaretIndex(Math.max(0, Math.min(caretIndex, value.length)));
+  }, []);
+  const syncInputCaret = useCallback((el: HTMLTextAreaElement | null = textareaRef.current) => {
+    if (!el) return;
+    setInputCaretIndex(el.selectionStart ?? el.value.length);
+  }, []);
 
   // Smooth ChatGPT-style reveal. The network stream appends full chunks to the
   // last assistant message's `content` immediately; the on-screen reveal is
@@ -298,6 +370,13 @@ export default function TerminalShell() {
   // ── Slash palette ─────────────────────────────────────────────────
   const [slashMode, setSlashMode] = useState<SlashMode>({ kind: 'closed' });
   const [slashIndex, setSlashIndex] = useState(0);
+  // Keep the keyboard-selected slash item scrolled into view inside the
+  // (max-height, overflow) palette list as the user arrows past the fold.
+  const activeSlashItemRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (slashMode.kind === 'closed') return;
+    activeSlashItemRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [slashIndex, slashMode.kind]);
 
   const slashCmdMatches = useMemo<SlashCommand[]>(() => {
     if (slashMode.kind !== 'commands') return [];
@@ -345,9 +424,9 @@ export default function TerminalShell() {
     if (streaming) return;
     setActiveConvId(null);
     setMessages([]);
-    setInput('');
+    setTerminalInput('');
     setTimeout(() => textareaRef.current?.focus(), 30);
-  }, [streaming]);
+  }, [streaming, setTerminalInput]);
 
   const send = useCallback(
     async (rawText: string) => {
@@ -358,17 +437,17 @@ export default function TerminalShell() {
 
       if (parsed.kind === 'local') {
         if (parsed.command.name === '/clear') {
-          setInput('');
+          setTerminalInput('');
           await deleteCurrentChat();
           return;
         }
         if (parsed.command.name === '/history') {
-          setInput('');
+          setTerminalInput('');
           setDrawerOpen(true);
           return;
         }
         if (parsed.command.name === '/help') {
-          setInput('');
+          setTerminalInput('');
           setAnimateLastTurn(false);
           const helpLines = SLASH_COMMANDS.map(
             (c) => `- **${c.name}** — ${c.description}`,
@@ -395,7 +474,7 @@ export default function TerminalShell() {
         ...newHistory,
         { role: 'assistant', content: '', ts: Date.now() },
       ]);
-      setInput('');
+      setTerminalInput('');
       setStreaming(true);
       setAnimateLastTurn(true);
 
@@ -434,6 +513,7 @@ export default function TerminalShell() {
           res.headers.get('x-conversation-id') ??
           res.headers.get('X-Conversation-Id');
         if (newConvId && newConvId !== activeConvId) {
+          skipHistoryLoadForConvIdRef.current = newConvId;
           setActiveConvId(newConvId);
           loadConversations();
         }
@@ -499,6 +579,7 @@ export default function TerminalShell() {
       refreshTerminalProjects,
       refreshProjects,
       stopTypewriter,
+      setTerminalInput,
       t,
     ],
   );
@@ -551,7 +632,7 @@ export default function TerminalShell() {
       const cmd = slashCmdMatches[slashIndex];
       const trailing = input.split(' ').slice(1).join(' ').trim();
       if (cmd.argHint === 'project' && !trailing) {
-        setInput(cmd.name + ' ');
+        setTerminalInput(cmd.name + ' ');
         setSlashMode({ kind: 'projects', command: cmd });
         setSlashIndex(0);
         return;
@@ -563,8 +644,8 @@ export default function TerminalShell() {
     send(input);
   };
 
-  const onChangeInput = (val: string) => {
-    setInput(val);
+  const onChangeInput = (val: string, caretIndex = val.length) => {
+    setTerminalInput(val, caretIndex);
     setSlashIndex(0);
 
     if (slashMode.kind === 'projects') {
@@ -604,7 +685,7 @@ export default function TerminalShell() {
       if (e.key === 'Tab') {
         e.preventDefault();
         const cmd = slashCmdMatches[slashIndex];
-        if (cmd) setInput(cmd.name + (cmd.argHint === 'none' ? '' : ' '));
+        if (cmd) setTerminalInput(cmd.name + (cmd.argHint === 'none' ? '' : ' '));
         return;
       }
       if (e.key === 'Escape') {
@@ -632,7 +713,7 @@ export default function TerminalShell() {
       if (e.key === 'Tab') {
         e.preventDefault();
         const p = slashProjectMatches[slashIndex];
-        if (p) setInput(`${slashMode.command.name} ${p.name}`);
+        if (p) setTerminalInput(`${slashMode.command.name} ${p.name}`);
         return;
       }
       if (e.key === 'Escape') {
@@ -708,6 +789,9 @@ export default function TerminalShell() {
   const activeConv = activeConvId
     ? conversations.find((c) => c.id === activeConvId)
     : null;
+  const safeInputCaretIndex = Math.max(0, Math.min(inputCaretIndex, input.length));
+  const inputBeforeCaret = input.slice(0, safeInputCaretIndex) || '\u200b';
+  const inputAfterCaret = input.slice(safeInputCaretIndex);
 
   return (
     <>
@@ -873,9 +957,8 @@ export default function TerminalShell() {
               alignItems: 'flex-start',
               gap: 12,
               margin: '10px 16px 14px',
-              padding: '12px 18px',
-              border: '1px solid rgba(255, 255, 255, 0.28)',
-              borderRadius: 8,
+              padding: '12px 6px',
+              border: 'none',
               background: 'transparent',
               boxSizing: 'border-box',
             }}
@@ -900,30 +983,45 @@ export default function TerminalShell() {
                   {t('running.suffix')}
                 </span>
               ) : (
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={(e) => onChangeInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  onKeyUp={() => setKeyDown(false)}
-                  onBlur={() => setKeyDown(false)}
-                  placeholder={
-                    teamId
-                      ? t('input.placeholder')
-                      : t('input.placeholderLoading')
-                  }
-                  disabled={!teamId}
-                  rows={1}
-                  className="terminal-textarea"
-                  aria-label={t('input.aria')}
-                  autoFocus
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    minWidth: 0,
-                    boxSizing: 'border-box',
-                  }}
-                />
+                <div className="terminal-input-stack">
+                  <span className="terminal-input-measure" aria-hidden="true">
+                    {inputBeforeCaret}
+                  </span>
+                  <span className="terminal-input-caret" aria-hidden="true" />
+                  <span className="terminal-input-measure" aria-hidden="true">
+                    {inputAfterCaret}
+                  </span>
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={(e) => onChangeInput(e.target.value, e.target.selectionStart ?? e.target.value.length)}
+                    onKeyDown={onKeyDown}
+                    onKeyUp={(e) => {
+                      setKeyDown(false);
+                      syncInputCaret(e.currentTarget);
+                    }}
+                    onClick={(e) => syncInputCaret(e.currentTarget)}
+                    onSelect={(e) => syncInputCaret(e.currentTarget)}
+                    onFocus={(e) => syncInputCaret(e.currentTarget)}
+                    onBlur={() => setKeyDown(false)}
+                    placeholder={
+                      teamId
+                        ? t('input.placeholder')
+                        : t('input.placeholderLoading')
+                    }
+                    disabled={!teamId}
+                    rows={1}
+                    className="terminal-textarea"
+                    aria-label={t('input.aria')}
+                    autoFocus
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      minWidth: 0,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
               )}
             </div>
           </form>
@@ -951,7 +1049,7 @@ export default function TerminalShell() {
                 type="button"
                 className="terminal-statusbar-shortcut terminal-statusbar-btn"
                 onClick={() => {
-                  setInput('/');
+                  setTerminalInput('/');
                   setSlashMode({ kind: 'commands' });
                   textareaRef.current?.focus();
                 }}
@@ -986,13 +1084,14 @@ export default function TerminalShell() {
                   <button
                     type="button"
                     role="option"
+                    ref={i === slashIndex ? activeSlashItemRef : null}
                     aria-selected={i === slashIndex}
                     className={`terminal-slash-item ${i === slashIndex ? 'is-active' : ''}`}
                     onMouseEnter={() => setSlashIndex(i)}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       if (cmd.argHint === 'project') {
-                        setInput(cmd.name + ' ');
+                        setTerminalInput(cmd.name + ' ');
                         setSlashMode({ kind: 'projects', command: cmd });
                         setSlashIndex(0);
                       } else {
@@ -1034,6 +1133,7 @@ export default function TerminalShell() {
                     <button
                       type="button"
                       role="option"
+                      ref={i === slashIndex ? activeSlashItemRef : null}
                       aria-selected={i === slashIndex}
                       className={`terminal-slash-item ${i === slashIndex ? 'is-active' : ''}`}
                       onMouseEnter={() => setSlashIndex(i)}
@@ -1341,6 +1441,69 @@ export default function TerminalShell() {
         .terminal-bullet-mark { color: var(--signature); opacity: 0.85; }
         .terminal-text-line { display: block; }
 
+        /* Structured tool results from a recgon:cards block. Borderless rows
+           that read as deliberate CLI output — pink marker, monospace, dim
+           meta, subtle pink-tint hover. Matches the slash menu / suggestions. */
+        .terminal-cards { display: flex; flex-direction: column; gap: 0; margin: 6px 0 10px; }
+        .terminal-cards-caption {
+          color: var(--txt-faint);
+          font-size: 12px;
+          margin: 0 0 4px 24px;
+          letter-spacing: -0.005em;
+        }
+        .terminal-card {
+          display: grid;
+          grid-template-columns: 14px minmax(0, 1fr) auto auto;
+          gap: 12px;
+          align-items: baseline;
+          padding: 5px 8px 5px 6px;
+          border-radius: 5px;
+          text-decoration: none;
+          color: var(--txt-muted);
+          transition: background 0.12s ease;
+        }
+        .terminal-card.is-link { cursor: pointer; }
+        .terminal-card.is-link:hover { background: rgba(var(--signature-rgb), 0.10); }
+        .terminal-card-mark {
+          color: var(--signature);
+          opacity: 0.6;
+          font-size: 12px;
+          user-select: none;
+          align-self: center;
+        }
+        .terminal-card.is-link:hover .terminal-card-mark { opacity: 1; }
+        .terminal-card-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .terminal-card-title {
+          color: var(--txt-pure);
+          font-weight: 600;
+          font-size: 13px;
+          letter-spacing: -0.005em;
+          overflow-wrap: anywhere;
+        }
+        .terminal-card-subtitle {
+          color: var(--txt-faint);
+          font-size: 12px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .terminal-card-meta {
+          color: var(--txt-faint);
+          font-size: 11.5px;
+          letter-spacing: -0.01em;
+          white-space: nowrap;
+          align-self: center;
+          text-align: right;
+        }
+        .terminal-card-arrow {
+          color: var(--signature);
+          font-size: 11px;
+          align-self: center;
+          opacity: 0;
+          transition: opacity 0.12s ease;
+        }
+        .terminal-card.is-link:hover .terminal-card-arrow { opacity: 0.8; }
+
         .terminal-rule { height: 0; border-top: 1px dashed rgba(255, 255, 255, 0.05); margin: 12px 0 10px; }
         html.light .terminal-rule, .light .terminal-rule { border-top-color: rgba(20, 14, 30, 0.06); }
 
@@ -1408,22 +1571,16 @@ export default function TerminalShell() {
           flex-direction: row;
           align-items: flex-start;
           gap: 12px;
-          /* Bordered input box matching Claude Code reference: clean hairline
-             rectangle, generous internal padding, rounded corners. No focus
-             color change — cursor is the focus indicator. */
+          /* Borderless prompt row — the prompt glyph and cursor are the only
+             chrome, like a real shell. */
           margin: 10px 16px 14px;
-          padding: 12px 18px;
-          border: 1px solid rgba(255, 255, 255, 0.28);
-          border-radius: 8px;
+          padding: 12px 6px;
+          border: none;
           background: transparent;
           box-sizing: border-box;
         }
-        html.light .terminal-active-row,
-        .light .terminal-active-row {
-          border-color: rgba(0, 0, 0, 0.22);
-        }
         @media (max-width: 720px) {
-          .terminal-active-row { margin: 8px 10px 12px; padding: 10px 14px; }
+          .terminal-active-row { margin: 8px 10px 12px; padding: 10px 4px; }
         }
         /* Old class kept for any legacy usage; same layout. */
         .terminal-active {
@@ -1461,11 +1618,57 @@ export default function TerminalShell() {
         }
         @keyframes terminal-spin { to { transform: rotate(360deg); } }
         .terminal-active-input-wrap { flex: 1 1 0%; min-width: 0; display: block; width: 100%; }
+        .terminal-input-stack {
+          position: relative;
+          min-height: 1.5em;
+          width: 100%;
+          font-family: inherit;
+          font-size: inherit;
+          font-weight: 500;
+          letter-spacing: -0.005em;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+        .terminal-input-measure {
+          visibility: hidden;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+        .terminal-input-caret {
+          position: relative;
+          z-index: 2;
+          display: inline-block;
+          width: 7px;
+          height: 1.08em;
+          margin-left: 1px;
+          background: var(--signature);
+          box-shadow: 0 0 10px rgba(var(--signature-rgb), 0.28);
+          vertical-align: -0.18em;
+          pointer-events: none;
+          animation: terminal-input-caret-blink 1s steps(1, end) infinite;
+        }
+        .terminal-input-stack:not(:focus-within) .terminal-input-caret {
+          opacity: 0;
+          animation: none;
+        }
+        @keyframes terminal-input-caret-blink {
+          0%, 49% { opacity: 1; }
+          50%, 100% { opacity: 0; }
+        }
         .terminal-textarea {
+          position: absolute;
+          z-index: 1;
+          inset: 0;
           display: block;
           background: transparent;
+          /* Safari draws a native bezel on textareas that border: none
+             alone does NOT remove — reset appearance to kill it. */
+          -webkit-appearance: none;
+          appearance: none;
           border: none;
           outline: none;
+          box-shadow: none;
           color: var(--txt-pure);
           font-family: inherit;
           font-size: inherit;
@@ -1474,16 +1677,23 @@ export default function TerminalShell() {
           line-height: 1.5;
           resize: none;
           width: 100%;
+          height: 100%;
           min-width: 0;
           min-height: 1.5em;
           max-height: 200px;
           padding: 0;
           margin: 0;
-          caret-color: var(--signature);
+          caret-color: transparent;
           vertical-align: top;
           box-sizing: border-box;
         }
         .terminal-textarea::placeholder { color: var(--txt-faint); font-family: inherit; opacity: 0.7; }
+        .terminal-textarea:focus,
+        .terminal-textarea:focus-visible {
+          outline: none;
+          box-shadow: none;
+          border-color: transparent;
+        }
         .terminal-textarea:disabled { opacity: 0.55; cursor: not-allowed; }
         .terminal-active-streaming {
           color: var(--txt-faint);

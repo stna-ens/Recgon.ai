@@ -21,10 +21,10 @@ vi.mock('@/lib/teamStorage', () => ({
 }));
 
 const mockListTasks = vi.fn();
-const mockListTeammates = vi.fn();
+const mockListTeammatesWithStats = vi.fn();
 vi.mock('@/lib/recgon/storage', () => ({
   listTasks: (...args: unknown[]) => mockListTasks(...args),
-  listTeammates: (...args: unknown[]) => mockListTeammates(...args),
+  listTeammatesWithStats: (...args: unknown[]) => mockListTeammatesWithStats(...args),
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -93,7 +93,7 @@ function makeTask(overrides: Record<string, unknown> = {}) {
 async function callGET(role: 'owner' | 'member' | null) {
   mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
   mockVerifyTeamAccess.mockResolvedValue(role);
-  mockListTeammates.mockResolvedValue([
+  mockListTeammatesWithStats.mockResolvedValue([
     {
       id: 'tm-1',
       teamId,
@@ -101,12 +101,20 @@ async function callGET(role: 'owner' | 'member' | null) {
       displayName: 'Ada',
       avatarColor: '#c2357a',
       avatarUrl: null,
-      skills: ['secret-skill-list'],
+      skills: ['react'],
       capacityHours: 10,
       workingHours: null,
-      fitProfile: {},
+      // fitProfile holds per-skill performance internals — must NOT serialize.
+      fitProfile: { 'secret-fit-data': 1 },
       status: 'active',
       createdAt: '2026-01-01T00:00:00Z',
+      stars: 4.2,
+      ratingCount: 7,
+      upCount: 5,
+      downCount: 2,
+      inFlightCount: 2,
+      inFlightHours: 5,
+      teamRole: 'owner',
     },
   ]);
   const { GET } = await import('@/app/api/teams/[id]/command/route');
@@ -189,17 +197,29 @@ describe('GET /api/teams/[id]/command', () => {
     expect(body.decisions.awaitingReview.map((t: { id: string }) => t.id)).toEqual(['t-review']);
   });
 
-  it('trims teammates to display fields only (no skills / fitProfile)', async () => {
+  it('exposes Dispatch Floor signals but never the fitProfile internals', async () => {
     mockListTasks.mockResolvedValue([]);
     const res = await callGET('owner');
     const body = await res.json();
+    // Dispatch Floor contract: load headroom + skills + rating, computed
+    // server-side. Skills are already visible on the team roster; load mirrors
+    // Home's team-pulse. inFlightHours 5 / capacity 10 → 50%.
     expect(body.teammates[0]).toEqual({
       id: 'tm-1',
       userId: 'user-1',
       displayName: 'Ada',
       avatarColor: '#c2357a',
       avatarUrl: null,
+      capacityHours: 10,
+      inFlightHours: 5,
+      loadPct: 50,
+      isIdle: false,
+      skills: ['react'],
+      stars: 4.2,
     });
-    expect(JSON.stringify(body)).not.toContain('secret-skill-list');
+    // The sensitive per-skill performance map stays server-side.
+    expect(JSON.stringify(body)).not.toContain('secret-fit-data');
+    expect(body.teammates[0]).not.toHaveProperty('fitProfile');
+    expect(body.teammates[0]).not.toHaveProperty('ratingCount');
   });
 });

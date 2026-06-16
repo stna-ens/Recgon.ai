@@ -419,14 +419,16 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
         </div>
       )}
 
-      <TaskDetailPanel
-        task={selectedTask}
-        isOpen={selectedTask != null}
-        currentTeammateId={currentTeammateId}
-        isOwner={isOwner}
-        onClose={() => setSelectedTaskId(null)}
-        onRefresh={() => { void fetch_(); }}
-      />
+      {selectedTask && (
+        <TaskDetailPanel
+          task={selectedTask}
+          isOpen
+          currentTeammateId={currentTeammateId}
+          isOwner={isOwner}
+          onClose={() => setSelectedTaskId(null)}
+          onRefresh={() => { void fetch_(); }}
+        />
+      )}
 
       <style>{css}</style>
     </div>

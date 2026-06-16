@@ -2283,19 +2283,9 @@
         .v2-no-analysis-num { font-size: 56px; }
       }
 
-/* === skeleton === */
+/* === skeleton (lines are shared ui/Skeleton; this is just the layout) === */
       .v2-skel-card {
         display: flex;
         flex-direction: column;
         gap: 12px;
-      }
-      .v2-skel-line {
-        height: 14px;
-        background: rgba(var(--signature-rgb), 0.06);
-        border-radius: 6px;
-        animation: v2skelPulse 1.6s ease-in-out infinite;
-      }
-      @keyframes v2skelPulse {
-        0%, 100% { opacity: 0.4; }
-        50%      { opacity: 0.9; }
       }

@@ -200,43 +200,43 @@ const teamSetupStyles = `
   .ts-brand {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 2rem;
+    gap: 10px;
+    margin-bottom: 32px;
   }
   .ts-brand-name {
     font-weight: 700;
-    font-size: 1.25rem;
+    font-size: 20px;
     color: var(--signature);
     letter-spacing: -0.3px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
   }
   .ts-title {
-    font-size: 1.5rem;
+    font-size: 24px;
     font-weight: 700;
     color: var(--txt-pure);
-    margin: 0 0 0.3rem;
+    margin: 0 0 6px;
     letter-spacing: -0.3px;
   }
   .ts-sub {
     color: var(--txt-muted);
-    margin: 0 0 2rem;
-    font-size: 0.875rem;
+    margin: 0 0 32px;
+    font-size: 14px;
   }
   .ts-choices,
   .ts-form {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 12px;
   }
-  .ts-form { gap: 1rem; }
+  .ts-form { gap: 16px; }
   .ts-full { width: 100%; }
   .ts-alert {
-    padding: 0.6rem 0.75rem;
+    padding: 10px 12px;
     background: rgba(var(--danger-rgb), 0.08);
     border: 1px solid rgba(var(--danger-rgb), 0.3);
     border-radius: var(--r-sm);
     color: var(--danger);
-    font-size: 0.85rem;
+    font-size: 13px;
     margin: 0;
   }
 `;

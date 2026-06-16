@@ -106,7 +106,13 @@
       "task1Title": "Pick a 7-day GTM channel",
       "task2Title": "Add Stripe webhook retry logic",
       "task3Title": "Draft launch tweet thread",
-      "task4Title": "Verify GA4 funnel events"
+      "task4Title": "Verify GA4 funnel events",
+      "kinds": {
+        "nextStep": "next step",
+        "devPrompt": "dev prompt",
+        "marketing": "marketing",
+        "analytics": "analytics"
+      }
     }
   },
   "capabilities": {

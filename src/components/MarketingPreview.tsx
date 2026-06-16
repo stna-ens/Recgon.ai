@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui';
 
 interface MarketingPreviewProps {
   platform: string;
@@ -112,7 +113,7 @@ const TikTokChrome = ({
         <span style={{ color: 'white', fontSize: 13, lineHeight: 1.4, textShadow, wordWrap: 'break-word', display: 'block' }}>
           {captionPreview}
           {caption.length > maxCaptionPreview && !captionExpanded && (
-            <span onClick={() => setCaptionExpanded(true)} style={{ color: 'rgba(255,255,255,0.6)', cursor: 'pointer', marginLeft: 4 }}>more</span>
+            <button type="button" className="ui-unbutton" onClick={() => setCaptionExpanded(true)} style={{ color: 'rgba(255,255,255,0.6)', cursor: 'pointer', marginLeft: 4, font: 'inherit' }}>more</button>
           )}
         </span>
       </div>
@@ -244,10 +245,10 @@ const InstagramChrome = ({
         <span style={{ color: 'white', fontSize: 13, lineHeight: 1.4, textShadow, wordWrap: 'break-word', display: 'block' }}>
           {captionExpanded ? caption : captionPreview}
           {caption.length > maxCaptionPreview && !captionExpanded && (
-            <span onClick={() => setCaptionExpanded(true)} style={{ color: 'rgba(255,255,255,0.6)', cursor: 'pointer', marginLeft: 4 }}>more</span>
+            <button type="button" className="ui-unbutton" onClick={() => setCaptionExpanded(true)} style={{ color: 'rgba(255,255,255,0.6)', cursor: 'pointer', marginLeft: 4, font: 'inherit' }}>more</button>
           )}
           {captionExpanded && (
-            <span onClick={() => setCaptionExpanded(false)} style={{ color: 'rgba(255,255,255,0.6)', cursor: 'pointer', marginLeft: 4 }}>less</span>
+            <button type="button" className="ui-unbutton" onClick={() => setCaptionExpanded(false)} style={{ color: 'rgba(255,255,255,0.6)', cursor: 'pointer', marginLeft: 4, font: 'inherit' }}>less</button>
           )}
         </span>
       </div>
@@ -322,10 +323,13 @@ export default function MarketingPreview({
       </div>
 
       <div style={{ display: 'flex', gap: 12, width: 375, maxWidth: '100%' }}>
-        <button className="btn btn-primary" onClick={() => handleCopy('caption', `${caption}\n\n${hashtags}`)}
-          style={{ flex: 1, justifyContent: 'center' }}>
+        <Button
+          variant="primary"
+          onClick={() => handleCopy('caption', `${caption}\n\n${hashtags}`)}
+          style={{ flex: 1, justifyContent: 'center' }}
+        >
           {copiedKey === 'caption' ? '✓ Copied!' : 'Copy Caption + Tags'}
-        </button>
+        </Button>
       </div>
     </div>
   );

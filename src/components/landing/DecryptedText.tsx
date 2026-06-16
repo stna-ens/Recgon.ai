@@ -62,9 +62,19 @@ export default function DecryptedText({
   );
 
   const triggerDecrypt = useCallback(() => {
+    // Reduced motion: skip the scramble entirely and show the final text.
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      setIsDecrypted(true);
+      setDisplayText(text);
+      if (onComplete) queueMicrotask(onComplete);
+      return;
+    }
     setRevealedIndices(new Set());
     setIsAnimating(true);
-  }, []);
+  }, [text, onComplete]);
 
   useEffect(() => {
     if (!isAnimating) return;
@@ -131,6 +141,20 @@ export default function DecryptedText({
       className={parentClassName}
       style={{ display: 'inline', whiteSpace: 'pre-wrap' }}
     >
+      {/* Accessible name: static text for AT; the scrambling layer below
+          is decorative and stays aria-hidden. */}
+      <span
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          clip: 'rect(0,0,0,0)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {text}
+      </span>
       <span aria-hidden="true">
         {displayText.split('').map((char, i) => {
           const revealed = revealedIndices.has(i) || (!isAnimating && isDecrypted);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { verifyTeamAccess } from '@/lib/teamStorage';
-import { listTasks, listTeammates } from '@/lib/recgon/storage';
+import { listTasks, listTeammatesWithStats } from '@/lib/recgon/storage';
 import { sanitizeTaskForClient, type ClientSafeTask } from '@/lib/recgon/taskSanitizer';
 import { supabase } from '@/lib/supabase';
 
@@ -67,7 +67,7 @@ export async function GET(
 
   const [tasks, teammates, projectsRes] = await Promise.all([
     listTasks(teamId),
-    listTeammates(teamId),
+    listTeammatesWithStats(teamId),
     supabase.from('projects').select('id, name').eq('team_id', teamId),
   ]);
   if (projectsRes.error) {
@@ -80,13 +80,28 @@ export async function GET(
     role,
     decisions: role === 'owner' ? buildDecisions(safeTasks) : null,
     tasks: safeTasks,
-    teammates: teammates.map((t) => ({
-      id: t.id,
-      userId: t.userId ?? null,
-      displayName: t.displayName,
-      avatarColor: t.avatarColor ?? null,
-      avatarUrl: t.avatarUrl ?? null,
-    })),
+    teammates: teammates.map((t) => {
+      // Load headroom for the Dispatch Floor pods. Real in-flight hours vs
+      // configured capacity (>100% = overloaded). Cross-team hours are
+      // already folded in by listTeammatesWithStats. Cap at 150 so a wildly
+      // overloaded teammate doesn't blow out the bar's numeric label.
+      const cap = t.capacityHours || 0;
+      const hrs = t.inFlightHours ?? 0;
+      const loadPct = cap > 0 ? Math.min(150, Math.round((hrs / cap) * 100)) : hrs > 0 ? 150 : 0;
+      return {
+        id: t.id,
+        userId: t.userId ?? null,
+        displayName: t.displayName,
+        avatarColor: t.avatarColor ?? null,
+        avatarUrl: t.avatarUrl ?? null,
+        capacityHours: cap,
+        inFlightHours: hrs,
+        loadPct,
+        isIdle: (t.inFlightCount ?? 0) === 0,
+        skills: t.skills ?? [],
+        stars: t.stars,
+      };
+    }),
     projects: (projectsRes.data ?? []).map((p) => ({
       id: p.id as string,
       name: p.name as string,

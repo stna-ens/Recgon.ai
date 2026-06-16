@@ -130,6 +130,10 @@
   },
   "detail": {
     "notFound": "Proje bulunamadı.",
+    "loadError": {
+      "title": "Bu proje yüklenemedi.",
+      "desc": "Proje alınırken bir sorun oluştu. Verilerin güvende — tekrar dene."
+    },
     "noAnalysis": {
       "titlePrefix": "Henüz",
       "titleRest": "analiz yok.",

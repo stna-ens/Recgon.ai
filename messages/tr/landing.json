@@ -106,7 +106,13 @@
       "task1Title": "7 günlük bir GTM kanalı seç",
       "task2Title": "Stripe webhook yeniden deneme mantığını ekle",
       "task3Title": "Lansman tweet dizisi taslağı yaz",
-      "task4Title": "GA4 huni olaylarını doğrula"
+      "task4Title": "GA4 huni olaylarını doğrula",
+      "kinds": {
+        "nextStep": "sonraki adım",
+        "devPrompt": "geliştirme istemi",
+        "marketing": "pazarlama",
+        "analytics": "analitik"
+      }
     }
   },
   "capabilities": {

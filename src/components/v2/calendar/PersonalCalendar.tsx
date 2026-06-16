@@ -357,14 +357,16 @@ export function PersonalCalendar() {
         </div>
       )}
 
-      <TaskDetailPanel
-        task={selectedTask}
-        isOpen={selectedTask != null}
-        currentTeammateId={selectedTask?.assignedTo ?? null}
-        isOwner={false}
-        onClose={() => setSelectedTaskId(null)}
-        onRefresh={() => { void mutate(); }}
-      />
+      {selectedTask && (
+        <TaskDetailPanel
+          task={selectedTask}
+          isOpen
+          currentTeammateId={selectedTask.assignedTo ?? null}
+          isOwner={false}
+          onClose={() => setSelectedTaskId(null)}
+          onRefresh={() => { void mutate(); }}
+        />
+      )}
 
       <style>{css}</style>
     </div>

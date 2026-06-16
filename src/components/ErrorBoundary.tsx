@@ -38,17 +38,15 @@ export default class ErrorBoundary extends Component<Props, State> {
 
     const scope = this.props.scope;
 
-    return <ErrorBoundaryFallback scope={scope} error={error} reset={this.reset} />;
+    return <ErrorBoundaryFallback scope={scope} reset={this.reset} />;
   }
 }
 
 function ErrorBoundaryFallback({
   scope,
-  error,
   reset,
 }: {
   scope?: string;
-  error: Error;
   reset: () => void;
 }) {
   const t = useTranslations('shared');
@@ -75,15 +73,17 @@ function ErrorBoundaryFallback({
       <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px' }}>
         {t('errorBoundary.heading')}
       </h2>
+      {/* Never surface raw error.message to end users — it can be a
+          stack-y technical string. componentDidCatch already logs it. */}
       <p style={{ color: 'var(--txt-muted)', maxWidth: 420, lineHeight: 1.6, fontSize: 13.5 }}>
-        {error.message || t('errorBoundary.defaultMessage')}
+        {t('errorBoundary.defaultMessage')}
       </p>
       <div style={{ display: 'inline-flex', gap: 10 }}>
-        <button className="btn btn-primary btn-sm" onClick={reset}>
+        <button className="ui-btn ui-btn--primary ui-btn--sm" onClick={reset}>
           {t('errorBoundary.tryAgain')}
         </button>
         <button
-          className="btn btn-secondary btn-sm"
+          className="ui-btn ui-btn--secondary ui-btn--sm"
           onClick={() => { if (typeof window !== 'undefined') window.location.reload(); }}
         >
           {t('errorBoundary.reloadPage')}

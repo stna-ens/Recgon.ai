@@ -9,7 +9,8 @@ export type ButtonVariant =
   | 'ghost'
   | 'danger'
   | 'danger-ghost'
-  | 'warn';
+  | 'warn'
+  | 'success';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;

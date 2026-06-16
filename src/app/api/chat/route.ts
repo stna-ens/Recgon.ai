@@ -19,14 +19,14 @@ import {
 import { getUserTeams } from '@/lib/teamStorage';
 import { serverError } from '@/lib/apiError';
 import { validateEnv } from '@/lib/env';
-import { geminiFunctionDeclarations } from '@/lib/tools/registry';
+import { geminiFunctionDeclarations, isDestructiveTool } from '@/lib/tools/registry';
 import { runTool } from '@/lib/tools/runTool';
 import { getRecentActivities, formatActivitiesForPrompt } from '@/lib/activityLog';
 import { logger } from '@/lib/logger';
 import { PROMPT_VERSIONS } from '@/lib/llm/quality';
 import type { Content } from '@google/generative-ai';
 
-const MAX_TOOL_ITERATIONS = 5;
+const MAX_TOOL_ITERATIONS = 7;
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -126,7 +126,14 @@ export async function POST(request: NextRequest) {
 - If the user just wants advice or brainstorming, answer directly without any tool call.
 - Before a final answer, check that every concrete claim is supported by known context or a tool result.
 - The RECENT ACTIVITY block is historical context only. Do NOT treat a past tool failure shown there as the result of the tool call you just made. Trust the live tool result you receive in this turn.
-- Never apologize for or explain a tool call that returned ok=true. If the result indicates an empty/missing state (no sources, no analyses, no GA4 property), simply state that fact.`;
+- Never apologize for or explain a tool call that returned ok=true. If the result indicates an empty/missing state (no sources, no analyses, no GA4 property), simply state that fact.
+
+TERMINAL CONTROL SURFACE:
+- You can DO things, not just answer. Tools are namespaced by domain: project_*, task_*, teammate_*, team_*, member_*, invite_*, dispatch_*, account_*, plus analytics + marketing tools. Pick the single most specific tool for what the user asked.
+- Refer to entities by the name the user gave (project/task/teammate/member). The tools resolve names fuzzily. If a tool returns an error like "matched multiple … be more specific", relay it and ask which one — do NOT guess.
+- If a required argument is missing (e.g. who to assign a task to), ask ONE short question. Never invent assignees, dates, or IDs.
+- CONFIRMATION (critical): some tools are destructive (project_delete, team_delete, member_remove, teammate_retire, invite_revoke, dispatch_run). If a tool result has needsConfirm=true, STOP — do not call anything else. Reply with ONE sentence asking the user to confirm, naming the exact target from the result's "message". Only after the user clearly agrees (e.g. "yes") do you re-call the SAME tool with confirm=true. Never set confirm=true on the first attempt.
+- After a successful action, confirm what happened in 1-2 short lines. When a tool returns structured rows they are already shown to the user as cards — do not re-list every row; just give a one-line summary.`;
 
     const selectedProjectBlock = selectedProject
       ? `\n\nCURRENTLY SELECTED PROJECT FROM THE UI:\n- Name: ${selectedProject.name}\n- ID: ${selectedProject.id}\nWhen the user asks an ambiguous project question, answer for this project unless they clearly name another one.\n`
@@ -155,6 +162,24 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const resolvedConvId = convId;
     const userId = session.user.id;
+
+    // Anti-spoof for destructive confirmation: a `confirm: true` arg is only
+    // honored if the PREVIOUS assistant message asked to confirm THAT tool.
+    // The marker rides on chat history (saved below), so the gate survives the
+    // two-request handshake ("delete X" → ask → "yes" → delete) statelessly.
+    // The model cannot fabricate the marker — only this server writes it.
+    // Parse from server-stored history (NOT the client-supplied `history`):
+    // the marker is appended server-side after streaming and persisted, so it
+    // only exists in the DB copy. The client never sees it and cannot forge it.
+    const CONFIRM_MARKER = /<!--recgon:confirm:([a-z_]+)-->/g;
+    const priorConfirmTools = new Set<string>();
+    {
+      const lastAssistant = [...storedHistory].reverse().find((m) => m.role === 'assistant');
+      if (lastAssistant) {
+        for (const m of lastAssistant.content.matchAll(CONFIRM_MARKER)) priorConfirmTools.add(m[1]);
+      }
+    }
+    const confirmRequestedFor = new Set<string>();
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -199,6 +224,7 @@ export async function POST(request: NextRequest) {
 
         try {
           let iterations = 0;
+          let emptyTurns = 0;
           while (iterations < MAX_TOOL_ITERATIONS) {
             iterations += 1;
 
@@ -243,6 +269,17 @@ export async function POST(request: NextRequest) {
                   };
                 }
 
+                // Strip an unauthorized confirm=true so the destructive guard
+                // re-asks instead of executing. Authorized only if the prior
+                // assistant turn requested confirmation for THIS tool.
+                if (
+                  isDestructiveTool(call.name) &&
+                  (patchedArgs as { confirm?: unknown }).confirm === true &&
+                  !priorConfirmTools.has(call.name)
+                ) {
+                  (patchedArgs as { confirm?: boolean }).confirm = false;
+                }
+
                 const chip = `\n\n> running \`${call.name}\`...\n\n`;
                 emit(chip);
                 fullResponse += chip;
@@ -253,16 +290,35 @@ export async function POST(request: NextRequest) {
                   source: 'terminal',
                 });
 
-                const payload = toolResult.ok
-                  ? { ok: true, output: toolResult.output }
-                  : { ok: false, error: toolResult.error };
+                // Render structured rows as cards immediately (deterministic —
+                // the model can't garble the data). Parsed out by TerminalShell.
+                if (toolResult.display && toolResult.display.items.length > 0) {
+                  const block = `\n\`\`\`recgon:cards\n${JSON.stringify(toolResult.display)}\n\`\`\`\n`;
+                  emit(block);
+                  fullResponse += block;
+                }
 
-                toolCallCache.set(key, toolResult.ok ? toolResult.output : { error: toolResult.error });
+                let payload: Record<string, unknown>;
+                if (toolResult.needsConfirm) {
+                  confirmRequestedFor.add(call.name);
+                  const msg = (toolResult.output as { message?: string })?.message ?? 'confirm this action';
+                  payload = { ok: false, needsConfirm: true, message: msg };
+                } else if (toolResult.ok) {
+                  payload = { ok: true, output: toolResult.output };
+                } else {
+                  payload = { ok: false, error: toolResult.error };
+                }
+
+                // Don't cache a needsConfirm result — the user's "yes" must be
+                // able to re-run the SAME call with confirm=true next turn.
+                if (!toolResult.needsConfirm) {
+                  toolCallCache.set(key, toolResult.ok ? toolResult.output : { error: toolResult.error });
+                }
 
                 return {
                   functionResponse: {
                     name: call.name,
-                    response: payload as Record<string, unknown>,
+                    response: payload,
                   },
                 };
               }));
@@ -281,11 +337,29 @@ export async function POST(request: NextRequest) {
             if (text) {
               emit(text);
               fullResponse += text;
-            } else {
-              const fallback = '\n\n_(the model returned no text — try rephrasing your question)_\n';
-              emit(fallback);
-              fullResponse += fallback;
+              break;
             }
+
+            // Empty turn: no tool call AND no text. Gemini does this
+            // intermittently (often finishReason MALFORMED_FUNCTION_CALL),
+            // especially on multi-step requests with a large tool surface.
+            // It's non-deterministic, so simply re-sample a couple of times
+            // before giving up — that recovers the vast majority of cases.
+            // IMPORTANT: do NOT inject a nudge message into `contents` — the
+            // model can fold that text into the next tool call's arguments
+            // (e.g. assignee "grr8" + "Continue" → "grr8Continue").
+            if (emptyTurns < 2 && iterations < MAX_TOOL_ITERATIONS) {
+              emptyTurns += 1;
+              logger.warn('chat: empty model turn, re-sampling', {
+                emptyTurns,
+                finishReason: response.candidates?.[0]?.finishReason,
+              });
+              continue;
+            }
+
+            const fallback = '\n\n_(could not complete that — try rephrasing, e.g. "create a task \'security review\' and assign it to Emir")_\n';
+            emit(fallback);
+            fullResponse += fallback;
             break;
           }
 
@@ -303,6 +377,13 @@ export async function POST(request: NextRequest) {
           fullResponse += msg;
         } finally {
           controller.close();
+
+          // Persist the (invisible) confirmation marker so the NEXT request can
+          // authorize a confirm=true re-call for these destructive tools. Hidden
+          // from the UI by TerminalShell. Appended after close() — never streamed.
+          for (const toolName of confirmRequestedFor) {
+            fullResponse += `\n<!--recgon:confirm:${toolName}-->`;
+          }
 
           const now = Date.now();
           await saveMessages(userId, resolvedConvId, [

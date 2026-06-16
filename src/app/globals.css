@@ -54,6 +54,10 @@
   /* Signature */
   --signature: #c2357a;
   --signature-rgb: 194, 53, 122;
+  /* Text color for content sitting ON a signature-filled surface.
+     Light: white on deep pink passes AA; dark: near-black ink on the
+     pale pink (#f0b8d0) — white there is ~1.4:1 and fails WCAG. */
+  --signature-ink: #ffffff;
   /* Decorative dot field color (canvas-rendered). Brand pink at full
      saturation so dots stay visible on near-white backgrounds where the
      pale signature variant would vanish. `--dot-base-a` is the base
@@ -153,6 +157,7 @@
   --accent-secondary: var(--signature);
   --signature: #c2357a;
   --signature-rgb: 194, 53, 122;
+  --signature-ink: #ffffff;
   /* Saturated brand pink for the dot field — pale signature is invisible
      on the near-white .light bg. */
   --dot-rgb: 150, 50, 100;
@@ -179,6 +184,8 @@
   /* Signature */
   --signature: #f0b8d0;
   --signature-rgb: 240, 184, 208;
+  /* Near-black ink on the pale pink fill — white on #f0b8d0 is ~1.4:1. */
+  --signature-ink: #1d1d1f;
   /* Dot field — keep the soft signature pink in dark mode (matches today). */
   --dot-rgb: 240, 184, 208;
   --dot-base-a: 0.26;
@@ -1811,6 +1818,16 @@ button:not(.ui-btn):not(.ui-modal-x):not(.ui-input-toggle):not(.nav-link):not(.t
   color: var(--warning);
   background: rgba(var(--warning-rgb), 0.12);
   border-color: var(--warning);
+}
+.ui-btn--success {
+  color: var(--success);
+  border-color: rgba(var(--success-rgb), 0.35);
+  background: rgba(var(--success-rgb), 0.06);
+}
+.ui-btn--success:hover:not(:disabled) {
+  color: var(--success);
+  background: rgba(var(--success-rgb), 0.12);
+  border-color: var(--success);
 }
 .ui-btn-spin {
   width: 10px;

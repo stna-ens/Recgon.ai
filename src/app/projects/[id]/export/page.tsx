@@ -70,7 +70,7 @@ const C = {
   txt1:    '#f4f4f5',
   txt2:    '#a1a1aa',
   txt3:    '#71717a',
-  brand:   '#e8a8c4',
+  brand:   '#f0b8d0',
   success: '#34d399',
   danger:  '#f87171',
   warning: '#fbbf24',
@@ -79,7 +79,7 @@ const C = {
 
 const STAGE_META: Record<string, { color: string }> = {
   idea:   { color: '#fbbf24' },
-  mvp:    { color: '#e8a8c4' },
+  mvp:    { color: '#f0b8d0' },
   beta:   { color: '#60a5fa' },
   growth: { color: '#34d399' },
   mature: { color: '#71717a' },

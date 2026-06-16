@@ -1,7 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import useSWR from 'swr';
@@ -9,23 +8,20 @@ import { Radar, Zap, Inbox, Eye, CircleAlert } from 'lucide-react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import { Skeleton, Modal, Button } from '@/components/ui';
-import TeamTaskTable, { type CommandView } from '@/components/v2/command/TeamTaskTable';
-import DecisionStack from '@/components/v2/command/DecisionStack';
-import { TaskDetailPanel } from '@/components/v2/calendar/TaskDetailPanel';
+import DispatchFloor from '@/components/v2/command/DispatchFloor';
 import { CreateTaskModal } from '@/components/v2/tasks/CreateTaskModal';
-import type { AgentTask } from '@/lib/recgon/types';
-import type { CommandResponse, CommandTask } from '@/components/v2/command/types';
+import type { CommandResponse } from '@/components/v2/command/types';
 
-// Mission Control — the team-wide task picture in one screen.
+// Operations — the DISPATCH FLOOR. A console header states the situation, then
+// DispatchFloor carries the work: NEEDS YOU (judgment calls) · QUEUE (the
+// dispatch backlog) · ROSTER (teammate pods, load vs capacity) · the full
+// table as a reference drawer. This is where the owner RUNS the team — distinct
+// from Home (the read-only glance) and Calendar (the time view).
 //
-// Design language inherited from /verify (the house's reference surface):
-// glass-card hero whose HEADLINE states the situation ("3 decisions need
-// you" / "All clear"), tone-coded stat chips, and filter pills that drive
-// the list below. The owner's decision stack comes first (the Phase 3.5
-// lesson: attention, not workload); members get a "mine" lens instead.
+// House system only: glass-card, JetBrains Mono labels, signature pink, tone
+// tokens used functionally (load / decision severity).
 
 const ACTIVE = new Set(['assigned', 'accepted', 'in_progress']);
-const LIVE = new Set(['assigned', 'accepted', 'in_progress', 'awaiting_review', 'unassigned']);
 
 const fetcher = async (url: string) => {
   const r = await fetch(url);
@@ -39,8 +35,6 @@ function CommandPageInner() {
   const { currentTeam } = useTeam();
   const { data: session } = useSession();
   const { addToast } = useToast();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const teamId = currentTeam?.id ?? null;
 
   const { data, error, mutate } = useSWR<CommandResponse>(
@@ -69,28 +63,28 @@ function CommandPageInner() {
     let queued = 0;
     let review = 0;
     let overdue = 0;
-    let mine = 0;
     for (const task of tasks) {
       if (ACTIVE.has(task.status)) active += 1;
       if (task.status === 'unassigned') queued += 1;
       if (task.status === 'awaiting_review') review += 1;
       if ((task.overdueTier ?? 0) > 0 && ACTIVE.has(task.status)) overdue += 1;
-      if (currentTeammateId && task.assignedTo === currentTeammateId && LIVE.has(task.status)) mine += 1;
     }
-    return { all: tasks.length, active, queued, review, overdue, mine };
-  }, [tasks, currentTeammateId]);
+    return { active, queued, review, overdue };
+  }, [tasks]);
 
+  // "Needs you" = judgment calls only (reschedule / overdue / awaiting review).
+  // Triaged work is assignable, so it lives in the queue, not here.
   const decisionCount = data?.decisions
     ? data.decisions.rescheduleRequests.length +
       data.decisions.overdue.length +
-      data.decisions.triaged.length +
       data.decisions.awaitingReview.length
     : 0;
+  const hasDecisions = isOwner && decisionCount > 0;
 
-  // ── Hero copy: the headline states the situation ─────────────────────────
+  // ── Situation: tone + headline + sub ──────────────────────────────────────
   const headTone = loading
     ? undefined
-    : isOwner && decisionCount > 0
+    : hasDecisions
       ? 'warn'
       : counts.overdue > 0
         ? 'crit'
@@ -99,7 +93,7 @@ function CommandPageInner() {
     ? '··'
     : tasks.length === 0
       ? t('headline.empty')
-      : isOwner && decisionCount > 0
+      : hasDecisions
         ? t('headline.decisions', { count: decisionCount })
         : counts.overdue > 0
           ? t('headline.overdue', { count: counts.overdue })
@@ -122,46 +116,12 @@ function CommandPageInner() {
     [data?.projects],
   );
 
-  // ── View pills (drive the list) ───────────────────────────────────────────
-  const [view, setView] = useState<CommandView>('all');
-  const pills = useMemo(() => {
-    const base: Array<{ value: CommandView; count: number; tone: 'mute' | 'sig' | 'warn' | 'crit' }> = [
-      { value: 'all', count: counts.all, tone: 'mute' },
-    ];
-    if (currentTeammateId) base.push({ value: 'mine', count: counts.mine, tone: 'sig' });
-    base.push(
-      { value: 'active', count: counts.active, tone: 'sig' },
-      { value: 'queued', count: counts.queued, tone: 'mute' },
-      { value: 'review', count: counts.review, tone: 'warn' },
-      { value: 'overdue', count: counts.overdue, tone: 'crit' },
-    );
-    return base;
-  }, [counts, currentTeammateId]);
-
-  // ── Detail panel + ?task= deep link ───────────────────────────────────────
-  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fromUrl = searchParams.get('task');
-    if (fromUrl && tasks.some((task) => task.id === fromUrl)) setOpenTaskId(fromUrl);
-  }, [searchParams, tasks]);
-
-  const openTask = useCallback(
-    (task: CommandTask) => {
-      setOpenTaskId(task.id);
-      router.replace(`/command?task=${task.id}`, { scroll: false });
-    },
-    [router],
-  );
-  const closeTask = useCallback(() => {
-    setOpenTaskId(null);
-    router.replace('/command', { scroll: false });
-  }, [router]);
-
-  const openedTask = useMemo(
-    () => (openTaskId ? tasks.find((task) => task.id === openTaskId) ?? null : null),
-    [openTaskId, tasks],
-  );
+  const gauges = [
+    { key: 'active', Icon: Zap, value: counts.active, tone: 'sig' as const },
+    { key: 'queued', Icon: Inbox, value: counts.queued, tone: undefined },
+    { key: 'review', Icon: Eye, value: counts.review, tone: 'warn' as const },
+    { key: 'overdue', Icon: CircleAlert, value: counts.overdue, tone: counts.overdue > 0 ? ('crit' as const) : undefined },
+  ];
 
   // "?" opens the shortcut help (unless typing in a field).
   const [helpOpen, setHelpOpen] = useState(false);
@@ -178,111 +138,60 @@ function CommandPageInner() {
   }, []);
 
   return (
-    <div className="v2-mc">
-      {/* HERO */}
-      <div className="glass-card v2-mc-hero" data-tone={headTone}>
-        <div className="v2-mc-hero-grid">
-          <div className="v2-mc-hero-left">
-            <div className="v2-mc-tag">
-              <Radar size={14} strokeWidth={2.2} />
-              <span>{t('title')}</span>
-            </div>
-            <h1 className="v2-mc-headline">{headline}</h1>
-            <p className="v2-mc-sub">{sub}</p>
+    <div className="v2-ops">
+      {/* ── CONSOLE HEADER ─────────────────────────────────────────────── */}
+      <header className="glass-card v2-ops-console" data-tone={headTone}>
+        <div className="v2-ops-top">
+          <div className="v2-ops-id">
+            <Radar size={14} strokeWidth={2.2} />
+            <span>{t('title')}</span>
+            <span className="v2-ops-id-sep">·</span>
+            <span className="v2-ops-id-sub">{t('dispatch.floorTag')}</span>
+            <span className="v2-ops-live" aria-hidden />
           </div>
-          <div className="v2-mc-hero-right">
-            {isOwner && (
-              <div className="v2-mc-hero-actions">
-                <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                  {tTasks('createTask.newButton')}
-                </Button>
-              </div>
-            )}
-            <div className="v2-mc-stat" data-tone="sig">
-              <Zap size={16} strokeWidth={2.2} />
-              <div className="v2-mc-stat-num">{loading ? '·' : counts.active}</div>
-              <div className="v2-mc-stat-lab">{t('stats.active')}</div>
-            </div>
-            <div className="v2-mc-stat">
-              <Inbox size={16} strokeWidth={2.2} />
-              <div className="v2-mc-stat-num">{loading ? '·' : counts.queued}</div>
-              <div className="v2-mc-stat-lab">{t('stats.queued')}</div>
-            </div>
-            <div className="v2-mc-stat" data-tone="warn">
-              <Eye size={16} strokeWidth={2.2} />
-              <div className="v2-mc-stat-num">{loading ? '·' : counts.review}</div>
-              <div className="v2-mc-stat-lab">{t('stats.review')}</div>
-            </div>
-            <div className="v2-mc-stat" data-tone={counts.overdue > 0 ? 'crit' : undefined}>
-              <CircleAlert size={16} strokeWidth={2.2} />
-              <div className="v2-mc-stat-num">{loading ? '·' : counts.overdue}</div>
-              <div className="v2-mc-stat-lab">{t('stats.overdue')}</div>
-            </div>
-          </div>
+          {isOwner && (
+            <Button variant="primary" onClick={() => setCreateOpen(true)}>
+              {tTasks('createTask.newButton')}
+            </Button>
+          )}
         </div>
 
-        {!loading && tasks.length > 0 && (
-          <div className="v2-mc-pills" role="tablist">
-            {pills.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                role="tab"
-                aria-selected={view === p.value}
-                className={`v2-mc-pill ${view === p.value ? 'is-active' : ''}`}
-                data-tone={p.tone}
-                onClick={() => setView(p.value)}
-                disabled={p.count === 0 && p.value !== 'all'}
-              >
-                <span className="v2-mc-pill-dot" />
-                <span className="v2-mc-pill-lab">{t(`pills.${p.value}`)}</span>
-                <span className="v2-mc-pill-num">{p.count}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+        <h1 className="v2-ops-headline">{headline}</h1>
+        <p className="v2-ops-sub">{sub}</p>
+
+        <div className="v2-ops-readout" role="group" aria-label={t('title')}>
+          {gauges.map(({ key, Icon, value, tone }) => (
+            <div key={key} className="v2-ops-gauge" data-tone={tone}>
+              <div className="v2-ops-gauge-top">
+                <Icon size={14} strokeWidth={2.2} />
+                <span className="v2-ops-gauge-lab">{t(`stats.${key}`)}</span>
+              </div>
+              <div className="v2-ops-gauge-num">{loading ? '·' : value}</div>
+            </div>
+          ))}
+        </div>
+      </header>
 
       {loading ? (
-        <div className="v2-mc-skeletons">
-          <Skeleton height={120} />
-          <Skeleton height={320} />
+        <div className="v2-ops-skeletons">
+          <Skeleton height={72} />
+          <div className="v2-ops-skel-roster">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} height={150} />
+            ))}
+          </div>
         </div>
-      ) : (
-        <>
-          {data?.decisions && teamId && decisionCount > 0 && (
-            <DecisionStack
-              decisions={data.decisions}
-              teammates={data.teammates}
-              teamId={teamId}
-              onChanged={() => {
-                void mutate();
-              }}
-              onOpen={openTask}
-            />
-          )}
-          <TeamTaskTable
-            tasks={tasks}
-            teammates={data?.teammates ?? []}
-            projects={data?.projects ?? []}
-            onOpen={openTask}
-            view={view}
-            currentTeammateId={currentTeammateId}
-            shortcutsEnabled={openTaskId == null && !helpOpen}
-          />
-        </>
-      )}
-
-      <TaskDetailPanel
-        task={openedTask ? (openedTask as unknown as AgentTask) : null}
-        isOpen={openedTask != null}
-        currentTeammateId={currentTeammateId}
-        isOwner={isOwner}
-        onClose={closeTask}
-        onRefresh={() => {
-          void mutate();
-        }}
-      />
+      ) : data && teamId ? (
+        <DispatchFloor
+          data={data}
+          teamId={teamId}
+          currentTeammateId={currentTeammateId}
+          isOwner={Boolean(isOwner)}
+          onChanged={() => {
+            void mutate();
+          }}
+        />
+      ) : null}
 
       {teamId && (
         <CreateTaskModal
@@ -298,9 +207,8 @@ function CommandPageInner() {
       )}
 
       <Modal open={helpOpen} onOpenChange={setHelpOpen} title={t('shortcuts.heading')} size="sm">
-        <dl className="v2-mc-keys">
+        <dl className="v2-ops-keys">
           <div><dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>{t('shortcuts.navigate')}</dd></div>
-          <div><dt><kbd>↵</kbd></dt><dd>{t('shortcuts.open')}</dd></div>
           <div><dt><kbd>esc</kbd></dt><dd>{t('shortcuts.close')}</dd></div>
           <div><dt><kbd>⌘K</kbd></dt><dd>{t('shortcuts.palette')}</dd></div>
           <div><dt><kbd>?</kbd></dt><dd>{t('shortcuts.help')}</dd></div>
@@ -308,46 +216,75 @@ function CommandPageInner() {
       </Modal>
 
       <style>{`
-        .v2-mc {
+        .v2-ops {
           max-width: 1160px;
           margin: 0 auto;
           padding: 104px 24px 80px;
           display: flex;
           flex-direction: column;
-          gap: 22px;
-          animation: v2mcFade 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+          gap: 26px;
         }
-        @keyframes v2mcFade {
-          from { opacity: 0; transform: translateY(6px); }
+
+        @keyframes opsRise {
+          from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: none; }
         }
 
-        /* ── Hero ─────────────────────────────────────────────────────── */
-        .v2-mc-hero { padding: 28px 32px 24px; }
-        .v2-mc-hero-grid {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 28px;
-          flex-wrap: wrap;
+        /* ── Console header ───────────────────────────────────────────── */
+        .v2-ops-console {
+          position: relative;
+          padding: 24px 30px 0;
+          overflow: hidden;
+          animation: opsRise var(--dur-page, 0.5s) var(--ease-out, cubic-bezier(0.16,1,0.3,1)) both;
         }
-        .v2-mc-hero-left { min-width: 0; flex: 1 1 320px; }
-        .v2-mc-tag {
+        .v2-ops-console::before {
+          content: '';
+          position: absolute;
+          inset: 0 0 auto 0;
+          height: 2px;
+          background: linear-gradient(90deg, rgba(var(--signature-rgb), 0.55) 0%, rgba(var(--signature-rgb), 0) 42%);
+        }
+        .v2-ops-console[data-tone='good']::before { background: linear-gradient(90deg, rgba(var(--success-rgb),0.5), rgba(var(--success-rgb),0) 42%); }
+        .v2-ops-console[data-tone='warn']::before { background: linear-gradient(90deg, rgba(var(--warning-rgb),0.55), rgba(var(--warning-rgb),0) 42%); }
+        .v2-ops-console[data-tone='crit']::before { background: linear-gradient(90deg, rgba(var(--danger-rgb),0.6),  rgba(var(--danger-rgb),0) 42%); }
+
+        .v2-ops-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 14px;
+        }
+        .v2-ops-id {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
+          gap: 8px;
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 10px;
           font-weight: 700;
-          letter-spacing: 1.4px;
+          letter-spacing: 1.6px;
           text-transform: uppercase;
           color: var(--signature);
-          margin-bottom: 10px;
         }
-        .v2-mc-hero[data-tone='good'] .v2-mc-tag { color: var(--success); }
-        .v2-mc-hero[data-tone='warn'] .v2-mc-tag { color: var(--warning); }
-        .v2-mc-hero[data-tone='crit'] .v2-mc-tag { color: var(--danger); }
-        .v2-mc-headline {
+        .v2-ops-console[data-tone='good'] .v2-ops-id { color: var(--success); }
+        .v2-ops-console[data-tone='warn'] .v2-ops-id { color: var(--warning); }
+        .v2-ops-console[data-tone='crit'] .v2-ops-id { color: var(--danger); }
+        .v2-ops-id-sep { opacity: 0.4; }
+        .v2-ops-id-sub { color: var(--txt-faint); letter-spacing: 1.4px; }
+        .v2-ops-live {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          animation: opsPulse 2.4s ease-out infinite;
+        }
+        @keyframes opsPulse {
+          0%   { box-shadow: 0 0 0 0 rgba(var(--signature-rgb), 0.5); opacity: 1; }
+          70%  { box-shadow: 0 0 0 5px rgba(var(--signature-rgb), 0); opacity: 0.75; }
+          100% { box-shadow: 0 0 0 0 rgba(var(--signature-rgb), 0); opacity: 1; }
+        }
+
+        .v2-ops-headline {
           margin: 0 0 6px;
           font-size: clamp(22px, 3vw, 30px);
           font-weight: 700;
@@ -355,109 +292,75 @@ function CommandPageInner() {
           color: var(--txt-pure);
           line-height: 1.15;
         }
-        .v2-mc-sub {
-          margin: 0;
+        .v2-ops-sub {
+          margin: 0 0 22px;
           color: var(--txt-muted);
           font-size: 14px;
           line-height: 1.55;
-          max-width: 460px;
+          max-width: 520px;
         }
-        .v2-mc-hero-right {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          align-items: flex-start;
+
+        /* ── Instrument readout strip ─────────────────────────────────── */
+        .v2-ops-readout {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          border-top: 1px solid var(--rule);
+          margin: 0 -30px;
         }
-        .v2-mc-hero-actions {
-          flex-basis: 100%;
-          display: flex;
-          justify-content: flex-end;
-          margin-bottom: 4px;
-        }
-        @media (max-width: 860px) {
-          .v2-mc-hero-actions { justify-content: flex-start; }
-        }
-        .v2-mc-stat {
-          min-width: 80px;
-          padding: 10px 14px;
-          border: 1px solid var(--rule);
-          border-radius: 8px;
-          background: rgba(0, 0, 0, 0.18);
+        .v2-ops-gauge {
+          padding: 16px 18px 18px;
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          gap: 4px;
+          gap: 7px;
           color: var(--txt-faint);
+          position: relative;
         }
-        .v2-mc-stat[data-tone='sig']  { color: var(--signature); border-color: rgba(var(--signature-rgb), 0.24); }
-        .v2-mc-stat[data-tone='warn'] { color: var(--warning); border-color: rgba(var(--warning-rgb), 0.24); }
-        .v2-mc-stat[data-tone='crit'] { color: var(--danger); border-color: rgba(var(--danger-rgb), 0.24); }
-        .v2-mc-stat-num {
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 21px;
-          font-weight: 700;
-          color: var(--txt-pure);
-          line-height: 1.1;
-          font-variant-numeric: tabular-nums;
+        .v2-ops-gauge + .v2-ops-gauge { border-left: 1px solid var(--rule); }
+        .v2-ops-gauge[data-tone='sig']  { color: var(--signature); }
+        .v2-ops-gauge[data-tone='warn'] { color: var(--warning); }
+        .v2-ops-gauge[data-tone='crit'] { color: var(--danger); }
+        .v2-ops-gauge[data-tone='sig']::after,
+        .v2-ops-gauge[data-tone='warn']::after,
+        .v2-ops-gauge[data-tone='crit']::after {
+          content: '';
+          position: absolute;
+          left: 18px;
+          right: 18px;
+          bottom: 0;
+          height: 2px;
+          background: currentColor;
+          opacity: 0.55;
         }
-        .v2-mc-stat-lab {
+        .v2-ops-gauge-top { display: inline-flex; align-items: center; gap: 7px; }
+        .v2-ops-gauge-lab {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 10px;
           font-weight: 600;
           letter-spacing: 0.8px;
           text-transform: uppercase;
         }
-
-        /* ── Pills ────────────────────────────────────────────────────── */
-        .v2-mc-pills {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          margin-top: 20px;
-          padding-top: 18px;
-          border-top: 1px solid var(--rule, rgba(255,255,255,0.07));
-        }
-        .v2-mc-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 7px 12px;
-          background: transparent;
-          border: none;
-          border-radius: 6px;
+        .v2-ops-gauge-num {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10px;
+          font-size: 26px;
           font-weight: 700;
-          letter-spacing: 0.7px;
-          text-transform: uppercase;
-          color: var(--txt-faint);
-          cursor: pointer;
-          transition: background 180ms ease, color 180ms ease;
+          line-height: 1;
+          color: var(--txt-pure);
+          font-variant-numeric: tabular-nums;
         }
-        .v2-mc-pill:hover:not(:disabled):not(.is-active) {
-          color: var(--txt-muted);
-          background: rgba(255, 255, 255, 0.03);
+
+        .v2-ops-skeletons { display: flex; flex-direction: column; gap: 16px; }
+        .v2-ops-skel-roster {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(264px, 1fr));
+          gap: 14px;
         }
-        .v2-mc-pill.is-active { background: rgba(255, 255, 255, 0.06); color: var(--txt-pure); }
-        .v2-mc-pill:disabled { opacity: 0.4; cursor: not-allowed; }
-        .v2-mc-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--txt-faint); flex-shrink: 0; }
-        .v2-mc-pill[data-tone='sig'] .v2-mc-pill-dot  { background: var(--signature); }
-        .v2-mc-pill[data-tone='warn'] .v2-mc-pill-dot { background: var(--warning); }
-        .v2-mc-pill[data-tone='crit'] .v2-mc-pill-dot { background: var(--danger); }
-        .v2-mc-pill.is-active[data-tone='sig'] .v2-mc-pill-dot  { box-shadow: 0 0 6px var(--signature); }
-        .v2-mc-pill.is-active[data-tone='warn'] .v2-mc-pill-dot { box-shadow: 0 0 6px var(--warning); }
-        .v2-mc-pill.is-active[data-tone='crit'] .v2-mc-pill-dot { box-shadow: 0 0 6px var(--danger); }
-        .v2-mc-pill-num { font-variant-numeric: tabular-nums; color: var(--txt-faint); font-weight: 600; opacity: 0.85; }
-        .v2-mc-pill.is-active .v2-mc-pill-num { color: var(--txt-pure); opacity: 1; }
 
-        .v2-mc-skeletons { display: grid; gap: 16px; }
-
-        /* ── Shortcut help ───────────────────────────────────────────── */
-        .v2-mc-keys { display: grid; gap: 10px; margin: 0; }
-        .v2-mc-keys div { display: flex; align-items: baseline; gap: 14px; }
-        .v2-mc-keys dt { min-width: 70px; }
-        .v2-mc-keys dd { margin: 0; color: var(--txt-muted); font-size: 13px; }
-        .v2-mc-keys kbd {
+        /* ── Shortcut help ────────────────────────────────────────────── */
+        .v2-ops-keys { display: grid; gap: 10px; margin: 0; }
+        .v2-ops-keys div { display: flex; align-items: baseline; gap: 14px; }
+        .v2-ops-keys dt { min-width: 70px; }
+        .v2-ops-keys dd { margin: 0; color: var(--txt-muted); font-size: 13px; }
+        .v2-ops-keys kbd {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 11px;
           font-weight: 600;
@@ -468,9 +371,19 @@ function CommandPageInner() {
         }
 
         @media (max-width: 860px) {
-          .v2-mc { padding: 92px 14px 60px; gap: 16px; }
-          .v2-mc-hero { padding: 22px 20px 18px; }
-          .v2-mc-stat { min-width: 70px; padding: 10px 10px 8px; }
+          .v2-ops { padding: 92px 14px 60px; gap: 18px; }
+          .v2-ops-console { padding: 20px 20px 0; }
+          .v2-ops-readout { grid-template-columns: repeat(2, 1fr); margin: 0 -20px; }
+          .v2-ops-gauge:nth-child(2) { border-left: none; }
+          .v2-ops-gauge:nth-child(3),
+          .v2-ops-gauge:nth-child(4) { border-top: 1px solid var(--rule); }
+          .v2-ops-top { margin-bottom: 12px; }
+          .v2-ops-skel-roster { grid-template-columns: 1fr; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .v2-ops-console { animation: none; }
+          .v2-ops-live { animation: none; }
         }
       `}</style>
     </div>

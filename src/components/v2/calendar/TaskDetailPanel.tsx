@@ -416,10 +416,12 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
     }
   }, [addToast, onRefresh, requestDate, requestNote, task, working, t]);
 
-  const isAssigned = task?.status === 'assigned';
-  const isInFlight = task?.status === 'accepted' || task?.status === 'in_progress';
-  const needsProof = task?.verificationStatus === 'proof_requested' || task?.verificationStatus === 'failed';
-  const hasPendingReschedule = task?.rescheduleRequestStatus === 'pending';
+  if (!isOpen || !task) return null;
+
+  const isAssigned = task.status === 'assigned';
+  const isInFlight = task.status === 'accepted' || task.status === 'in_progress';
+  const needsProof = task.verificationStatus === 'proof_requested' || task.verificationStatus === 'failed';
+  const hasPendingReschedule = task.rescheduleRequestStatus === 'pending';
   // The viewer is the actual assignee — only they get accept / decline /
   // mark done / submit proof / request reschedule. Owners viewing other
   // people's tasks get the owner-mode block instead.
@@ -441,7 +443,6 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
     <>
       <div className={`cal-panel-overlay${isOpen ? ' is-open' : ''}`} onClick={onClose} aria-hidden="true" />
       <aside className={`cal-panel${isOpen ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label={t('panel.aria')}>
-        {!task ? null : (<>
         <div className="cal-panel-header">
           <div className="cal-panel-meta">
             <span className="cal-panel-kind">{KIND_KEYS.has(task.kind) ? t(`kind.${task.kind}`) : task.kind}</span>
@@ -717,7 +718,6 @@ export function TaskDetailPanel({ task, isOpen, currentTeammateId, isOwner, onCl
               }}
             />
         </div>
-        </>)}
       </aside>
       <style>{css}</style>
     </>

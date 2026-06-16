@@ -23,7 +23,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 export function useListShortcuts(options: {
   count: number;
   enabled: boolean;
-  onOpen: (index: number) => void;
+  onOpen?: (index: number) => void;
 }): [number, (idx: number) => void] {
   const { count, enabled, onOpen } = options;
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -45,7 +45,7 @@ export function useListShortcuts(options: {
       } else if (e.key === 'k' || e.key === 'ArrowUp') {
         e.preventDefault();
         setActiveIdx((i) => Math.max(i - 1, 0));
-      } else if (e.key === 'Enter') {
+      } else if (e.key === 'Enter' && onOpen) {
         setActiveIdx((i) => {
           if (i >= 0) {
             e.preventDefault();

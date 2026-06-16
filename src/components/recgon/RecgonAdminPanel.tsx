@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/Toast';
+import { Button } from '@/components/ui';
 import type {
   RecgonState,
   TeammateWithStats,
@@ -167,6 +168,7 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
   const [teammates, setTeammates] = useState<TeammateWithStats[]>([]);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [dispatching, setDispatching] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -179,10 +181,21 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
       if (r1.ok) setState((await r1.json()).state);
       if (r2.ok) setTeammates((await r2.json()).teammates);
       if (r3.ok) setTasks((await r3.json()).tasks);
+      // A failed load must say so — an empty console on error is
+      // indistinguishable from a genuinely empty dispatch queue.
+      setLoadError(!r1.ok || !r2.ok || !r3.ok);
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   }, [teamId]);
+
+  const retryLoad = useCallback(() => {
+    setLoadError(false);
+    setLoading(true);
+    refresh();
+  }, [refresh]);
 
   useEffect(() => {
     refresh();
@@ -216,6 +229,19 @@ export default function RecgonAdminPanel({ teamId }: { teamId: string }) {
         <span className="rcg-loading-dot" />
         <span className="rcg-loading-dot" />
         <span className="rcg-loading-text">{t('recgonPanel.booting')}</span>
+        <style>{rcgStyles}</style>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="rcg-load-error" role="alert">
+        <span className="rcg-load-error-title">{t('recgonPanel.loadFailedTitle')}</span>
+        <p className="rcg-load-error-body">{t('recgonPanel.loadFailedBody')}</p>
+        <Button variant="secondary" size="sm" onClick={retryLoad}>
+          {t('recgonPanel.retry')}
+        </Button>
         <style>{rcgStyles}</style>
       </div>
     );
@@ -531,6 +557,32 @@ const rcgStyles = `
   .rcg-loading-dot:nth-child(1) { animation-delay: -0.32s; }
   .rcg-loading-dot:nth-child(2) { animation-delay: -0.16s; }
   .rcg-loading-text { margin-left: 6px; }
+
+  .rcg-load-error {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 32px 24px;
+    background: var(--bg-content);
+    border: 1px dashed rgba(var(--danger-rgb), 0.35);
+    border-radius: 18px;
+  }
+  .rcg-load-error-title {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--danger);
+  }
+  .rcg-load-error-body {
+    margin: 0 0 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--txt-muted);
+    max-width: 48ch;
+  }
 
   /* ─── BLOCK HEADER (kicker + link) ─── */
   .rcg-block-head {

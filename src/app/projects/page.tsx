@@ -149,19 +149,6 @@ export default function V2ProjectsListPage() {
   // Populate GitHub update statuses (TeamProvider caches these in sessionStorage).
   useEffect(() => { refreshProjects?.(); }, [refreshProjects]);
 
-  // Esc closes any open modal
-  useEffect(() => {
-    if (!showManual && !showGithub) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowManual(false);
-        setShowGithub(false);
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [showManual, showGithub]);
-
   // Apply the top-level scope filter on the cross-team portfolio.
   //   'all'      → personal + every team's shared projects
   //   'personal' → only my private projects (visibility === 'personal')
@@ -335,13 +322,14 @@ export default function V2ProjectsListPage() {
         </div>
       ) : (
         <div className="v2-projects-stack">
-          <div className="v2-scope-strip" role="tablist" aria-label={t('list.scopeAria')}>
+          {/* These are filters, not tabs — tab roles without arrow-key
+              navigation break the ARIA contract; group + pressed is honest. */}
+          <div className="v2-scope-strip" role="group" aria-label={t('list.scopeAria')}>
             <button
               type="button"
               className={`v2-scope-chip ${scope === 'all' ? 'is-active' : ''}`}
               onClick={() => setScope('all')}
-              role="tab"
-              aria-selected={scope === 'all'}
+              aria-pressed={scope === 'all'}
             >
               {t('list.scopeAll')}
             </button>
@@ -349,8 +337,7 @@ export default function V2ProjectsListPage() {
               type="button"
               className={`v2-scope-chip ${scope === 'personal' ? 'is-active' : ''}`}
               onClick={() => setScope('personal')}
-              role="tab"
-              aria-selected={scope === 'personal'}
+              aria-pressed={scope === 'personal'}
             >
               {t('list.scopePersonal')}
             </button>
@@ -362,8 +349,7 @@ export default function V2ProjectsListPage() {
                   type="button"
                   className={`v2-scope-chip ${isActive ? 'is-active' : ''}`}
                   onClick={() => setScope(tm.id)}
-                  role="tab"
-                  aria-selected={isActive}
+                  aria-pressed={isActive}
                   title={t('list.scopeTeamTitle', { team: tm.name })}
                 >
                   {tm.name}
@@ -717,8 +703,10 @@ export default function V2ProjectsListPage() {
           width: 10px;
           height: 10px;
           border-radius: 50%;
-          border: 1.5px solid rgba(255, 255, 255, 0.30);
-          border-top-color: white;
+          /* currentColor so the spinner stays visible inside ghost buttons
+             in light mode (white-on-white otherwise). */
+          border: 1.5px solid color-mix(in srgb, currentColor 30%, transparent);
+          border-top-color: currentColor;
           animation: v2spin 700ms linear infinite;
         }
         .v2-spinner-pink {

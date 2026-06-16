@@ -33,10 +33,10 @@ export default function PipelineDiagram() {
   ];
 
   const TASKS = [
-    { kind: 'next_step', title: t('tasks.task1Title'), owner: 'Maya', role: 'PM' },
-    { kind: 'dev_prompt', title: t('tasks.task2Title'), owner: 'Jin', role: 'Eng' },
-    { kind: 'marketing', title: t('tasks.task3Title'), owner: 'Sara', role: 'Growth' },
-    { kind: 'analytics', title: t('tasks.task4Title'), owner: 'Ola', role: 'Data' },
+    { kind: 'next_step', kindLabel: t('tasks.kinds.nextStep'), title: t('tasks.task1Title'), owner: 'Maya', role: 'PM' },
+    { kind: 'dev_prompt', kindLabel: t('tasks.kinds.devPrompt'), title: t('tasks.task2Title'), owner: 'Jin', role: 'Eng' },
+    { kind: 'marketing', kindLabel: t('tasks.kinds.marketing'), title: t('tasks.task3Title'), owner: 'Sara', role: 'Growth' },
+    { kind: 'analytics', kindLabel: t('tasks.kinds.analytics'), title: t('tasks.task4Title'), owner: 'Ola', role: 'Data' },
   ];
 
   return (
@@ -110,9 +110,9 @@ export default function PipelineDiagram() {
             <span className="lnd-pipe-col-tag">{t('assignedTasks')}</span>
           </header>
           <ul className="lnd-pipe-tasks">
-            {TASKS.map(({ kind, title, owner, role }, i) => (
+            {TASKS.map(({ kind, kindLabel, title, owner, role }, i) => (
               <li key={title} className="lnd-pipe-task" style={{ animationDelay: `${0.7 + i * 0.1}s` }}>
-                <span className="lnd-pipe-task-kind" data-kind={kind}>{kind.replace('_', ' ')}</span>
+                <span className="lnd-pipe-task-kind" data-kind={kind}>{kindLabel}</span>
                 <span className="lnd-pipe-task-title">{title}</span>
                 <span className="lnd-pipe-task-owner" title={`${owner} · ${role}`}>
                   <span className="lnd-pipe-task-avatar">{ownerInitials(owner)}</span>
@@ -363,7 +363,7 @@ export default function PipelineDiagram() {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 10px;
           font-weight: 700;
-          color: white;
+          color: var(--signature-ink);
           background: linear-gradient(135deg, var(--signature), rgba(var(--signature-rgb), 0.55));
           flex-shrink: 0;
         }

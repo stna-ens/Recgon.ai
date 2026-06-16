@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import RecgonLogo from '@/components/RecgonLogo';
 import { useTeam } from '@/components/TeamProvider';
-import { Button } from '@/components/ui';
+import { Button, Skeleton } from '@/components/ui';
 
 interface InviteInfo {
   teamName: string;
@@ -79,7 +79,14 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ token: 
           <span className="iv-brand-name">Recgon</span>
         </div>
 
-        {loading && <p className="iv-muted">{t('invite.loading')}</p>}
+        {loading && (
+          <div className="iv-loading" aria-busy="true">
+            <Skeleton width="70%" height={18} radius={4} />
+            <Skeleton width="45%" height={24} radius={4} />
+            <Skeleton width="55%" height={12} radius={4} />
+            <span className="iv-visually-hidden">{t('invite.loading')}</span>
+          </div>
+        )}
 
         {!loading && error && !invite && (
           <p role="alert" className="iv-error">{error}</p>
@@ -148,35 +155,48 @@ const inviteStyles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.6rem;
-    margin-bottom: 2rem;
+    gap: 10px;
+    margin-bottom: 32px;
   }
   .iv-brand-name {
     font-weight: 700;
-    font-size: 1.25rem;
+    font-size: 20px;
     color: var(--signature);
     letter-spacing: -0.3px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
   }
-  .iv-muted { color: var(--txt-muted); }
-  .iv-error { color: var(--danger); font-size: 0.95rem; }
-  .iv-error-inline { font-size: 0.85rem; margin: 0 0 1rem; }
+  .iv-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .iv-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .iv-error { color: var(--danger); font-size: 14px; }
+  .iv-error-inline { font-size: 13px; margin: 0 0 16px; }
   .iv-title {
-    font-size: 1.3rem;
+    font-size: 20px;
     font-weight: 700;
     color: var(--txt-pure);
-    margin: 0 0 0.5rem;
+    margin: 0 0 8px;
   }
   .iv-team {
-    font-size: 1.5rem;
+    font-size: 24px;
     font-weight: 700;
     color: var(--signature);
-    margin: 0 0 0.5rem;
+    margin: 0 0 8px;
   }
   .iv-role {
     color: var(--txt-muted);
-    font-size: 0.875rem;
-    margin: 0 0 2rem;
+    font-size: 14px;
+    margin: 0 0 32px;
   }
   .iv-cta {
     width: 100%;
@@ -185,11 +205,11 @@ const inviteStyles = `
   .iv-actions {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 12px;
   }
   .iv-prompt {
     color: var(--txt-muted);
-    font-size: 0.85rem;
-    margin: 0 0 0.25rem;
+    font-size: 13px;
+    margin: 0 0 4px;
   }
 `;

@@ -5,18 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-
-const AVATAR_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
-  '#f97316', '#eab308', '#22c55e', '#06b6d4',
-  '#3b82f6', '#0ea5e9', '#14b8a6', '#84cc16',
-];
-
-function defaultColor(name: string): string {
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
-}
+import { Button, EmptyState, FormField, Skeleton } from '@/components/ui';
+import { defaultAvatarColor as defaultColor } from '@/lib/avatarColors';
 
 function initials(name: string): string {
   return name
@@ -32,7 +22,7 @@ function pad(n: number): string {
 
 export default function V2TeamsIndexPage() {
   const t = useTranslations('teams');
-  const { teams, currentTeam, setCurrentTeam, refreshTeams } = useTeam();
+  const { teams, currentTeam, setCurrentTeam, refreshTeams, loading: teamsLoading } = useTeam();
   const router = useRouter();
   const { addToast } = useToast();
   const [showCreate, setShowCreate] = useState(false);
@@ -183,52 +173,6 @@ export default function V2TeamsIndexPage() {
           align-items: flex-end;
         }
         .v2t-input-wrap { flex: 1; }
-        .v2t-label {
-          display: block;
-          font-family: var(--font-mono);
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 1.2px;
-          text-transform: uppercase;
-          color: var(--signature);
-          margin-bottom: 8px;
-          opacity: 0.85;
-        }
-        .v2t-label::before { content: '// '; opacity: 0.5; }
-        .v2t-input {
-          width: 100%;
-          padding: 12px 14px;
-          background: var(--btn-secondary-bg);
-          border: 1px solid var(--btn-secondary-border);
-          border-radius: 8px;
-          color: var(--txt-pure);
-          font-size: 15px;
-          font-weight: 500;
-          font-family: inherit;
-          outline: none;
-          box-sizing: border-box;
-          transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-        }
-        .v2t-input:focus {
-          border-color: rgba(var(--signature-rgb), 0.5);
-          box-shadow: 0 0 0 4px rgba(var(--signature-rgb), 0.14) !important;
-          background: var(--glass-hover);
-        }
-        .v2t-create-submit {
-          padding: 12px 22px;
-          background: var(--btn-primary-bg);
-          color: var(--btn-primary-txt);
-          border: none;
-          border-radius: 2px;
-          font-weight: 600;
-          font-size: 13px;
-          font-family: inherit;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: transform 0.15s, box-shadow 0.15s;
-        }
-        .v2t-create-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -4px rgba(0,0,0,0.25); }
-        .v2t-create-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         .v2t-error {
           margin: 0 0 18px;
@@ -441,35 +385,9 @@ export default function V2TeamsIndexPage() {
           transform: translateX(3px);
         }
 
-        .v2t-empty {
-          padding: 56px 28px;
-          text-align: center;
-        }
-        .v2t-empty-glyph {
-          width: 64px;
-          height: 64px;
-          margin: 0 auto 18px;
-          border-radius: 18px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(var(--signature-rgb), 0.08);
-          border: 1px solid rgba(var(--signature-rgb), 0.22);
-          color: var(--signature);
-        }
-        .v2t-empty-title {
-          margin: 0 0 8px;
-          font-size: 19px;
-          font-weight: 600;
-          color: var(--txt-pure);
-          letter-spacing: -0.3px;
-        }
-        .v2t-empty-copy {
-          margin: 0 auto 22px;
-          max-width: 360px;
-          font-size: 14px;
-          color: var(--txt-muted);
-          line-height: 1.55;
+        .v2t-row-skel {
+          cursor: default;
+          pointer-events: none;
         }
 
         @media (max-width: 720px) {
@@ -517,21 +435,23 @@ export default function V2TeamsIndexPage() {
         <form onSubmit={handleCreate} className="glass-card v2t-create-card">
           <div className="v2t-create-grid">
             <div className="v2t-input-wrap">
-              <label className="v2t-label">{t('index.teamNameLabel')}</label>
-              <input
-                type="text"
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                placeholder={t('index.teamNamePlaceholder')}
-                required
-                minLength={2}
-                autoFocus
-                className="v2t-input"
-              />
+              <FormField label={t('index.teamNameLabel')} htmlFor="v2t-team-name">
+                <input
+                  type="text"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder={t('index.teamNamePlaceholder')}
+                  required
+                  minLength={2}
+                  autoFocus
+                  className="ui-input"
+                  style={{ width: '100%' }}
+                />
+              </FormField>
             </div>
-            <button type="submit" disabled={loading} className="v2t-create-submit">
+            <Button type="submit" variant="primary" loading={loading}>
               {loading ? t('index.creating') : t('index.createArrow')}
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -540,6 +460,24 @@ export default function V2TeamsIndexPage() {
 
       {teams.length > 0 && <span className="v2t-section-label">{t('index.allTeams', { count: pad(teams.length) })}</span>}
 
+      {teamsLoading ? (
+        // Provider still resolving — without this gate the empty state
+        // flashes on every initial load.
+        <div className="v2t-grid" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="glass-card is-static v2t-row v2t-row-skel">
+              <span className="v2t-row-index">{pad(i + 1)}</span>
+              <Skeleton width={52} height={52} radius={14} />
+              <div className="v2t-row-body">
+                <Skeleton width="40%" height={16} radius={4} />
+                <div style={{ marginTop: 8 }}>
+                  <Skeleton width="25%" height={10} radius={4} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="v2t-grid">
         {teams.map((team, i) => {
           const color = (team as { avatarColor?: string }).avatarColor || defaultColor(team.name);
@@ -592,28 +530,28 @@ export default function V2TeamsIndexPage() {
         })}
 
         {teams.length === 0 && (
-          <div className="glass-card v2t-empty">
-            <div className="v2t-empty-glyph">
-              <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-            <h2 className="v2t-empty-title">{t('index.emptyTitle')}</h2>
-            <p className="v2t-empty-copy">
-              {t('index.emptyCopy')}
-            </p>
-            <button onClick={() => setShowCreate(true)} className="v2t-new-btn">
-              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              {t('index.createFirst')}
-            </button>
+          <div className="glass-card is-static is-roomy">
+            <EmptyState
+              icon={
+                <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              }
+              title={t('index.emptyTitle')}
+              description={t('index.emptyCopy')}
+              action={
+                <Button variant="primary" onClick={() => setShowCreate(true)}>
+                  {t('index.createFirst')}
+                </Button>
+              }
+            />
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

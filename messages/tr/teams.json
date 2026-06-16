@@ -294,6 +294,9 @@
   },
   "admin": {
     "noTeamSelected": "Takım seçilmedi.",
+    "loadFailed": "Takım verileri yüklenemedi.",
+    "loadFailedHint": "Takım, üyeler ve davetler alınamadı. Verilerin güvende — tekrar dene.",
+    "retry": "yeniden dene",
     "time": {
       "justNow": "az önce",
       "minutes": "{count} dk",

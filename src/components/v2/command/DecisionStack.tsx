@@ -24,12 +24,14 @@ export interface DecisionStackProps {
   teammates: CommandTeammate[];
   teamId: string;
   onChanged: () => void;
-  onOpen: (task: CommandTask) => void;
+  // Dispatch Floor "NEEDS YOU" strip: same data + handlers, denser single-row
+  // layout with the group conveyed by the tone rail rather than a header.
+  compact?: boolean;
 }
 
 type Busy = Record<string, boolean>;
 
-export default function DecisionStack({ decisions, teammates, teamId, onChanged, onOpen }: DecisionStackProps) {
+export default function DecisionStack({ decisions, teammates, teamId, onChanged, compact = false }: DecisionStackProps) {
   const t = useTranslations('command');
   const tTasks = useTranslations('tasks');
   const locale = useLocale();
@@ -156,12 +158,7 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
   const teammateOptions = teammates.map((tm) => ({ value: tm.id, label: tm.displayName }));
 
   return (
-    <section className="glass-card v2-mc-ds" aria-label={t('decisions.heading')}>
-      <div className="v2-mc-ds-head">
-        <h2 className="v2-mc-ds-title-h">{t('decisions.heading')}</h2>
-        {total > 0 && <span className="v2-mc-ds-count">{total}</span>}
-      </div>
-
+    <section className={`glass-card v2-mc-ds${compact ? ' is-compact' : ''}`} aria-label={t('decisions.heading')}>
       {total === 0 ? (
         <p className="v2-mc-ds-empty">{t('decisions.empty')}</p>
       ) : (
@@ -172,9 +169,9 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
               {decisions.rescheduleRequests.map((task) => (
                 <div key={task.id} className="v2-mc-ds-card" data-tone="info">
                   <div className="v2-mc-ds-card-main">
-                    <button type="button" className="v2-mc-ds-title" onClick={() => onOpen(task)}>
+                    <div className="v2-mc-ds-title">
                       {task.title}
-                    </button>
+                    </div>
                     <p className="v2-mc-ds-meta">
                       <strong>{assigneeName(task)}</strong>{' '}
                       {task.rescheduleRequestedDate
@@ -216,9 +213,9 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
                 return (
                   <div key={task.id} className="v2-mc-ds-card" data-tone="crit">
                     <div className="v2-mc-ds-card-main">
-                      <button type="button" className="v2-mc-ds-title" onClick={() => onOpen(task)}>
+                      <div className="v2-mc-ds-title">
                         {task.title}
-                      </button>
+                      </div>
                       <p className="v2-mc-ds-meta">
                         <strong>{assigneeName(task)}</strong>
                         {late > 0 && (
@@ -251,9 +248,9 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
               {decisions.triaged.map((task) => (
                 <div key={task.id} className="v2-mc-ds-card" data-tone="warn">
                   <div className="v2-mc-ds-card-main">
-                    <button type="button" className="v2-mc-ds-title" onClick={() => onOpen(task)}>
+                    <div className="v2-mc-ds-title">
                       {task.title}
-                    </button>
+                    </div>
                     {task.triageNote && (
                       <p className="v2-mc-ds-note">{tTasks(`triage.${task.triageNote}`)}</p>
                     )}
@@ -290,9 +287,9 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
               {decisions.awaitingReview.map((task) => (
                 <div key={task.id} className="v2-mc-ds-card" data-tone="warn">
                   <div className="v2-mc-ds-card-main">
-                    <button type="button" className="v2-mc-ds-title" onClick={() => onOpen(task)}>
+                    <div className="v2-mc-ds-title">
                       {task.title}
-                    </button>
+                    </div>
                     <p className="v2-mc-ds-meta">
                       <strong>{assigneeName(task)}</strong>
                     </p>
@@ -310,37 +307,7 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
       )}
 
       <style>{`
-        .v2-mc-ds { padding: 22px 24px 14px; }
-        .v2-mc-ds-head {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding-bottom: 14px;
-          border-bottom: 1px solid var(--rule, rgba(255,255,255,0.07));
-        }
-        .v2-mc-ds-title-h {
-          margin: 0;
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 1.4px;
-          text-transform: uppercase;
-          color: var(--warning);
-        }
-        .v2-mc-ds-count {
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 10px;
-          font-weight: 700;
-          color: var(--warning);
-          border: 1px solid rgba(var(--warning-rgb),0.4);
-          border-radius: 999px;
-          min-width: 20px;
-          height: 20px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0 6px;
-        }
+        .v2-mc-ds { padding: 8px 24px 14px; }
         .v2-mc-ds-empty {
           color: var(--txt-faint);
           font-size: 13px;
@@ -386,8 +353,6 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
         .v2-mc-ds-card[data-tone="crit"]::before { background: var(--danger); }
         .v2-mc-ds-card-main { min-width: 0; flex: 1 1 280px; }
         .v2-mc-ds-title {
-          all: unset;
-          cursor: pointer;
           display: block;
           color: var(--txt-pure);
           font-size: 13px;
@@ -397,7 +362,6 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
           white-space: nowrap;
           max-width: 100%;
         }
-        .v2-mc-ds-title:hover { color: var(--signature); }
         .v2-mc-ds-meta {
           margin: 3px 0 0;
           font-size: 12px;
@@ -418,8 +382,19 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
           gap: 8px;
           flex-wrap: wrap;
         }
+        /* ── Compact "NEEDS YOU" strip ───────────────────────────────── */
+        .v2-mc-ds.is-compact { padding: 6px 14px 8px; }
+        .is-compact .v2-mc-ds-group-lab { padding: 10px 4px 2px; font-size: 9px; letter-spacing: 0.9px; }
+        .is-compact .v2-mc-ds-card { padding: 7px 4px 7px 12px; gap: 10px; flex-wrap: nowrap; }
+        .is-compact .v2-mc-ds-card::before { top: 8px; bottom: 8px; }
+        .is-compact .v2-mc-ds-title { font-size: 12.5px; }
+        .is-compact .v2-mc-ds-meta { margin-top: 1px; font-size: 11px; }
+        .is-compact .v2-mc-ds-note { display: none; }
+        .is-compact .v2-mc-ds-actions { flex-wrap: nowrap; flex-shrink: 0; }
+
         @media (max-width: 760px) {
           .v2-mc-ds { padding: 18px 16px 10px; }
+          .is-compact .v2-mc-ds-card { flex-wrap: wrap; }
         }
       `}</style>
     </section>

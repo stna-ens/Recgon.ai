@@ -85,7 +85,7 @@ export default function HeroSection() {
           ) : (
             <>
               {t('titlePrefix')}{' '}
-              <span className="lnd-hero-accent lnd-hero-aud" aria-live="polite">
+              <span className="lnd-hero-accent lnd-hero-aud">
                 <DecryptedText
                   key={`h1-${audKey}`}
                   text={`${aud}.`}
@@ -216,7 +216,7 @@ export default function HeroSection() {
           padding: 13px 22px;
           border-radius: 10px;
           background: var(--signature);
-          color: white;
+          color: var(--signature-ink);
           font-size: 14px;
           font-weight: 600;
           text-decoration: none;

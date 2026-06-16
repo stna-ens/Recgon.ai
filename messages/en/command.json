@@ -1,6 +1,34 @@
 {
-  "title": "Command",
+  "title": "Operations",
   "subtitle": "Everything your team is working on — and what needs you.",
+  "dispatch": {
+    "floorTag": "Dispatch Floor",
+    "needsYou": "Needs you",
+    "queue": {
+      "title": "Queue",
+      "empty": "Nothing waiting — Recgon routes new work here.",
+      "assign": "Assign…",
+      "assignedTo": "Assigned to {name}",
+      "assignFailed": "Couldn't assign — try again"
+    },
+    "roster": {
+      "title": "Roster",
+      "empty": "No teammates yet",
+      "emptyHint": "Add teammates so Recgon can assign work to the right person."
+    },
+    "pod": {
+      "load": "Load",
+      "hours": "{used}/{cap}h",
+      "noCapacity": "no capacity set",
+      "loadAria": "{name} load {pct}%",
+      "idle": "Idle",
+      "overloaded": "Overloaded",
+      "noLive": "No active tasks"
+    },
+    "allTasks": {
+      "toggle": "All team tasks"
+    }
+  },
   "loadFailed": "Couldn't load the team's tasks — try refreshing.",
   "stats": {
     "active": "active",
@@ -103,7 +131,7 @@
     "heading": "Keyboard shortcuts",
     "navigate": "Move between tasks",
     "open": "Open the selected task",
-    "close": "Close panel / dialog",
+    "close": "Close dialog",
     "palette": "Command palette",
     "help": "This help"
   },

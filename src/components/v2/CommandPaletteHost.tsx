@@ -35,7 +35,7 @@ const STATIC_NAV: StaticNavItem[] = [
   { id: 'nav-home', labelKey: 'navHome', hint: '/', keywords: ['overview', 'pulse', 'dashboard'] },
   { id: 'nav-projects', labelKey: 'navProjects', hint: '/projects', keywords: ['list'] },
   { id: 'nav-tasks', labelKey: 'navTasks', hint: '/tasks', keywords: ['inbox', 'queue', 'kanban', 'board'] },
-  { id: 'nav-command', labelKey: 'navCommand', hint: '/command', keywords: ['mission', 'control', 'board', 'team', 'decisions', 'triage'] },
+  { id: 'nav-command', labelKey: 'navCommand', hint: '/command', keywords: ['operations', 'ops', 'command', 'mission', 'control', 'board', 'team', 'decisions', 'triage'] },
   { id: 'nav-calendar', labelKey: 'navCalendar', hint: '/calendar', keywords: ['week', 'schedule', 'planning'] },
   { id: 'nav-terminal', labelKey: 'navTerminal', hint: '/terminal', keywords: ['chat', 'mentor', 'cli', 'ask', 'console'] },
   { id: 'nav-team', labelKey: 'navTeam', hint: '/team', keywords: ['members', 'invites', 'admin'] },

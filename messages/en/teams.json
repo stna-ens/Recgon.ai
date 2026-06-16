@@ -294,6 +294,9 @@
   },
   "admin": {
     "noTeamSelected": "No team selected.",
+    "loadFailed": "Couldn't load team data.",
+    "loadFailedHint": "Team, members and invites couldn't be fetched. Your data is fine — try again.",
+    "retry": "retry",
     "time": {
       "justNow": "just now",
       "minutes": "{count}m",

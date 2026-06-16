@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import Select from '@/components/Select';
 import { EmptyState } from '@/components/ui';
@@ -52,10 +52,9 @@ export interface TeamTaskTableProps {
   tasks: CommandTask[];
   teammates: CommandTeammate[];
   projects: CommandProject[];
-  onOpen: (task: CommandTask) => void;
   view: CommandView;
   currentTeammateId: string | null;
-  // False while the detail panel is open so j/k don't move under it.
+  // False while another modal is open so j/k don't move under it.
   shortcutsEnabled?: boolean;
 }
 
@@ -80,7 +79,6 @@ export default function TeamTaskTable({
   tasks,
   teammates,
   projects,
-  onOpen,
   view,
   currentTeammateId,
   shortcutsEnabled = true,
@@ -138,17 +136,9 @@ export default function TeamTaskTable({
     return rows;
   }, [tasks, view, currentTeammateId, search, kind, assignee, project, sortKey, sortDir]);
 
-  const openByIndex = useCallback(
-    (idx: number) => {
-      const task = filtered[idx];
-      if (task) onOpen(task);
-    },
-    [filtered, onOpen],
-  );
   const [activeIdx, setActiveIdx] = useListShortcuts({
     count: filtered.length,
     enabled: shortcutsEnabled,
-    onOpen: openByIndex,
   });
 
   useEffect(() => {
@@ -274,11 +264,9 @@ export default function TeamTaskTable({
                     {t(`status.${task.status}`)}
                   </div>
                 )}
-                <button
-                  type="button"
+                <div
                   className={`v2-mct-row${idx === activeIdx ? ' is-kbd-active' : ''}`}
                   data-idx={idx}
-                  onClick={() => onOpen(task)}
                   onMouseEnter={() => setActiveIdx(idx)}
                 >
                   <span className="v2-mct-rail" style={{ background: railTone(task) }} aria-hidden="true" />
@@ -316,7 +304,7 @@ export default function TeamTaskTable({
                   <span className="v2-mct-hours">
                     {task.estimatedHours ? t('table.hoursShort', { count: task.estimatedHours }) : ''}
                   </span>
-                </button>
+                </div>
               </li>
             );
           })}
@@ -415,7 +403,6 @@ export default function TeamTaskTable({
           width: 100%;
           padding: 10px 10px 10px 6px;
           border-radius: 8px;
-          cursor: pointer;
           outline: none;
           transition: background var(--dur-fast, 0.12s) ease, transform var(--dur-base, 0.18s) cubic-bezier(0.2, 0.8, 0.2, 1);
         }

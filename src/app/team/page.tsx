@@ -9,7 +9,8 @@ import * as Tabs from '@radix-ui/react-tabs';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { Button } from '@/components/ui';
+import { Button, Skeleton } from '@/components/ui';
+import { AVATAR_COLORS, defaultAvatarColor as defaultColor } from '@/lib/avatarColors';
 import RecgonAdminPanel from '@/components/recgon/RecgonAdminPanel';
 
 type TeamTab = 'profile' | 'members' | 'invites' | 'dispatcher';
@@ -41,18 +42,6 @@ interface Invitation {
   token: string;
   expiresAt: string;
   createdAt: string;
-}
-
-const AVATAR_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
-  '#f97316', '#eab308', '#22c55e', '#06b6d4',
-  '#3b82f6', '#0ea5e9', '#14b8a6', '#84cc16',
-];
-
-function defaultColor(name: string): string {
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
 function initials(name: string): string {
@@ -163,9 +152,24 @@ function extractDominantColor(file: File): Promise<string | null> {
   });
 }
 
+// Minimal hero-shaped skeleton — a blank first frame on a major page reads
+// as a hang; this mirrors the stamp + title geometry of the loaded hero.
+function TeamPageFallback() {
+  return (
+    <div aria-busy="true" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 40, alignItems: 'center', padding: '28px 0 36px' }}>
+      <Skeleton width={116} height={116} radius={4} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Skeleton width={120} height={10} radius={2} />
+        <Skeleton width="45%" height={52} radius={4} />
+        <Skeleton width="30%" height={12} radius={2} />
+      </div>
+    </div>
+  );
+}
+
 export default function V2TeamAdminPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<TeamPageFallback />}>
       <V2TeamAdminPageInner />
     </Suspense>
   );
@@ -183,6 +187,7 @@ function V2TeamAdminPageInner() {
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // Team avatar
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -249,9 +254,23 @@ function V2TeamAdminPageInner() {
         const list: Invitation[] = Array.isArray(data) ? data : Array.isArray(data?.invitations) ? data.invitations : [];
         setInvites(list);
       }
-    } catch { /* swallowed */ }
+      // A failed load must not masquerade as an empty team — "—" stats and
+      // "no members" copy on a fetch failure are indistinguishable from truth.
+      const anyFailed = !tr.ok || !mr.ok || !ir.ok;
+      setLoadError(anyFailed);
+      if (anyFailed) addToast(t('admin.loadFailed'), 'error');
+    } catch {
+      setLoadError(true);
+      addToast(t('admin.loadFailed'), 'error');
+    }
     setLoading(false);
-  }, [teamId]);
+  }, [teamId, addToast, t]);
+
+  const retryLoad = useCallback(() => {
+    setLoadError(false);
+    setLoading(true);
+    refresh();
+  }, [refresh]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -559,6 +578,16 @@ function V2TeamAdminPageInner() {
         </div>
       </header>
 
+      {loadError && !loading && (
+        <div className="rec-error-strip" role="alert">
+          <div className="rec-error-copy">
+            <span className="rec-error-title">{t('admin.loadFailed')}</span>
+            <span className="rec-error-hint">{t('admin.loadFailedHint')}</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={retryLoad}>{t('admin.retry')}</Button>
+        </div>
+      )}
+
       <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="rec-tabs">
         <Tabs.List className="rec-tablist" aria-label={t('admin.tabs.ariaLabel')}>
           <Tabs.Trigger value="profile" className="rec-tab">
@@ -596,7 +625,8 @@ function V2TeamAdminPageInner() {
                         type="text"
                         value={nameDraft}
                         onChange={(e) => setNameDraft(e.target.value)}
-                        className="rec-input"
+                        className="ui-input"
+                        style={{ flex: 1, minWidth: 0 }}
                         autoFocus
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
                       />
@@ -627,7 +657,7 @@ function V2TeamAdminPageInner() {
                         onChange={(e) => setDescDraft(e.target.value)}
                         rows={3}
                         maxLength={120}
-                        className="rec-input is-textarea"
+                        className="ui-input is-textarea"
                         placeholder={t('admin.config.descriptionPlaceholder')}
                         autoFocus
                       />
@@ -775,17 +805,17 @@ function V2TeamAdminPageInner() {
             </dl>
 
             {loading ? (
-              <div className="rec-roster">
+              <div className="rec-roster" aria-busy="true">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="rec-roster-row is-skel">
                     <span className="rec-roster-num">{String(i).padStart(2, '0')}</span>
-                    <span className="rec-roster-dot" />
-                    <span className="rec-roster-skel-bar" />
+                    <Skeleton width={30} height={30} radius="50%" />
+                    <Skeleton height={12} radius={2} style={{ gridColumn: '3 / -1' }} />
                   </div>
                 ))}
               </div>
             ) : members.length === 0 ? (
-              <p className="rec-empty">{t('admin.members.noneLoaded')}</p>
+              <p className="rec-empty">{loadError ? t('admin.loadFailed') : t('admin.members.noneLoaded')}</p>
             ) : (
               <div className="rec-roster">
                 {members.map((m, idx) => {
@@ -937,8 +967,23 @@ function V2TeamAdminPageInner() {
                   <span className="rec-mini-label">{t('admin.invites.pending')}</span>
                   <span className="rec-pending-count">{loading ? '—' : `${invites.length}`}</span>
                 </div>
-                {loading ? null : invites.length === 0 ? (
-                  <p className="rec-empty is-tight">{t('admin.invites.noPending')}</p>
+                {loading ? (
+                  <ul className="rec-pending-list" aria-busy="true">
+                    {[0, 1].map((i) => (
+                      <li key={i} className="rec-pending-item">
+                        <div className="rec-pending-row">
+                          <div className="rec-pending-info">
+                            <Skeleton width="55%" height={13} radius={2} />
+                            <div style={{ marginTop: 6 }}>
+                              <Skeleton width="35%" height={10} radius={2} />
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : invites.length === 0 ? (
+                  <p className="rec-empty is-tight">{loadError ? t('admin.loadFailed') : t('admin.invites.noPending')}</p>
                 ) : (
                   <ul className="rec-pending-list">
                     {invites.map((inv) => {
@@ -1406,25 +1451,9 @@ function V2TeamAdminPageInner() {
           font-variant-numeric: tabular-nums;
         }
 
-        .rec-input {
-          flex: 1;
-          min-width: 0;
-          padding: 9px 12px;
-          background: rgba(255,255,255,0.02);
-          border: 1px solid var(--rule);
-          border-radius: 4px;
-          color: var(--txt-pure);
-          font-family: inherit;
-          font-size: 14px;
-          outline: none;
-          transition: border-color 180ms ease, box-shadow 180ms ease;
-          letter-spacing: -0.005em;
-        }
-        .rec-input:focus {
-          border-color: var(--signature);
-          box-shadow: 0 0 0 3px rgba(var(--signature-rgb), 0.15);
-        }
-        .rec-input.is-textarea {
+        /* Shared ui-input handles the base look; only the textarea variant
+           needs the mono editorial treatment on top. */
+        .ui-input.is-textarea {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 12px;
           line-height: 1.55;
@@ -1605,16 +1634,6 @@ function V2TeamAdminPageInner() {
           line-height: 1.1;
         }
 
-        .rec-roster-skel-bar {
-          height: 12px;
-          flex: 1;
-          grid-column: 3 / -1;
-          background: rgba(var(--signature-rgb), 0.06);
-          animation: recSkel 1.6s ease-in-out infinite;
-          border-radius: 2px;
-        }
-        @keyframes recSkel { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.75; } }
-
         /* Roles */
         .rec-role {
           display: inline-flex;
@@ -1740,6 +1759,38 @@ function V2TeamAdminPageInner() {
           font-style: italic;
         }
         .rec-empty.is-tight { padding: 16px 0; }
+
+        /* ───── LOAD ERROR ───── */
+        .rec-error-strip {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+          padding: 14px 18px;
+          border: 1px dashed rgba(var(--danger-rgb), 0.35);
+          border-radius: 4px;
+          background: linear-gradient(180deg, rgba(var(--danger-rgb), 0.04), rgba(var(--danger-rgb), 0.01));
+        }
+        .rec-error-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          min-width: 0;
+        }
+        .rec-error-title {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+          color: var(--danger);
+        }
+        .rec-error-hint {
+          font-size: 12px;
+          color: var(--txt-muted);
+          line-height: 1.5;
+        }
 
         /* ───── CONFIRM ───── */
         .rec-confirm-strip {

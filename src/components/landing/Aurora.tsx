@@ -134,7 +134,10 @@ interface AuroraProps {
 }
 
 export default function Aurora({
-  colorStops = ['#5227FF', '#7cff67', '#5227FF'],
+  // Defaults match the brand stops used by FooterCta's dark theme —
+  // signature pink between deep wine — so future call sites without
+  // explicit stops stay on-palette.
+  colorStops = ['#1a0a10', '#f0b8d0', '#1a0a10'],
   amplitude = 1.0,
   blend = 0.5,
   speed = 1.0,
@@ -150,6 +153,12 @@ export default function Aurora({
   useEffect(() => {
     const ctn = ctnDom.current;
     if (!ctn) return;
+
+    // Reduced motion: paint a single static frame instead of running the
+    // continuous shader animation.
+    const prefersReducedMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const renderer = new Renderer({ alpha: true, premultipliedAlpha: true, antialias: true });
     const gl = renderer.gl;
@@ -167,6 +176,9 @@ export default function Aurora({
       renderer.setSize(width, height);
       if (program) {
         (program.uniforms as Record<string, { value: unknown }>).uResolution.value = [width, height];
+        // Without a running rAF loop the static frame must be repainted
+        // manually whenever the canvas size changes.
+        if (prefersReducedMotion && mesh) renderer.render({ scene: mesh });
       }
     }
     window.addEventListener('resize', resize);
@@ -235,6 +247,10 @@ export default function Aurora({
       animateId = requestAnimationFrame(update);
     };
     const start = () => {
+      if (prefersReducedMotion) {
+        renderer.render({ scene: mesh });
+        return;
+      }
       if (running) return;
       if (!visible || !onScreen) return;
       running = true;

@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
+import { Skeleton } from '@/components/ui';
 
 interface ProjectFull {
   id: string;
@@ -928,16 +929,16 @@ function Spinner() {
   return <span className="v2-pset-spinner" aria-hidden />;
 }
 
-/* ──────────────── Skeleton ──────────────── */
+/* ──────────────── Skeleton (shared ui/Skeleton lines) ──────────────── */
 function SpecSkeleton() {
   return (
-    <div className="v2-pset-skel">
-      <div className="v2-pset-skel-bar" style={{ width: '20%', height: 11 }} />
+    <div className="v2-pset-skel" aria-busy="true">
+      <Skeleton width="20%" height={11} radius={6} />
       <div className="glass-card is-static v2-pset-skel-card">
-        <div className="v2-pset-skel-bar" style={{ width: '32%' }} />
-        <div className="v2-pset-skel-bar" style={{ width: '70%' }} />
-        <div className="v2-pset-skel-bar" style={{ width: '54%' }} />
-        <div className="v2-pset-skel-bar" style={{ width: '60%' }} />
+        <Skeleton width="32%" height={14} radius={6} />
+        <Skeleton width="70%" height={14} radius={6} />
+        <Skeleton width="54%" height={14} radius={6} />
+        <Skeleton width="60%" height={14} radius={6} />
       </div>
     </div>
   );
@@ -975,19 +976,9 @@ const styles = `
   }
   .v2-pset > * { position: relative; z-index: 1; }
 
-  /* ═════ Skeleton ═════ */
+  /* ═════ Skeleton (lines are shared ui/Skeleton; this is just layout) ═════ */
   .v2-pset-skel { display: flex; flex-direction: column; gap: 14px; }
   .v2-pset-skel-card { display: flex; flex-direction: column; gap: 14px; padding: 24px; }
-  .v2-pset-skel-bar {
-    height: 14px;
-    background: rgba(var(--signature-rgb), 0.06);
-    border-radius: 6px;
-    animation: v2psetSkel 1.6s ease-in-out infinite;
-  }
-  @keyframes v2psetSkel {
-    0%, 100% { opacity: 0.4; }
-    50%      { opacity: 0.9; }
-  }
 
   /* ═════ Top eyebrow band ═════ */
   .v2-pset-band {
@@ -1654,11 +1645,11 @@ const styles = `
   }
   html.light .v2-pset-toc-item,
   .light .v2-pset-toc-item {
-    color: #6e6b76;
+    color: var(--txt-muted);
   }
   html.light .v2-pset-toc-item:hover,
   .light .v2-pset-toc-item:hover {
-    color: #1d1d1f;
+    color: var(--txt-pure);
   }
   html.light .v2-pset-section-rule,
   .light .v2-pset-section-rule {

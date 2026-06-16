@@ -1,6 +1,34 @@
 {
-  "title": "Komuta",
+  "title": "Operasyon",
   "subtitle": "Ekibinin üzerinde çalıştığı her şey — ve senden karar bekleyenler.",
+  "dispatch": {
+    "floorTag": "Görev Dağıtımı",
+    "needsYou": "Senden bekleyen",
+    "queue": {
+      "title": "Kuyruk",
+      "empty": "Bekleyen yok — Recgon yeni işleri buraya yönlendirir.",
+      "assign": "Ata…",
+      "assignedTo": "{name} kişisine atandı",
+      "assignFailed": "Atanamadı — tekrar dene"
+    },
+    "roster": {
+      "title": "Ekip",
+      "empty": "Henüz takım arkadaşı yok",
+      "emptyHint": "Recgon işi doğru kişiye atayabilsin diye takım arkadaşı ekle."
+    },
+    "pod": {
+      "load": "Yük",
+      "hours": "{used}/{cap}sa",
+      "noCapacity": "kapasite tanımsız",
+      "loadAria": "{name} yükü %{pct}",
+      "idle": "Boşta",
+      "overloaded": "Aşırı yüklü",
+      "noLive": "Aktif görev yok"
+    },
+    "allTasks": {
+      "toggle": "Tüm ekip görevleri"
+    }
+  },
   "loadFailed": "Ekibin görevleri yüklenemedi — sayfayı yenilemeyi dene.",
   "stats": {
     "active": "aktif",
@@ -103,7 +131,7 @@
     "heading": "Klavye kısayolları",
     "navigate": "Görevler arasında gez",
     "open": "Seçili görevi aç",
-    "close": "Paneli / pencereyi kapat",
+    "close": "Pencereyi kapat",
     "palette": "Komut paleti",
     "help": "Bu yardım"
   },
