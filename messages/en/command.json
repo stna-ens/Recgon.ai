@@ -23,7 +23,8 @@
       "loadAria": "{name} load {pct}%",
       "idle": "Idle",
       "overloaded": "Overloaded",
-      "noLive": "No active tasks"
+      "noLive": "No active tasks",
+      "more": "+{count} more"
     },
     "allTasks": {
       "toggle": "All team tasks"
@@ -73,7 +74,7 @@
       "snooze7": "+7 days"
     },
     "review": {
-      "open": "Open in Verify"
+      "open": "Review"
     }
   },
   "table": {

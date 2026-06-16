@@ -23,7 +23,8 @@
       "loadAria": "{name} yükü %{pct}",
       "idle": "Boşta",
       "overloaded": "Aşırı yüklü",
-      "noLive": "Aktif görev yok"
+      "noLive": "Aktif görev yok",
+      "more": "+{count} daha"
     },
     "allTasks": {
       "toggle": "Tüm ekip görevleri"
@@ -73,7 +74,7 @@
       "snooze7": "+7 gün"
     },
     "review": {
-      "open": "Doğrulamada aç"
+      "open": "İncele"
     }
   },
   "table": {

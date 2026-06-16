@@ -370,12 +370,26 @@ export default function TerminalShell() {
   // ── Slash palette ─────────────────────────────────────────────────
   const [slashMode, setSlashMode] = useState<SlashMode>({ kind: 'closed' });
   const [slashIndex, setSlashIndex] = useState(0);
-  // Keep the keyboard-selected slash item scrolled into view inside the
-  // (max-height, overflow) palette list as the user arrows past the fold.
+  // Keep the keyboard-selected slash item visible inside the palette as the
+  // user arrows past the fold. We scroll ONLY the palette container's scrollTop
+  // — never element.scrollIntoView(), which walks up and scrolls every
+  // scrollable ancestor (incl. the page behind this position:fixed palette),
+  // making the terminal output jump around.
+  const slashBoxRef = useRef<HTMLDivElement>(null);
   const activeSlashItemRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (slashMode.kind === 'closed') return;
-    activeSlashItemRef.current?.scrollIntoView({ block: 'nearest' });
+    const box = slashBoxRef.current;
+    const item = activeSlashItemRef.current;
+    if (!box || !item) return;
+    const PAD = 8; // keep a small gap from the container edges
+    const boxRect = box.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+    if (itemRect.top < boxRect.top + PAD) {
+      box.scrollTop -= boxRect.top + PAD - itemRect.top;
+    } else if (itemRect.bottom > boxRect.bottom - PAD) {
+      box.scrollTop += itemRect.bottom - (boxRect.bottom - PAD);
+    }
   }, [slashIndex, slashMode.kind]);
 
   const slashCmdMatches = useMemo<SlashCommand[]>(() => {
@@ -1071,7 +1085,7 @@ export default function TerminalShell() {
 
         {/* Slash palette — fixed-position floating panel */}
         {slashMode.kind === 'commands' && slashCmdMatches.length > 0 && (
-          <div className="terminal-slash" role="listbox">
+          <div ref={slashBoxRef} className="terminal-slash" role="listbox">
             <div className="terminal-slash-head">
               <span className="terminal-slash-head-label">{t('slash.commands')}</span>
               <span className="terminal-slash-head-hint">
@@ -1112,7 +1126,7 @@ export default function TerminalShell() {
         )}
 
         {slashMode.kind === 'projects' && (
-          <div className="terminal-slash" role="listbox">
+          <div ref={slashBoxRef} className="terminal-slash" role="listbox">
             <div className="terminal-slash-head">
               <span className="terminal-slash-head-label">
                 {t('slash.pickProject', { command: slashMode.command.name })}
@@ -1758,17 +1772,24 @@ export default function TerminalShell() {
           position: fixed;
           left: 32px;
           right: 32px;
-          bottom: 72px;
+          bottom: 96px;
           background: #1c1c1c;
           border: 1px solid rgba(var(--signature-rgb), 0.18);
           border-radius: 4px;
           padding: 8px;
           max-height: 280px;
           overflow-y: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
           border-radius: 12px;
           box-shadow: 0 -10px 28px -8px rgba(0, 0, 0, 0.55);
           z-index: 5;
           font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
+        }
+        .terminal-slash::-webkit-scrollbar {
+          display: none;
+          width: 0;
+          height: 0;
         }
         html.light .terminal-slash, .light .terminal-slash {
           background: #ffffff;
@@ -1776,7 +1797,7 @@ export default function TerminalShell() {
           box-shadow: 0 -8px 20px -6px rgba(60, 30, 50, 0.08);
         }
         @media (max-width: 720px) {
-          .terminal-slash { left: 14px; right: 14px; bottom: 50px; }
+          .terminal-slash { left: 14px; right: 14px; bottom: 76px; }
         }
         .terminal-slash-head {
           display: flex;
