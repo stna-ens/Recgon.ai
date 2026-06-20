@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 Phase: 5
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-06-20
+Last activity: 2026-06-20 - Completed quick task 260620-wnk: redesigned TeamSwitcher dropdown (solid panel fixes bleed-through, recgon-label header, signature left-bar rows)
 
 Progress: [████████░░] 77%
 
@@ -124,6 +124,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260616-2au | Manual task creation (owner) with optional auto-assign + auto-schedule | 2026-06-15 | 0353fab | [260616-2au-manual-task-creation-owner-with-optional](./quick/260616-2au-manual-task-creation-owner-with-optional/) |
 | 260620-mav | AI-generated short task summaries for compact UI (calendar chips + command rows); migration applied + 48 existing tasks backfilled | 2026-06-20 | 716311b | [260620-mav-compact-task-labels](./quick/260620-mav-compact-task-labels/) |
+| 260620-wnk | Redesign TeamSwitcher dropdown to match Recgon system — solid opaque panel fixes dark-mode bleed-through (the ghost "Pixy" row), recgon-label header, signature left-bar rows, self-contained styles | 2026-06-20 | f4afead | [260620-wnk-redesign-teamswitcher-workspace-scope-dr](./quick/260620-wnk-redesign-teamswitcher-workspace-scope-dr/) |
 
 ## Deferred Items
 
