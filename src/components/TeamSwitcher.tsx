@@ -4,18 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useTeam } from './TeamProvider';
-
-function Check({ active }: { active: boolean }) {
-  return (
-    <span className="team-filter-check" data-active={active ? 'true' : 'false'} aria-hidden="true">
-      {active && (
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.2}>
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      )}
-    </span>
-  );
-}
+import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
 
 export default function TeamSwitcher() {
   const t = useTranslations('teams');
@@ -102,10 +91,17 @@ export default function TeamSwitcher() {
                 data-active={allSelected ? 'true' : 'false'}
                 onClick={() => setSelectedTeamIds(teams.map((team) => team.id))}
               >
-                <Check active={allSelected} />
-                <span className="team-filter-row-copy">
-                  <strong>{t('switcher.allTeams')}</strong>
-                  <small>{t('switcher.allTeamsHint')}</small>
+                <span className="team-filter-allglyph" data-active={allSelected ? 'true' : 'false'} aria-hidden="true">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                  </svg>
+                </span>
+                <span className="team-filter-identity">
+                  <span className="team-filter-name">{t('switcher.allTeams')}</span>
+                  <span className="team-filter-role">{t('switcher.teamCount', { count: teams.length })}</span>
                 </span>
               </button>
             )}
@@ -122,10 +118,11 @@ export default function TeamSwitcher() {
                   data-active={active ? 'true' : 'false'}
                   onClick={() => toggleTeam(team.id)}
                 >
-                  <Check active={active} />
-                  <span className="team-filter-avatar">{team.name.slice(0, 1).toUpperCase()}</span>
-                  <span className="team-filter-name">{team.name}</span>
-                  <span className="team-filter-role">{t(`roles.${team.role}`)}</span>
+                  <TeammateAvatar name={team.name} size={26} isIdle={!active} />
+                  <span className="team-filter-identity">
+                    <span className="team-filter-name">{team.name}</span>
+                    <span className="team-filter-role">{t(`roles.${team.role}`)}</span>
+                  </span>
                 </button>
               );
             })}
@@ -181,55 +178,59 @@ export default function TeamSwitcher() {
         .team-filter-eyebrow::before { content: '// '; opacity: .5; }
         .team-filter-tally { color: var(--txt-faint); font: 600 10px/1 'JetBrains Mono', monospace; }
 
-        .team-filter-options { max-height: 330px; overflow-y: auto; padding: 6px; }
+        .team-filter-options { max-height: 340px; overflow-y: auto; padding: 6px; }
 
-        /* Rows — flat list items, not chip-cards. Selection + hover read through the
-           signature left-edge bar (the same device globals use for nav/team-row hover). */
+        /* Rows are built from the SAME parts as the calendar swimlane: the shared
+           TeammateAvatar circle + stacked MONO name / MONO role. Selection reads
+           through the avatar (idle-dim when off) + the signature left-edge bar.
+           No checkbox, no boxed chip, and the browser focus-ring is replaced by the
+           same left-bar so a clicked row never gets the pink outline box. */
         .team-filter-row {
-          position: relative; width: 100%; min-height: 42px; padding: 7px 10px; border: 0; border-radius: 8px;
-          background: transparent; color: var(--txt-pure); display: flex; align-items: center; gap: 10px;
+          position: relative; width: 100%; min-height: 44px; padding: 7px 10px; border: 0; border-radius: 7px;
+          background: transparent; color: var(--txt-pure); display: flex; align-items: center; gap: 11px;
           cursor: pointer; text-align: left;
           transition: background 130ms ease, transform 130ms cubic-bezier(.16,1,.3,1), box-shadow 130ms ease;
         }
-        .team-filter-row[data-active='true'] {
-          background: rgba(var(--signature-rgb), .08);
-          box-shadow: inset 2px 0 0 var(--signature);
-        }
-        .team-filter-row:hover {
-          background: rgba(var(--signature-rgb), .12);
-          box-shadow: inset 2px 0 0 var(--signature);
-          transform: translateX(2px);
-        }
-        .team-filter-check {
-          width: 16px; height: 16px; border: 1.5px solid var(--rule-strong); border-radius: 5px;
-          display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
-          color: var(--signature-ink); transition: background 130ms ease, border-color 130ms ease;
-        }
-        .team-filter-check[data-active='true'] { background: var(--signature); border-color: var(--signature); box-shadow: 0 0 10px rgba(var(--signature-rgb), .35); }
-        .team-filter-avatar {
-          width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
-          background: rgba(255,255,255,.06); color: var(--txt-muted);
-          font: 700 9.5px/1 'JetBrains Mono', monospace; letter-spacing: .3px; transition: background 130ms ease, color 130ms ease;
-        }
-        .team-filter-row[data-active='true'] .team-filter-avatar { background: rgba(var(--signature-rgb), .16); color: var(--signature); }
-        .team-filter-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
-        .team-filter-role { color: var(--txt-faint); font: 600 9px/1 'JetBrains Mono', monospace; text-transform: lowercase; letter-spacing: .4px; }
-        .team-filter-all { min-height: 48px; margin-bottom: 2px; }
-        .team-filter-row-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; }
-        .team-filter-row-copy strong { font-size: 12px; font-weight: 600; }
-        .team-filter-row-copy small { color: var(--txt-faint); font-size: 10px; }
+        .team-filter-row[data-active='true'] { background: rgba(var(--signature-rgb), .07); box-shadow: inset 2px 0 0 var(--signature); }
+        .team-filter-row:hover { background: rgba(var(--signature-rgb), .11); box-shadow: inset 2px 0 0 var(--signature); transform: translateX(2px); }
+        .team-filter-row:focus-visible { outline: none !important; box-shadow: inset 2px 0 0 var(--signature) !important; background: rgba(var(--signature-rgb), .11); }
 
-        /* Footer action — top hairline, signature hover + left-bar, no "↗". */
+        .team-filter-identity { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+        .team-filter-name {
+          font: 700 11px/1.2 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .6px; text-transform: uppercase;
+          color: var(--txt-pure); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .team-filter-role {
+          font: 400 9.5px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .8px; text-transform: uppercase;
+          color: var(--txt-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* All-teams aggregate marker — circle to match the avatars, signature when active. */
+        .team-filter-allglyph {
+          width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
+          display: inline-flex; align-items: center; justify-content: center;
+          border: 1px solid var(--rule-strong); color: var(--txt-faint);
+          transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
+        }
+        .team-filter-row[data-active='true'] .team-filter-allglyph {
+          color: var(--signature); border-color: rgba(var(--signature-rgb), .5); background: rgba(var(--signature-rgb), .12);
+        }
+        .team-filter-all { margin-bottom: 2px; }
+
+        /* Footer — mono uppercase like the nav links, signature hover + left-bar, no arrow. */
         .team-filter-manage {
-          display: flex; align-items: center; padding: 11px 16px; border-top: 1px solid var(--rule);
-          color: var(--txt-muted); font-size: 12px; font-weight: 600; text-decoration: none;
+          display: flex; align-items: center; padding: 12px 16px; border-top: 1px solid var(--rule);
+          font: 700 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 1px; text-transform: uppercase;
+          color: var(--txt-faint); text-decoration: none;
           transition: background 130ms ease, color 130ms ease, box-shadow 130ms ease;
         }
-        .team-filter-manage:hover { background: rgba(var(--signature-rgb), .08); color: var(--signature); box-shadow: inset 2px 0 0 var(--signature); }
+        .team-filter-manage:hover, .team-filter-manage:focus-visible {
+          outline: none !important; background: rgba(var(--signature-rgb), .08);
+          color: var(--signature); box-shadow: inset 2px 0 0 var(--signature) !important;
+        }
 
         html.light .team-filter-menu { background: #ffffff; box-shadow: var(--shadow-deep), inset 0 1px 0 rgba(var(--signature-rgb), .12); }
-        html.light .team-filter-avatar { background: rgba(20,14,30,.05); }
-        html.light .team-filter-row:hover { background: rgba(var(--signature-rgb), .10); }
+        html.light .team-filter-row:hover { background: rgba(var(--signature-rgb), .09); }
         @media (max-width: 900px) { .team-filter-trigger { min-width: auto; max-width: 145px; } }
       `}</style>
     </div>
