@@ -282,6 +282,12 @@ export type AgentTask = {
   // underlying columns are missing (FRAME-02 — additive migration).
   personalizedDescription?: string | null;
   personalizedDescriptionForUserId?: string | null;
+  // quick-260620-mav — LLM-written ~3-6 word label for the compact UI surfaces
+  // (week-calendar chips + command-center decision rows). NULL on pre-migration
+  // rows, when the LLM failed, or before generation. The canonical `title` is
+  // unchanged and remains the source for the chip hover attribute + the detail
+  // panel. This is a REAL LLM summary, never string truncation.
+  shortSummary?: string | null;
 };
 
 // Phase 3 / Plan 06 — refusal categories for the Pass 3 decision tree.

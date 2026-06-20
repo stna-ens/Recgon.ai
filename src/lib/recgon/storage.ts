@@ -129,6 +129,11 @@ type TaskRow = {
   // the response payload (destructure + overwrite, not spread).
   personalized_description?: string | null;
   personalized_description_for_user_id?: string | null;
+  // quick-260620-mav — LLM-written compact-UI label (calendar chip + command
+  // rows). Patched AFTER insert (createTask never sets it) by
+  // setTaskShortSummary once the batched summary is generated. NULL on
+  // pre-migration rows / LLM failure / before generation.
+  short_summary?: string | null;
 };
 
 function mapTask(row: TaskRow): AgentTask {
@@ -187,6 +192,9 @@ function mapTask(row: TaskRow): AgentTask {
     // description (Plan 04-02); they MUST NEVER appear on a response payload.
     personalizedDescription: row.personalized_description ?? null,
     personalizedDescriptionForUserId: row.personalized_description_for_user_id ?? null,
+    // quick-260620-mav — compact-UI label. NULL until generated; the display
+    // helper (taskDisplayTitle) falls back to the full clean title.
+    shortSummary: row.short_summary ?? null,
   };
 }
 
@@ -396,6 +404,35 @@ export async function createTask(input: TaskInsert): Promise<AgentTask | null> {
     throw new Error(`createTask failed: ${error.message}`);
   }
   return data ? mapTask(data as TaskRow) : null;
+}
+
+// quick-260620-mav — fail-soft writer for the compact-UI label. Called by the
+// two creation paths (brain mint + manual create) AFTER the batched summary is
+// generated, so the column is patched onto an already-persisted row.
+//
+// CRITICAL: this NEVER throws. A failure to store the summary (column missing
+// pre-migration, transient Supabase error, etc.) must not bubble into — and
+// therefore must not fail — task creation. On any error we logger.warn and
+// return; the row simply keeps short_summary = NULL and the UI falls back to
+// the full title.
+export async function setTaskShortSummary(taskId: string, summary: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('agent_tasks')
+      .update({ short_summary: stripMd(summary) })
+      .eq('id', taskId);
+    if (error) {
+      logger.warn('setTaskShortSummary update failed (non-fatal)', {
+        taskId,
+        err: error.message,
+      });
+    }
+  } catch (err) {
+    logger.warn('setTaskShortSummary threw (non-fatal)', {
+      taskId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 export async function listTasks(
