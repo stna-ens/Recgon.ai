@@ -22,6 +22,27 @@ function jsonStub(summaries: string[]): { chat: StubChat; calls: { system: strin
   return { chat, calls };
 }
 
+// Build a stub that returns EXACTLY as many labels as each sub-batch asked for
+// (parsed from the "following N task(s)" line of the user prompt), so we can
+// assert that a large input is split into multiple 1:1 calls. Optionally throw
+// on a given 1-based call number to exercise per-sub-batch fail-soft.
+function countingStub(opts?: { failOnCall?: number }): {
+  chat: StubChat;
+  calls: { system: string; n: number }[];
+} {
+  const calls: { system: string; n: number }[] = [];
+  let callNo = 0;
+  const chat: StubChat = async (system, user) => {
+    callNo += 1;
+    const m = user.match(/following (\d+) task/);
+    const n = m ? parseInt(m[1], 10) : 0;
+    calls.push({ system, n });
+    if (opts?.failOnCall === callNo) throw new Error('sub-batch down');
+    return JSON.stringify({ summaries: Array.from({ length: n }, (_, i) => `label ${callNo}.${i + 1}`) });
+  };
+  return { chat, calls };
+}
+
 const items3 = [
   { title: 'Implement OAuth token refresh logic in the analytics engine', description: 'long desc one' },
   { title: 'Fix the broken CSV export on the reports page', description: 'long desc two' },
@@ -105,5 +126,30 @@ describe('generateTaskSummaries', () => {
     // The clamp is a defensive net, not the summarization mechanism: the LLM is
     // asked to stay <= ~40 chars; we only cut as a safety guard.
     expect(out[0]).toContain('…');
+  });
+
+  it('splits inputs larger than the sub-batch size into multiple 1:1 calls', async () => {
+    const items = Array.from({ length: 12 }, (_, i) => ({
+      title: `Task number ${i + 1} with a long descriptive title to summarize`,
+      description: `context ${i + 1}`,
+    }));
+    const { chat, calls } = countingStub();
+    const out = await generateTaskSummaries(items, { chat });
+    expect(out).toHaveLength(12);
+    expect(out.every((s) => typeof s === 'string')).toBe(true);
+    // 12 items, MAX_BATCH = 5 → three calls of 5, 5, 2 (large parallel arrays
+    // are unreliable, so we batch small and concatenate).
+    expect(calls.map((c) => c.n)).toEqual([5, 5, 2]);
+  });
+
+  it('is fail-soft PER sub-batch: a failing sub-batch nulls only its own items', async () => {
+    const items = Array.from({ length: 12 }, (_, i) => ({ title: `Task ${i + 1}` }));
+    // Second sub-batch (items 5..9) throws; first (0..4) and third (10..11) succeed.
+    const { chat } = countingStub({ failOnCall: 2 });
+    const out = await generateTaskSummaries(items, { chat });
+    expect(out).toHaveLength(12);
+    expect(out.slice(0, 5).every((s) => typeof s === 'string')).toBe(true);
+    expect(out.slice(5, 10).every((s) => s === null)).toBe(true);
+    expect(out.slice(10, 12).every((s) => typeof s === 'string')).toBe(true);
   });
 });

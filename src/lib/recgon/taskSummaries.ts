@@ -32,6 +32,13 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 // mechanism — purely a chip-overflow guard.
 const MAX_SUMMARY_CHARS = 48;
 
+// Max items per LLM call. Models under-deliver on large parallel arrays
+// (observed against gemini-2.5-flash: a 30-item AND an 18-item request each
+// returned only 7 labels). Small sub-batches return 1:1 reliably.
+// generateTaskSummaries splits internally and concatenates, so callers still
+// pass N items and get N results back — batching, just bounded.
+const MAX_BATCH = 5;
+
 export type TaskSummaryItem = {
   title: string;
   description?: string;
@@ -57,11 +64,17 @@ export type GenerateTaskSummariesOptions = {
 };
 
 /**
- * Generate one short label per input task in a SINGLE batched LLM call.
+ * Generate one short label per input task, in batched LLM calls.
+ *
+ * Inputs are split into sub-batches of at most MAX_BATCH items because models
+ * under-deliver on large parallel arrays (observed: 30- and 18-item requests
+ * each came back with only 7 labels). Each sub-batch is ONE LLM call and the
+ * results are concatenated, so the public contract is unchanged: N items in,
+ * N results out, order preserved.
  *
  * @returns A `(string | null)[]` aligned 1:1 with `items` (order preserved).
- *          `null` for any task when generation failed for the whole batch, or
- *          when an individual label coerced to empty. NEVER throws.
+ *          `null` for any task whose sub-batch failed, or whose label coerced
+ *          to empty. NEVER throws.
  */
 export async function generateTaskSummaries(
   items: TaskSummaryItem[],
@@ -69,68 +82,21 @@ export async function generateTaskSummaries(
 ): Promise<(string | null)[]> {
   if (items.length === 0) return [];
 
-  const nulls = (): (string | null)[] => items.map(() => null);
-
   try {
     const chat = opts.chat ?? (await getDefaultChatAdapter());
     const systemPrompt = TASK_SUMMARIES_SYSTEM + localeDirective(opts.language);
-    const userPrompt = taskSummariesUserPrompt(items);
+    const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-    let raw: string;
-    try {
-      raw = await chat(systemPrompt, userPrompt, {
-        temperature: 0,
-        timeoutMs: opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-        responseMimeType: 'application/json',
-        taskKind: 'recgon_task_summaries',
-      });
-    } catch (err) {
-      logger.warn('generateTaskSummaries: chat call failed (non-fatal)', {
-        count: items.length,
-        err: err instanceof Error ? err.message : String(err),
-      });
-      return nulls();
+    const out: (string | null)[] = [];
+    for (let i = 0; i < items.length; i += MAX_BATCH) {
+      const chunk = items.slice(i, i + MAX_BATCH);
+      // Sequential by design: the backfill runs many sub-batches and a slow
+      // one must not fan out into a burst against the provider. Each sub-batch
+      // is independently fail-soft, so one failure nulls only its own items.
+      const chunkOut = await summarizeOneBatch(chunk, systemPrompt, chat, timeoutMs);
+      out.push(...chunkOut);
     }
-
-    // Parse JSON, tolerating markdown fences (fallback providers occasionally
-    // wrap output even in JSON mode).
-    let parsedJson: unknown;
-    try {
-      parsedJson = JSON.parse(raw);
-    } catch {
-      const stripped = raw
-        .replace(/^```(?:json)?\s*/i, '')
-        .replace(/\s*```\s*$/, '')
-        .trim();
-      try {
-        parsedJson = JSON.parse(stripped);
-      } catch {
-        logger.warn('generateTaskSummaries: response is not valid JSON (non-fatal)', {
-          count: items.length,
-        });
-        return nulls();
-      }
-    }
-
-    const result = TaskSummariesResponseSchema.safeParse(parsedJson);
-    if (!result.success) {
-      logger.warn('generateTaskSummaries: response failed schema (non-fatal)', {
-        count: items.length,
-      });
-      return nulls();
-    }
-
-    const { summaries } = result.data;
-    // Wrong length → fail-soft for the whole batch (we can't safely align).
-    if (summaries.length !== items.length) {
-      logger.warn('generateTaskSummaries: array length mismatch (non-fatal)', {
-        expected: items.length,
-        got: summaries.length,
-      });
-      return nulls();
-    }
-
-    return summaries.map((s) => cleanSummary(s));
+    return out;
   } catch (err) {
     // Belt-and-suspenders: nothing above should throw, but if it does, the
     // create path must still proceed with NULL summaries.
@@ -138,8 +104,80 @@ export async function generateTaskSummaries(
       count: items.length,
       err: err instanceof Error ? err.message : String(err),
     });
+    return items.map(() => null);
+  }
+}
+
+/**
+ * One batched LLM call for a single sub-batch (<= MAX_BATCH items). Fail-soft:
+ * returns an array of nulls (length === items.length) on any adapter throw,
+ * malformed JSON, schema miss, or length mismatch — so a bad sub-batch never
+ * throws and never corrupts the 1:1 alignment of the surrounding sub-batches.
+ */
+async function summarizeOneBatch(
+  items: TaskSummaryItem[],
+  systemPrompt: string,
+  chat: SummaryChatAdapter,
+  timeoutMs: number,
+): Promise<(string | null)[]> {
+  const nulls = (): (string | null)[] => items.map(() => null);
+  const userPrompt = taskSummariesUserPrompt(items);
+
+  let raw: string;
+  try {
+    raw = await chat(systemPrompt, userPrompt, {
+      temperature: 0,
+      timeoutMs,
+      responseMimeType: 'application/json',
+      taskKind: 'recgon_task_summaries',
+    });
+  } catch (err) {
+    logger.warn('generateTaskSummaries: chat call failed (non-fatal)', {
+      count: items.length,
+      err: err instanceof Error ? err.message : String(err),
+    });
     return nulls();
   }
+
+  // Parse JSON, tolerating markdown fences (fallback providers occasionally
+  // wrap output even in JSON mode).
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(raw);
+  } catch {
+    const stripped = raw
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/, '')
+      .trim();
+    try {
+      parsedJson = JSON.parse(stripped);
+    } catch {
+      logger.warn('generateTaskSummaries: response is not valid JSON (non-fatal)', {
+        count: items.length,
+      });
+      return nulls();
+    }
+  }
+
+  const result = TaskSummariesResponseSchema.safeParse(parsedJson);
+  if (!result.success) {
+    logger.warn('generateTaskSummaries: response failed schema (non-fatal)', {
+      count: items.length,
+    });
+    return nulls();
+  }
+
+  const { summaries } = result.data;
+  // Wrong length → fail-soft for this sub-batch (we can't safely align).
+  if (summaries.length !== items.length) {
+    logger.warn('generateTaskSummaries: array length mismatch (non-fatal)', {
+      expected: items.length,
+      got: summaries.length,
+    });
+    return nulls();
+  }
+
+  return summaries.map((s) => cleanSummary(s));
 }
 
 /**
