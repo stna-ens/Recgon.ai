@@ -7,6 +7,7 @@ import { Button, useConfirm } from '@/components/ui';
 import Select from '@/components/Select';
 import { formatDay } from '@/lib/datetime';
 import { daysOverdue } from '@/lib/recgon/overduePolicy';
+import { taskDisplayTitle } from '@/lib/recgon/displayTitle';
 import type { CommandDecisions, CommandTask, CommandTeammate } from './types';
 
 // The "needs your decision" stack — owner-only (the API already gates it;
@@ -170,7 +171,7 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
                 <div key={task.id} className="v2-mc-ds-card" data-tone="info">
                   <div className="v2-mc-ds-card-main">
                     <div className="v2-mc-ds-title">
-                      {task.title}
+                      {taskDisplayTitle(task)}
                     </div>
                     <p className="v2-mc-ds-meta">
                       <strong>{assigneeName(task)}</strong>{' '}
@@ -249,7 +250,7 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
                 <div key={task.id} className="v2-mc-ds-card" data-tone="warn">
                   <div className="v2-mc-ds-card-main">
                     <div className="v2-mc-ds-title">
-                      {task.title}
+                      {taskDisplayTitle(task)}
                     </div>
                     {task.triageNote && (
                       <p className="v2-mc-ds-note">{tTasks(`triage.${task.triageNote}`)}</p>
@@ -288,7 +289,7 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
                 <div key={task.id} className="v2-mc-ds-card" data-tone="warn">
                   <div className="v2-mc-ds-card-main">
                     <div className="v2-mc-ds-title">
-                      {task.title}
+                      {taskDisplayTitle(task)}
                     </div>
                     <p className="v2-mc-ds-meta">
                       <strong>{assigneeName(task)}</strong>

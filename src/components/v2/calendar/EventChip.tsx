@@ -54,6 +54,10 @@ export function EventChip({
   const t = useTranslations('calendar');
   const accentColor = STATUS_COLOR[card.task.status] ?? 'var(--signature)';
   const cleanTitle = stripMd(card.title);
+  // quick-260620-mav — the VISIBLE chip label prefers the LLM-written compact
+  // summary, falling back to the full clean title. The hover `title=` attribute
+  // below stays `cleanTitle` so the FULL title is always available on hover.
+  const display = stripMd(card.task.shortSummary?.trim() || card.title);
   const hasRescheduleRequest = card.task.rescheduleRequestStatus === 'pending';
   const hours = card.estimatedHours;
   const hoursLabel = `${hours.toFixed(hours % 1 === 0 ? 0 : 1)}h`;
@@ -121,7 +125,7 @@ export function EventChip({
             size={16}
           />
         )}
-        <span className="cal-chip-title">{cleanTitle}</span>
+        <span className="cal-chip-title">{display}</span>
         <span className="cal-chip-hours">{hoursLabel}</span>
       </div>
       {teamBadge && (

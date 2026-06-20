@@ -7,6 +7,9 @@ export interface CommandTask {
   teamId: string;
   projectId: string | null;
   title: string;
+  // quick-260620-mav — LLM-written compact label; the decision rows render
+  // shortSummary || title. Arrives via sanitizeTaskForClient (Omit-spread).
+  shortSummary?: string | null;
   description: string;
   kind: string;
   source: string;
