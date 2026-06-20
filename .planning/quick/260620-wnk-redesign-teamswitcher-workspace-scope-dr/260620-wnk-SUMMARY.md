@@ -53,6 +53,28 @@ ghost through the blur — which looked like a broken/disabled second row. The h
   `html.light`-override structure (identical to the original) is correct.
 - No i18n keys removed (only `chooseTeams` is now unused — left in place, harmless).
 
+## Iteration 2 (commit dea6bf5) — after user feedback "still looks vibe-coded"
+
+v1 fixed the bleed-through but the row body was still generic against the app's
+sharp monospace/terminal aesthetic: a rounded form-checkbox, a soft rounded-square
+avatar, lowercase "owner", title-case "Manage Teams" — and the browser focus-ring
+fell through on click, drawing the exact pink boxed-chip outline the redesign was
+meant to remove.
+
+Fix: stop hand-rolling and **reuse the app's own identity primitives** so the row is
+made of the same parts as the calendar swimlane (`SwimLane.tsx`):
+- Render the shared `<TeammateAvatar>` (circle, deterministic color, mono initials);
+  `isIdle={!active}` dims unselected teams — the app's own selected/idle mechanism.
+- Stack `MONO-UPPERCASE` name + `MONO-UPPERCASE` role, matching `.cal-lane-name` /
+  `.cal-lane-title` (so "owner" → "OWNER", "ST&A" renders in JetBrains Mono).
+- Remove the checkbox entirely; selection reads through avatar + signature left-bar.
+- Override the row `:focus-visible` with the left-bar (`!important`) so a clicked row
+  never shows the pink focus-ring box.
+- "Manage Teams" footer → mono uppercase, like the nav links.
+
+Lesson: matching design *tokens* wasn't enough — had to reuse the actual shared
+*components* and conform to the app's dominant mono/terminal visual language.
+
 ## Notes / follow-ups
 - `switcher.chooseTeams` is now an unused key in `messages/{en,tr}/teams.json`. Left
   as-is to avoid unrelated churn; safe to prune later.
