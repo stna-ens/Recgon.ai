@@ -14,7 +14,8 @@ type NavItem = { href: string; key: string; matchPrefix?: boolean };
 
 const NAV: NavItem[] = [
   { href: '/', key: 'home' },
-  { href: '/projects', key: 'projects', matchPrefix: true },
+  // Projects moved into the team dropdown (TeamSwitcher) as a collapsible tree;
+  // the /projects route stays reachable by link, just not as a top-nav tab.
   { href: '/tasks', key: 'tasks', matchPrefix: true },
   { href: '/command', key: 'command', matchPrefix: true },
   { href: '/calendar', key: 'calendar', matchPrefix: true },

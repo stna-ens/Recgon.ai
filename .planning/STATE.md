@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 Phase: 5
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-06-20 - Completed quick task 260620-wnk: redesigned TeamSwitcher dropdown (solid panel fixes bleed-through, recgon-label header, signature left-bar rows)
+Last activity: 2026-06-21 - Completed quick task 260621-tpt: folded Projects into the team dropdown as a collapsible team→projects tree (removed top-nav Projects tab; checkbox=filter, chevron=expand, project sub-rows with pulse dots; hover-open; shared useTeamPortfolio hook)
 
 Progress: [████████░░] 77%
 
@@ -125,6 +125,7 @@ None yet.
 | 260616-2au | Manual task creation (owner) with optional auto-assign + auto-schedule | 2026-06-15 | 0353fab | [260616-2au-manual-task-creation-owner-with-optional](./quick/260616-2au-manual-task-creation-owner-with-optional/) |
 | 260620-mav | AI-generated short task summaries for compact UI (calendar chips + command rows); migration applied + 48 existing tasks backfilled | 2026-06-20 | 716311b | [260620-mav-compact-task-labels](./quick/260620-mav-compact-task-labels/) |
 | 260620-wnk | Redesign TeamSwitcher dropdown to match Recgon system — solid opaque panel fixes dark-mode bleed-through (the ghost "Pixy" row), recgon-label header, signature left-bar rows, self-contained styles | 2026-06-20 | f4afead | [260620-wnk-redesign-teamswitcher-workspace-scope-dr](./quick/260620-wnk-redesign-teamswitcher-workspace-scope-dr/) |
+| 260621-tpt | Fold Projects into the team dropdown as a collapsible team→projects tree (removed the top-nav Projects tab; left checkbox = filter, right chevron = expand, project sub-rows with pulse dots → /projects/[id]); hover-open; extracted shared `useTeamPortfolio` hook so dropdown + page share one cache | 2026-06-21 | 2950329 | [260621-tpt-projects-tree-in-team-switcher](./quick/260621-tpt-projects-tree-in-team-switcher/) |
 
 ## Deferred Items
 

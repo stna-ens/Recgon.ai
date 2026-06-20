@@ -1,23 +1,60 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useTeam } from './TeamProvider';
 import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
+import { useTeamPortfolio, groupByTeam } from '@/components/v2/projects/useTeamPortfolio';
+import { pulseShort } from '@/components/v2/utils';
+
+const EXPANDED_KEY = 'recgon_expanded_teams';
 
 export default function TeamSwitcher() {
   const t = useTranslations('teams');
   const { teams, selectedTeamIds, setSelectedTeamIds } = useTeam();
   const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [hasOpened, setHasOpened] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const ref = useRef<HTMLDivElement>(null);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Lazy: only load the cross-team portfolio once the dropdown has been opened,
+  // so the topnav doesn't fetch every team's projects on every page load. Shares
+  // the SWR cache with the Projects page.
+  const { portfolio, portfolioMeta, loading: projectsLoading } = useTeamPortfolio(hasOpened);
+  const projectsByTeam = useMemo(() => groupByTeam(portfolio, portfolioMeta), [portfolio, portfolioMeta]);
+
+  // Hydrate per-team expand state from localStorage (default: selected teams open).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(EXPANDED_KEY);
+      if (raw) {
+        setExpanded(JSON.parse(raw));
+      } else {
+        setExpanded(Object.fromEntries(selectedTeamIds.map((id) => [id, true])));
+      }
+    } catch {
+      /* ignore */
+    }
+    // Run once on mount; selectedTeamIds only seeds the initial default.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+        setPinned(false);
+      }
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') {
+        setOpen(false);
+        setPinned(false);
+      }
     };
     document.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('keydown', onKeyDown);
@@ -25,6 +62,12 @@ export default function TeamSwitcher() {
       document.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('keydown', onKeyDown);
     };
+  }, []);
+
+  // Clear hover timers on unmount.
+  useEffect(() => () => {
+    if (openTimer.current) clearTimeout(openTimer.current);
+    if (closeTimer.current) clearTimeout(closeTimer.current);
   }, []);
 
   if (teams.length === 0) return null;
@@ -37,9 +80,48 @@ export default function TeamSwitcher() {
       ? selectedTeams[0].name
       : t('switcher.teamCount', { count: selectedTeams.length });
 
+  const doOpen = () => {
+    setOpen(true);
+    setHasOpened(true);
+  };
+  const close = () => {
+    setOpen(false);
+    setPinned(false);
+  };
+
+  // Hover opens after a short intent delay; a click pins it open (so it doesn't
+  // close when the mouse drifts off). Touch falls back to the click path.
+  const onMouseEnter = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    if (open) return;
+    openTimer.current = setTimeout(doOpen, 120);
+  };
+  const onMouseLeave = () => {
+    if (openTimer.current) {
+      clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+    if (pinned) return;
+    closeTimer.current = setTimeout(() => setOpen(false), 180);
+  };
+  const toggleOpen = () => {
+    if (openTimer.current) {
+      clearTimeout(openTimer.current);
+      openTimer.current = null;
+    }
+    if (open && pinned) close();
+    else {
+      doOpen();
+      setPinned(true);
+    }
+  };
+
   const toggleTeam = (teamId: string) => {
     const active = selectedTeamIds.includes(teamId);
-    if (active && selectedTeamIds.length === 1) return;
+    if (active && selectedTeamIds.length === 1) return; // never leave zero teams selected
     setSelectedTeamIds(
       active
         ? selectedTeamIds.filter((id) => id !== teamId)
@@ -47,12 +129,29 @@ export default function TeamSwitcher() {
     );
   };
 
+  const toggleExpand = (teamId: string) => {
+    setExpanded((prev) => {
+      const next = { ...prev, [teamId]: !prev[teamId] };
+      try {
+        localStorage.setItem(EXPANDED_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
   return (
-    <div ref={ref} className="team-filter-root">
+    <div
+      ref={ref}
+      className="team-filter-root"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <button
         type="button"
         className="team-filter-trigger"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('switcher.filterAria', { selection: triggerLabel })}
@@ -87,50 +186,112 @@ export default function TeamSwitcher() {
                 type="button"
                 role="menuitemcheckbox"
                 aria-checked={allSelected}
-                className="team-filter-row team-filter-all"
-                data-active={allSelected ? 'true' : 'false'}
+                className="team-filter-allrow"
                 onClick={() => setSelectedTeamIds(teams.map((team) => team.id))}
               >
-                <span className="team-filter-allglyph" data-active={allSelected ? 'true' : 'false'} aria-hidden="true">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                    <rect x="14" y="14" width="7" height="7" rx="1" />
-                  </svg>
+                <span className="tf-box" data-on={allSelected ? 'true' : 'false'} aria-hidden="true">
+                  {allSelected && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5}>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
                 </span>
-                <span className="team-filter-identity">
-                  <span className="team-filter-name">{t('switcher.allTeams')}</span>
-                  <span className="team-filter-role">{t('switcher.teamCount', { count: teams.length })}</span>
-                </span>
+                <span className="team-filter-name">{t('switcher.allTeams')}</span>
+                <span className="team-filter-allcount">{t('switcher.teamCount', { count: teams.length })}</span>
               </button>
             )}
 
             {teams.map((team) => {
               const active = selectedTeamIds.includes(team.id);
+              const isExpanded = !!expanded[team.id];
+              const projects = projectsByTeam[team.id] ?? [];
+              const hasProjects = projects.length > 0;
+              // Show the disclosure until we positively know the team is empty.
+              const showChevron = !hasOpened || projectsLoading || hasProjects;
               return (
-                <button
+                <div
                   key={team.id}
-                  type="button"
-                  role="menuitemcheckbox"
-                  aria-checked={active}
-                  className="team-filter-row"
+                  className="team-filter-team"
                   data-active={active ? 'true' : 'false'}
-                  onClick={() => toggleTeam(team.id)}
+                  data-expanded={isExpanded ? 'true' : 'false'}
                 >
-                  <TeammateAvatar name={team.name} size={26} isIdle={!active} />
-                  <span className="team-filter-identity">
-                    <span className="team-filter-name">{team.name}</span>
-                    <span className="team-filter-role">{t(`roles.${team.role}`)}</span>
-                  </span>
-                </button>
+                  <div className="team-filter-teamrow">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={active}
+                      className="team-filter-check"
+                      aria-label={t('switcher.toggleFilterAria', { team: team.name })}
+                      onClick={() => toggleTeam(team.id)}
+                    >
+                      <span className="tf-box" data-on={active ? 'true' : 'false'} aria-hidden="true">
+                        {active && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5}>
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="team-filter-teammain"
+                      aria-expanded={isExpanded}
+                      aria-label={t('switcher.toggleProjectsAria', { team: team.name })}
+                      onClick={() => toggleExpand(team.id)}
+                    >
+                      <TeammateAvatar name={team.name} size={26} isIdle={!active} />
+                      <span className="team-filter-identity">
+                        <span className="team-filter-name">{team.name}</span>
+                        <span className="team-filter-role">{t(`roles.${team.role}`)}</span>
+                      </span>
+                      {showChevron && (
+                        <svg
+                          className="team-filter-chev" data-open={isExpanded ? 'true' : 'false'} aria-hidden="true"
+                          width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+                        >
+                          <polyline points="9 6 15 12 9 18" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <ul className="team-filter-projects">
+                      {hasProjects ? (
+                        projects.map((p) => (
+                          <li key={p.id}>
+                            <Link
+                              href={`/projects/${p.id}`}
+                              className="team-filter-project"
+                              onClick={close}
+                            >
+                              <span className="team-filter-project-dot" data-pulse={p.pulse} aria-hidden="true" />
+                              <span className="team-filter-project-name">{p.name}</span>
+                              <span className="team-filter-project-pulse" data-pulse={p.pulse}>{pulseShort(p.pulse)}</span>
+                            </Link>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="team-filter-projhint">
+                          {projectsLoading ? t('switcher.loadingProjects') : t('switcher.noProjects')}
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
               );
             })}
           </div>
 
-          <Link href="/teams" className="team-filter-manage" onClick={() => setOpen(false)}>
-            {t('switcher.manageTeams')}
-          </Link>
+          <div className="team-filter-foot">
+            <Link href="/projects" className="team-filter-footlink" onClick={close}>
+              {t('switcher.allProjects')}
+            </Link>
+            <Link href="/teams" className="team-filter-footlink" onClick={close}>
+              {t('switcher.manageTeams')}
+            </Link>
+          </div>
         </div>
       )}
 
@@ -155,18 +316,16 @@ export default function TeamSwitcher() {
         .team-filter-chevron { flex: 0 0 auto; opacity: .5; transition: transform 160ms ease; }
         .team-filter-chevron[data-open='true'] { transform: rotate(180deg); }
 
-        /* Solid, opaque panel — no var(--bg-card) dependency, no page bleed-through.
-           Dark base = opaque form of --modal-bg (rgb 24,24,27); light overridden below.
-           Single glass surface only (no stacked blur) per the design system. */
+        /* Solid, opaque panel — no page bleed-through. Dark base; light below. */
         .team-filter-menu {
-          position: absolute; top: calc(100% + 9px); right: 0; width: 288px; overflow: hidden; z-index: 1000;
+          position: absolute; top: calc(100% + 9px); right: 0; width: 300px; overflow: hidden; z-index: 1000;
           background: #18181b; border: 1px solid var(--rule-strong); border-radius: 13px;
           box-shadow: var(--shadow-deep), inset 0 1px 0 rgba(var(--signature-rgb), .16);
           animation: teamFilterIn 150ms cubic-bezier(.16,1,.3,1) both;
         }
         @keyframes teamFilterIn { from { opacity: 0; transform: translateY(-5px) scale(.985); } }
 
-        /* Header — terse mono recgon-label + tally, no marketing heading. */
+        /* Header — terse mono recgon-label + tally. */
         .team-filter-menu-head {
           padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
           border-bottom: 1px solid var(--rule);
@@ -178,21 +337,47 @@ export default function TeamSwitcher() {
         .team-filter-eyebrow::before { content: '// '; opacity: .5; }
         .team-filter-tally { color: var(--txt-faint); font: 600 10px/1 'JetBrains Mono', monospace; }
 
-        .team-filter-options { padding: 0; max-height: 340px; overflow-y: auto; }
+        .team-filter-options { padding: 0; max-height: 420px; overflow-y: auto; }
 
-        /* Rows ARE the calendar swimlane row (see SwimLane.tsx .cal-lane-label-inner):
-           TeammateAvatar(26) + gap 10 + stacked MONO name / MONO role, on a flat,
-           full-bleed, hairline-separated surface. No rounded pill, NO pink left-bar,
-           no slide. Selection reads through the avatar + name weight (an unselected
-           team de-emphasises, exactly like an idle teammate in the calendar). */
-        .team-filter-row {
+        /* On-brand square checkbox = the filter toggle. Not a browser checkbox. */
+        .tf-box {
+          width: 15px; height: 15px; border-radius: 4px; flex: 0 0 auto;
+          border: 1px solid var(--rule-strong); color: #fff;
+          display: inline-flex; align-items: center; justify-content: center;
+          transition: background 120ms ease, border-color 120ms ease;
+        }
+        .tf-box[data-on='true'] { background: var(--signature); border-color: var(--signature); }
+        .tf-box svg { width: 10px; height: 10px; }
+
+        /* "All teams" select-all row. */
+        .team-filter-allrow {
           width: 100%; display: flex; align-items: center; gap: 10px;
-          padding: 12px 16px; border: 0; border-bottom: 1px solid var(--rule);
-          background: transparent; color: var(--txt-pure); cursor: pointer; text-align: left;
+          padding: 11px 16px; border: 0; border-bottom: 1px solid var(--rule);
+          background: transparent; cursor: pointer; text-align: left;
           transition: background 120ms ease;
         }
-        .team-filter-row:hover { background: rgba(255,255,255,.04); }
-        .team-filter-row:focus-visible { outline: none !important; box-shadow: none !important; background: rgba(255,255,255,.04); }
+        .team-filter-allrow:hover { background: rgba(255,255,255,.04); }
+        .team-filter-allrow:focus-visible { outline: none !important; box-shadow: none !important; background: rgba(255,255,255,.04); }
+        .team-filter-allcount { margin-left: auto; color: var(--txt-faint); font: 600 10px/1 'JetBrains Mono', monospace; letter-spacing: .3px; }
+
+        /* Each team = a collapsible group: flat, full-bleed, hairline-separated. */
+        .team-filter-team { border-bottom: 1px solid var(--rule); }
+        .team-filter-teamrow { display: flex; align-items: stretch; }
+
+        .team-filter-check {
+          flex: 0 0 auto; display: inline-flex; align-items: center;
+          padding: 0 10px 0 16px; border: 0; background: transparent; cursor: pointer;
+        }
+        .team-filter-check:focus-visible { outline: none !important; }
+        .team-filter-check:focus-visible .tf-box { box-shadow: 0 0 0 3px rgba(var(--signature-rgb), .28); }
+
+        .team-filter-teammain {
+          flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+          padding: 12px 14px 12px 2px; border: 0; background: transparent; cursor: pointer; text-align: left;
+          transition: background 120ms ease;
+        }
+        .team-filter-teammain:hover { background: rgba(255,255,255,.04); }
+        .team-filter-teammain:focus-visible { outline: none !important; box-shadow: none !important; background: rgba(255,255,255,.04); }
 
         .team-filter-identity { display: flex; flex-direction: column; min-width: 0; }
         .team-filter-name {
@@ -204,27 +389,58 @@ export default function TeamSwitcher() {
           font: 400 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .8px; text-transform: uppercase;
           color: var(--txt-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .team-filter-row[data-active='false'] .team-filter-name { color: var(--txt-muted); }
+        .team-filter-team[data-active='false'] .team-filter-name { color: var(--txt-muted); }
 
-        /* All-teams aggregate marker — circle sized like the avatars. */
-        .team-filter-allglyph {
-          width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
-          display: inline-flex; align-items: center; justify-content: center;
-          border: 1px solid var(--rule-strong); color: var(--txt-faint);
-        }
-        .team-filter-row[data-active='true'] .team-filter-allglyph { color: var(--signature); border-color: rgba(var(--signature-rgb), .5); }
+        .team-filter-chev { margin-left: auto; flex: 0 0 auto; color: var(--txt-faint); transition: transform 160ms ease, color 120ms ease; }
+        .team-filter-team[data-expanded='true'] .team-filter-chev { transform: rotate(90deg); color: var(--signature); }
 
-        /* Footer — mono uppercase like the nav links, flat hover, no arrow, no bar. */
-        .team-filter-manage {
-          display: flex; align-items: center; padding: 13px 16px;
-          font: 700 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 1px; text-transform: uppercase;
-          color: var(--txt-faint); text-decoration: none;
-          transition: background 120ms ease, color 120ms ease;
+        /* Project sub-rows — flat, indented, pulse as a DOT (no pills/chips). */
+        .team-filter-projects { list-style: none; margin: 0; padding: 0 0 6px; }
+        .team-filter-project {
+          display: flex; align-items: center; gap: 9px;
+          padding: 7px 16px 7px 44px; text-decoration: none;
+          transition: background 120ms ease;
         }
-        .team-filter-manage:hover, .team-filter-manage:focus-visible { outline: none !important; background: rgba(255,255,255,.04); color: var(--signature); }
+        .team-filter-project:hover { background: rgba(255,255,255,.04); }
+        .team-filter-project:focus-visible { outline: none !important; box-shadow: none !important; background: rgba(255,255,255,.04); }
+        .team-filter-project-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; background: var(--txt-faint); }
+        .team-filter-project-dot[data-pulse='shipping']   { background: var(--success); }
+        .team-filter-project-dot[data-pulse='converging'] { background: var(--signature); }
+        .team-filter-project-dot[data-pulse='drifting']   { background: var(--signature); }
+        .team-filter-project-dot[data-pulse='stuck']      { background: var(--warning); }
+        .team-filter-project-name {
+          flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .2px; color: var(--txt-muted);
+        }
+        .team-filter-project:hover .team-filter-project-name { color: var(--txt-pure); }
+        .team-filter-project-pulse {
+          flex: 0 0 auto; font: 600 9px/1 'JetBrains Mono', ui-monospace, monospace;
+          letter-spacing: .4px; text-transform: lowercase; color: var(--txt-faint);
+        }
+        .team-filter-project-pulse[data-pulse='shipping']   { color: var(--success); }
+        .team-filter-project-pulse[data-pulse='converging'] { color: var(--signature); }
+        .team-filter-project-pulse[data-pulse='drifting']   { color: var(--signature); }
+        .team-filter-project-pulse[data-pulse='stuck']      { color: var(--warning); }
+        .team-filter-projhint {
+          padding: 7px 16px 7px 44px; color: var(--txt-faint);
+          font: 500 10px/1.3 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .3px; text-transform: lowercase;
+        }
+
+        /* Footer — two equal mono links, hairline-split. */
+        .team-filter-foot { display: flex; }
+        .team-filter-footlink {
+          flex: 1; display: flex; align-items: center; justify-content: center;
+          padding: 13px 16px; font: 700 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 1px; text-transform: uppercase;
+          color: var(--txt-faint); text-decoration: none; transition: background 120ms ease, color 120ms ease;
+        }
+        .team-filter-footlink + .team-filter-footlink { border-left: 1px solid var(--rule); }
+        .team-filter-footlink:hover, .team-filter-footlink:focus-visible { outline: none !important; box-shadow: none !important; background: rgba(255,255,255,.04); color: var(--signature); }
 
         html.light .team-filter-menu { background: #ffffff; box-shadow: var(--shadow-deep), inset 0 1px 0 rgba(var(--signature-rgb), .12); }
-        html.light .team-filter-row:hover, html.light .team-filter-manage:hover { background: rgba(20,14,30,.04); }
+        html.light .team-filter-allrow:hover,
+        html.light .team-filter-teammain:hover,
+        html.light .team-filter-project:hover,
+        html.light .team-filter-footlink:hover { background: rgba(20,14,30,.04); }
         @media (max-width: 900px) { .team-filter-trigger { min-width: auto; max-width: 145px; } }
       `}</style>
     </div>

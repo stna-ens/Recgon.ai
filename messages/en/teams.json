@@ -65,7 +65,18 @@
   },
   "switcher": {
     "teams": "Teams",
-    "manageTeams": "Manage Teams"
+    "manageTeams": "Manage Teams",
+    "teamFilter": "Team filter",
+    "chooseTeams": "Choose workspace scope",
+    "allTeams": "All teams",
+    "allTeamsHint": "Combine every team in one view",
+    "teamCount": "{count} teams",
+    "filterAria": "Filter workspace by team. Current selection: {selection}",
+    "allProjects": "All projects",
+    "noProjects": "No projects yet",
+    "loadingProjects": "Loading…",
+    "toggleFilterAria": "Toggle {team} in workspace filter",
+    "toggleProjectsAria": "Show or hide {team} projects"
   },
   "profile": {
     "eyebrow": "YOUR PROFILE",

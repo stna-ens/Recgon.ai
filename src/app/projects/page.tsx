@@ -1,16 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import useSWR from 'swr';
-import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import { Modal, Button, EmptyState } from '@/components/ui';
 import SectionIndex from '@/components/v2/SectionIndex';
 import FeaturedNeedsAttention, { pickFeatured } from '@/components/v2/projects/FeaturedNeedsAttention';
-import PortfolioRows, { type RowMeta, type Ownership } from '@/components/v2/projects/PortfolioRows';
-import type { PortfolioRow } from '@/components/v2/HomePortfolio';
+import PortfolioRows from '@/components/v2/projects/PortfolioRows';
+import { useTeamPortfolio } from '@/components/v2/projects/useTeamPortfolio';
 
 interface GitHubRepo {
   id: number;
@@ -32,23 +30,15 @@ function timeAgo(dateStr: string, t: ReturnType<typeof useTranslations<'projects
   return t('list.timeAgo.months', { n: Math.floor(days / 30) });
 }
 
-interface OverviewResponse {
-  totalProjects: number;
-  projectCards: PortfolioRow[];
-}
-
 export default function V2ProjectsListPage() {
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
   const ctx = useTeam();
   const currentTeam = ctx.currentTeam;
   const teams = ctx.teams ?? [];
-  const ctxProjectUpdateStatuses = ctx.projectUpdateStatuses;
-  const projectUpdateStatuses = useMemo(() => ctxProjectUpdateStatuses ?? {}, [ctxProjectUpdateStatuses]);
+  const selectedTeamIds = ctx.selectedTeamIds;
   const refreshProjects = ctx.refreshProjects;
   const { addToast } = useToast();
-  const { data: session } = useSession();
-  const currentUserId = session?.user?.id ?? null;
 
   // Top scope filter:
   //   'all'      → personal + every team's shared projects
@@ -74,72 +64,16 @@ export default function V2ProjectsListPage() {
   const [repoSearch, setRepoSearch] = useState('');
   const [importing, setImporting] = useState<string | null>(null);
 
-  // Cross-team data load: pull /api/overview (triage rows) and /api/projects
-  // (full project records w/ createdBy + isShared) for every team the user is
-  // a member of, then aggregate + dedupe. SWR caches the whole aggregate keyed
-  // by the team set + user identity, so returning to this tab paints instantly
-  // and revalidates silently in the background.
-  const teamsKey = teams.map((t) => t.id).join(',');
-  const portfolioKey = teams.length ? (['portfolio', teamsKey, currentUserId] as const) : null;
-
-  const { data: portfolioData, error: portfolioError, mutate: mutatePortfolio } = useSWR(portfolioKey, async () => {
-    const results = await Promise.all(
-      teams.map((t) =>
-        Promise.all([
-          fetch(`/api/overview?teamId=${t.id}`).then((r) => {
-            if (!r.ok) throw new Error(`overview ${r.status}`);
-            return r.json();
-          }),
-          fetch(`/api/projects?teamId=${t.id}`).then((r) => {
-            if (!r.ok) throw new Error(`projects ${r.status}`);
-            return r.json();
-          }),
-        ]),
-      ),
-    );
-    const cards: Record<string, PortfolioRow> = {};
-    const meta: Record<string, Omit<RowMeta, 'hasUpdate'>> = {};
-    for (let i = 0; i < teams.length; i++) {
-      const team = teams[i];
-      const [overview, projects] = results[i] as [OverviewResponse | null, Array<{ id: string; createdBy?: string; isShared?: boolean; sourceType?: 'codebase' | 'github' | 'description' }>];
-      for (const card of overview?.projectCards ?? []) {
-        // First write wins — a project lives in exactly one team.
-        if (!cards[card.id]) cards[card.id] = card;
-      }
-      for (const p of projects ?? []) {
-        const isPrivate = p.isShared === false;
-        const visibility: 'personal' | 'team-shared' = isPrivate ? 'personal' : 'team-shared';
-        let ownership: Ownership = 'mine';
-        if (currentUserId && p.createdBy && p.createdBy !== currentUserId) {
-          ownership = 'from-team';
-        } else if (!isPrivate) {
-          ownership = 'shared-by-me';
-        }
-        meta[p.id] = {
-          sourceType: p.sourceType,
-          ownership,
-          visibility,
-          teamId: team.id,
-          teamName: team.name,
-        };
-      }
-    }
-    return { cards: Object.values(cards), meta };
-  });
-
-  const portfolio = useMemo(() => portfolioData?.cards ?? [], [portfolioData]);
-  // Merge the live GitHub update-status map (fetched separately by TeamProvider)
-  // onto the cached meta during render, so update badges stay reactive without
-  // refetching the whole portfolio.
-  const portfolioMeta = useMemo<Record<string, RowMeta>>(() => {
-    const base = portfolioData?.meta ?? {};
-    const out: Record<string, RowMeta> = {};
-    for (const [id, m] of Object.entries(base)) {
-      out[id] = { ...m, hasUpdate: projectUpdateStatuses?.[id] ?? false };
-    }
-    return out;
-  }, [portfolioData, projectUpdateStatuses]);
-  const portfolioLoading = portfolioKey != null && portfolioData === undefined && !portfolioError;
+  // Cross-team portfolio (overview triage rows + project records), aggregated
+  // and cached by the shared hook — the same source feeds the team-switcher
+  // dropdown, so both surfaces share one fetch.
+  const {
+    portfolio,
+    portfolioMeta,
+    loading: portfolioLoading,
+    error: portfolioError,
+    mutate: mutatePortfolio,
+  } = useTeamPortfolio();
 
   // A failed load should say so, not masquerade as an empty portfolio.
   useEffect(() => {
@@ -154,15 +88,19 @@ export default function V2ProjectsListPage() {
   //   'personal' → only my private projects (visibility === 'personal')
   //   <teamId>   → only projects shared in that team
   const scopedPortfolio = useMemo(() => {
-    if (scope === 'all') return portfolio;
+    const projectFiltered = portfolio.filter((project) => {
+      const teamId = portfolioMeta[project.id]?.teamId;
+      return Boolean(teamId && selectedTeamIds.includes(teamId));
+    });
+    if (scope === 'all') return projectFiltered;
     if (scope === 'personal') {
-      return portfolio.filter((p) => portfolioMeta[p.id]?.visibility === 'personal');
+      return projectFiltered.filter((p) => portfolioMeta[p.id]?.visibility === 'personal');
     }
-    return portfolio.filter((p) => {
+    return projectFiltered.filter((p) => {
       const m = portfolioMeta[p.id];
       return m?.visibility === 'team-shared' && m.teamId === scope;
     });
-  }, [portfolio, scope, portfolioMeta]);
+  }, [portfolio, scope, portfolioMeta, selectedTeamIds]);
 
   // Featured = stuck + drifting (no scoring system, so no score-based
   // triage). Section 01 shows top 3, Section 02 shows the rest.

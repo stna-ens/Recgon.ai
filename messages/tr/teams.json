@@ -65,7 +65,18 @@
   },
   "switcher": {
     "teams": "Takımlar",
-    "manageTeams": "Takımları Yönet"
+    "manageTeams": "Takımları Yönet",
+    "teamFilter": "Takım filtresi",
+    "chooseTeams": "Çalışma alanı kapsamını seç",
+    "allTeams": "Tüm takımlar",
+    "allTeamsHint": "Tüm takımları tek görünümde birleştir",
+    "teamCount": "{count} takım",
+    "filterAria": "Çalışma alanını takıma göre filtrele. Mevcut seçim: {selection}",
+    "allProjects": "Tüm projeler",
+    "noProjects": "Henüz proje yok",
+    "loadingProjects": "Yükleniyor…",
+    "toggleFilterAria": "{team} takımını çalışma alanı filtresinde aç/kapat",
+    "toggleProjectsAria": "{team} projelerini göster veya gizle"
   },
   "profile": {
     "eyebrow": "PROFİLİN",
