@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
 stopped_at: Phase 4 (Personalized Task Framing) code-complete, all 3 plans shipped (Plans 04-01, 04-02, 04-03). Reassignment invalidation atomic; FRAME-04 closed. 30 new golden fixtures (12 FRAME-06 tone + 8 FRAME-07 grounding + 6 invalidation + 4 negative controls). enqueueReframeJob extracted to leaf module reframeEnqueue.ts to break the storage→dispatcher import cycle. Manual UAT auto-approved per orchestrator auto-mode. Phase 5 (Live Code Infrastructure) is next.
-last_updated: "2026-05-20T17:45:00.000Z"
-last_activity: 2026-06-15 -- Completed quick task 260616-2au: Manual task creation (owner) with optional auto-assign + auto-schedule
+last_updated: "2026-06-20T13:03:27.158Z"
+last_activity: 2026-06-20 -- Completed quick task 260620-mav: AI-generated short task summaries for compact UI (calendar chips + command rows)
 progress:
   total_phases: 8
   completed_phases: 6
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 Phase: 5
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-20
+Last activity: 2026-06-20
 
 Progress: [████████░░] 77%
 
@@ -123,6 +123,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260616-2au | Manual task creation (owner) with optional auto-assign + auto-schedule | 2026-06-15 | 0353fab | [260616-2au-manual-task-creation-owner-with-optional](./quick/260616-2au-manual-task-creation-owner-with-optional/) |
+| 260620-mav | AI-generated short task summaries for compact UI (calendar chips + command rows); migration applied + 48 existing tasks backfilled | 2026-06-20 | 716311b | [260620-mav-compact-task-labels](./quick/260620-mav-compact-task-labels/) |
 
 ## Deferred Items
 
