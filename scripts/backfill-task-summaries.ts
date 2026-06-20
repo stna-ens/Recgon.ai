@@ -11,9 +11,12 @@
 // the live creation paths use.
 //
 // Idempotent + safe to re-run:
-//   - Only ever targets rows WHERE short_summary IS NULL, so a second run
+//   - Default: only targets rows WHERE short_summary IS NULL, so a second run
 //     fills only the still-empty rows (e.g. rows whose LLM call returned null
 //     last time can be retried by re-running).
+//   - BACKFILL_FORCE_ALL=1: re-summarizes EVERY row (overwrites existing
+//     short_summary). Use after changing the summary prompt. Rows whose LLM
+//     call returns null keep their current value (never nulled).
 //   - No deletes. No title/description edits. short_summary is the only column
 //     written, via the fail-soft setTaskShortSummary writer.
 //
@@ -115,15 +118,24 @@ async function main(): Promise<void> {
   // OFFSET-free cursor: once a fetched chunk yields zero NEW fills AND we've
   // already attempted every currently-null row once, we stop. Simplest robust
   // approach: collect all currently-null ids up front, then chunk over them.
-  const { data: allNull, error } = await supabase
+  // BACKFILL_FORCE_ALL=1 re-summarizes EVERY row (overwriting existing
+  // short_summary) — used after a prompt change. Default (unset) is the
+  // idempotent NULL-only fill. Rows whose LLM call returns null keep their
+  // current value in force mode (never nulled), so a partial run is safe.
+  const forceAll = process.env.BACKFILL_FORCE_ALL === '1';
+  let enumQuery = supabase
     .from('agent_tasks')
     .select('id, title, description, created_by')
-    .is('short_summary', null)
     .order('created_at', { ascending: true });
-  if (error) throw new Error(`enumerate null rows failed: ${error.message}`);
+  if (!forceAll) enumQuery = enumQuery.is('short_summary', null);
+  const { data: allRows, error } = await enumQuery;
+  if (error) throw new Error(`enumerate rows failed: ${error.message}`);
 
-  const rows = (allNull ?? []) as NullSummaryRow[];
-  logger.info('backfill-task-summaries: rows with null short_summary', { count: rows.length });
+  const rows = (allRows ?? []) as NullSummaryRow[];
+  logger.info('backfill-task-summaries: rows to process', {
+    count: rows.length,
+    mode: forceAll ? 'force-all (regenerate)' : 'null-only (idempotent)',
+  });
 
   for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
     chunkNo++;

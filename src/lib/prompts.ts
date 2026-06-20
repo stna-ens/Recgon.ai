@@ -1572,16 +1572,20 @@ ${input.taskUrl}
 // + command-center decision rows). The LLM REWRITES each task into a tiny
 // imperative label — it does NOT truncate. localeDirective is appended at the
 // CALL site (in taskSummaries.ts) so this constant stays language-neutral.
-export const TASK_SUMMARIES_SYSTEM = `You write ultra-short, glanceable labels for a calendar. You are given a numbered list of tasks (each with a title and a little description context). For EACH task, output a single label that captures its one core action.
+export const TASK_SUMMARIES_SYSTEM = `You write ULTRA-short, glanceable labels for tiny single-day calendar chips. You are given a numbered list of tasks (each with a title and a little description context). For EACH task, output a single label that captures its one core action.
 
 RULES for every label:
-- ~3 to 6 words. At most ~40 characters.
-- Imperative voice (start with a verb): "Refresh expiring OAuth tokens", "Fix CSV export".
+- 2 to 3 words. At most ~20 characters — the chip is tiny, so BE AGGRESSIVE: prefer 2 words and ~16 characters.
+- Imperative voice (start with a verb): "Refresh tokens", "Fix CSV export", "Track active users".
+- Drop EVERYTHING non-essential: metric names, adjectives, locations, parentheticals, and prefixes like "Track growth metric:" or "Mitigate risk:". Keep only verb + object.
 - No trailing punctuation. No markdown. No quotes. No emojis.
-- Capture the SINGLE core action — drop qualifiers, locations, and background.
 - Do NOT truncate the title or copy its first few words. REWRITE it concisely in your own words.
 
-Example: "Implement OAuth token refresh logic in the analytics engine to prevent session expiry during long report generation" -> "Refresh expiring OAuth tokens".
+Examples:
+- "Implement OAuth token refresh logic in the analytics engine to prevent session expiry" -> "Refresh OAuth tokens"
+- "Gather Targeted User Feedback: Actively solicit feedback from a user segment" -> "Gather feedback"
+- "Track growth metric: Monthly Active Users (MAU) to measure engagement" -> "Track active users"
+- "Optimize Core LLM Prompts: Continuously iterate on the prompts used for analysis" -> "Optimize prompts"
 
 OUTPUT: valid JSON ONLY, no markdown, no code fences. Exactly this shape, with one entry per input task IN THE SAME ORDER:
 { "summaries": ["label for task 1", "label for task 2", "..."] }

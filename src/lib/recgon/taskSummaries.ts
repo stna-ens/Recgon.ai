@@ -3,9 +3,10 @@
 // decision rows).
 //
 // Design contract (do NOT violate):
-//   - The short label is a REAL LLM-written rewrite, ~3-6 words. It is NEVER
+//   - The short label is a REAL LLM-written rewrite, 2-3 words. It is NEVER
 //     produced by truncation. The <=48-char clamp below is a LAST-RESORT
-//     visual safety net only — the prompt asks the LLM to stay <= ~40 chars.
+//     visual safety net only — the prompt asks the LLM to stay <= ~20 chars
+//     (calendar chips are tiny; the visual fix is brevity, not clamping).
 //   - Batched: ONE LLM call for N tasks. Never per-task, never per-render.
 //   - Fail-soft EVERYWHERE: any error (adapter throw, malformed JSON, wrong
 //     array length) returns an array of N nulls. This function NEVER throws,
@@ -27,8 +28,8 @@ import { logger } from '../logger';
 // ceiling keeps a slow LLM from holding the create open. Fail-soft on timeout.
 const DEFAULT_TIMEOUT_MS = 10_000;
 
-// Last-resort visual clamp. The prompt targets <= ~40 chars; this only ever
-// fires on an LLM that ignored the instruction. NOT the summarization
+// Last-resort visual clamp. The prompt targets <= ~20 chars; this only ever
+// fires on an LLM that badly ignored the instruction. NOT the summarization
 // mechanism — purely a chip-overflow guard.
 const MAX_SUMMARY_CHARS = 48;
 
