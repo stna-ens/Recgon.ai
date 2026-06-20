@@ -479,6 +479,15 @@ export const AssignmentReasoningSchema = z.discriminatedUnion('kind', [
 
 export type AssignmentReasoningPayload = z.infer<typeof AssignmentReasoningSchema>;
 
+// ── Compact task labels (quick-260620-mav) ────────────────────────────────────
+// Batched compact-label generator response. The util in taskSummaries.ts
+// checks `summaries.length === items.length` AFTER parsing — a wrong-length
+// array is treated as a fail-soft (-> N nulls), not a schema reject.
+export const TaskSummariesResponseSchema = z.object({
+  summaries: z.array(z.string()),
+});
+export type TaskSummariesResponse = z.infer<typeof TaskSummariesResponseSchema>;
+
 // ── Shared parse helper ───────────────────────────────────────────────────────
 
 /**

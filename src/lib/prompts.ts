@@ -1566,3 +1566,41 @@ ${input.taskUrl}
 — Recgon`,
   };
 };
+
+// ── Compact task labels (quick-260620-mav) ────────────────────────────────────
+// Batched ultra-short summaries for glanceable UI surfaces (week-calendar chips
+// + command-center decision rows). The LLM REWRITES each task into a tiny
+// imperative label — it does NOT truncate. localeDirective is appended at the
+// CALL site (in taskSummaries.ts) so this constant stays language-neutral.
+export const TASK_SUMMARIES_SYSTEM = `You write ultra-short, glanceable labels for a calendar. You are given a numbered list of tasks (each with a title and a little description context). For EACH task, output a single label that captures its one core action.
+
+RULES for every label:
+- ~3 to 6 words. At most ~40 characters.
+- Imperative voice (start with a verb): "Refresh expiring OAuth tokens", "Fix CSV export".
+- No trailing punctuation. No markdown. No quotes. No emojis.
+- Capture the SINGLE core action — drop qualifiers, locations, and background.
+- Do NOT truncate the title or copy its first few words. REWRITE it concisely in your own words.
+
+Example: "Implement OAuth token refresh logic in the analytics engine to prevent session expiry during long report generation" -> "Refresh expiring OAuth tokens".
+
+OUTPUT: valid JSON ONLY, no markdown, no code fences. Exactly this shape, with one entry per input task IN THE SAME ORDER:
+{ "summaries": ["label for task 1", "label for task 2", "..."] }
+
+The "summaries" array length MUST equal the number of input tasks.`;
+
+export function taskSummariesUserPrompt(
+  items: { title: string; description?: string }[],
+): string {
+  const list = items
+    .map((it, i) => {
+      const title = (it.title ?? '').trim();
+      // A short slice of the description gives the model intent without
+      // ballooning tokens. wrapUntrusted (below) fences the whole block so
+      // task text cannot hijack the instructions.
+      const desc = (it.description ?? '').trim().slice(0, 200);
+      const descLine = desc ? `\n   context: ${desc}` : '';
+      return `${i + 1}. ${title}${descLine}`;
+    })
+    .join('\n');
+  return `Write one label for each of the following ${items.length} task(s), in order:\n\n${wrapUntrusted(list)}`;
+}
