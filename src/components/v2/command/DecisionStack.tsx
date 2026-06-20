@@ -215,7 +215,7 @@ export default function DecisionStack({ decisions, teammates, teamId, onChanged,
                   <div key={task.id} className="v2-mc-ds-card" data-tone="crit">
                     <div className="v2-mc-ds-card-main">
                       <div className="v2-mc-ds-title">
-                        {task.title}
+                        {taskDisplayTitle(task)}
                       </div>
                       <p className="v2-mc-ds-meta">
                         <strong>{assigneeName(task)}</strong>
