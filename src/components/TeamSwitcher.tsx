@@ -168,7 +168,7 @@ export default function TeamSwitcher() {
 
         /* Header — terse mono recgon-label + tally, no marketing heading. */
         .team-filter-menu-head {
-          padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;
+          padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
           border-bottom: 1px solid var(--rule);
         }
         .team-filter-eyebrow {
@@ -178,59 +178,53 @@ export default function TeamSwitcher() {
         .team-filter-eyebrow::before { content: '// '; opacity: .5; }
         .team-filter-tally { color: var(--txt-faint); font: 600 10px/1 'JetBrains Mono', monospace; }
 
-        .team-filter-options { max-height: 340px; overflow-y: auto; padding: 6px; }
+        .team-filter-options { padding: 0; max-height: 340px; overflow-y: auto; }
 
-        /* Rows are built from the SAME parts as the calendar swimlane: the shared
-           TeammateAvatar circle + stacked MONO name / MONO role. Selection reads
-           through the avatar (idle-dim when off) + the signature left-edge bar.
-           No checkbox, no boxed chip, and the browser focus-ring is replaced by the
-           same left-bar so a clicked row never gets the pink outline box. */
+        /* Rows ARE the calendar swimlane row (see SwimLane.tsx .cal-lane-label-inner):
+           TeammateAvatar(26) + gap 10 + stacked MONO name / MONO role, on a flat,
+           full-bleed, hairline-separated surface. No rounded pill, NO pink left-bar,
+           no slide. Selection reads through the avatar + name weight (an unselected
+           team de-emphasises, exactly like an idle teammate in the calendar). */
         .team-filter-row {
-          position: relative; width: 100%; min-height: 44px; padding: 7px 10px; border: 0; border-radius: 7px;
-          background: transparent; color: var(--txt-pure); display: flex; align-items: center; gap: 11px;
-          cursor: pointer; text-align: left;
-          transition: background 130ms ease, transform 130ms cubic-bezier(.16,1,.3,1), box-shadow 130ms ease;
+          width: 100%; display: flex; align-items: center; gap: 10px;
+          padding: 12px 16px; border: 0; border-bottom: 1px solid var(--rule);
+          background: transparent; color: var(--txt-pure); cursor: pointer; text-align: left;
+          transition: background 120ms ease;
         }
-        .team-filter-row[data-active='true'] { background: rgba(var(--signature-rgb), .07); box-shadow: inset 2px 0 0 var(--signature); }
-        .team-filter-row:hover { background: rgba(var(--signature-rgb), .11); box-shadow: inset 2px 0 0 var(--signature); transform: translateX(2px); }
-        .team-filter-row:focus-visible { outline: none !important; box-shadow: inset 2px 0 0 var(--signature) !important; background: rgba(var(--signature-rgb), .11); }
+        .team-filter-row:hover { background: rgba(255,255,255,.04); }
+        .team-filter-row:focus-visible { outline: none !important; box-shadow: none !important; background: rgba(255,255,255,.04); }
 
-        .team-filter-identity { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+        .team-filter-identity { display: flex; flex-direction: column; min-width: 0; }
         .team-filter-name {
-          font: 700 11px/1.2 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .6px; text-transform: uppercase;
+          font: 700 10px/1.2 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .6px; text-transform: uppercase;
           color: var(--txt-pure); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .team-filter-role {
-          font: 400 9.5px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .8px; text-transform: uppercase;
+          margin-top: 2px;
+          font: 400 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .8px; text-transform: uppercase;
           color: var(--txt-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
+        .team-filter-row[data-active='false'] .team-filter-name { color: var(--txt-muted); }
 
-        /* All-teams aggregate marker — circle to match the avatars, signature when active. */
+        /* All-teams aggregate marker — circle sized like the avatars. */
         .team-filter-allglyph {
           width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
           display: inline-flex; align-items: center; justify-content: center;
           border: 1px solid var(--rule-strong); color: var(--txt-faint);
-          transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
         }
-        .team-filter-row[data-active='true'] .team-filter-allglyph {
-          color: var(--signature); border-color: rgba(var(--signature-rgb), .5); background: rgba(var(--signature-rgb), .12);
-        }
-        .team-filter-all { margin-bottom: 2px; }
+        .team-filter-row[data-active='true'] .team-filter-allglyph { color: var(--signature); border-color: rgba(var(--signature-rgb), .5); }
 
-        /* Footer — mono uppercase like the nav links, signature hover + left-bar, no arrow. */
+        /* Footer — mono uppercase like the nav links, flat hover, no arrow, no bar. */
         .team-filter-manage {
-          display: flex; align-items: center; padding: 12px 16px; border-top: 1px solid var(--rule);
+          display: flex; align-items: center; padding: 13px 16px;
           font: 700 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 1px; text-transform: uppercase;
           color: var(--txt-faint); text-decoration: none;
-          transition: background 130ms ease, color 130ms ease, box-shadow 130ms ease;
+          transition: background 120ms ease, color 120ms ease;
         }
-        .team-filter-manage:hover, .team-filter-manage:focus-visible {
-          outline: none !important; background: rgba(var(--signature-rgb), .08);
-          color: var(--signature); box-shadow: inset 2px 0 0 var(--signature) !important;
-        }
+        .team-filter-manage:hover, .team-filter-manage:focus-visible { outline: none !important; background: rgba(255,255,255,.04); color: var(--signature); }
 
         html.light .team-filter-menu { background: #ffffff; box-shadow: var(--shadow-deep), inset 0 1px 0 rgba(var(--signature-rgb), .12); }
-        html.light .team-filter-row:hover { background: rgba(var(--signature-rgb), .09); }
+        html.light .team-filter-row:hover, html.light .team-filter-manage:hover { background: rgba(20,14,30,.04); }
         @media (max-width: 900px) { .team-filter-trigger { min-width: auto; max-width: 145px; } }
       `}</style>
     </div>
