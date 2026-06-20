@@ -19,6 +19,8 @@
 import { logger } from '../logger';
 import { supabase } from '../supabase';
 import { getTeam, getTeamMembers } from '../teamStorage';
+import { getUserById } from '../userStorage';
+import type { OutputLanguage } from '../prompts';
 import { notifyOwnerTriageSummary } from '../notifications';
 import { chatViaProviders } from '../llm/providers';
 import { readUnifiedBrain } from './brain';
@@ -179,10 +181,28 @@ export type DispatchResult = {
   deferred: number;
 };
 
+// quick-260620-mav — cheap, fail-soft resolver for a team's output language.
+// The team OWNER is `teams.created_by` (getTeam().createdBy); their per-user
+// `language` ('en' | 'tr') steers compact-label generation. Any miss (no team,
+// no user, lookup error) defaults to 'en' — never throws, never blocks dispatch.
+export async function resolveTeamLanguage(teamId: string): Promise<OutputLanguage> {
+  try {
+    const team = await getTeam(teamId);
+    if (!team?.createdBy) return 'en';
+    const owner = await getUserById(team.createdBy);
+    return owner?.language === 'tr' ? 'tr' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
 export async function runDispatch(teamId: string): Promise<DispatchResult> {
   const snapshot = await readUnifiedBrain(teamId);
   await saveBrainSnapshot(teamId, snapshot);
-  const { minted, skipped } = await mintTasksFromBrain(teamId, snapshot);
+  // quick-260620-mav — resolve the team owner's language so freshly minted
+  // tasks get a compact label in the right language. Fail-soft → 'en'.
+  const language = await resolveTeamLanguage(teamId);
+  const { minted, skipped } = await mintTasksFromBrain(teamId, snapshot, { language });
 
   // Score against the full unassigned backlog, not just freshly minted, so
   // user-created tasks get picked up too.

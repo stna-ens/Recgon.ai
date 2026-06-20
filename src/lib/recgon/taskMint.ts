@@ -10,9 +10,12 @@
 // (e.g. "thumbs-up button" needs `engineering`, not `strategy`). On LLM
 // failure we fall back to the brain's original tags so minting never blocks.
 
-import { createTask, listTombstonedDedupKeys } from './storage';
+import { createTask, listTombstonedDedupKeys, setTaskShortSummary } from './storage';
 import { tagTasksWithSkills, tagSingleTaskWithSkills } from './skillTagger';
+import { generateTaskSummaries } from './taskSummaries';
+import { logger } from '../logger';
 import type { BrainEntry, BrainSnapshot, AgentTask } from './types';
+import type { OutputLanguage } from '../prompts';
 
 export type MintResult = {
   minted: AgentTask[];
@@ -22,6 +25,7 @@ export type MintResult = {
 export async function mintTasksFromBrain(
   teamId: string,
   snapshot: BrainSnapshot,
+  opts?: { language?: OutputLanguage },
 ): Promise<MintResult> {
   const tombstoned = await listTombstonedDedupKeys(teamId);
   const minted: AgentTask[] = [];
@@ -64,6 +68,32 @@ export async function mintTasksFromBrain(
     if (task) minted.push(task);
     else skipped++;
   }
+
+  // quick-260620-mav — generate compact-UI labels in ONE batched LLM call for
+  // all freshly minted tasks, then patch each row. Fully fail-soft: any error
+  // is swallowed so minting never blocks. title/description are untouched.
+  if (minted.length > 0) {
+    try {
+      const summaries = await generateTaskSummaries(
+        minted.map((t) => ({ title: t.title, description: t.description })),
+        { language: opts?.language },
+      );
+      for (let i = 0; i < minted.length; i++) {
+        const summary = summaries[i];
+        if (summary) {
+          await setTaskShortSummary(minted[i].id, summary);
+          minted[i].shortSummary = summary;
+        }
+      }
+    } catch (err) {
+      logger.warn('mintTasksFromBrain: short-summary generation failed (non-fatal)', {
+        teamId,
+        count: minted.length,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   return { minted, skipped };
 }
 

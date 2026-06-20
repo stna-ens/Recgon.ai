@@ -7,7 +7,7 @@
 
 import type { BrainEntry } from './types';
 import { mintTasksFromBrain } from './taskMint';
-import { runDispatch } from './dispatcher';
+import { runDispatch, resolveTeamLanguage } from './dispatcher';
 import { supabase } from '../supabase';
 import { logger } from '../logger';
 
@@ -109,7 +109,9 @@ export async function runScheduledForTeam(teamId: string, now: Date = new Date()
     },
     entries,
   };
-  const { minted, skipped } = await mintTasksFromBrain(teamId, snapshot);
+  // quick-260620-mav — resolve the owner's language for compact labels (fail-soft → 'en').
+  const language = await resolveTeamLanguage(teamId);
+  const { minted, skipped } = await mintTasksFromBrain(teamId, snapshot, { language });
   // Run a dispatch pass so the new tasks get assigned same-tick.
   let dispatched = { assigned: 0, noFit: 0 };
   try {

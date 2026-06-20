@@ -8,9 +8,12 @@ import {
   assignTask,
   setTaskSchedule,
   clearTriageNote,
+  setTaskShortSummary,
 } from '@/lib/recgon/storage';
 import { sanitizeTaskForClient } from '@/lib/recgon/taskSanitizer';
 import { mintUserTask } from '@/lib/recgon/taskMint';
+import { generateTaskSummaries } from '@/lib/recgon/taskSummaries';
+import { getUserById } from '@/lib/userStorage';
 import { dispatchTask } from '@/lib/recgon/dispatcher';
 import { planTaskSchedule } from '@/lib/recgon/scheduler';
 import { enqueueReframeJob } from '@/lib/recgon/reframeEnqueue';
@@ -119,6 +122,27 @@ export async function POST(
     deadline: body.deadline ?? null,
     createdBy: session.user.id,
   });
+
+  // quick-260620-mav — generate a compact-UI label for the new task (one
+  // batched call of size 1) in the creator's language. Fully fail-soft: any
+  // error is swallowed so it never blocks the create response. The final
+  // getTask(task.id) re-read below re-maps short_summary into the payload.
+  try {
+    const language = (await getUserById(session.user.id))?.language ?? 'en';
+    const [summary] = await generateTaskSummaries(
+      [{ title: task.title, description: task.description }],
+      { language },
+    );
+    if (summary) {
+      await setTaskShortSummary(task.id, summary);
+      task.shortSummary = summary;
+    }
+  } catch (err) {
+    logger.warn('manual task short-summary generation failed (non-fatal)', {
+      taskId: task.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   if (wantsPerson) {
     // ── PERSON branch (owner-only) ─────────────────────────────────────────
