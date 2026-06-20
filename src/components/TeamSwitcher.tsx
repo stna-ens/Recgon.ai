@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useTeam } from './TeamProvider';
 import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
 import { useTeamPortfolio, groupByTeam } from '@/components/v2/projects/useTeamPortfolio';
-import { pulseShort } from '@/components/v2/utils';
+import { pulseShort, projectInitial } from '@/components/v2/utils';
 
 const EXPANDED_KEY = 'recgon_expanded_teams';
 
@@ -206,14 +206,15 @@ export default function TeamSwitcher() {
               const isExpanded = !!expanded[team.id];
               const projects = projectsByTeam[team.id] ?? [];
               const hasProjects = projects.length > 0;
-              // Show the disclosure until we positively know the team is empty.
-              const showChevron = !hasOpened || projectsLoading || hasProjects;
+              // Allow expanding until we positively know the team is empty.
+              const canExpand = !hasOpened || projectsLoading || hasProjects;
+              const showProjects = isExpanded && canExpand;
               return (
                 <div
                   key={team.id}
                   className="team-filter-team"
                   data-active={active ? 'true' : 'false'}
-                  data-expanded={isExpanded ? 'true' : 'false'}
+                  data-expanded={showProjects ? 'true' : 'false'}
                 >
                   <div className="team-filter-teamrow">
                     <button
@@ -236,18 +237,18 @@ export default function TeamSwitcher() {
                     <button
                       type="button"
                       className="team-filter-teammain"
-                      aria-expanded={isExpanded}
+                      aria-expanded={showProjects}
                       aria-label={t('switcher.toggleProjectsAria', { team: team.name })}
-                      onClick={() => toggleExpand(team.id)}
+                      onClick={() => { if (canExpand) toggleExpand(team.id); }}
                     >
                       <TeammateAvatar name={team.name} size={26} isIdle={!active} />
                       <span className="team-filter-identity">
                         <span className="team-filter-name">{team.name}</span>
                         <span className="team-filter-role">{t(`roles.${team.role}`)}</span>
                       </span>
-                      {showChevron && (
+                      {canExpand && (
                         <svg
-                          className="team-filter-chev" data-open={isExpanded ? 'true' : 'false'} aria-hidden="true"
+                          className="team-filter-chev" data-open={showProjects ? 'true' : 'false'} aria-hidden="true"
                           width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
                         >
                           <polyline points="9 6 15 12 9 18" />
@@ -256,28 +257,42 @@ export default function TeamSwitcher() {
                     </button>
                   </div>
 
-                  {isExpanded && (
-                    <ul className="team-filter-projects">
-                      {hasProjects ? (
-                        projects.map((p) => (
-                          <li key={p.id}>
-                            <Link
-                              href={`/projects/${p.id}`}
-                              className="team-filter-project"
-                              onClick={close}
-                            >
-                              <span className="team-filter-project-dot" data-pulse={p.pulse} aria-hidden="true" />
-                              <span className="team-filter-project-name">{p.name}</span>
-                              <span className="team-filter-project-pulse" data-pulse={p.pulse}>{pulseShort(p.pulse)}</span>
-                            </Link>
-                          </li>
-                        ))
-                      ) : (
-                        <li className="team-filter-projhint">
-                          {projectsLoading ? t('switcher.loadingProjects') : t('switcher.noProjects')}
-                        </li>
-                      )}
-                    </ul>
+                  {canExpand && (
+                    <div className="team-filter-projwrap" data-expanded={showProjects ? 'true' : 'false'}>
+                      <div className="team-filter-projwrap-inner">
+                        <ul className="team-filter-projects">
+                          {hasProjects ? (
+                            projects.map((p) => (
+                              <li key={p.id}>
+                                <Link
+                                  href={`/projects/${p.id}`}
+                                  className="team-filter-project"
+                                  onClick={close}
+                                >
+                                  <span className="team-filter-project-logo" aria-hidden="true">
+                                    {p.logoUrl ? (
+                                      // eslint-disable-next-line @next/next/no-img-element -- user-supplied logo URL; hosts can't be enumerated for next/image
+                                      <img src={p.logoUrl} alt="" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).textContent = projectInitial(p.name); }} />
+                                    ) : (
+                                      projectInitial(p.name)
+                                    )}
+                                  </span>
+                                  <span className="team-filter-project-name">{p.name}</span>
+                                  <span className="team-filter-project-status" data-pulse={p.pulse}>
+                                    <span className="team-filter-project-dot" data-pulse={p.pulse} aria-hidden="true" />
+                                    {pulseShort(p.pulse)}
+                                  </span>
+                                </Link>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="team-filter-projhint">
+                              {projectsLoading ? t('switcher.loadingProjects') : t('switcher.noProjects')}
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
                   )}
                 </div>
               );
@@ -394,36 +409,74 @@ export default function TeamSwitcher() {
         .team-filter-chev { margin-left: auto; flex: 0 0 auto; color: var(--txt-faint); transition: transform 160ms ease, color 120ms ease; }
         .team-filter-team[data-expanded='true'] .team-filter-chev { transform: rotate(90deg); color: var(--signature); }
 
-        /* Project sub-rows — flat, indented, pulse as a DOT (no pills/chips). */
-        .team-filter-projects { list-style: none; margin: 0; padding: 0 0 6px; }
+        /* Project sub-rows — flat, left-aligned, logo on the left, pulse as a
+           dot + word. Revealed via a grid-rows height animation (smooth both
+           ways), with the inner content fading + sliding in. */
+        .team-filter-projwrap {
+          display: grid; grid-template-rows: 0fr;
+          transition: grid-template-rows 240ms cubic-bezier(.16,1,.3,1);
+        }
+        .team-filter-projwrap[data-expanded='true'] { grid-template-rows: 1fr; }
+        .team-filter-projwrap-inner {
+          overflow: hidden; min-height: 0;
+          opacity: 0; transform: translateY(-3px);
+          transition: opacity 200ms ease, transform 240ms cubic-bezier(.16,1,.3,1);
+        }
+        .team-filter-projwrap[data-expanded='true'] .team-filter-projwrap-inner { opacity: 1; transform: none; }
+
+        .team-filter-projects { list-style: none; margin: 0; padding: 2px 0 8px; }
         .team-filter-project {
           display: flex; align-items: center; gap: 9px;
-          padding: 7px 16px 7px 44px; text-decoration: none;
+          padding: 6px 16px 6px 42px; text-decoration: none;
           transition: background 120ms ease;
         }
         .team-filter-project:hover { background: rgba(255,255,255,.04); }
         .team-filter-project:focus-visible { outline: none !important; box-shadow: none !important; background: rgba(255,255,255,.04); }
+
+        /* Project logo (image or initial) — sits to the left of the name. */
+        .team-filter-project-logo {
+          width: 20px; height: 20px; border-radius: 5px; flex: 0 0 auto; overflow: hidden;
+          display: inline-flex; align-items: center; justify-content: center;
+          background: rgba(var(--signature-rgb), .15); border: 1px solid rgba(var(--signature-rgb), .20);
+          color: var(--txt-pure); font: 800 9px/1 'JetBrains Mono', ui-monospace, monospace;
+          transition: transform 180ms cubic-bezier(.2,.8,.2,1), border-color 120ms ease;
+        }
+        .team-filter-project-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .team-filter-project:hover .team-filter-project-logo { transform: scale(1.07); border-color: rgba(var(--signature-rgb), .42); }
+
+        .team-filter-project-name {
+          min-width: 0; max-width: 148px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .2px; color: var(--txt-muted);
+          transition: color 120ms ease;
+        }
+        .team-filter-project:hover .team-filter-project-name { color: var(--txt-pure); }
+
+        .team-filter-project-status {
+          display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+          font: 600 9px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .4px; text-transform: lowercase;
+          color: var(--txt-faint);
+        }
         .team-filter-project-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; background: var(--txt-faint); }
+        .team-filter-project-status[data-pulse='shipping']   { color: var(--success); }
+        .team-filter-project-status[data-pulse='converging'] { color: var(--signature); }
+        .team-filter-project-status[data-pulse='drifting']   { color: var(--signature); }
+        .team-filter-project-status[data-pulse='stuck']      { color: var(--warning); }
         .team-filter-project-dot[data-pulse='shipping']   { background: var(--success); }
         .team-filter-project-dot[data-pulse='converging'] { background: var(--signature); }
         .team-filter-project-dot[data-pulse='drifting']   { background: var(--signature); }
         .team-filter-project-dot[data-pulse='stuck']      { background: var(--warning); }
-        .team-filter-project-name {
-          flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-          font: 500 11px/1.3 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .2px; color: var(--txt-muted);
-        }
-        .team-filter-project:hover .team-filter-project-name { color: var(--txt-pure); }
-        .team-filter-project-pulse {
-          flex: 0 0 auto; font: 600 9px/1 'JetBrains Mono', ui-monospace, monospace;
-          letter-spacing: .4px; text-transform: lowercase; color: var(--txt-faint);
-        }
-        .team-filter-project-pulse[data-pulse='shipping']   { color: var(--success); }
-        .team-filter-project-pulse[data-pulse='converging'] { color: var(--signature); }
-        .team-filter-project-pulse[data-pulse='drifting']   { color: var(--signature); }
-        .team-filter-project-pulse[data-pulse='stuck']      { color: var(--warning); }
+
         .team-filter-projhint {
-          padding: 7px 16px 7px 44px; color: var(--txt-faint);
+          padding: 6px 16px 6px 42px; color: var(--txt-faint);
           font: 500 10px/1.3 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .3px; text-transform: lowercase;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .team-filter-menu,
+          .team-filter-projwrap,
+          .team-filter-projwrap-inner,
+          .team-filter-project-logo,
+          .team-filter-chev { transition: none; animation: none; }
         }
 
         /* Footer — two equal mono links, hairline-split. */
