@@ -175,11 +175,6 @@ export default function TeamSwitcher() {
 
       {open && (
         <div className="team-filter-menu" role="menu" aria-label={t('switcher.teamFilter')}>
-          <div className="team-filter-menu-head">
-            <span className="team-filter-eyebrow">{t('switcher.teamFilter')}</span>
-            <span className="team-filter-tally">{selectedTeamIds.length}/{teams.length}</span>
-          </div>
-
           <div className="team-filter-options">
             {teams.length > 1 && (
               <button
@@ -241,7 +236,13 @@ export default function TeamSwitcher() {
                       aria-label={t('switcher.toggleProjectsAria', { team: team.name })}
                       onClick={() => { if (canExpand) toggleExpand(team.id); }}
                     >
-                      <TeammateAvatar name={team.name} size={26} isIdle={!active} />
+                      <TeammateAvatar
+                        name={team.name}
+                        avatarUrl={(team as { avatarUrl?: string }).avatarUrl}
+                        avatarColor={(team as { avatarColor?: string }).avatarColor}
+                        size={26}
+                        isIdle={!active}
+                      />
                       <span className="team-filter-identity">
                         <span className="team-filter-name">{team.name}</span>
                         <span className="team-filter-role">{t(`roles.${team.role}`)}</span>
@@ -339,18 +340,6 @@ export default function TeamSwitcher() {
           animation: teamFilterIn 150ms cubic-bezier(.16,1,.3,1) both;
         }
         @keyframes teamFilterIn { from { opacity: 0; transform: translateY(-5px) scale(.985); } }
-
-        /* Header — terse mono recgon-label + tally. */
-        .team-filter-menu-head {
-          padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
-          border-bottom: 1px solid var(--rule);
-        }
-        .team-filter-eyebrow {
-          color: var(--signature); font: 700 10px/1 'JetBrains Mono', monospace;
-          letter-spacing: 1.2px; text-transform: uppercase; opacity: .85;
-        }
-        .team-filter-eyebrow::before { content: '// '; opacity: .5; }
-        .team-filter-tally { color: var(--txt-faint); font: 600 10px/1 'JetBrains Mono', monospace; }
 
         .team-filter-options { padding: 0; max-height: 420px; overflow-y: auto; }
 
