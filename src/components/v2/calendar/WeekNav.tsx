@@ -79,7 +79,10 @@ export function WeekNav({
           <button type="button" className="cal-nav-arrow" onClick={onNext} aria-label={t('nav.nextWeek')}>›</button>
         </div>
 
-        {unscheduledCount > 0 && (
+        {/* Keep the toggle while the panel is open even at 0 — otherwise
+            dragging the last task onto a day removes the only control and
+            leaves the empty panel stuck open. */}
+        {(unscheduledCount > 0 || sidebarOpen) && (
           <button
             type="button"
             className={`cal-nav-unsched${sidebarOpen ? ' is-active' : ''}`}

@@ -239,7 +239,9 @@ export default function GithubConsentSection({
           inset: 0;
           background: rgba(0, 0, 0, 0.36);
           backdrop-filter: blur(4px);
-          z-index: 100;
+          /* Above the top nav (z-index 200) like every other modal — otherwise
+             the nav stays bright and clickable through the dimmed overlay. */
+          z-index: 1000;
         }
         .github-consent__dialog {
           position: fixed;
@@ -252,7 +254,7 @@ export default function GithubConsentSection({
           border: 1px solid var(--btn-secondary-border);
           border-radius: var(--r-md);
           box-shadow: var(--shadow-float);
-          z-index: 101;
+          z-index: 1001;
           display: flex;
           flex-direction: column;
           gap: 14px;

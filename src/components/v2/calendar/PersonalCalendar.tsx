@@ -10,6 +10,7 @@ import { PersonalLane } from './PersonalLane';
 import { TaskDetailPanel } from './TaskDetailPanel';
 import type { CalendarCard, WeekRange } from './calendarTypes';
 import { addWeeks, buildCards, getWeekRange, localDateKey, weekDays } from './calendarUtils';
+import { useTeam } from '@/components/TeamProvider';
 
 type TeamRef = { id: string; name: string; avatarColor: string | null };
 type ProjectRef = { id: string; name: string; logoUrl: string | null; teamId: string | null };
@@ -33,6 +34,7 @@ function fmtEditorial(start: Date, end: Date, month: (i: number) => string): { p
 
 export function PersonalCalendar() {
   const t = useTranslations('calendar');
+  const { selectedTeamIds } = useTeam();
   const [weekRange, setWeekRange] = useState<WeekRange>(() => getWeekRange(new Date()));
   const fromKey = localDateKey(weekRange.start);
   const toKey = localDateKey(weekRange.end);
@@ -85,6 +87,12 @@ export function PersonalCalendar() {
     }
   }, [data, selectedTeamId]);
 
+  useEffect(() => {
+    if (selectedTeamId && !selectedTeamIds.includes(selectedTeamId)) {
+      setSelectedTeamId(null);
+    }
+  }, [selectedTeamId, selectedTeamIds]);
+
   // Single-day mode on narrow screens.
   useEffect(() => {
     const check = () => {
@@ -123,9 +131,11 @@ export function PersonalCalendar() {
 
   const filteredTasks = useMemo(() => {
     const all = data?.tasks ?? [];
-    if (!selectedTeamId) return all;
-    return all.filter((t) => t.teamId === selectedTeamId);
-  }, [data, selectedTeamId]);
+    return all.filter((task) => {
+      if (!selectedTeamIds.includes(task.teamId)) return false;
+      return !selectedTeamId || !selectedTeamIds.includes(selectedTeamId) || task.teamId === selectedTeamId;
+    });
+  }, [data, selectedTeamId, selectedTeamIds]);
 
   // Build one lane per project the user currently has scheduled tasks in
   // (across all dates — see `/api/calendar`), regardless of whether that
@@ -134,9 +144,10 @@ export function PersonalCalendar() {
   // a single "no project" lane that only appears when such tasks exist.
   const projectLanes = useMemo<Array<{ key: string; project: ProjectRef | null; cards: CalendarCard[] }>>(() => {
     const allProjects = data?.projects ?? [];
-    const teamScopedProjects = selectedTeamId
-      ? allProjects.filter((p) => p.teamId === selectedTeamId)
-      : allProjects;
+    const teamScopedProjects = allProjects.filter((project) => {
+      if (!project.teamId || !selectedTeamIds.includes(project.teamId)) return false;
+      return !selectedTeamId || !selectedTeamIds.includes(selectedTeamId) || project.teamId === selectedTeamId;
+    });
 
     const tasksByProjectKey = new Map<string, AgentTask[]>();
     for (const t of filteredTasks) {
@@ -171,7 +182,7 @@ export function PersonalCalendar() {
       return an.localeCompare(bn);
     });
     return lanes;
-  }, [filteredTasks, data?.projects, selectedTeamId, weekRange]);
+  }, [filteredTasks, data?.projects, selectedTeamId, selectedTeamIds, weekRange]);
 
   const teamBadgeByTeamId = useMemo(() => {
     const map = new Map<string, { name: string; color: string | null }>();
@@ -195,7 +206,7 @@ export function PersonalCalendar() {
     });
   };
 
-  const teams = data?.teams ?? [];
+  const teams = (data?.teams ?? []).filter((team) => selectedTeamIds.includes(team.id));
   const { primary, year } = fmtEditorial(weekRange.start, weekRange.end, (i) => t(`months.${MONTH_KEYS[i]}`));
   const filterLabel = selectedTeamId
     ? (teams.find((team) => team.id === selectedTeamId)?.name ?? t('filter.team'))

@@ -6,6 +6,7 @@ import Select from '@/components/Select';
 import { EmptyState } from '@/components/ui';
 import { formatDay } from '@/lib/datetime';
 import { useListShortcuts } from '@/lib/useListShortcuts';
+import { taskDisplayTitle } from '@/lib/recgon/displayTitle';
 import type { CommandProject, CommandTask, CommandTeammate } from './types';
 
 // The team task list, Mission Control's second act. Status comes from the
@@ -271,7 +272,7 @@ export default function TeamTaskTable({
                 >
                   <span className="v2-mct-rail" style={{ background: railTone(task) }} aria-hidden="true" />
                   <span className="v2-mct-main">
-                    <span className="v2-mct-title">{task.title}</span>
+                    <span className="v2-mct-title">{taskDisplayTitle(task)}</span>
                     <span className="v2-mct-meta">
                       <span className="v2-mct-kind">{t(`kind.${task.kind}`)}</span>
                       {task.projectId && projectById.get(task.projectId) && (

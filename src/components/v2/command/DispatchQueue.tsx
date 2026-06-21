@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/components/ui';
 import Select from '@/components/Select';
+import { taskDisplayTitle } from '@/lib/recgon/displayTitle';
 import type { CommandTask, CommandTeammate } from './types';
 
 // The dispatch backlog: unassigned work waiting for a person. Rendered as calm
@@ -39,7 +40,7 @@ export default function DispatchQueue({ tasks, teammates, isOwner, busy, onAssig
           <article key={task.id} className="v2-dq-card">
             <button type="button" className="v2-dq-main" onClick={() => onOpenTask(task.id)} aria-label={task.title}>
               <span className="v2-dq-kind">{t(`kind.${task.kind}`)}</span>
-              <span className="v2-dq-title">{task.title}</span>
+              <span className="v2-dq-title">{taskDisplayTitle(task)}</span>
               <span className="v2-dq-meta">
                 {task.estimatedHours ? <span className="v2-dq-chip">{t('table.hoursShort', { count: task.estimatedHours })}</span> : null}
                 {reason ? <span className="v2-dq-reason">{reason}</span> : null}

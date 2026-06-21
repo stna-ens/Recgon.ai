@@ -195,9 +195,12 @@ function CommandPageInner() {
 
       <style>{`
         .v2-ops {
+          /* The shell (.v2-main) already pads 84px to clear the nav and
+             .v2-container adds the side gutters — so only a small hero top gap
+             here, matching the tasks/team pages (not a second 84px). */
           max-width: 1160px;
           margin: 0 auto;
-          padding: 96px 24px 80px;
+          padding: 12px 0 80px;
           display: flex;
           flex-direction: column;
           gap: 36px;
@@ -256,7 +259,7 @@ function CommandPageInner() {
         }
 
         @media (max-width: 860px) {
-          .v2-ops { padding: 84px 16px 60px; gap: 28px; }
+          .v2-ops { padding: 8px 0 60px; gap: 28px; }
           .v2-ops-stats { gap: 28px; }
           .v2-ops-skel-roster { grid-template-columns: 1fr; }
         }

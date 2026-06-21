@@ -132,7 +132,7 @@ function validDrop(from: ColumnKey, to: ColumnKey): 'accept' | 'complete' | null
 function V2TasksInner() {
   const t = useTranslations('tasks');
   const locale = useLocale();
-  const { projects: teamProjects } = useTeam();
+  const { projects: teamProjects, selectedTeamIds } = useTeam();
   const projects = useMemo(() => teamProjects ?? [], [teamProjects]);
   const { addToast } = useToast();
 
@@ -176,8 +176,11 @@ function V2TasksInner() {
   const tasks = useMemo<TaskItem[]>(() => {
     const list = Array.isArray(inboxData?.tasks) ? (inboxData!.tasks as TaskItem[]) : [];
     const LIVE = new Set(['unassigned', 'assigned', 'accepted', 'in_progress', 'awaiting_review']);
-    return list.filter((t) => LIVE.has(t.status));
-  }, [inboxData]);
+    return list.filter((task) => {
+      if (!LIVE.has(task.status)) return false;
+      return selectedTeamIds.includes(task.team_id);
+    });
+  }, [inboxData, selectedTeamIds]);
   // Distinguish "still fetching" from "fetch failed with no cached board" —
   // the latter renders a designed error card with retry, never an endless
   // skeleton (C-04).
@@ -1448,11 +1451,13 @@ function V2TasksInner() {
         @keyframes v2overlayIn { from { opacity: 0; } to { opacity: 1; } }
         .v2-tasks-detail {
           position: fixed;
-          top: 0;
+          /* Clear the fixed top nav (z-index 200) instead of sliding under it
+             — otherwise the toolbar covers the panel's header + close button. */
+          top: 84px;
           right: 0;
           z-index: 81;
           width: min(560px, 100%);
-          height: 100%;
+          height: calc(100% - 84px);
           background: var(--bg-deep, #0b0b0e);
           border-left: 1px solid var(--rule);
           padding: 28px 28px 32px;

@@ -738,7 +738,10 @@ const css = `
 
 .cal-panel {
   position: fixed;
-  top: 0; right: 0; bottom: 0;
+  /* Clear the floating top nav (fixed, top:14 + height:60, z-index:200) — it
+     sits above this panel, so start below it instead of ducking underneath.
+     84px matches the shell's .v2-main nav clearance. */
+  top: 84px; right: 0; bottom: 0;
   width: clamp(340px, 36vw, 520px);
   z-index: 50;
   background: var(--bg-card);

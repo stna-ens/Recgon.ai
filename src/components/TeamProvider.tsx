@@ -32,6 +32,8 @@ interface TeamContextType {
   teams: Team[];
   currentTeam: Team | null;
   setCurrentTeam: (team: Team) => void;
+  selectedTeamIds: string[];
+  setSelectedTeamIds: (teamIds: string[]) => void;
   refreshTeams: () => Promise<void>;
   loading: boolean;
   projects: CachedProject[] | null;
@@ -44,6 +46,8 @@ const TeamContext = createContext<TeamContextType>({
   teams: [],
   currentTeam: null,
   setCurrentTeam: () => {},
+  selectedTeamIds: [],
+  setSelectedTeamIds: () => {},
   refreshTeams: async () => {},
   loading: true,
   projects: null,
@@ -61,6 +65,7 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
   const [currentTeam, setCurrentTeamState] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<CachedProject[] | null>(null);
+  const [selectedTeamIds, setSelectedTeamIdsState] = useState<string[]>([]);
   const [projectUpdateStatuses, setProjectUpdateStatuses] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
   const router = useRouter();
@@ -125,11 +130,28 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
 
         const savedTeamId = localStorage.getItem('recgon_current_team');
         const saved = data.find((t: Team) => t.id === savedTeamId);
-        if (saved) {
-          setCurrentTeamState(saved);
-        } else if (data.length > 0) {
-          setCurrentTeamState(data[0]);
-          localStorage.setItem('recgon_current_team', data[0].id);
+        let savedSelection: string[] = [];
+        try {
+          const raw = localStorage.getItem('recgon_selected_teams');
+          const parsed = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(parsed)) {
+            const available = new Set(data.map((team: Team) => team.id));
+            savedSelection = parsed.filter((id): id is string => typeof id === 'string' && available.has(id));
+          }
+        } catch { /* fall back to the current team */ }
+
+        const initialTeam = saved ?? data[0] ?? null;
+        const initialSelection = savedSelection.length > 0
+          ? savedSelection
+          : initialTeam ? [initialTeam.id] : [];
+        setSelectedTeamIdsState(initialSelection);
+        if (initialTeam) {
+          const primaryTeam = initialSelection.includes(initialTeam.id)
+            ? initialTeam
+            : data.find((team: Team) => team.id === initialSelection[0]) ?? initialTeam;
+          setCurrentTeamState(primaryTeam);
+          localStorage.setItem('recgon_current_team', primaryTeam.id);
+          localStorage.setItem('recgon_selected_teams', JSON.stringify(initialSelection));
         }
 
         if (!didInitialCheck.current) {
@@ -162,13 +184,34 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
 
   const setCurrentTeam = useCallback((team: Team) => {
     setCurrentTeamState(team);
+    setSelectedTeamIdsState([team.id]);
     localStorage.setItem('recgon_current_team', team.id);
+    localStorage.setItem('recgon_selected_teams', JSON.stringify([team.id]));
   }, []);
+
+  const setSelectedTeamIds = useCallback((teamIds: string[]) => {
+    const available = new Set(teams.map((team) => team.id));
+    const next = Array.from(new Set(teamIds.filter((id) => available.has(id))));
+    if (next.length === 0 && teams.length > 0) return;
+    setSelectedTeamIdsState(next);
+    const active = currentTeamRef.current;
+    if (next.length > 0 && (!active || !next.includes(active.id))) {
+      const nextPrimary = teams.find((team) => team.id === next[0]);
+      if (nextPrimary) {
+        setCurrentTeamState(nextPrimary);
+        localStorage.setItem('recgon_current_team', nextPrimary.id);
+      }
+    }
+    try {
+      localStorage.setItem('recgon_selected_teams', JSON.stringify(next));
+    } catch { /* storage is optional */ }
+  }, [teams]);
 
   return (
     <TeamContext.Provider value={{
-      teams, currentTeam, setCurrentTeam, refreshTeams, loading,
-      projects, projectUpdateStatuses, refreshProjects, setProjectUpdateStatuses,
+      teams, currentTeam, setCurrentTeam, selectedTeamIds, setSelectedTeamIds, refreshTeams, loading,
+      projects,
+      projectUpdateStatuses, refreshProjects, setProjectUpdateStatuses,
     }}>
       {children}
     </TeamContext.Provider>

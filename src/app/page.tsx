@@ -43,6 +43,43 @@ const EMPTY_OVERVIEW: OverviewPayload = {
   teamPulse: null,
 };
 
+function mergeOverviewPayloads(payloads: OverviewPayload[]): OverviewPayload {
+  if (payloads.length === 0) return EMPTY_OVERVIEW;
+  const focuses = payloads.map((payload) => payload.todayFocus).filter((focus): focus is FocusData => Boolean(focus));
+  focuses.sort((a, b) => (a.overallScore ?? 10) - (b.overallScore ?? 10));
+  return {
+    totalProjects: payloads.reduce((sum, payload) => sum + (payload.totalProjects ?? 0), 0),
+    todayFocus: focuses[0] ?? null,
+    decisionDeck: {
+      stuck: payloads.flatMap((payload) => payload.decisionDeck?.stuck ?? []).slice(0, 3),
+      stuckTotal: payloads.reduce((sum, payload) => sum + (payload.decisionDeck?.stuckTotal ?? 0), 0),
+      failed: payloads.flatMap((payload) => payload.decisionDeck?.failed ?? []).slice(0, 3),
+      failedTotal: payloads.reduce((sum, payload) => sum + (payload.decisionDeck?.failedTotal ?? 0), 0),
+      drift: payloads.flatMap((payload) => payload.decisionDeck?.drift ?? []).slice(0, 3),
+      driftTotal: payloads.reduce((sum, payload) => sum + (payload.decisionDeck?.driftTotal ?? 0), 0),
+    },
+    updates: payloads
+      .flatMap((payload) => payload.updates ?? [])
+      .sort((a, b) => new Date(b.committedAt).getTime() - new Date(a.committedAt).getTime())
+      .slice(0, 6),
+    projectCards: payloads.flatMap((payload) => payload.projectCards ?? []),
+    teamPulse: null,
+  };
+}
+
+function mergeTeamPulses(payloads: BoardTeamPulse[]): BoardTeamPulse | null {
+  if (payloads.length === 0) return null;
+  const thisWeek = payloads.reduce((sum, payload) => sum + payload.velocity.thisWeek, 0);
+  const lastWeek = payloads.reduce((sum, payload) => sum + payload.velocity.lastWeek, 0);
+  const delta = thisWeek - lastWeek;
+  return {
+    members: payloads.flatMap((payload) => payload.members),
+    velocity: { thisWeek, lastWeek, delta, trend: delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat' },
+    idleCount: payloads.reduce((sum, payload) => sum + payload.idleCount, 0),
+    totalMembers: payloads.reduce((sum, payload) => sum + payload.totalMembers, 0),
+  };
+}
+
 const HOME_DEFAULT_VARIANT: 'refined' | 'classic' = 'classic';
 
 function totalDecisions(decisions: BoardDecisions): number {
@@ -64,35 +101,42 @@ function totalDecisions(decisions: BoardDecisions): number {
 // outcome.
 function V2HomeInner() {
   const t = useTranslations('home');
-  const { currentTeam } = useTeam();
+  const { currentTeam, selectedTeamIds } = useTeam();
   const teamId = currentTeam?.id ?? null;
   const searchParams = useSearchParams();
+  const teamScopeKey = selectedTeamIds.join(',');
 
   // Two parallel cached fetches — overview is the slow one (LLM-dependent paths
   // around updates/wins), team-pulse is fast (pure SQL aggregates). SWR keeps
   // each keyed by teamId, so returning to this tab paints the last-known data
   // instantly and revalidates silently in the background. The skeleton shows
   // only on the genuine first load (no cached data yet).
-  const { data: overviewData } = useSWR<OverviewPayload | null>(
-    teamId ? `/api/overview?teamId=${teamId}` : null,
+  const { data: overviewPayloads } = useSWR<OverviewPayload[]>(
+    selectedTeamIds.length > 0 ? ['home-overview', teamScopeKey] : null,
+    async () => Promise.all(selectedTeamIds.map(async (selectedTeamId) => {
+      const url = selectedTeamId === teamId
+        ? `/api/overview?teamId=${teamId}`
+        : `/api/overview?teamId=${selectedTeamId}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`overview ${response.status}`);
+      return response.json() as Promise<OverviewPayload>;
+    })),
   );
-  const { data: pulseData } = useSWR<BoardTeamPulse | null>(
-    teamId ? `/api/overview/team-pulse?teamId=${teamId}` : null,
+  const { data: pulsePayloads } = useSWR<BoardTeamPulse[]>(
+    selectedTeamIds.length > 0 ? ['home-team-pulse', teamScopeKey] : null,
+    async () => Promise.all(selectedTeamIds.map(async (selectedTeamId) => {
+      const response = await fetch(`/api/overview/team-pulse?teamId=${selectedTeamId}`);
+      if (!response.ok) throw new Error(`team pulse ${response.status}`);
+      return response.json() as Promise<BoardTeamPulse>;
+    })),
   );
 
-  const loading = teamId != null && overviewData === undefined;
+  const loading = selectedTeamIds.length > 0 && overviewPayloads === undefined;
 
   const overview: OverviewPayload = useMemo(() => {
-    if (!overviewData) return EMPTY_OVERVIEW;
-    return {
-      totalProjects: overviewData.totalProjects ?? 0,
-      todayFocus: overviewData.todayFocus ?? null,
-      decisionDeck: overviewData.decisionDeck ?? EMPTY_DECISIONS,
-      updates: Array.isArray(overviewData.updates) ? overviewData.updates : [],
-      projectCards: Array.isArray(overviewData.projectCards) ? overviewData.projectCards : [],
-      teamPulse: pulseData ?? null,
-    };
-  }, [overviewData, pulseData]);
+    const merged = mergeOverviewPayloads(overviewPayloads ?? []);
+    return { ...merged, teamPulse: mergeTeamPulses(pulsePayloads ?? []) };
+  }, [overviewPayloads, pulsePayloads]);
 
   const showEmpty = !loading && overview.totalProjects === 0;
 
@@ -111,7 +155,7 @@ function V2HomeInner() {
   // GitHub signal is derived cheaply: any commit update means a repo is
   // connected. No extra fetch. teammateCount comes from the team-pulse SWR.
   const hasGithub = overview.updates.length > 0;
-  const teammateCount = pulseData?.totalMembers ?? 0;
+  const teammateCount = overview.teamPulse?.totalMembers ?? 0;
   const showFirstRun =
     !loading &&
     shouldShowFirstRun({ projectCount: overview.totalProjects, dismissed });

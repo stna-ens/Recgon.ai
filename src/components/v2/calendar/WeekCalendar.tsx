@@ -414,6 +414,7 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
               canDrag={isOwner}
               onDragStart={(e, task) => beginTaskDrag(e, task.id)}
               onDragEnd={clearDrag}
+              onClose={() => setSidebarOpen(false)}
             />
           )}
         </div>

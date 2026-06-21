@@ -14,6 +14,7 @@ type Props = {
   canDrag?: boolean;
   onDragStart?: (e: DragEvent<HTMLButtonElement>, task: AgentTask) => void;
   onDragEnd?: () => void;
+  onClose?: () => void;
 };
 
 function priorityColor(p: number): string {
@@ -29,13 +30,25 @@ function priorityLabel(p: number): string {
   return `P${p}`;
 }
 
-export function UnscheduledSidebar({ tasks, onSelect, canDrag = false, onDragStart, onDragEnd }: Props) {
+export function UnscheduledSidebar({ tasks, onSelect, canDrag = false, onDragStart, onDragEnd, onClose }: Props) {
   const t = useTranslations('calendar');
   return (
     <aside className="cal-unsched-sidebar" aria-label={t('unsched.aria')}>
       <div className="cal-unsched-header">
         <span className="cal-unsched-eyebrow">{t('unsched.title')}</span>
-        <span className="cal-unsched-count">{tasks.length}</span>
+        <div className="cal-unsched-header-right">
+          <span className="cal-unsched-count">{tasks.length}</span>
+          {onClose && (
+            <button
+              type="button"
+              className="cal-unsched-close"
+              onClick={onClose}
+              aria-label={t('panel.close')}
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
       <ul className="cal-unsched-list">
         {tasks.map((task) => (
@@ -114,6 +127,27 @@ const css = `
   top: 0;
   background: inherit;
   z-index: 2;
+}
+.cal-unsched-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cal-unsched-close {
+  background: transparent;
+  border: none;
+  color: var(--txt-faint);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color var(--dur-fast) ease;
+}
+.cal-unsched-close:hover { color: var(--txt-pure); }
+.cal-unsched-close:focus-visible {
+  outline: 2px solid var(--signature);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 .cal-unsched-eyebrow {
   font-family: 'JetBrains Mono', ui-monospace, monospace;

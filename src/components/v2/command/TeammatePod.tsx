@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
+import { taskDisplayTitle } from '@/lib/recgon/displayTitle';
 import type { CommandTask, CommandTeammate } from './types';
 
 // A teammate on the Dispatch Floor — built to look like a tasks-board card:
@@ -63,7 +64,7 @@ export default function TeammatePod({ teammate, liveTasks, onOpenTask }: Teammat
           <>
             {shown.map((task) => (
               <button key={task.id} type="button" className="v2-pod-task" onClick={() => onOpenTask(task.id)}>
-                <span className="v2-pod-task-title">{task.title}</span>
+                <span className="v2-pod-task-title">{taskDisplayTitle(task)}</span>
                 {task.estimatedHours ? <span className="v2-pod-task-h">{task.estimatedHours}h</span> : null}
               </button>
             ))}
