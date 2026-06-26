@@ -8,6 +8,8 @@ import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import { Skeleton, Modal, Button } from '@/components/ui';
 import DispatchFloor from '@/components/v2/command/DispatchFloor';
+import ProjectRollup from '@/components/v2/admin/ProjectRollup';
+import { WeekCalendar } from '@/components/v2/calendar/WeekCalendar';
 import { CreateTaskModal } from '@/components/v2/tasks/CreateTaskModal';
 import type { CommandResponse } from '@/components/v2/command/types';
 
@@ -203,15 +205,25 @@ function AdminPageInner() {
           </div>
         </div>
       ) : data && teamId ? (
-        <DispatchFloor
-          data={data}
-          teamId={teamId}
-          currentTeammateId={currentTeammateId}
-          isOwner={Boolean(isOwner)}
-          onChanged={() => {
-            void mutate();
-          }}
-        />
+        <>
+          <DispatchFloor
+            data={data}
+            teamId={teamId}
+            currentTeammateId={currentTeammateId}
+            isOwner={Boolean(isOwner)}
+            onChanged={() => {
+              void mutate();
+            }}
+          />
+
+          <section className="v2-ops-sec">
+            <span className="recgon-label">{t('admin.teamCalendar')}</span>
+            {/* No projectId → every teammate's lane, every project. */}
+            <WeekCalendar />
+          </section>
+
+          <ProjectRollup tasks={data.tasks} projects={data.projects} />
+        </>
       ) : null}
 
       {teamId && (
@@ -279,6 +291,10 @@ function AdminPageInner() {
           font-size: 10px; font-weight: 600; letter-spacing: 0.6px;
           text-transform: uppercase; color: var(--txt-faint);
         }
+
+        /* ── Stacked sections (team calendar) ─────────────────────────── */
+        .v2-ops-sec { display: flex; flex-direction: column; gap: 14px; }
+        .v2-ops-sec .recgon-label { margin-bottom: 0; }
 
         .v2-ops-skeletons { display: flex; flex-direction: column; gap: 20px; }
         .v2-ops-skel-roster {

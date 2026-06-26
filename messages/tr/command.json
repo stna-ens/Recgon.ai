@@ -154,5 +154,14 @@
     "queued": "sırada",
     "review": "incelemede",
     "overdue": "gecikmiş"
+  },
+  "admin": {
+    "teamCalendar": "Ekip takvimi",
+    "rollup": "Projeye göre",
+    "open": "açık",
+    "scheduled": "planlı",
+    "overdue": "gecikmiş",
+    "empty": "Henüz proje yok",
+    "emptyHint": "Bir projenin görevleri olduğunda özeti burada görünür."
   }
 }

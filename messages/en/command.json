@@ -154,5 +154,14 @@
     "queued": "queued",
     "review": "in review",
     "overdue": "overdue"
+  },
+  "admin": {
+    "teamCalendar": "Team calendar",
+    "rollup": "By project",
+    "open": "open",
+    "scheduled": "scheduled",
+    "overdue": "overdue",
+    "empty": "No projects yet",
+    "emptyHint": "Once a project has tasks, its rollup shows here."
   }
 }
