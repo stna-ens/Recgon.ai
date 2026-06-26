@@ -266,6 +266,42 @@ export const TaskSkillTagsResponseSchema = z.object({
 
 export type TaskSkillTagsResponse = z.infer<typeof TaskSkillTagsResponseSchema>;
 
+// ── Issue breakdown (quick-260626-mkn) ────────────────────────────────────────
+//
+// Output schema for the ISSUE_BREAKDOWN_SYSTEM prompt consumed by
+// `breakDownIssue` in src/lib/recgon/issueToTasks.ts. Recgon decides whether a
+// teammate-written issue is a single task or a few independently-shippable
+// tasks. `kind` is constrained to the TaskKind value set so the minted rows are
+// valid; `priority` is 0–3 (P3..P0); `estimatedHours` positive. The
+// `.min(1).max(8)` on the tasks array is the over-split guard rail (T-mkn-02) —
+// an issue can never explode into more than 8 tasks.
+
+const ISSUE_TASK_KINDS = [
+  'next_step',
+  'dev_prompt',
+  'marketing',
+  'analytics',
+  'research',
+  'custom',
+] as const;
+
+export const IssueBreakdownResponseSchema = z.object({
+  tasks: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(200),
+        description: z.string().max(2000).optional().default(''),
+        kind: z.enum(ISSUE_TASK_KINDS),
+        priority: z.coerce.number().int().min(0).max(3),
+        estimatedHours: z.coerce.number().positive(),
+      }),
+    )
+    .min(1)
+    .max(8),
+});
+
+export type IssueBreakdownResponse = z.infer<typeof IssueBreakdownResponseSchema>;
+
 // ── Teammate profile skill normalization (Phase 1 / Plan 01-03) ─────────────
 //
 // Output schema for the `chatViaChain` call in `normalizeProfile.ts`. Each
