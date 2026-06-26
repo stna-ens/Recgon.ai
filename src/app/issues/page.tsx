@@ -426,30 +426,13 @@ function IssueCard({
       title={issue.description || issue.title}
     >
       <div className="issb-card-head">
-        {converting ? (
-          <span className="issb-card-fan is-live">splitting…</span>
-        ) : hasTasks ? (
-          <span className="issb-card-fan">
-            <span aria-hidden="true">→</span> {issue.taskCount} task{issue.taskCount === 1 ? '' : 's'}
-          </span>
-        ) : (
-          <span className="issb-card-fan is-empty">intake</span>
-        )}
-        <span className="issb-card-date">{relDate(issue.createdAt)}</span>
-      </div>
-      <h3 className="issb-card-title">{issue.title}</h3>
-      {issue.description && <p className="issb-card-desc">{issue.description}</p>}
-
-      {creator && (
-        <div className="issb-card-foot">
+        {creator && (
           <Tooltip.Provider delayDuration={120}>
             <Tooltip.Root>
               <Tooltip.Trigger asChild>
                 <span
                   className="issb-card-author"
-                  // Don't let clicking the avatar open the detail dialog.
                   onClick={(e) => e.stopPropagation()}
-                  // Avatar isn't a drag handle — let the card own the drag.
                   draggable={false}
                 >
                   <TeammateAvatar
@@ -468,8 +451,20 @@ function IssueCard({
               </Tooltip.Portal>
             </Tooltip.Root>
           </Tooltip.Provider>
-        </div>
-      )}
+        )}
+        {converting ? (
+          <span className="issb-card-fan is-live">splitting…</span>
+        ) : hasTasks ? (
+          <span className="issb-card-fan">
+            <span aria-hidden="true">→</span> {issue.taskCount} task{issue.taskCount === 1 ? '' : 's'}
+          </span>
+        ) : (
+          <span className="issb-card-fan is-empty">intake</span>
+        )}
+        <span className="issb-card-date">{relDate(issue.createdAt)}</span>
+      </div>
+      <h3 className="issb-card-title">{issue.title}</h3>
+      {issue.description && <p className="issb-card-desc">{issue.description}</p>}
 
       <style>{`
         .issb-card {
@@ -512,8 +507,7 @@ function IssueCard({
           font-size: 12px; color: var(--txt-faint); line-height: 1.4; margin: 0;
           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
         }
-        .issb-card-foot { display: flex; align-items: center; margin-top: 1px; }
-        .issb-card-author { display: inline-flex; cursor: default; }
+        .issb-card-author { display: inline-flex; cursor: default; flex-shrink: 0; }
         .issb-tip {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
           font-size: 11px; font-weight: 600; letter-spacing: 0.2px;
