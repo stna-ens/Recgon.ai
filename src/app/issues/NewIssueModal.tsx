@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Modal, Button, FormField, ActionIcon } from '@/components/ui';
+import { Modal, Button, FormField } from '@/components/ui';
 
 // Minimal shape the parent needs to toast "split into N tasks".
 export type CreatedIssue = { id: string; taskCount: number };
@@ -53,7 +53,7 @@ export function NewIssueModal({
       description="Describe what needs doing. Recgon breaks it into the right tasks and routes them to the best-fit teammates."
       footer={
         <>
-          <Button onClick={() => onOpenChange(false)} disabled={submitting} icon={ActionIcon.cancel}>
+          <Button onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancel
           </Button>
           <Button
@@ -61,7 +61,6 @@ export function NewIssueModal({
             onClick={() => void submit()}
             disabled={submitting || !title.trim()}
             loading={submitting}
-            icon={ActionIcon.create}
           >
             {submitting ? 'Splitting…' : 'File issue'}
           </Button>

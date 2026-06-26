@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { Button, EmptyState, Skeleton, ActionIcon } from '@/components/ui';
+import { Button, EmptyState, Skeleton } from '@/components/ui';
 import { TaskStatusChip, type WorkflowStatus } from '@/components/TaskStatusChip';
 import { NewIssueModal, type CreatedIssue } from './NewIssueModal';
 
@@ -101,7 +101,7 @@ export default function IssuesPage() {
           </p>
         </div>
         {teamId && (
-          <Button variant="primary" icon={ActionIcon.create} onClick={() => setShowNew(true)}>
+          <Button variant="primary" onClick={() => setShowNew(true)}>
             New issue
           </Button>
         )}
@@ -119,14 +119,14 @@ export default function IssuesPage() {
         <EmptyState
           title="Could not load issues"
           description="Something went wrong. Try again."
-          action={<Button onClick={() => void mutate()} icon={ActionIcon.refresh}>Retry</Button>}
+          action={<Button onClick={() => void mutate()}>Retry</Button>}
         />
       ) : issues.length === 0 ? (
         <EmptyState
           icon={<span style={{ fontFamily: "'JetBrains Mono', monospace" }}>⟨⟩</span>}
           title="No issues yet"
           description="File the first issue and watch Recgon turn it into assigned tasks."
-          action={<Button variant="primary" icon={ActionIcon.create} onClick={() => setShowNew(true)}>New issue</Button>}
+          action={<Button variant="primary" onClick={() => setShowNew(true)}>New issue</Button>}
         />
       ) : (
         <div className="issues-list">
