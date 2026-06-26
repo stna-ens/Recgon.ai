@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { verifyTeamAccess, verifyTeamWriteAccess } from '@/lib/teamStorage';
 import { createIssue, listIssues } from '@/lib/issueStorage';
 import { convertIssueToTasks } from '@/lib/recgon/issueToTasks';
+import { getProject } from '@/lib/storage';
 import { getUserById } from '@/lib/userStorage';
 import { logger } from '@/lib/logger';
 import type { OutputLanguage } from '@/lib/prompts';
@@ -35,15 +36,24 @@ export async function POST(
   const canWrite = await verifyTeamWriteAccess(teamId, session.user.id);
   if (!canWrite) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
 
-  const body = (await request.json()) as { title?: string; description?: string };
+  const body = (await request.json()) as { title?: string; description?: string; projectId?: string | null };
   if (!body.title?.trim()) {
     return NextResponse.json({ error: 'title is required' }, { status: 400 });
+  }
+
+  // Optional project must belong to THIS team — never trust the client's id.
+  let projectId: string | null = null;
+  if (body.projectId) {
+    const project = await getProject(body.projectId, teamId);
+    if (!project) return NextResponse.json({ error: 'Invalid project' }, { status: 400 });
+    projectId = body.projectId;
   }
 
   // createdBy comes from the session — NEVER from the body (T-mkn-01).
   const issue = await createIssue(teamId, {
     title: body.title.trim(),
     description: body.description?.trim() || null,
+    projectId,
     createdBy: session.user.id,
   });
 

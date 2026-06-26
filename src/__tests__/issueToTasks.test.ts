@@ -17,6 +17,7 @@ const ISSUE = {
   id: 'issue-123',
   title: 'Add dark mode',
   description: 'Theme toggle in settings, persist the preference, update the docs.',
+  projectId: null,
 };
 
 // A stub chat adapter that returns a fixed JSON breakdown payload.
@@ -94,6 +95,17 @@ describe('buildIssueEntries (the BrainEntry[] convertIssueToTasks mints)', () =>
       { issueId: 'issue-123', index: 1 },
       { issueId: 'issue-123', index: 2 },
     ]);
+  });
+
+  it('spawned entries inherit the issue project (so tasks land in the right project)', async () => {
+    const chat = jsonStub([
+      { title: 'A', description: '', kind: 'dev_prompt', priority: 2, estimatedHours: 1 },
+      { title: 'B', description: '', kind: 'dev_prompt', priority: 2, estimatedHours: 1 },
+    ]);
+    const scoped = { ...ISSUE, projectId: 'proj-9' };
+    const entries = buildIssueEntries(scoped, await breakDownIssue(scoped, { chat }));
+    expect(entries).toHaveLength(2);
+    for (const e of entries) expect(e.projectId).toBe('proj-9');
   });
 
   it('atomic issue builds exactly one entry with index 0', async () => {

@@ -36,6 +36,7 @@ export type IssueLike = {
   id: string;
   title: string;
   description: string;
+  projectId: string | null;
 };
 
 export type IssueBreakdownTask = {
@@ -143,7 +144,8 @@ export function buildIssueEntries(
     requiredSkills: [],
     priority: t.priority,
     estimatedHours: t.estimatedHours,
-    projectId: null,
+    // Spawned tasks inherit the issue's project so they land in the right place.
+    projectId: issue.projectId,
     deadline: null,
   }));
 }
@@ -175,14 +177,14 @@ export async function convertIssueToTasks(
 
   await updateIssueStatus(issueId, 'converting');
 
-  const breakdown = await breakDownIssue(
-    { id: issue.id, title: issue.title, description: issue.description },
-    opts,
-  );
-  const entries = buildIssueEntries(
-    { id: issue.id, title: issue.title, description: issue.description },
-    breakdown,
-  );
+  const issueLike: IssueLike = {
+    id: issue.id,
+    title: issue.title,
+    description: issue.description,
+    projectId: issue.projectId,
+  };
+  const breakdown = await breakDownIssue(issueLike, opts);
+  const entries = buildIssueEntries(issueLike, breakdown);
 
   // task_count = number of tasks the issue maps to (entries.length), which is
   // stable across an idempotent re-run where mint dedups everything.

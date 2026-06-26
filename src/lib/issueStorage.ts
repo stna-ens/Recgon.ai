@@ -17,6 +17,7 @@ export type IssueStatus = 'open' | 'converting' | 'converted' | 'closed';
 export type Issue = {
   id: string;
   teamId: string;
+  projectId: string | null;
   title: string;
   description: string;
   status: IssueStatus;
@@ -29,6 +30,7 @@ export type Issue = {
 type IssueRow = {
   id: string;
   team_id: string;
+  project_id: string | null;
   title: string;
   description: string | null;
   status: IssueStatus;
@@ -42,6 +44,7 @@ function mapIssue(row: IssueRow): Issue {
   return {
     id: row.id,
     teamId: row.team_id,
+    projectId: row.project_id ?? null,
     title: row.title,
     description: row.description ?? '',
     status: row.status,
@@ -54,12 +57,13 @@ function mapIssue(row: IssueRow): Issue {
 
 export async function createIssue(
   teamId: string,
-  input: { title: string; description?: string | null; createdBy?: string | null },
+  input: { title: string; description?: string | null; projectId?: string | null; createdBy?: string | null },
 ): Promise<Issue> {
   const { data, error } = await supabase
     .from('issues')
     .insert({
       team_id: teamId,
+      project_id: input.projectId ?? null,
       title: input.title,
       description: input.description ?? null,
       created_by: input.createdBy ?? null,

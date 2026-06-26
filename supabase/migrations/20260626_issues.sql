@@ -36,3 +36,9 @@ CREATE INDEX IF NOT EXISTS idx_issues_team_status
 ALTER TABLE agent_tasks DROP CONSTRAINT IF EXISTS agent_tasks_source_check;
 ALTER TABLE agent_tasks ADD CONSTRAINT agent_tasks_source_check
   CHECK (source = ANY (ARRAY['brain'::text, 'user'::text, 'teammate'::text, 'schedule'::text, 'issue'::text]));
+
+-- An issue can target a project; tasks Recgon mints from it inherit that
+-- project. ON DELETE SET NULL detaches issues when a project is removed.
+ALTER TABLE issues
+  ADD COLUMN IF NOT EXISTS project_id text REFERENCES projects(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_issues_project ON issues (project_id);

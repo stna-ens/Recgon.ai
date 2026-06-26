@@ -6,19 +6,24 @@ import { Modal, Button, FormField } from '@/components/ui';
 // Minimal shape the parent needs to toast "split into N tasks".
 export type CreatedIssue = { id: string; taskCount: number };
 
+export type ProjectOption = { id: string; name: string };
+
 export function NewIssueModal({
   open,
   onOpenChange,
   teamId,
+  projects,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   teamId: string;
+  projects: ProjectOption[];
   onCreated: (result: CreatedIssue) => void;
 }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [projectId, setProjectId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,12 +35,17 @@ export function NewIssueModal({
       const res = await fetch(`/api/teams/${teamId}/issues`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), description: description.trim() }),
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          projectId: projectId || null,
+        }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || 'Could not file the issue.');
       setTitle('');
       setDescription('');
+      setProjectId('');
       onOpenChange(false);
       onCreated({ id: j.issue?.id, taskCount: j.taskCount ?? 0 });
     } catch (err) {
@@ -95,6 +105,23 @@ export function NewIssueModal({
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Theme toggle in settings, persist the preference, update the docs…"
           />
+        </FormField>
+        <FormField
+          label="Project"
+          htmlFor="new-issue-project"
+          hint="Tasks Recgon creates from this issue land in this project."
+        >
+          <select
+            id="new-issue-project"
+            className="ui-input"
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+          >
+            <option value="">No specific project</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </FormField>
         {error && <p className="ui-field-error">{error}</p>}
         {/* Hidden submit so Enter in a field submits the form. */}

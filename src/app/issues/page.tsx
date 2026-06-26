@@ -17,6 +17,7 @@ type IssueStatus = 'open' | 'converting' | 'converted' | 'closed';
 interface Issue {
   id: string;
   teamId: string;
+  projectId: string | null;
   title: string;
   description: string;
   status: IssueStatus;
@@ -83,11 +84,18 @@ function relDate(iso: string): string {
 }
 
 export default function IssuesPage() {
-  const { currentTeam } = useTeam();
+  const { currentTeam, projects } = useTeam();
   const { addToast } = useToast();
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? null;
   const teamId = currentTeam?.id ?? null;
+
+  const projectList = useMemo(() => (projects ?? []).map((p) => ({ id: p.id, name: p.name })), [projects]);
+  const projectNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    projectList.forEach((p) => m.set(p.id, p.name));
+    return m;
+  }, [projectList]);
   const [showNew, setShowNew] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -241,6 +249,7 @@ export default function IssuesPage() {
                         key={issue.id}
                         issue={issue}
                         creator={issue.createdBy ? creatorByUserId.get(issue.createdBy) ?? null : null}
+                        projectName={issue.projectId ? projectNameById.get(issue.projectId) ?? null : null}
                         dragging={draggedId === issue.id}
                         onDragStart={(e) => {
                           setDraggedId(issue.id);
@@ -260,7 +269,13 @@ export default function IssuesPage() {
       )}
 
       {teamId && (
-        <NewIssueModal open={showNew} onOpenChange={setShowNew} teamId={teamId} onCreated={onCreated} />
+        <NewIssueModal
+          open={showNew}
+          onOpenChange={setShowNew}
+          teamId={teamId}
+          projects={projectList}
+          onCreated={onCreated}
+        />
       )}
 
       {teamId && detailId && (
@@ -268,6 +283,7 @@ export default function IssuesPage() {
           teamId={teamId}
           issueId={detailId}
           nameById={nameById}
+          projectNameById={projectNameById}
           currentUserId={currentUserId}
           onClose={() => setDetailId(null)}
           onDeleted={() => { setDetailId(null); void mutate(); addToast('Issue deleted.', 'success'); }}
@@ -403,6 +419,7 @@ export default function IssuesPage() {
 function IssueCard({
   issue,
   creator,
+  projectName,
   dragging,
   onDragStart,
   onDragEnd,
@@ -410,6 +427,7 @@ function IssueCard({
 }: {
   issue: Issue;
   creator: Creator | null;
+  projectName: string | null;
   dragging: boolean;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -470,6 +488,12 @@ function IssueCard({
       </div>
       <h3 className="issb-card-title">{issue.title}</h3>
       {issue.description && <p className="issb-card-desc">{issue.description}</p>}
+      {projectName && (
+        <span className="issb-card-project">
+          <span className="issb-card-project-dot" aria-hidden="true" />
+          {projectName}
+        </span>
+      )}
 
       <style>{`
         .issb-card {
@@ -512,6 +536,17 @@ function IssueCard({
           font-size: 12px; color: var(--txt-faint); line-height: 1.4; margin: 0;
           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
         }
+        .issb-card-project {
+          display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+          max-width: 100%; font-size: 11px; color: var(--txt-muted);
+          background: rgba(255,255,255,0.04); border: 1px solid var(--rule);
+          border-radius: 6px; padding: 2px 8px; margin-top: 1px;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .issb-card-project-dot {
+          width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+          background: var(--signature);
+        }
         .issb-card-author { display: inline-flex; cursor: default; flex-shrink: 0; }
         .issb-tip {
           font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -534,6 +569,7 @@ function IssueDetail({
   teamId,
   issueId,
   nameById,
+  projectNameById,
   currentUserId,
   onClose,
   onDeleted,
@@ -541,6 +577,7 @@ function IssueDetail({
   teamId: string;
   issueId: string;
   nameById: Map<string, string>;
+  projectNameById: Map<string, string>;
   currentUserId: string | null;
   onClose: () => void;
   onDeleted: () => void;
@@ -590,6 +627,12 @@ function IssueDetail({
         <Dialog.Overlay className="issb-overlay" />
         <Dialog.Content className="issb-detail" aria-describedby={undefined}>
           <Dialog.Title className="issb-detail-title">{issue?.title ?? 'Issue'}</Dialog.Title>
+          {issue?.projectId && projectNameById.get(issue.projectId) && (
+            <span className="issb-detail-project">
+              <span className="issb-detail-project-dot" aria-hidden="true" />
+              {projectNameById.get(issue.projectId)}
+            </span>
+          )}
           {issue?.description && <p className="issb-detail-desc">{issue.description}</p>}
 
           <div className="recgon-label issb-detail-label">
@@ -667,6 +710,13 @@ function IssueDetail({
         .issb-detail:hover { transform: translate(-50%, -50%); }
         @keyframes issbPop { from { opacity: 0; transform: translate(-50%, -48%) scale(0.98); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
         .issb-detail-title { font-size: 18px; font-weight: 700; color: var(--txt-pure); margin: 0 36px 0 0; line-height: 1.3; }
+        .issb-detail-project {
+          display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+          font-size: 11px; color: var(--txt-muted);
+          background: rgba(255,255,255,0.04); border: 1px solid var(--rule);
+          border-radius: 6px; padding: 2px 8px;
+        }
+        .issb-detail-project-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--signature); }
         .issb-detail-desc { font-size: 13px; color: var(--txt-muted); line-height: 1.55; margin: 10px 0 0; white-space: pre-wrap; }
         .issb-detail-label { margin: 20px 0 10px 27px; }
         .issb-detail-empty { font-size: 12px; color: var(--txt-faint); margin-left: 27px; }
