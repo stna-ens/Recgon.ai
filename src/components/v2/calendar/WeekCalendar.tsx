@@ -21,7 +21,10 @@ type ServerData = {
 };
 
 type Props = {
-  projectId: string;
+  // Optional: when omitted, the calendar fetches every team task (the team-wide
+  // mission-control view on /admin). When passed, it scopes to one project (the
+  // project tasks page) — behaviour identical to before this prop went optional.
+  projectId?: string;
   onSwitchToList?: () => void;
 };
 
@@ -56,7 +59,7 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
     if (!teamId) return;
     if (opts.initial) setLoading(true); else setRefreshing(true);
     try {
-      const url = `/api/teams/${teamId}/calendar?projectId=${encodeURIComponent(projectId)}`;
+      const url = `/api/teams/${teamId}/calendar${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''}`;
       const res = await fetch(url, { cache: 'no-store' });
       if (res.ok) setData(await res.json());
       else if (opts.initial) addToast(t('toast.loadFailed'), 'error');
