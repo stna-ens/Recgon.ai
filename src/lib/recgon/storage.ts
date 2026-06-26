@@ -73,7 +73,9 @@ function mapTeammate(row: TeammateRow): Teammate {
   };
 }
 
-type TaskRow = {
+// Exported so issueStorage.listTasksForIssue can reuse the canonical
+// row→AgentTask mapper instead of reimplementing it (quick-260626-mkn).
+export type TaskRow = {
   id: string;
   team_id: string;
   project_id: string | null;
@@ -136,7 +138,7 @@ type TaskRow = {
   short_summary?: string | null;
 };
 
-function mapTask(row: TaskRow): AgentTask {
+export function mapTask(row: TaskRow): AgentTask {
   return {
     id: row.id,
     teamId: row.team_id,

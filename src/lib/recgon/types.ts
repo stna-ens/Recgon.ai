@@ -145,7 +145,7 @@ export type TaskKind =
   | 'research'
   | 'custom';
 
-export type TaskSource = 'brain' | 'user' | 'teammate' | 'schedule';
+export type TaskSource = 'brain' | 'user' | 'teammate' | 'schedule' | 'issue';
 
 export type TaskStatus =
   | 'unassigned'
