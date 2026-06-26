@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 Phase: 5
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-06-21 - Completed quick task 260621-tpt: folded Projects into the team dropdown as a collapsible team→projects tree (removed top-nav Projects tab; checkbox=filter, chevron=expand, project sub-rows with pulse dots; hover-open; shared useTeamPortfolio hook)
+Last activity: 2026-06-26 - Completed quick task 260626-mkn: Issues → Tasks inbox — teammates write issues, Recgon breaks each into 1-or-many right-sized tasks via one LLM call and dispatches them (new source='issue', reuses mint→dispatch pipeline, additive to the brain; issues table migration applied to live DB)
 
 Progress: [████████░░] 77%
 
@@ -126,6 +126,7 @@ None yet.
 | 260620-mav | AI-generated short task summaries for compact UI (calendar chips + command rows); migration applied + 48 existing tasks backfilled | 2026-06-20 | 716311b | [260620-mav-compact-task-labels](./quick/260620-mav-compact-task-labels/) |
 | 260620-wnk | Redesign TeamSwitcher dropdown to match Recgon system — solid opaque panel fixes dark-mode bleed-through (the ghost "Pixy" row), recgon-label header, signature left-bar rows, self-contained styles | 2026-06-20 | f4afead | [260620-wnk-redesign-teamswitcher-workspace-scope-dr](./quick/260620-wnk-redesign-teamswitcher-workspace-scope-dr/) |
 | 260621-tpt | Fold Projects into the team dropdown as a collapsible team→projects tree (removed the top-nav Projects tab; left checkbox = filter, right chevron = expand, project sub-rows with pulse dots → /projects/[id]); hover-open; extracted shared `useTeamPortfolio` hook so dropdown + page share one cache | 2026-06-21 | 2675892 | [260621-tpt-projects-tree-in-team-switcher](./quick/260621-tpt-projects-tree-in-team-switcher/) |
+| 260626-mkn | Issues → Tasks: teammates write issues into an inbox (`/issues` page + terminal `/issue` tools); on submit Recgon breaks each into 1-or-many right-sized tasks via one LLM call (`ISSUE_BREAKDOWN` prompt+schema, `.min(1).max(8)`), mints them with `source='issue'` reusing the existing mint→dispatch pipeline (new `mintEntries`/`mintTasksFromIssue` refactor in taskMint), links tasks back via `source_ref`, then fire-and-forget `runDispatch`. Fail-soft: LLM error → single task = the issue. Additive — `readUnifiedBrain` untouched. `issues` table migration applied to live DB. | 2026-06-26 | 9b01aef | [260626-mkn-issues-to-tasks-for-recgon-teammates-wri](./quick/260626-mkn-issues-to-tasks-for-recgon-teammates-wri/) |
 
 ## Deferred Items
 
