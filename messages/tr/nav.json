@@ -4,6 +4,7 @@
   "tasks": "Görevler",
   "issues": "Sorunlar",
   "command": "Operasyon",
+  "admin": "Yönetim",
   "calendar": "Takvim",
   "terminal": "Terminal",
   "newTask": "Yeni Görev"

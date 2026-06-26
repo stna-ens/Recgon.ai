@@ -12,16 +12,21 @@ import { useTeam } from '@/components/TeamProvider';
 
 type NavItem = { href: string; key: string; matchPrefix?: boolean };
 
-const NAV: NavItem[] = [
+// Base nav for everyone. Projects moved into the team dropdown (TeamSwitcher)
+// as a collapsible tree; the /projects route stays reachable by link, just not
+// as a top-nav tab. The old /command (Operations) tab is gone — it now lives at
+// the owner-only /admin mission-control page (/command redirects there).
+const BASE_NAV: NavItem[] = [
   { href: '/', key: 'home' },
-  // Projects moved into the team dropdown (TeamSwitcher) as a collapsible tree;
-  // the /projects route stays reachable by link, just not as a top-nav tab.
   { href: '/tasks', key: 'tasks', matchPrefix: true },
   { href: '/issues', key: 'issues', matchPrefix: true },
-  { href: '/command', key: 'command', matchPrefix: true },
   { href: '/calendar', key: 'calendar', matchPrefix: true },
   { href: '/terminal', key: 'terminal', matchPrefix: true },
 ];
+
+// Owner-only. Inserted right after Issues (where Operations used to sit) so the
+// position reads naturally for owners; members never see it.
+const ADMIN_NAV: NavItem = { href: '/admin', key: 'admin', matchPrefix: true };
 
 function isMac() {
   if (typeof navigator === 'undefined') return false;
@@ -91,6 +96,15 @@ export default function TopNavV2() {
     };
   }, [session?.user?.id]);
 
+  // Owners get an Admin tab spliced in after Issues; everyone else sees base.
+  const navItems = (() => {
+    if (!isOwner) return BASE_NAV;
+    const idx = BASE_NAV.findIndex((i) => i.key === 'issues');
+    const out = [...BASE_NAV];
+    out.splice(idx + 1, 0, ADMIN_NAV);
+    return out;
+  })();
+
   const openPalette = () => {
     window.dispatchEvent(new CustomEvent('v2:open-command'));
   };
@@ -111,7 +125,7 @@ export default function TopNavV2() {
             <span className="v2-topnav-rule" aria-hidden="true" />
 
             <nav className="v2-primary-nav" aria-label={ts('nav.primaryAria')}>
-              {NAV.map((item) => {
+              {navItems.map((item) => {
                 const active = item.matchPrefix
                   ? pathname === item.href || pathname.startsWith(item.href + '/')
                   : pathname === item.href;

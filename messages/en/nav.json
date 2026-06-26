@@ -4,6 +4,7 @@
   "tasks": "Tasks",
   "issues": "Issues",
   "command": "Operations",
+  "admin": "Admin",
   "calendar": "Calendar",
   "terminal": "Terminal",
   "newTask": "New Task"
