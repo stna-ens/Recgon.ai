@@ -9,6 +9,7 @@ import useSWR from 'swr';
 import Link from 'next/link';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useTeam } from '@/components/TeamProvider';
+import { projectInScope } from '@/lib/scope';
 import { useToast } from '@/components/Toast';
 import { Button, EmptyState, Skeleton } from '@/components/ui';
 import { ProofDropZone } from '@/components/ProofDropZone';
@@ -132,7 +133,7 @@ function validDrop(from: ColumnKey, to: ColumnKey): 'accept' | 'complete' | null
 function V2TasksInner() {
   const t = useTranslations('tasks');
   const locale = useLocale();
-  const { projects: teamProjects, selectedTeamIds } = useTeam();
+  const { projects: teamProjects, selectedTeamIds, projectScope } = useTeam();
   const projects = useMemo(() => teamProjects ?? [], [teamProjects]);
   const { addToast } = useToast();
 
@@ -178,9 +179,9 @@ function V2TasksInner() {
     const LIVE = new Set(['unassigned', 'assigned', 'accepted', 'in_progress', 'awaiting_review']);
     return list.filter((task) => {
       if (!LIVE.has(task.status)) return false;
-      return selectedTeamIds.includes(task.team_id);
+      return projectInScope(task.team_id, task.project_id, selectedTeamIds, projectScope);
     });
-  }, [inboxData, selectedTeamIds]);
+  }, [inboxData, selectedTeamIds, projectScope]);
   // Distinguish "still fetching" from "fetch failed with no cached board" —
   // the latter renders a designed error card with retry, never an endless
   // skeleton (C-04).

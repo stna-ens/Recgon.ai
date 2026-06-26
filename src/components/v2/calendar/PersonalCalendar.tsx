@@ -11,6 +11,7 @@ import { TaskDetailPanel } from './TaskDetailPanel';
 import type { CalendarCard, WeekRange } from './calendarTypes';
 import { addWeeks, buildCards, getWeekRange, localDateKey, weekDays } from './calendarUtils';
 import { useTeam } from '@/components/TeamProvider';
+import { projectInScope } from '@/lib/scope';
 
 type TeamRef = { id: string; name: string; avatarColor: string | null };
 type ProjectRef = { id: string; name: string; logoUrl: string | null; teamId: string | null };
@@ -34,7 +35,7 @@ function fmtEditorial(start: Date, end: Date, month: (i: number) => string): { p
 
 export function PersonalCalendar() {
   const t = useTranslations('calendar');
-  const { selectedTeamIds } = useTeam();
+  const { selectedTeamIds, projectScope } = useTeam();
   const [weekRange, setWeekRange] = useState<WeekRange>(() => getWeekRange(new Date()));
   const fromKey = localDateKey(weekRange.start);
   const toKey = localDateKey(weekRange.end);
@@ -132,10 +133,10 @@ export function PersonalCalendar() {
   const filteredTasks = useMemo(() => {
     const all = data?.tasks ?? [];
     return all.filter((task) => {
-      if (!selectedTeamIds.includes(task.teamId)) return false;
+      if (!projectInScope(task.teamId, task.projectId, selectedTeamIds, projectScope)) return false;
       return !selectedTeamId || !selectedTeamIds.includes(selectedTeamId) || task.teamId === selectedTeamId;
     });
-  }, [data, selectedTeamId, selectedTeamIds]);
+  }, [data, selectedTeamId, selectedTeamIds, projectScope]);
 
   // Build one lane per project the user currently has scheduled tasks in
   // (across all dates — see `/api/calendar`), regardless of whether that
@@ -145,7 +146,7 @@ export function PersonalCalendar() {
   const projectLanes = useMemo<Array<{ key: string; project: ProjectRef | null; cards: CalendarCard[] }>>(() => {
     const allProjects = data?.projects ?? [];
     const teamScopedProjects = allProjects.filter((project) => {
-      if (!project.teamId || !selectedTeamIds.includes(project.teamId)) return false;
+      if (!project.teamId || !projectInScope(project.teamId, project.id, selectedTeamIds, projectScope)) return false;
       return !selectedTeamId || !selectedTeamIds.includes(selectedTeamId) || project.teamId === selectedTeamId;
     });
 
@@ -182,7 +183,7 @@ export function PersonalCalendar() {
       return an.localeCompare(bn);
     });
     return lanes;
-  }, [filteredTasks, data?.projects, selectedTeamId, selectedTeamIds, weekRange]);
+  }, [filteredTasks, data?.projects, selectedTeamId, selectedTeamIds, projectScope, weekRange]);
 
   const teamBadgeByTeamId = useMemo(() => {
     const map = new Map<string, { name: string; color: string | null }>();

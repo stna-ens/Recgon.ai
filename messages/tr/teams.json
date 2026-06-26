@@ -76,7 +76,8 @@
     "noProjects": "Henüz proje yok",
     "loadingProjects": "Yükleniyor…",
     "toggleFilterAria": "{team} takımını çalışma alanı filtresinde aç/kapat",
-    "toggleProjectsAria": "{team} projelerini göster veya gizle"
+    "toggleProjectsAria": "{team} projelerini göster veya gizle",
+    "toggleProjectFilterAria": "{project} projesini çalışma alanı filtresinde aç/kapat"
   },
   "profile": {
     "eyebrow": "PROFİLİN",

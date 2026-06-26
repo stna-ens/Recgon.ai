@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import type { ProjectScope } from '@/lib/scope';
 
 interface Team {
   id: string;
@@ -34,6 +35,10 @@ interface TeamContextType {
   setCurrentTeam: (team: Team) => void;
   selectedTeamIds: string[];
   setSelectedTeamIds: (teamIds: string[]) => void;
+  // Per-team marked project ids. Empty/absent for a team = all its projects in
+  // scope (the backwards-compatible default). See src/lib/scope.ts.
+  projectScope: ProjectScope;
+  setProjectScope: (scope: ProjectScope) => void;
   refreshTeams: () => Promise<void>;
   loading: boolean;
   projects: CachedProject[] | null;
@@ -48,6 +53,8 @@ const TeamContext = createContext<TeamContextType>({
   setCurrentTeam: () => {},
   selectedTeamIds: [],
   setSelectedTeamIds: () => {},
+  projectScope: {},
+  setProjectScope: () => {},
   refreshTeams: async () => {},
   loading: true,
   projects: null,
@@ -66,6 +73,7 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<CachedProject[] | null>(null);
   const [selectedTeamIds, setSelectedTeamIdsState] = useState<string[]>([]);
+  const [projectScope, setProjectScopeState] = useState<ProjectScope>({});
   const [projectUpdateStatuses, setProjectUpdateStatuses] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
   const router = useRouter();
@@ -140,6 +148,23 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
           }
         } catch { /* fall back to the current team */ }
 
+        // Hydrate the per-team project scope, pruning teams that no longer exist.
+        try {
+          const rawScope = localStorage.getItem('recgon_project_scope');
+          const parsedScope = rawScope ? JSON.parse(rawScope) : {};
+          if (parsedScope && typeof parsedScope === 'object') {
+            const available = new Set(data.map((team: Team) => team.id));
+            const cleaned: ProjectScope = {};
+            for (const [tid, ids] of Object.entries(parsedScope)) {
+              if (available.has(tid) && Array.isArray(ids)) {
+                const valid = ids.filter((id): id is string => typeof id === 'string');
+                if (valid.length > 0) cleaned[tid] = valid;
+              }
+            }
+            setProjectScopeState(cleaned);
+          }
+        } catch { /* scope is optional */ }
+
         const initialTeam = saved ?? data[0] ?? null;
         const initialSelection = savedSelection.length > 0
           ? savedSelection
@@ -189,6 +214,19 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
     localStorage.setItem('recgon_selected_teams', JSON.stringify([team.id]));
   }, []);
 
+  const setProjectScope = useCallback((scope: ProjectScope) => {
+    // Persist only non-empty narrowings — an empty array for a team means "all
+    // projects", which is the absence-of-key default, so we drop it.
+    const cleaned: ProjectScope = {};
+    for (const [tid, ids] of Object.entries(scope)) {
+      if (Array.isArray(ids) && ids.length > 0) cleaned[tid] = Array.from(new Set(ids));
+    }
+    setProjectScopeState(cleaned);
+    try {
+      localStorage.setItem('recgon_project_scope', JSON.stringify(cleaned));
+    } catch { /* storage is optional */ }
+  }, []);
+
   const setSelectedTeamIds = useCallback((teamIds: string[]) => {
     const available = new Set(teams.map((team) => team.id));
     const next = Array.from(new Set(teamIds.filter((id) => available.has(id))));
@@ -209,7 +247,7 @@ export default function TeamProvider({ children }: { children: React.ReactNode }
 
   return (
     <TeamContext.Provider value={{
-      teams, currentTeam, setCurrentTeam, selectedTeamIds, setSelectedTeamIds, refreshTeams, loading,
+      teams, currentTeam, setCurrentTeam, selectedTeamIds, setSelectedTeamIds, projectScope, setProjectScope, refreshTeams, loading,
       projects,
       projectUpdateStatuses, refreshProjects, setProjectUpdateStatuses,
     }}>

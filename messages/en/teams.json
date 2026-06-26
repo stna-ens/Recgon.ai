@@ -76,7 +76,8 @@
     "noProjects": "No projects yet",
     "loadingProjects": "Loading…",
     "toggleFilterAria": "Toggle {team} in workspace filter",
-    "toggleProjectsAria": "Show or hide {team} projects"
+    "toggleProjectsAria": "Show or hide {team} projects",
+    "toggleProjectFilterAria": "Toggle {project} in workspace filter"
   },
   "profile": {
     "eyebrow": "YOUR PROFILE",

@@ -12,7 +12,7 @@ const EXPANDED_KEY = 'recgon_expanded_teams';
 
 export default function TeamSwitcher() {
   const t = useTranslations('teams');
-  const { teams, selectedTeamIds, setSelectedTeamIds } = useTeam();
+  const { teams, selectedTeamIds, setSelectedTeamIds, projectScope, setProjectScope } = useTeam();
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
@@ -127,6 +127,28 @@ export default function TeamSwitcher() {
         ? selectedTeamIds.filter((id) => id !== teamId)
         : [...selectedTeamIds, teamId],
     );
+  };
+
+  // Mark/unmark a project within its team's scope. Starting from "all" (no
+  // marks) narrows to just the clicked project; clearing the last mark or
+  // marking every project collapses back to "all" (empty). Marking a project
+  // under an unselected team pulls that team into scope too.
+  const toggleProjectMark = (teamId: string, projectId: string, allIds: string[]) => {
+    if (!selectedTeamIds.includes(teamId)) {
+      setSelectedTeamIds([...selectedTeamIds, teamId]);
+    }
+    const current = projectScope[teamId] ?? [];
+    let next: string[];
+    if (current.length === 0) {
+      next = [projectId];
+    } else if (current.includes(projectId)) {
+      next = current.filter((id) => id !== projectId);
+    } else {
+      next = [...current, projectId];
+    }
+    // Every project marked ⇒ same as "all" ⇒ store as empty.
+    if (allIds.length > 0 && next.length >= allIds.length) next = [];
+    setProjectScope({ ...projectScope, [teamId]: next });
   };
 
   const toggleExpand = (teamId: string) => {
@@ -263,8 +285,28 @@ export default function TeamSwitcher() {
                       <div className="team-filter-projwrap-inner">
                         <ul className="team-filter-projects">
                           {hasProjects ? (
-                            projects.map((p) => (
-                              <li key={p.id}>
+                            projects.map((p) => {
+                              const marks = projectScope[team.id] ?? [];
+                              const projChecked = active && (marks.length === 0 || marks.includes(p.id));
+                              const allIds = projects.map((pr) => pr.id);
+                              return (
+                              <li key={p.id} className="team-filter-projrow">
+                                <button
+                                  type="button"
+                                  role="checkbox"
+                                  aria-checked={projChecked}
+                                  className="team-filter-projcheck"
+                                  aria-label={t('switcher.toggleProjectFilterAria', { project: p.name })}
+                                  onClick={() => toggleProjectMark(team.id, p.id, allIds)}
+                                >
+                                  <span className="tf-box tf-box-sm" data-on={projChecked ? 'true' : 'false'} aria-hidden="true">
+                                    {projChecked && (
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5}>
+                                        <polyline points="20 6 9 17 4 12" />
+                                      </svg>
+                                    )}
+                                  </span>
+                                </button>
                                 <Link
                                   href={`/projects/${p.id}`}
                                   className="team-filter-project"
@@ -285,7 +327,8 @@ export default function TeamSwitcher() {
                                   </span>
                                 </Link>
                               </li>
-                            ))
+                              );
+                            })
                           ) : (
                             <li className="team-filter-projhint">
                               {projectsLoading ? t('switcher.loadingProjects') : t('switcher.noProjects')}
@@ -414,9 +457,24 @@ export default function TeamSwitcher() {
         .team-filter-projwrap[data-expanded='true'] .team-filter-projwrap-inner { opacity: 1; transform: none; }
 
         .team-filter-projects { list-style: none; margin: 0; padding: 2px 0 8px; }
+
+        /* A project row = [filter checkbox] + [navigation link], mirroring the
+           team row's check + main split. The checkbox occupies the indent the
+           link used to pad past. */
+        .team-filter-projrow { display: flex; align-items: stretch; }
+        .team-filter-projcheck {
+          flex: 0 0 auto; display: inline-flex; align-items: center;
+          padding: 0 8px 0 18px; border: 0; background: transparent; cursor: pointer;
+        }
+        .team-filter-projcheck:focus-visible { outline: none !important; }
+        .team-filter-projcheck:focus-visible .tf-box { box-shadow: 0 0 0 3px rgba(var(--signature-rgb), .28); }
+        .tf-box-sm { width: 13px; height: 13px; border-radius: 3px; }
+        .tf-box-sm svg { width: 9px; height: 9px; }
+
         .team-filter-project {
+          flex: 1; min-width: 0;
           display: flex; align-items: center; gap: 9px;
-          padding: 6px 16px 6px 42px; text-decoration: none;
+          padding: 6px 16px 6px 2px; text-decoration: none;
           transition: background 120ms ease;
         }
         .team-filter-project:hover { background: rgba(255,255,255,.04); }
