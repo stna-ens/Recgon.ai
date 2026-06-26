@@ -44,7 +44,7 @@ const fetcher = (url: string) => fetch(url).then((r) => {
 type ColKey = 'open' | 'converted' | 'closed';
 
 const COLUMNS: { key: ColKey; tone: string; statuses: IssueStatus[] }[] = [
-  { key: 'open',      tone: 'var(--txt-muted)', statuses: ['open', 'converting'] },
+  { key: 'open',      tone: 'var(--signature)', statuses: ['open', 'converting'] },
   { key: 'converted', tone: 'var(--success)',   statuses: ['converted'] },
   { key: 'closed',    tone: 'var(--txt-faint)',  statuses: ['closed'] },
 ];
@@ -141,13 +141,7 @@ export default function IssuesPage() {
   return (
     <div className="issb">
       <header className="issb-head">
-        <div>
-          <div className="recgon-label">Issue Intake</div>
-          <h1 className="issb-title">Tell Recgon what needs doing</h1>
-          <p className="issb-sub">
-            File an issue. Recgon breaks it into the right tasks and routes each to the best-fit teammate.
-          </p>
-        </div>
+        <div className="recgon-label">Issue Intake</div>
         {teamId && (
           <Button variant="primary" onClick={() => setShowNew(true)}>New issue</Button>
         )}
@@ -259,14 +253,9 @@ export default function IssuesPage() {
       <style>{`
         .issb { max-width: 1180px; margin: 0 auto; padding: 8px 0 48px; }
         .issb-head {
-          display: flex; align-items: flex-start; justify-content: space-between;
+          display: flex; align-items: center; justify-content: space-between;
           gap: 20px; margin-bottom: 22px;
         }
-        .issb-title {
-          font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
-          color: var(--txt-pure); margin: 8px 0 6px; line-height: 1.15;
-        }
-        .issb-sub { font-size: 13px; color: var(--txt-muted); max-width: 520px; line-height: 1.5; }
         .issb-empty-glyph { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 22px; color: var(--signature); }
 
         /* ── Board (mirrors the tasks kanban) ──────────────────────────── */
@@ -294,7 +283,7 @@ export default function IssuesPage() {
         .issb-board > .issb-col:nth-child(3) { animation-delay: 180ms; }
         @keyframes issbColIn { to { opacity: 1; transform: none; } }
 
-        .issb-col[data-col="open"]      { --glow-rgb: 220, 225, 240;      --glow-alpha: 0.16; }
+        .issb-col[data-col="open"]      { --glow-rgb: var(--signature-rgb); --glow-alpha: 0.22; }
         .issb-col[data-col="converted"] { --glow-rgb: var(--success-rgb); --glow-alpha: 0.42; }
         .issb-col[data-col="closed"]    { --glow-rgb: 220, 225, 240;      --glow-alpha: 0.05; }
         .issb-col::before {
@@ -336,7 +325,7 @@ export default function IssuesPage() {
           width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; color: inherit;
           animation: issbDotPulse 3.6s ease-in-out infinite;
         }
-        .issb-col[data-col="open"] .issb-col-dot      { color: var(--txt-muted); }
+        .issb-col[data-col="open"] .issb-col-dot      { color: var(--signature); }
         .issb-col[data-col="converted"] .issb-col-dot { color: var(--success); }
         .issb-col[data-col="closed"] .issb-col-dot    { color: var(--txt-faint); }
         @keyframes issbDotPulse {
