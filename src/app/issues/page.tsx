@@ -7,7 +7,7 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { useSession } from 'next-auth/react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { Button, EmptyState, Skeleton, useConfirm } from '@/components/ui';
+import { Button, EmptyState, Skeleton } from '@/components/ui';
 import { TaskStatusChip, type WorkflowStatus } from '@/components/TaskStatusChip';
 import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
 import { NewIssueModal, type CreatedIssue } from './NewIssueModal';
@@ -545,9 +545,11 @@ function IssueDetail({
   onClose: () => void;
   onDeleted: () => void;
 }) {
-  const confirm = useConfirm();
   const { addToast } = useToast();
   const [deleting, setDeleting] = useState(false);
+  // Inline two-step confirm — a nested Radix AlertDialog (useConfirm) on top of
+  // this open Dialog deadlocks the focus/pointer locks and freezes the app.
+  const [confirming, setConfirming] = useState(false);
   const { data, isLoading } = useSWR<{ issue: Issue; tasks: LinkedTask[] }>(
     `/api/teams/${teamId}/issues/${issueId}`,
     fetcher,
@@ -565,15 +567,8 @@ function IssueDetail({
     issue.status !== 'converted' &&
     issue.status !== 'converting';
 
-  const handleDelete = async () => {
+  const doDelete = async () => {
     if (!canDelete || deleting) return;
-    const ok = await confirm({
-      title: 'Delete this issue?',
-      description: 'It hasn’t been turned into tasks yet, so it will be removed for good.',
-      confirmLabel: 'Delete',
-      destructive: true,
-    });
-    if (!ok) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/teams/${teamId}/issues/${issueId}`, { method: 'DELETE' });
@@ -585,6 +580,7 @@ function IssueDetail({
     } catch (err) {
       addToast(err instanceof Error ? err.message : 'Could not delete the issue.', 'error');
       setDeleting(false);
+      setConfirming(false);
     }
   };
 
@@ -624,9 +620,21 @@ function IssueDetail({
 
           {canDelete && (
             <div className="issb-detail-actions">
-              <Button variant="danger" size="sm" loading={deleting} onClick={() => void handleDelete()}>
-                Delete issue
-              </Button>
+              {confirming ? (
+                <>
+                  <span className="issb-detail-warn">Delete permanently?</span>
+                  <Button variant="ghost" size="sm" disabled={deleting} onClick={() => setConfirming(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="danger" size="sm" loading={deleting} onClick={() => void doDelete()}>
+                    Delete
+                  </Button>
+                </>
+              ) : (
+                <Button variant="danger" size="sm" onClick={() => setConfirming(true)}>
+                  Delete issue
+                </Button>
+              )}
             </div>
           )}
 
@@ -663,8 +671,12 @@ function IssueDetail({
         .issb-detail-label { margin: 20px 0 10px 27px; }
         .issb-detail-empty { font-size: 12px; color: var(--txt-faint); margin-left: 27px; }
         .issb-detail-actions {
-          display: flex; justify-content: flex-end;
+          display: flex; align-items: center; justify-content: flex-end; gap: 10px;
           margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule);
+        }
+        .issb-detail-warn {
+          margin-right: auto; font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px; font-weight: 600; letter-spacing: 0.3px; color: var(--danger);
         }
         .issb-tree { margin-left: 27px; border-left: 1.5px solid rgba(var(--signature-rgb), 0.22); }
         .issb-leaf {
