@@ -4,9 +4,10 @@ import { useMemo, useState, useCallback } from 'react';
 import useSWR from 'swr';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { useSession } from 'next-auth/react';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
-import { Button, EmptyState, Skeleton } from '@/components/ui';
+import { Button, EmptyState, Skeleton, useConfirm } from '@/components/ui';
 import { TaskStatusChip, type WorkflowStatus } from '@/components/TaskStatusChip';
 import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
 import { NewIssueModal, type CreatedIssue } from './NewIssueModal';
@@ -84,6 +85,8 @@ function relDate(iso: string): string {
 export default function IssuesPage() {
   const { currentTeam } = useTeam();
   const { addToast } = useToast();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id ?? null;
   const teamId = currentTeam?.id ?? null;
   const [showNew, setShowNew] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -265,7 +268,9 @@ export default function IssuesPage() {
           teamId={teamId}
           issueId={detailId}
           nameById={nameById}
+          currentUserId={currentUserId}
           onClose={() => setDetailId(null)}
+          onDeleted={() => { setDetailId(null); void mutate(); addToast('Issue deleted.', 'success'); }}
         />
       )}
 
@@ -529,19 +534,59 @@ function IssueDetail({
   teamId,
   issueId,
   nameById,
+  currentUserId,
   onClose,
+  onDeleted,
 }: {
   teamId: string;
   issueId: string;
   nameById: Map<string, string>;
+  currentUserId: string | null;
   onClose: () => void;
+  onDeleted: () => void;
 }) {
+  const confirm = useConfirm();
+  const { addToast } = useToast();
+  const [deleting, setDeleting] = useState(false);
   const { data, isLoading } = useSWR<{ issue: Issue; tasks: LinkedTask[] }>(
     `/api/teams/${teamId}/issues/${issueId}`,
     fetcher,
   );
   const issue = data?.issue;
   const tasks = data?.tasks ?? [];
+
+  // You can delete only your own issue, and only before it's chopped into
+  // tasks (no spawned tasks, not converting/converted).
+  const canDelete =
+    !!issue &&
+    !!currentUserId &&
+    issue.createdBy === currentUserId &&
+    tasks.length === 0 &&
+    issue.status !== 'converted' &&
+    issue.status !== 'converting';
+
+  const handleDelete = async () => {
+    if (!canDelete || deleting) return;
+    const ok = await confirm({
+      title: 'Delete this issue?',
+      description: 'It hasn’t been turned into tasks yet, so it will be removed for good.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/teams/${teamId}/issues/${issueId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Delete failed');
+      }
+      onDeleted();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Could not delete the issue.', 'error');
+      setDeleting(false);
+    }
+  };
 
   return (
     <Dialog.Root open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -577,6 +622,14 @@ function IssueDetail({
             </div>
           )}
 
+          {canDelete && (
+            <div className="issb-detail-actions">
+              <Button variant="danger" size="sm" loading={deleting} onClick={() => void handleDelete()}>
+                Delete issue
+              </Button>
+            </div>
+          )}
+
           <Dialog.Close asChild>
             <button className="issb-detail-close" aria-label="Close">✕</button>
           </Dialog.Close>
@@ -609,6 +662,10 @@ function IssueDetail({
         .issb-detail-desc { font-size: 13px; color: var(--txt-muted); line-height: 1.55; margin: 10px 0 0; white-space: pre-wrap; }
         .issb-detail-label { margin: 20px 0 10px 27px; }
         .issb-detail-empty { font-size: 12px; color: var(--txt-faint); margin-left: 27px; }
+        .issb-detail-actions {
+          display: flex; justify-content: flex-end;
+          margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule);
+        }
         .issb-tree { margin-left: 27px; border-left: 1.5px solid rgba(var(--signature-rgb), 0.22); }
         .issb-leaf {
           position: relative; display: flex; align-items: center; justify-content: space-between;

@@ -73,7 +73,9 @@ export async function PATCH(
   return NextResponse.json({ issue: fresh });
 }
 
-// DELETE — remove the issue (the spawned tasks are left in place).
+// DELETE — remove an issue. Only the author may delete it, and only while it
+// has NOT been chopped into tasks (no spawned tasks yet). Once Recgon has minted
+// tasks from it, the issue is a record of real work and is no longer deletable.
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; issueId: string }> },
@@ -86,6 +88,21 @@ export async function DELETE(
 
   const loaded = await loadTeamIssue(teamId, issueId);
   if ('error' in loaded) return loaded.error;
+
+  // Author-only: you may delete the issue you filed, not someone else's.
+  if (loaded.issue.createdBy !== session.user.id) {
+    return NextResponse.json({ error: 'Only the author can delete this issue' }, { status: 403 });
+  }
+
+  // Not-yet-chopped: block deletion once tasks have been spawned. Check the live
+  // linkage (authoritative) rather than the cached status/count.
+  const tasks = await listTasksForIssue(issueId);
+  if (tasks.length > 0 || loaded.issue.status === 'converted' || loaded.issue.status === 'converting') {
+    return NextResponse.json(
+      { error: 'This issue has already been turned into tasks and can no longer be deleted' },
+      { status: 409 },
+    );
+  }
 
   await deleteIssue(issueId);
   return NextResponse.json({ ok: true });
