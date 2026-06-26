@@ -4,6 +4,7 @@ import type { ToolDefinition } from './types';
 import { projectTools } from './projects';
 import { analyticsTools } from './analytics';
 import { taskTools } from './tasks';
+import { issueTools } from './issues';
 import { teammateTools } from './teammates';
 import { teamTools } from './teams';
 import { dispatchTools } from './dispatch';
@@ -16,6 +17,7 @@ const ALL_TOOLS: ToolDefinition[] = [
   ...projectTools,
   ...analyticsTools,
   ...taskTools,
+  ...issueTools,
   ...teammateTools,
   ...teamTools,
   ...dispatchTools,

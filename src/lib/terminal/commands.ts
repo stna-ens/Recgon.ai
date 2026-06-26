@@ -137,6 +137,23 @@ export const SLASH_COMMANDS: SlashCommand[] = [
         (a) => `Call task_set_status with action="complete" for the task the user describes: "${a}".`,
       ),
   },
+  // ── Issues ─────────────────────────────────────────────────────────
+  {
+    name: '/issues',
+    description: '/issues [status] — list filed issues (e.g. /issues open)',
+    argHint: 'free',
+    buildPrompt: (arg) =>
+      `${tersePrefix} Call issue_list to list issues${arg ? ` with status="${arg}"` : ''}. ${directRun}`,
+  },
+  {
+    name: '/issue',
+    description: '/issue [describe it] — file an issue; Recgon splits it into tasks',
+    argHint: 'free',
+    buildPrompt: (arg) =>
+      arg
+        ? `${tersePrefix} The user is filing an issue: "${arg}". Call issue_create with a clear title (and description if the user gave detail). Report how many tasks Recgon spawned. ${directRun}`
+        : `${tersePrefix} The user wants to file an issue but did not say what. Ask in one short line what needs doing, and wait — do NOT call any tool yet.`,
+  },
   {
     name: '/inbox',
     description: 'show unassigned tasks needing attention',
