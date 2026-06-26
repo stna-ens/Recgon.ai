@@ -28,3 +28,11 @@ CREATE TABLE IF NOT EXISTS issues (
 
 CREATE INDEX IF NOT EXISTS idx_issues_team_status
   ON issues (team_id, status, created_at DESC);
+
+-- Issue-spawned tasks are minted with source='issue'. The original
+-- agent_tasks_source_check predates this and only allowed
+-- brain/user/teammate/schedule, so the insert was rejected and the issue
+-- stranded in 'converting'. Widen the constraint to include 'issue'.
+ALTER TABLE agent_tasks DROP CONSTRAINT IF EXISTS agent_tasks_source_check;
+ALTER TABLE agent_tasks ADD CONSTRAINT agent_tasks_source_check
+  CHECK (source = ANY (ARRAY['brain'::text, 'user'::text, 'teammate'::text, 'schedule'::text, 'issue'::text]));

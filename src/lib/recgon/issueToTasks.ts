@@ -184,13 +184,21 @@ export async function convertIssueToTasks(
     breakdown,
   );
 
-  const { mintTasksFromIssue } = await import('./taskMint');
-  await mintTasksFromIssue(issue.teamId, entries, { language: opts.language });
-
   // task_count = number of tasks the issue maps to (entries.length), which is
   // stable across an idempotent re-run where mint dedups everything.
   const taskCount = entries.length;
-  await updateIssueStatus(issueId, 'converted', taskCount);
+
+  try {
+    const { mintTasksFromIssue } = await import('./taskMint');
+    await mintTasksFromIssue(issue.teamId, entries, { language: opts.language });
+    await updateIssueStatus(issueId, 'converted', taskCount);
+  } catch (err) {
+    // A mint/DB failure must NEVER strand the issue in 'converting' (which the
+    // panel renders as "splitting…" forever). Reset to 'open' so it reads as
+    // awaiting conversion, then rethrow so the route surfaces the warning.
+    await updateIssueStatus(issueId, 'open').catch(() => {});
+    throw err;
+  }
 
   // Fire-and-forget dispatch (same pattern as workers.ts post-analysis hook).
   // Assignment is best-effort; the daily cron catches anything this misses.
