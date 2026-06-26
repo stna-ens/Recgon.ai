@@ -498,7 +498,7 @@ function IssueDetail({
     <Dialog.Root open onOpenChange={(o) => { if (!o) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="issb-overlay" />
-        <Dialog.Content className="issb-detail glass-card" aria-describedby={undefined}>
+        <Dialog.Content className="issb-detail" aria-describedby={undefined}>
           <Dialog.Title className="issb-detail-title">{issue?.title ?? 'Issue'}</Dialog.Title>
           {issue?.description && <p className="issb-detail-desc">{issue.description}</p>}
 
@@ -544,9 +544,17 @@ function IssueDetail({
         .issb-detail {
           position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
           width: min(560px, calc(100vw - 32px)); max-height: 80vh; overflow-y: auto;
-          z-index: 201; padding: 26px !important;
+          z-index: 201; padding: 26px;
+          background: var(--glass-substrate);
+          backdrop-filter: blur(40px) saturate(180%);
+          -webkit-backdrop-filter: blur(40px) saturate(180%);
+          border: 1px solid var(--rule-strong); border-radius: 16px;
+          box-shadow: var(--shadow-float), var(--edge-highlight);
           animation: issbPop 0.22s var(--ease-out);
         }
+        /* Keep the centering transform on hover — never let a global hover rule
+           (e.g. .glass-card:hover scale) hijack it and make the modal jump. */
+        .issb-detail:hover { transform: translate(-50%, -50%); }
         @keyframes issbPop { from { opacity: 0; transform: translate(-50%, -48%) scale(0.98); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
         .issb-detail-title { font-size: 18px; font-weight: 700; color: var(--txt-pure); margin: 0 36px 0 0; line-height: 1.3; }
         .issb-detail-desc { font-size: 13px; color: var(--txt-muted); line-height: 1.55; margin: 10px 0 0; white-space: pre-wrap; }
