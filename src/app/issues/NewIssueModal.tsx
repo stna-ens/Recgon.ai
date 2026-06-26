@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import * as RSelect from '@radix-ui/react-select';
 import { Modal, Button, FormField } from '@/components/ui';
+
+// Radix Select forbids an empty-string item value, so the "none" choice uses a
+// sentinel and maps back to '' in state.
+const NO_PROJECT = '__none__';
 
 // Minimal shape the parent needs to toast "split into N tasks".
 export type CreatedIssue = { id: string; taskCount: number };
@@ -111,19 +116,72 @@ export function NewIssueModal({
           htmlFor="new-issue-project"
           hint="Tasks Recgon creates from this issue land in this project."
         >
-          <select
-            id="new-issue-project"
-            className="ui-input"
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
+          <RSelect.Root
+            value={projectId || NO_PROJECT}
+            onValueChange={(v) => setProjectId(v === NO_PROJECT ? '' : v)}
           >
-            <option value="">No specific project</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+            <RSelect.Trigger id="new-issue-project" type="button" className="ui-input iss-sel-trigger" aria-label="Project">
+              <RSelect.Value />
+              <RSelect.Icon className="iss-sel-chev">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+              </RSelect.Icon>
+            </RSelect.Trigger>
+            <RSelect.Portal>
+              <RSelect.Content className="iss-sel-content" position="popper" sideOffset={6}>
+                <RSelect.Viewport className="iss-sel-vp">
+                  <RSelect.Item value={NO_PROJECT} className="iss-sel-item">
+                    <RSelect.ItemText>No specific project</RSelect.ItemText>
+                    <RSelect.ItemIndicator className="iss-sel-ind">✓</RSelect.ItemIndicator>
+                  </RSelect.Item>
+                  {projects.map((p) => (
+                    <RSelect.Item key={p.id} value={p.id} className="iss-sel-item">
+                      <RSelect.ItemText>{p.name}</RSelect.ItemText>
+                      <RSelect.ItemIndicator className="iss-sel-ind">✓</RSelect.ItemIndicator>
+                    </RSelect.Item>
+                  ))}
+                </RSelect.Viewport>
+              </RSelect.Content>
+            </RSelect.Portal>
+          </RSelect.Root>
         </FormField>
         {error && <p className="ui-field-error">{error}</p>}
+
+        <style>{`
+          .iss-sel-trigger {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            cursor: pointer; text-align: left; line-height: 1.3;
+          }
+          .iss-sel-trigger[data-state='open'] {
+            border-color: rgba(var(--signature-rgb), 0.55);
+            box-shadow: 0 0 0 3px rgba(var(--signature-rgb), 0.12);
+          }
+          .iss-sel-trigger[data-placeholder] { color: var(--txt-faint); }
+          .iss-sel-chev {
+            display: inline-flex; color: var(--txt-faint); flex-shrink: 0;
+            transition: transform var(--dur-fast) var(--ease-out);
+          }
+          .iss-sel-trigger[data-state='open'] .iss-sel-chev { transform: rotate(180deg); color: var(--signature); }
+          .iss-sel-content {
+            z-index: 10000; min-width: var(--radix-select-trigger-width);
+            background: var(--glass-substrate);
+            backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid var(--rule-strong); border-radius: 10px;
+            box-shadow: var(--shadow-float), var(--edge-highlight);
+            overflow: hidden;
+            animation: issSelIn 0.14s var(--ease-out);
+          }
+          @keyframes issSelIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+          .iss-sel-vp { padding: 5px; }
+          .iss-sel-item {
+            position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 8px 10px; border-radius: 7px; cursor: pointer; user-select: none; outline: none;
+            font-size: var(--fs-sm); color: var(--txt-muted);
+            transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+          }
+          .iss-sel-item[data-highlighted] { background: rgba(var(--signature-rgb), 0.08); color: var(--txt-pure); }
+          .iss-sel-item[data-state='checked'] { color: var(--signature); font-weight: 600; }
+          .iss-sel-ind { display: inline-flex; color: var(--signature); font-size: 11px; }
+        `}</style>
         {/* Hidden submit so Enter in a field submits the form. */}
         <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
       </form>
