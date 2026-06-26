@@ -37,7 +37,15 @@
     "nextAction": "next action",
     "nextActionSub": "what deserves your attention first",
     "todaysBoard": "today's board",
-    "todaysBoardSub": "decisions first, updates second"
+    "todaysBoardSub": "decisions first, updates second",
+    "yourWork": "your work",
+    "yourWorkSub": "where your part lives"
+  },
+  "yourWork": {
+    "tasksTitle": "Your tasks",
+    "tasksSub": "Everything assigned to you",
+    "calendarTitle": "Your calendar",
+    "calendarSub": "What's scheduled, by day"
   },
   "refined": {
     "classicView": "classic view"

@@ -37,7 +37,15 @@
     "nextAction": "sıradaki adım",
     "nextActionSub": "önce neye dikkat etmelisin",
     "todaysBoard": "bugünün panosu",
-    "todaysBoardSub": "önce kararlar, sonra güncellemeler"
+    "todaysBoardSub": "önce kararlar, sonra güncellemeler",
+    "yourWork": "senin işin",
+    "yourWorkSub": "senin payına düşen yer"
+  },
+  "yourWork": {
+    "tasksTitle": "Görevlerin",
+    "tasksSub": "Sana atanan her şey",
+    "calendarTitle": "Takvimin",
+    "calendarSub": "Güne göre planlananlar"
   },
   "refined": {
     "classicView": "klasik görünüm"
