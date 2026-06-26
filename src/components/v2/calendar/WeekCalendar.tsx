@@ -13,7 +13,7 @@ import { SwimLane } from './SwimLane';
 import { TaskDetailPanel } from './TaskDetailPanel';
 import { UnscheduledSidebar } from './UnscheduledSidebar';
 import type { CalendarCard, WeekRange } from './calendarTypes';
-import { addWeeks, buildCards, daysBetween, getWeekRange, localDateKey, weekDays } from './calendarUtils';
+import { addWeeks, buildCalendarUrl, buildCards, daysBetween, getWeekRange, localDateKey, weekDays } from './calendarUtils';
 
 type ServerData = {
   teammates: TeammateWithStats[];
@@ -59,7 +59,7 @@ export function WeekCalendar({ projectId, onSwitchToList }: Props) {
     if (!teamId) return;
     if (opts.initial) setLoading(true); else setRefreshing(true);
     try {
-      const url = `/api/teams/${teamId}/calendar${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''}`;
+      const url = buildCalendarUrl(teamId, projectId);
       const res = await fetch(url, { cache: 'no-store' });
       if (res.ok) setData(await res.json());
       else if (opts.initial) addToast(t('toast.loadFailed'), 'error');

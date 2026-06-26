@@ -1,6 +1,14 @@
 import type { AgentTask } from '@/lib/recgon/types';
 import type { WeekRange, CalendarCard } from './calendarTypes';
 
+// Build the calendar fetch URL. When projectId is omitted the calendar returns
+// every team task (the team-wide /admin view); when passed it scopes to one
+// project (the project tasks page). Pure + exported so it is unit-testable.
+export function buildCalendarUrl(teamId: string, projectId?: string): string {
+  const base = `/api/teams/${teamId}/calendar`;
+  return projectId ? `${base}?projectId=${encodeURIComponent(projectId)}` : base;
+}
+
 export function getWeekRange(anchor: Date): WeekRange {
   const d = new Date(anchor);
   const day = d.getDay(); // 0=Sun
