@@ -3,10 +3,12 @@
 import { useMemo, useState, useCallback } from 'react';
 import useSWR from 'swr';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import { useTeam } from '@/components/TeamProvider';
 import { useToast } from '@/components/Toast';
 import { Button, EmptyState, Skeleton } from '@/components/ui';
 import { TaskStatusChip, type WorkflowStatus } from '@/components/TaskStatusChip';
+import { TeammateAvatar } from '@/components/v2/TeammateAvatar';
 import { NewIssueModal, type CreatedIssue } from './NewIssueModal';
 
 type IssueStatus = 'open' | 'converting' | 'converted' | 'closed';
@@ -33,8 +35,14 @@ interface LinkedTask {
 
 interface Teammate {
   id: string;
+  userId: string | null;
   displayName: string;
+  avatarUrl?: string | null;
+  avatarColor?: string | null;
 }
+
+// Resolved issue author for the card avatar + hover name.
+type Creator = { name: string; avatarUrl?: string | null; avatarColor?: string | null };
 
 const fetcher = (url: string) => fetch(url).then((r) => {
   if (!r.ok) throw new Error('load failed');
@@ -96,6 +104,16 @@ export default function IssuesPage() {
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
     (teammateData?.teammates ?? []).forEach((tm) => m.set(tm.id, tm.displayName));
+    return m;
+  }, [teammateData]);
+
+  // issue.createdBy is a USER id; teammates link to users via userId. Map
+  // userId → author display info so each card can show who filed it.
+  const creatorByUserId = useMemo(() => {
+    const m = new Map<string, Creator>();
+    (teammateData?.teammates ?? []).forEach((tm) => {
+      if (tm.userId) m.set(tm.userId, { name: tm.displayName, avatarUrl: tm.avatarUrl, avatarColor: tm.avatarColor });
+    });
     return m;
   }, [teammateData]);
 
@@ -219,6 +237,7 @@ export default function IssuesPage() {
                       <IssueCard
                         key={issue.id}
                         issue={issue}
+                        creator={issue.createdBy ? creatorByUserId.get(issue.createdBy) ?? null : null}
                         dragging={draggedId === issue.id}
                         onDragStart={(e) => {
                           setDraggedId(issue.id);
@@ -378,12 +397,14 @@ export default function IssuesPage() {
 
 function IssueCard({
   issue,
+  creator,
   dragging,
   onDragStart,
   onDragEnd,
   onClick,
 }: {
   issue: Issue;
+  creator: Creator | null;
   dragging: boolean;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -418,6 +439,37 @@ function IssueCard({
       </div>
       <h3 className="issb-card-title">{issue.title}</h3>
       {issue.description && <p className="issb-card-desc">{issue.description}</p>}
+
+      {creator && (
+        <div className="issb-card-foot">
+          <Tooltip.Provider delayDuration={120}>
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <span
+                  className="issb-card-author"
+                  // Don't let clicking the avatar open the detail dialog.
+                  onClick={(e) => e.stopPropagation()}
+                  // Avatar isn't a drag handle — let the card own the drag.
+                  draggable={false}
+                >
+                  <TeammateAvatar
+                    name={creator.name}
+                    avatarUrl={creator.avatarUrl}
+                    avatarColor={creator.avatarColor}
+                    size={20}
+                  />
+                </span>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content className="issb-tip" sideOffset={6}>
+                  {creator.name}
+                  <Tooltip.Arrow className="issb-tip-arrow" />
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+        </div>
+      )}
 
       <style>{`
         .issb-card {
@@ -460,6 +512,20 @@ function IssueCard({
           font-size: 12px; color: var(--txt-faint); line-height: 1.4; margin: 0;
           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
         }
+        .issb-card-foot { display: flex; align-items: center; margin-top: 1px; }
+        .issb-card-author { display: inline-flex; cursor: default; }
+        .issb-tip {
+          font-family: 'JetBrains Mono', ui-monospace, monospace;
+          font-size: 11px; font-weight: 600; letter-spacing: 0.2px;
+          color: var(--txt-pure); background: var(--glass-substrate);
+          backdrop-filter: blur(20px) saturate(180%);
+          border: 1px solid var(--rule-strong); border-radius: 8px;
+          padding: 5px 9px; box-shadow: var(--shadow-float);
+          user-select: none; z-index: 220;
+          animation: issbTipIn 0.12s var(--ease-out);
+        }
+        @keyframes issbTipIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+        .issb-tip-arrow { fill: var(--glass-substrate); }
       `}</style>
     </article>
   );
